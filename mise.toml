@@ -65,11 +65,20 @@ swift build --configuration release 2>&1 | xcsift
 [tasks."build:app"]
 description = "Build the ReachySpike app target (macOS)"
 depends = ["project"]
+# `-resultBundlePath` is what makes build insights reach tuist.dev. Tuist writes a
+# `tuist inspect build` post-action into every generated scheme, and it reads the
+# .xcactivitylog that xcodebuild only writes when a result bundle is requested — Xcode.app
+# writes one unconditionally, which is why local Xcode builds were the only ones ever
+# recorded. Without the flag the post-action fails with "couldn't find the most recent
+# activity log" and, being a post-action, leaves the build green.
 run = '''
 set -o pipefail
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachySpike-macOS.xcresult
+rm -rf "$RESULT_BUNDLE"
 xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
   -destination 'platform=macOS' -configuration Debug \
   -derivedDataPath Apps/DerivedData \
+  -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
   build 2>&1 | xcsift
@@ -84,9 +93,12 @@ description = "Build the ReachySpike app and its widget extension (iOS, unsigned
 depends = ["project"]
 run = '''
 set -o pipefail
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachySpike-iOS.xcresult
+rm -rf "$RESULT_BUNDLE"
 xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
   -destination 'generic/platform=iOS' -configuration Debug \
   -derivedDataPath Apps/DerivedData \
+  -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
   build 2>&1 | xcsift
