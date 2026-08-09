@@ -163,9 +163,17 @@ public extension RobotSession.Configuration {
     /// Safe to cut: `RobotPower.waitForMoveToFinish` returns normally when its
     /// deadline passes rather than throwing, so a shorter one means the app starts
     /// while the robot is still finishing its stretch — not that anything fails.
+    ///
+    /// `appStopTimeout` is cut for the same reason and is the same kind of trade,
+    /// but not the same size of one: a stop that outruns six seconds leaves the
+    /// parking to land on a robot the app is still handing back, which is exactly
+    /// what the wait is for. It is still the right cut — an intent killed halfway
+    /// through a thirty-second wait leaves the robot awake with its app already
+    /// gone, and nothing written down anywhere.
     static var widgetIntent: Self {
         var configuration = Self()
         configuration.moveCompletionTimeout = .seconds(4)
+        configuration.appStopTimeout = .seconds(6)
         return configuration
     }
 }

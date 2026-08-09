@@ -100,6 +100,19 @@ public final class RobotSession {
         public var daemonStopTimeout: Duration = .seconds(60)
         /// Motors need a moment to hold their pose before the animation starts.
         public var motorSettleDelay: Duration = .milliseconds(300)
+        /// How long the app holding the robot may take to let go before it is
+        /// parked anyway.
+        ///
+        /// The daemon gives the app 20 s to honour SIGINT and then kills it
+        /// (`apps/manager.py:301`) and returns the robot to zero after that, so a
+        /// normal stop is over in seconds and a stubborn one in twenty-odd. 30 s
+        /// clears both. Anything past it is the daemon's one-way `stopping` wedge,
+        /// which no client can open — and holding the head up for it would be the
+        /// worse answer.
+        public var appStopTimeout: Duration = .seconds(30)
+        /// Upstream's job-polling cadence, for the same reason it uses it: somebody
+        /// is watching their robot and waiting for it to move.
+        public var appStopPollInterval: Duration = .milliseconds(500)
         /// Connect-time readiness budget. We never start a backend during connect,
         /// so a stopped one is reported at once — this only covers the window
         /// between `state == running` and `backend.ready`.

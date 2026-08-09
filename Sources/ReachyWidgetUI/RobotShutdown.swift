@@ -9,17 +9,24 @@ import ReachyKit
 /// onto a screen; this has neither, so it asks the daemon afresh and has nowhere
 /// to put a sentence.
 public struct RobotShutdown: Sendable {
-    private let apps: any RobotAppsClient
+    private let release: RobotAppRelease
     private let daemon: any RobotAPIClient
 
-    public init(client: any RobotAPIClient & RobotAppsClient) {
-        apps = client
+    public init(
+        client: any RobotAPIClient & RobotAppsClient,
+        configuration: RobotSession.Configuration = .widgetIntent
+    ) {
+        release = RobotAppRelease(apps: client, configuration: configuration)
         daemon = client
     }
 
     /// Test seam: the two halves, with no client to build them from.
-    init(apps: any RobotAppsClient, daemon: any RobotAPIClient) {
-        self.apps = apps
+    init(
+        apps: any RobotAppsClient,
+        daemon: any RobotAPIClient,
+        configuration: RobotSession.Configuration = .widgetIntent
+    ) {
+        release = RobotAppRelease(apps: apps, configuration: configuration)
         self.daemon = daemon
     }
 
@@ -33,16 +40,16 @@ public struct RobotShutdown: Sendable {
     /// The parking itself is the daemon's: `stop?goto_sleep=true` enables the
     /// motors, *awaits* the sleep animation and only then cuts power, which is more
     /// than `RobotPower.sleep()` does. A client-side sleep beforehand would add
-    /// nothing and delay it.
+    /// nothing and delay it. What it does not do is wait for the app first, which is
+    /// why `RobotAppRelease` does: the daemon would otherwise start parking while
+    /// the app is still handing the robot back.
     ///
     /// Failing to stop the app does not abort: the robot's body is parked either
     /// way, and that is the half that matters. `RobotSession.powerOff` reports that
     /// failure because it has a screen to report it on — an intent has one sentence
     /// and it belongs to the shutdown.
     public func perform() async throws {
-        if let running = try? await apps.currentAppStatus(), running.isBusy {
-            try? await apps.stopCurrentApp()
-        }
+        await release.perform()
         // Returns as soon as the daemon has accepted the job. Nothing polls it
         // afterwards: the caller is an intent, and waiting out a sixty-second
         // budget in a process that has seconds would fail with the work already

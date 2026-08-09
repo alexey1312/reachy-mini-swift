@@ -82,6 +82,13 @@ public enum RobotIntentTarget {
         return RobotPower(client: target.client)
     }
 
+    /// Sleeping is not `power()` plus nothing: it releases the app holding the
+    /// robot first, which needs the apps half of the connection as well.
+    public static func sleep() async throws -> RobotSleep {
+        let target = try await connection(timeout: 10)
+        return RobotSleep(client: target.client)
+    }
+
     public static func shutdown() async throws -> RobotShutdown {
         let target = try await connection(timeout: 10)
         return RobotShutdown(client: target.client)
@@ -142,17 +149,19 @@ public struct WakeRobotIntent: AppIntent {
     }
 }
 
+/// Sleeping takes the motors away from whatever is using them, so the app using
+/// them is stopped first — see `RobotSleep`.
 public struct SleepRobotIntent: AppIntent {
     public static let title: LocalizedStringResource = "Put Reachy Mini to sleep"
     public static let description = IntentDescription(
-        "Plays the robot's sleep animation, then parks its motors."
+        "Stops the running app, plays the robot's sleep animation, then parks its motors."
     )
 
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        let power = try await RobotIntentTarget.power()
-        try await power.sleep()
+        let sleep = try await RobotIntentTarget.sleep()
+        try await sleep.perform()
         return .result()
     }
 }
