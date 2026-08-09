@@ -44,12 +44,12 @@ generated notes. Credentials never enter the repository or CI.
 
 ## Each release
 
-1. Bump `MARKETING_VERSION` in `Apps/Project.swift` (bare semver, e.g. `1.1.0`)
+1. Bump `MARKETING_VERSION` in `Apps/Project.swift` (bare semver, e.g. `0.2.0`)
    and land it on `main`. Build numbers are the commit count — nothing to bump.
 2. Tag and push; the tag triggers the GitHub release with git-cliff notes:
 
    ```bash
-   git tag 1.1.0 && git push origin 1.1.0
+   git tag 0.2.0 && git push origin 0.2.0
    ```
 
 3. Produce and ship the artifacts:
@@ -57,7 +57,7 @@ generated notes. Credentials never enter the repository or CI.
    ```bash
    mise run release:ios     # archive → TestFlight
    mise run release:macos   # archive → Developer ID → notarize → staple → zip
-   gh release upload 1.1.0 Apps/DerivedData/Export/macOS/HeyReachy-1.1.0.zip
+   gh release upload 0.2.0 Apps/DerivedData/Export/macOS/HeyReachy-0.2.0.zip
    ```
 
 Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without

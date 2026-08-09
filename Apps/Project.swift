@@ -26,7 +26,9 @@ let project = Project(
         // One version for the app and the widget: App Store validation requires
         // the extension's CFBundleShortVersionString to match its host's.
         base: [
-            "MARKETING_VERSION": "1.0.0",
+            // Beta: the first tag is 0.1.0, and the tag and the shipped version
+            // have to be the same number to be worth reading.
+            "MARKETING_VERSION": "0.1.0",
             "CURRENT_PROJECT_VERSION": "1",
         ],
         configurations: [
