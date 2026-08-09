@@ -15,6 +15,7 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         case wakeUp
         case gotoSleep
         case startApp(String)
+        case startDaemon(wakeUp: Bool)
         case stopDaemon(gotoSleep: Bool)
     }
 
@@ -27,6 +28,9 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
 
     var running: RobotAppStatus?
     var isAwake = true
+    /// The robot backend torn down, as `daemon/stop` leaves it: the daemon's own
+    /// HTTP server still answers, and everything behind `get_backend` does not.
+    var isBackendRunning = true
     /// A wake animation that never finishes, so a shortened completion budget is
     /// the only thing that ends the wait.
     var moveNeverFinishes = false
@@ -83,6 +87,11 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         moveNeverFinishes ? ["wake-uuid"] : []
     }
 
+    func startDaemon(wakeUp: Bool) async throws {
+        record(.startDaemon(wakeUp: wakeUp))
+        lock.withLock { isBackendRunning = true }
+    }
+
     /// The daemon parks the robot itself on the way down, so this counts as a
     /// parking too — asking for it over a live app is the same mistake.
     func stopDaemon(gotoSleep: Bool) async throws {
@@ -126,12 +135,16 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
 
     // MARK: - Fixtures
 
+    /// A torn-down backend reports `backend_status: null`, not a mode — `daemon.stop()`
+    /// sets `self.backend = None`, so there is nothing left to report a mode about.
     private var status: Components.Schemas.DaemonStatus {
+        let running = lock.withLock { isBackendRunning }
         let mode = isAwake ? "enabled" : "disabled"
+        let backend = running ? #"{"motor_control_mode":"\#(mode)","error":null}"# : "null"
         let json = """
-        {"robot_name":"testbot","state":"running","wireless_version":true,
+        {"robot_name":"testbot","state":"\(running ? "running" : "stopped")","wireless_version":true,
          "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,
-         "backend_status":{"motor_control_mode":"\(mode)","error":null}}
+         "backend_status":\(backend)}
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))

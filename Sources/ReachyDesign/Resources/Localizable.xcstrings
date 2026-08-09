@@ -643,6 +643,15 @@
     "Reachy Mini": {
       "extractionState": "manual"
     },
+    "Reachy Mini is awake.": {
+      "extractionState": "manual"
+    },
+    "Reachy Mini was off. It's starting up and will wake itself.": {
+      "extractionState": "manual"
+    },
+    "Reachy Mini was off. It's starting up — try again in a moment.": {
+      "extractionState": "manual"
+    },
     "Reading the robot's description…": {
       "extractionState": "manual"
     },
