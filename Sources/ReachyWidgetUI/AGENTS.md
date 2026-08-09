@@ -69,7 +69,7 @@ one client, and one sentence. Say which is which in the doc comment when adding 
   seconds, so neither the intent nor the tile waits for it. The intent says so in its dialog and the tile refuses with
   `Failure.startingBackend` rather than racing the start.
 - **A snapshot can say "awake" and be believed; it cannot say "asleep".** `RobotSnapshot.isAwake` is false for a
-  parked robot *and* for a torn-down backend, and those take opposite sequences — so `RobotAppLauncher` skips the
+  parked robot _and_ for a torn-down backend, and those take opposite sequences — so `RobotAppLauncher` skips the
   status read only on `assumeAwake == true`, and asks the daemon for anything else. The round trip that saves is
   still at most one either way, which is the invariant `asksTheDaemonWhenUnsure` measures.
 - **A running app has no title, so nothing may speak the daemon's word for one.** `AppManager.start_app` files the
