@@ -11,6 +11,8 @@ private final class FakeExchanger: HFTokenExchanging, @unchecked Sendable {
     private(set) var validated: [String] = []
     var username = "alexey1312"
     var rejectsTokens = false
+    /// A gate a test can hold shut to keep a renewal in flight while it acts.
+    var onRefresh: (@Sendable () async -> Void)?
 
     func exchange(code: String, verifier: String) async throws -> HFToken {
         lock.withLock { exchanged.append((code, verifier)) }
@@ -19,6 +21,7 @@ private final class FakeExchanger: HFTokenExchanging, @unchecked Sendable {
 
     func refreshing(_ token: HFToken) async throws -> HFToken {
         lock.withLock { refreshCalls += 1 }
+        await onRefresh?()
         guard token.refreshToken != nil else { throw HFOAuthError.notRefreshable }
         return HFToken(
             accessToken: "hf_refreshed",
@@ -214,6 +217,52 @@ struct HFAccountTests {
         #expect(account.state == .signedIn(username: "alexey1312"))
     }
 
+    /// The Hub can rotate refresh tokens, so spending one twice fails the second
+    /// exchange and knocks a freshly renewed session into needsReauth.
+    @Test("overlapping renewals spend the refresh token once")
+    func coalescesOverlappingRenewals() async {
+        let store = InMemoryHFTokenStore(
+            token: HFToken(accessToken: "hf_old", refreshToken: "r1", expiresAt: .distantPast, username: "alexey1312")
+        )
+        let exchanger = FakeExchanger()
+        let account = account(store: store, exchanger: exchanger)
+        account.restore()
+
+        async let first = account.currentToken()
+        async let second = account.currentToken()
+        let tokens = await [first, second]
+
+        #expect(tokens == ["hf_refreshed", "hf_refreshed"])
+        #expect(exchanger.refreshCalls == 1)
+    }
+
+    /// The user asked to be signed out; a renewal that was already in flight must
+    /// not write a fresh token back into the Keychain over that decision.
+    @Test("a sign-out during a renewal is not resurrected")
+    func signOutDuringRenewalStays() async throws {
+        let store = InMemoryHFTokenStore(
+            token: HFToken(accessToken: "hf_old", refreshToken: "r1", expiresAt: .distantPast, username: "alexey1312")
+        )
+        let exchanger = FakeExchanger()
+        let (gate, opener) = AsyncStream.makeStream(of: Void.self)
+        exchanger.onRefresh = {
+            var opened = gate.makeAsyncIterator()
+            await opened.next()
+        }
+        let account = account(store: store, exchanger: exchanger)
+        account.restore()
+
+        let renewal = Task { await account.currentToken() }
+        await waitUntil("the renewal is in flight") { exchanger.refreshCalls == 1 }
+        account.signOut()
+        opener.yield(())
+        let token = await renewal.value
+
+        #expect(token == nil)
+        #expect(account.state == .signedOut)
+        #expect(try store.load() == nil)
+    }
+
     @Test("a token that is still good is used as it is")
     func usesAValidTokenUnchanged() async {
         let store = InMemoryHFTokenStore(
@@ -234,4 +283,23 @@ struct HFAccountTests {
 
         #expect(await account.currentToken() == nil)
     }
+}
+
+/// `@MainActor` because every condition closes over main-actor state — the same
+/// shape as `ConnectProgressModelTests`' copy.
+@MainActor
+private func waitUntil(
+    _ description: String,
+    timeout: Duration = .seconds(10),
+    _ condition: () -> Bool,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async {
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while ContinuousClock.now < deadline {
+        if condition() {
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }
