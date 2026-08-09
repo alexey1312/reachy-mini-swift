@@ -12,6 +12,9 @@ struct RobotPowerTests {
         private var calls: [String] = []
         var running: Set<String> = []
         var wakeFailure: (any Error)?
+        /// What `daemon/status` answers. `.stopped` is what `daemon/stop` — the
+        /// app's Power off — leaves behind, with the daemon's HTTP server still up.
+        var state: Components.Schemas.DaemonState = .running
 
         var recorded: [String] {
             lock.lock()
@@ -30,7 +33,12 @@ struct RobotPowerTests {
         }
 
         func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
-            .preview(state: .running)
+            record("daemonStatus")
+            return .preview(state: state)
+        }
+
+        func startDaemon(wakeUp: Bool) async throws {
+            record("startDaemon:wakeUp=\(wakeUp)")
         }
 
         func wakeUp() async throws -> String {
@@ -105,6 +113,45 @@ struct RobotPowerTests {
         // The wait times out rather than hanging: parking the motors matters more
         // than proof the animation ran to the end.
         #expect(client.recorded == ["gotoSleep", "motors:disabled"])
+    }
+
+    /// `motors/set_mode` sits behind `get_backend` and answers 503 once the backend
+    /// is torn down, which is exactly the state Power off leaves the robot in. So
+    /// the way back up is `daemon/start`, not a motor command.
+    @Test("resuming a stopped backend starts it instead of sending motor commands")
+    func resumeStartsAStoppedBackend() async throws {
+        let client = Client()
+        client.state = .stopped
+
+        let resumption = try await power(client).resume()
+
+        #expect(resumption == .startingBackend)
+        // `wakeUp=true` is what makes this one call enough: the daemon enables the
+        // motors and plays the animation itself once the backend is up.
+        #expect(client.recorded == ["daemonStatus", "startDaemon:wakeUp=true"])
+    }
+
+    @Test("resuming a running backend is the ordinary wake protocol")
+    func resumeWakesARunningBackend() async throws {
+        let client = Client()
+
+        let resumption = try await power(client).resume()
+
+        #expect(resumption == .woke)
+        #expect(client.recorded == ["daemonStatus", "motors:enabled", "wakeUp"])
+    }
+
+    /// A second `daemon/start` answers 409 while a job runs, so a start already in
+    /// flight is reported rather than raced.
+    @Test("resuming a backend already starting asks for nothing")
+    func resumeLeavesAStartInFlightAlone() async throws {
+        let client = Client()
+        client.state = .starting
+
+        let resumption = try await power(client).resume()
+
+        #expect(resumption == .startingBackend)
+        #expect(client.recorded == ["daemonStatus"])
     }
 
     /// An intent has no screen to put an error on, so it has to be thrown rather

@@ -59,19 +59,60 @@ struct RobotAppLauncherTests {
 
     /// Motors first, then the animation, then the app — the order `RobotPower`
     /// exists to keep. Reversed, the head drops.
+    ///
+    /// The status read is not redundant despite the caller having said "not awake":
+    /// a snapshot's `isAwake` is false for a parked robot *and* for a torn-down
+    /// backend, and those need different sequences — see `startsTheBackendItFindsDown`.
     @Test("a parked robot is woken before the app starts")
     func wakesAParkedRobot() async throws {
         let client = StubAppsClient()
+        client.isAwake = false
 
         let outcome = try await launcher(client, assumeAwake: false).toggle(name: "face_tracking")
 
         #expect(outcome == .started(name: "face_tracking", title: "face tracking"))
         #expect(client.calls == [
             .currentAppStatus,
+            .daemonStatus,
             .setMotorMode(.enabled),
             .wakeUp,
             .startApp("face_tracking"),
         ])
+    }
+
+    /// The other half of the power-off ladder. `motors/set_mode` sits behind
+    /// `get_backend`, so waking a robot whose backend is gone can only 503 — the
+    /// tap has to bring the backend back instead, and say so.
+    @Test("a stopped backend is started rather than sent motor commands")
+    func startsTheBackendItFindsDown() async throws {
+        let client = StubAppsClient()
+        client.isBackendRunning = false
+
+        await #expect(throws: RobotAppLauncher.Failure.startingBackend) {
+            try await launcher(client, assumeAwake: nil).toggle(name: "face_tracking")
+        }
+
+        // `wake_up: true`: the daemon enables the motors and plays the animation
+        // itself once the backend is up, so nothing here has to wait for it.
+        #expect(client.calls == [
+            .currentAppStatus,
+            .daemonStatus,
+            .startDaemon(wakeUp: true),
+        ])
+    }
+
+    /// A stale snapshot saying "asleep" is the same reading a stopped backend
+    /// produces, so it must not be trusted into the wake branch.
+    @Test("a snapshot that says asleep does not skip the backend check")
+    func doesNotTrustASnapshotsAsleep() async throws {
+        let client = StubAppsClient()
+        client.isBackendRunning = false
+
+        await #expect(throws: RobotAppLauncher.Failure.startingBackend) {
+            try await launcher(client, assumeAwake: false).toggle(name: "face_tracking")
+        }
+        #expect(client.calls.contains(.setMotorMode(.enabled)) == false)
+        #expect(client.calls.contains(.startApp("face_tracking")) == false)
     }
 
     /// A fresh reading of the robot's state is worth a round trip saved: the whole
@@ -189,6 +230,7 @@ struct RobotAppLauncherTests {
     @Test("a wake animation that never finishes does not eat the intent's budget")
     func boundsTheWakeAnimation() async throws {
         let client = StubAppsClient()
+        client.isAwake = false
         client.moveNeverFinishes = true
 
         let start = ContinuousClock.now
