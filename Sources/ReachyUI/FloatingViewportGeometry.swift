@@ -80,6 +80,32 @@ extension FloatingViewportModel {
         )
     }
 
+    /// iOS-scroll-style resistance past the clamp, for the *drawn* position only — a
+    /// release still tests the unresisted point. The give asymptotically approaches
+    /// `margin` and never reaches it, so a window hauled arbitrarily far presses up
+    /// against the screen's edge without ever crossing it. A hard stop here read as
+    /// the window refusing the finger.
+    static func rubberBanded(
+        _ centre: CGPoint,
+        in bounds: CGRect,
+        size: CGSize = Metrics.floatingViewport,
+        margin: CGFloat = Space.lg
+    ) -> CGPoint {
+        let pinned = clamped(centre, in: bounds, size: size, margin: margin)
+        return CGPoint(
+            x: pinned.x + resisted(centre.x - pinned.x, limit: margin),
+            y: pinned.y + resisted(centre.y - pinned.y, limit: margin)
+        )
+    }
+
+    /// `0.55` is UIKit's classic rubber-band coefficient — an interaction constant
+    /// like `dockOvershoot`, not a layout token.
+    private static func resisted(_ overshoot: CGFloat, limit: CGFloat) -> CGFloat {
+        guard overshoot != 0, limit > 0 else { return 0 }
+        let magnitude = (1 - 1 / (abs(overshoot) * 0.55 / limit + 1)) * limit
+        return overshoot < 0 ? -magnitude : magnitude
+    }
+
     /// The tab is flush with the edge — no margin, that is what makes it read as
     /// something hanging off the side rather than as a shrunken window.
     static func tabCentre(

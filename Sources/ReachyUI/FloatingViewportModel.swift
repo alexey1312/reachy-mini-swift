@@ -225,11 +225,11 @@ final class FloatingViewportModel {
         Self.centre(of: drawn, in: bounds)
     }
 
-    /// What the finger is adding to the resting centre, clamped so the window cannot
-    /// be carried off the screen. Zero at rest, and zero the instant the gesture ends,
-    /// which is what makes the release continuous: the offset collapsing to zero and
-    /// the resting centre moving to the destination happen in one animated
-    /// transaction, so their sum never jumps.
+    /// What the finger is adding to the resting centre, resisted past the margin so
+    /// the window presses toward the screen's edge without ever crossing it. Zero at
+    /// rest, and zero the instant the gesture ends, which is what makes the release
+    /// continuous: the offset collapsing to zero and the resting centre moving to the
+    /// destination happen in one animated transaction, so their sum never jumps.
     func dragOffset(in bounds: CGRect) -> CGSize {
         guard case let .floating(corner) = rest, dragTranslation != .zero else { return .zero }
         let anchor = Self.centre(of: corner, in: bounds)
@@ -237,7 +237,7 @@ final class FloatingViewportModel {
             x: anchor.x + dragTranslation.width,
             y: anchor.y + dragTranslation.height
         )
-        let drawn = Self.clamped(moved, in: bounds)
+        let drawn = Self.rubberBanded(moved, in: bounds)
         return CGSize(width: drawn.x - anchor.x, height: drawn.y - anchor.y)
     }
 

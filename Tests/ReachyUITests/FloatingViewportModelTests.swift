@@ -345,16 +345,44 @@ struct FloatingViewportModelTests {
         #expect(settled.placement == .floating(.bottomTrailing))
     }
 
-    @Test("the window never leaves the safe area, however far the finger goes")
-    func dragIsClamped() {
+    /// The clamp bites at (96, 72) and (304, 728); the band may spend at most the
+    /// 16 pt margin past each, which lands the window's own edge exactly on the
+    /// screen's and never over it.
+    @Test("the window resists past the margin and never leaves the screen")
+    func dragResistsAtTheMargin() {
         let model = model()
         model.dragChanged(translation: .zero)
 
         model.dragChanged(translation: CGSize(width: -5000, height: -5000))
-        #expect(drawnCentre(model, in: Self.portrait) == CGPoint(x: 96, y: 72))
+        let pressed = drawnCentre(model, in: Self.portrait)
+        #expect(pressed.x > 80 && pressed.x < 96)
+        #expect(pressed.y > 56 && pressed.y < 72)
 
         model.dragChanged(translation: CGSize(width: 5000, height: 5000))
-        #expect(drawnCentre(model, in: Self.portrait) == CGPoint(x: 304, y: 728))
+        let opposite = drawnCentre(model, in: Self.portrait)
+        #expect(opposite.x > 304 && opposite.x < 320)
+        #expect(opposite.y > 728 && opposite.y < 744)
+    }
+
+    /// The rubber band inherits `boundsChangeMidDragDoesNotDrift`'s contract: the
+    /// offset is a pure function of the translation and the rectangle it is asked
+    /// about, so a drag pressed past the bottom margin re-derives against whichever
+    /// rectangle arrives — in any order, without drift, and without crossing either
+    /// rectangle's true edge.
+    @Test("a drag pressed past the margin re-derives cleanly when the dock arrives")
+    func rubberBandSurvivesBoundsChangeMidDrag() {
+        let model = model()
+        model.dragChanged(translation: .zero)
+        model.dragChanged(translation: CGSize(width: 60, height: 300))
+
+        let first = drawnCentre(model, in: Self.withAccessory)
+        let interleaved = drawnCentre(model, in: Self.portrait)
+        let second = drawnCentre(model, in: Self.withAccessory)
+        #expect(first == second)
+
+        let halfHeight = Metrics.floatingViewport.height / 2
+        #expect(interleaved.y + halfHeight < Self.portrait.maxY)
+        #expect(second.y + halfHeight < Self.withAccessory.maxY)
     }
 }
 
