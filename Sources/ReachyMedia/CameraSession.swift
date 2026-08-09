@@ -92,10 +92,15 @@ public final class CameraSession {
         // refused rather than as an ordinary muted button waiting to be pressed.
         refreshMicPermission()
         configureAudioSession()
-        eventsTask = Task { [signaling, connection] in
+        // `weak self`: `handle` captures the session, so a strong capture keeps
+        // `self → eventsTask → self` alive for as long as the signaling stream
+        // runs — an owner that drops the session without `stop()` would leak it
+        // and its socket (`RobotSceneModel.startStreaming` makes the same trade).
+        eventsTask = Task { [weak self, signaling, connection] in
             // Sim registers no producer until media is acquired; harmless elsewhere.
             try? await connection?.acquireMedia()
             for await event in await signaling.events() {
+                guard let self else { return }
                 await handle(event)
             }
         }
@@ -106,6 +111,7 @@ public final class CameraSession {
         eventsTask = nil
         teardownPeer()
         dataChannel.close()
+        deactivateAudioSession()
         phase = .connecting
         let signaling = signaling
         Task { await signaling.disconnect() } // best-effort endSession; ws close also suffices
@@ -296,6 +302,19 @@ public final class CameraSession {
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
             try? session.setActive(true)
+        #endif
+    }
+
+    /// The mirror `stop()` owes `configureAudioSession()`: leaving the camera
+    /// used to keep the app holding a record-category session — other apps'
+    /// audio stayed ducked and the OS went on treating this one as a recorder.
+    /// `.notifyOthersOnDeactivation` is what lets them resume.
+    private func deactivateAudioSession() {
+        #if os(iOS)
+            try? AVAudioSession.sharedInstance().setActive(
+                false,
+                options: [.notifyOthersOnDeactivation]
+            )
         #endif
     }
 }
