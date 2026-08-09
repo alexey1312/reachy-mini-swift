@@ -29,6 +29,8 @@ public actor SSHFileSystem: RobotFileSystem {
     /// Opened once per connection and reused. `openSFTP()` costs a child channel
     /// and a round trip, and logs a warning of its own about too many handles.
     private var sftp: SFTPClient?
+    /// The handshake in flight, if any. See `connect(_:)`.
+    private var connecting: Task<Void, any Error>?
 
     public init(robot: String, hostKeys: any HostKeyStore = KeychainHostKeyStore()) {
         self.robot = robot
@@ -41,7 +43,21 @@ public actor SSHFileSystem: RobotFileSystem {
         if sftp != nil {
             return
         }
+        // The actor is reentrant across the handshake's suspensions, so a second
+        // connect arriving meanwhile must join the attempt in flight rather than
+        // race it: the loser of that race was overwritten unclosed, and
+        // `SSHClient` has no deinit — each race leaked a live TCP connection to
+        // the robot and its NIO channel.
+        if let connecting {
+            return try await connecting.value
+        }
+        let attempt = Task { try await establish(credentials) }
+        connecting = attempt
+        defer { connecting = nil }
+        return try await attempt.value
+    }
 
+    private func establish(_ credentials: SSHCredentials) async throws {
         let pinned = try hostKeys.pinnedKey(forRobot: robot).flatMap(HostKeyFingerprint.init(openSSHPublicKey:))
         let validator = TOFUHostKeyValidator(pinned: pinned)
 
@@ -66,15 +82,20 @@ public actor SSHFileSystem: RobotFileSystem {
         }
 
         do {
-            sftp = try await opened.openSFTP()
+            let sftp = try await opened.openSFTP()
+            // A disconnect() interleaved during the handshake cancelled this
+            // attempt. Ending up connected anyway would overrule it.
+            try Task.checkCancellation()
+            self.sftp = sftp
             client = opened
         } catch {
             try? await opened.close()
-            throw Self.map(error)
+            throw error is CancellationError ? error : Self.map(error)
         }
     }
 
     public func disconnect() async {
+        connecting?.cancel()
         try? await sftp?.close()
         try? await client?.close()
         sftp = nil
