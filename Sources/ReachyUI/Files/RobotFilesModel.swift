@@ -38,9 +38,8 @@ final class RobotFilesModel {
     /// Whether the Keychain has been consulted. See `loadStoredCredentials()`.
     private var hasLoadedCredentials = false
 
-    /// Coalesces overlapping listings (`AppStoreModel.loadID`'s pattern): a slow
-    /// answer for directory A must not land under path B after the user has
-    /// already navigated on.
+    /// Coalesces overlapping listings (`AppStoreModel.loadID`'s pattern): a
+    /// stale answer must not land under a path the user has since left.
     private var listingID: UUID?
 
     /// The password field. Not `private(set)`: the sheet binds to it.
@@ -88,14 +87,6 @@ final class RobotFilesModel {
         let files = files
         Task { await files.disconnect() }
     }
-
-    // MARK: - Places worth a shortcut
-
-    /// The directory the 2026-08-07 incident lived in. A bookmark rather than a
-    /// jail: the audience is advanced users, and a path jail is code that can only
-    /// ever be wrong about what someone needs to reach.
-    static let appsSitePackages = "/venvs/apps_venv/lib/python3.12/site-packages"
-    static let home = "/home/pollen"
 
     // MARK: - Session
 
@@ -399,15 +390,5 @@ final class RobotFilesModel {
         static func previewEntries(at path: String = PreviewFileSystem.appPackage) -> [RemoteFile] {
             PreviewFileSystem.brokenPersonality().entries(at: path).sorted(by: ordered)
         }
-    }
-
-    /// Keeps a preview's password out of the real Keychain.
-    struct EphemeralCredentialStore: SSHCredentialStore {
-        func credentials(forRobot _: String) throws -> SSHCredentials? {
-            nil
-        }
-
-        func save(_: SSHCredentials, forRobot _: String) throws {}
-        func clear(robot _: String) throws {}
     }
 #endif
