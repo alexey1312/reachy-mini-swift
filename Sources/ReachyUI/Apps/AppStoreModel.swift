@@ -149,22 +149,21 @@ final class AppStoreModel {
         // rather than blanking the dock, which is what a mid-restart daemon
         // deserves.
         _ = try? await session.currentApp()
-        lock = try? await session.appLockStatus()
-        startupApp = try? await session.startupApp()
-        updates = try? await session.appUpdates()
+        // Read first, assign behind the same guard as the catalogue: a refresh
+        // started meanwhile must not have its decoration overwritten by this
+        // older load finishing last.
+        let lock = try? await session.appLockStatus()
+        let startupApp = try? await session.startupApp()
+        let updates = try? await session.appUpdates()
+        guard loadID == requestID, !Task.isCancelled else { return }
+        self.lock = lock
+        self.startupApp = startupApp
+        self.updates = updates
     }
 
     func start(_ app: RobotApp, session: RobotSession) async {
         guard let twin = installedTwin(of: app) else { return }
         await run { _ = try await session.startApp(named: twin.name) }
-    }
-
-    func stop(session: RobotSession) async {
-        await run { try await session.stopCurrentApp() }
-    }
-
-    func restart(session: RobotSession) async {
-        await run { _ = try await session.restartCurrentApp() }
     }
 
     /// `nil` clears it. Sent under the installed name, which is the only one the
