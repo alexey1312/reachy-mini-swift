@@ -4,6 +4,12 @@ import Foundation
 /// calls: `/move/play/wake_up` and `/move/play/goto_sleep` only play animations
 /// and never touch the motor control mode, and they answer 503 while the robot
 /// backend is down. Enabling and cutting motor power is the caller's job.
+///
+/// `wake()` here and `RobotPower.resume()` answer the same question — waking a
+/// robot whose backend `powerOff()` took away — and stay separate because only
+/// this one has a screen: it waits the 90 s start out under `powerTransition`,
+/// where an intent can only ask for it and say so. Neither may lose that
+/// behaviour without the other gaining it, or the ladder goes one-way again.
 public extension RobotSession {
     /// The branch is picked from a freshly fetched status rather than `lastStatus`,
     /// which may be a poll interval out of date — long enough to send motor

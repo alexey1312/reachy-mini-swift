@@ -254,6 +254,11 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   motor mode — an asleep robot accepts them, plays the sound, and does not move.
 - `daemon/start?wake_up=<bool>` returns a job id immediately and starts the backend in the background (409 while
   another job runs); poll `daemon/status` until `running`. With `wake_up=true` the daemon enables the motors itself.
+  - **That flag is what lets a caller with no time wake a robot at all.** `motors/set_mode` is behind `get_backend`
+    and 503s while the backend is down, so the wake protocol above cannot even begin there — but one accepted
+    `start?wake_up=true` is the entire sequence, performed daemon-side, and the poll is only how you learn it
+    finished. A client that has seconds rather than ninety asks and reports, it does not wait: `RobotPower.resume()`
+    against `RobotSession.wake()`.
 - **`daemon/stop?goto_sleep=<bool>` is the "Power off" of the official app, and it is the mirror image of start** —
   a job id at once, 409 while another job runs, poll `daemon/status` until `stopped`. What it stops is the *backend*;
   the daemon's own HTTP server stays up, which is what makes `daemon/start` the way back and why the connect gate can

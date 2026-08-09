@@ -1,4 +1,5 @@
 import AppIntents
+import ReachyDesign
 import ReachyKit
 
 /// Why an intent can fail before it ever reaches a robot.
@@ -117,10 +118,13 @@ public enum RobotIntentTarget {
     }
 }
 
+/// The way back up from `PowerOffRobotIntent`, whose own description promises
+/// exactly that — so this one starts the backend when it finds it down rather than
+/// sending `motors/set_mode` at a robot that can only answer 503.
 public struct WakeRobotIntent: AppIntent {
     public static let title: LocalizedStringResource = "Wake Reachy Mini"
     public static let description = IntentDescription(
-        "Enables the robot's motors and plays its wake-up animation."
+        "Enables the robot's motors and plays its wake-up animation, starting its backend first if it is off."
     )
     // Runs in the background, which is the default and the only thing that works
     // here. `openAppWhenRun = true` would bring the app forward, but it is
@@ -135,10 +139,17 @@ public struct WakeRobotIntent: AppIntent {
 
     public init() {}
 
-    public func perform() async throws -> some IntentResult {
+    /// The dialog is the whole of what a starting backend can be reported as: the
+    /// job takes tens of seconds, this process has seconds, and a spinner nobody
+    /// can see is worth less than a sentence saying the robot is on its way.
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
         let power = try await RobotIntentTarget.power()
-        try await power.wake()
-        return .result()
+        switch try await power.resume() {
+        case .woke:
+            return .result(dialog: IntentDialog(.reachy("Reachy Mini is awake.")))
+        case .startingBackend:
+            return .result(dialog: IntentDialog(.reachy("Reachy Mini was off. It's starting up and will wake itself.")))
+        }
     }
 }
 

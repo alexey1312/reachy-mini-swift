@@ -27,9 +27,9 @@ public struct RobotAppLauncher: Sendable {
         case stopped(name: String)
     }
 
-    /// The two ways a command refuses before the robot is even asked to do
-    /// anything. Both are phrased as what the user can do, because a widget shows
-    /// this sentence and nothing else.
+    /// The three ways a command refuses before the robot is even asked to start an
+    /// app. All are phrased as what the user can do, because a widget shows this
+    /// sentence and nothing else.
     public enum Failure: Error, LocalizedError, Equatable {
         /// Another app holds the robot. `start-app` would evict it silently, and a
         /// widget is the wrong place to take that decision on someone's behalf.
@@ -38,6 +38,11 @@ public struct RobotAppLauncher: Sendable {
         /// entry point can contain one, so this turns an inexplicable failure into
         /// a legible one rather than guarding a real case.
         case unusableName(String)
+        /// The backend was down and has been started — with `wake_up=true`, so the
+        /// robot wakes itself — but a cold start is tens of seconds and this
+        /// process has seconds. Not the same as a failure to start: the tap did
+        /// something, and the next one lands on a robot that is up.
+        case startingBackend
 
         public var errorDescription: String? {
             switch self {
@@ -45,16 +50,38 @@ public struct RobotAppLauncher: Sendable {
                 String(localized: .reachy("“\(title)” is running. Stop it first."))
             case let .unusableName(name):
                 String(localized: .reachy("“\(name)” can't be started from here. Open Reachy Mini and start it there."))
+            case .startingBackend:
+                String(localized: .reachy("Reachy Mini was off. It's starting up — try again in a moment."))
             }
+        }
+    }
+
+    /// What the robot's power state means for starting an app, which is three
+    /// answers rather than two: a parked robot needs its motors, a torn-down
+    /// backend needs bringing back, and only one of those fits in this budget.
+    enum Readiness: Equatable, Sendable {
+        case awake
+        case asleep
+        case backendDown
+
+        init(_ status: Components.Schemas.DaemonStatus) {
+            guard status.isBackendRunning else {
+                self = .backendDown
+                return
+            }
+            self = status.isAwake ? .awake : .asleep
         }
     }
 
     private let apps: any RobotAppsClient
     private let power: RobotPower
-    private let isAwake: @Sendable () async throws -> Bool
+    private let readiness: @Sendable () async throws -> Readiness
 
     /// `assumeAwake` skips the readiness round trip when the caller already holds a
-    /// reading worth trusting; nil asks the daemon.
+    /// reading worth trusting — but **only when it says awake**. A snapshot cannot
+    /// tell a parked robot from a torn-down backend, because `isAwake` is false for
+    /// both and the two need different sequences, so that answer is asked afresh
+    /// rather than acted on. Either way the daemon is asked at most once.
     public init(
         client: any RobotAPIClient & RobotAppsClient,
         configuration: RobotSession.Configuration = .widgetIntent,
@@ -62,11 +89,11 @@ public struct RobotAppLauncher: Sendable {
     ) {
         apps = client
         power = RobotPower(client: client, configuration: configuration)
-        isAwake = {
-            if let assumeAwake {
-                return assumeAwake
+        readiness = {
+            if assumeAwake == true {
+                return .awake
             }
-            return try await client.daemonStatus().isAwake
+            return try await Readiness(client.daemonStatus())
         }
     }
 
@@ -74,11 +101,11 @@ public struct RobotAppLauncher: Sendable {
     init(
         apps: any RobotAppsClient,
         power: RobotPower,
-        isAwake: @escaping @Sendable () async throws -> Bool
+        readiness: @escaping @Sendable () async throws -> Readiness
     ) {
         self.apps = apps
         self.power = power
-        self.isAwake = isAwake
+        self.readiness = readiness
     }
 
     /// Starts `name`, or stops it if it is what the robot is already running.
@@ -142,13 +169,23 @@ public struct RobotAppLauncher: Sendable {
     }
 
     /// Everything after the robot has been found free.
+    ///
+    /// **The backend is started but never waited out.** Every `motors/*` route sits
+    /// behind `get_backend` and answers 503 the moment it is down, so a tap after a
+    /// power-off used to end in that sentence with nothing done about it. Asking for
+    /// the backend costs one call and `wake_up=true` has the daemon wake the robot
+    /// itself; waiting for it to finish would be a ninety-second job in a process
+    /// that has seconds, so the app start is what gives way — the second tap lands
+    /// on a robot that is up.
     private func startFreeRobot(named name: String) async throws -> Outcome {
-        // No check on the backend first: every `motors/*` route sits behind
-        // `get_backend` and answers 503 at once when it is down, which reads as a
-        // sentence. Starting the backend from here would be a ninety-second job in
-        // a process that has seconds.
-        if try await isAwake() == false {
+        switch try await readiness() {
+        case .awake:
+            break
+        case .asleep:
             try await power.wake()
+        case .backendDown:
+            try await power.startBackendWaking()
+            throw Failure.startingBackend
         }
 
         try Task.checkCancellation()

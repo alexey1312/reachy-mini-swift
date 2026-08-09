@@ -59,6 +59,19 @@ one client, and one sentence. Say which is which in the doc comment when adding 
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private
   `runningApp()` and none may add a second `currentAppStatus` — the whole budget is a few seconds.
   `RobotAppLauncherTests.readsTheStatusOnce` holds that line.
+- **Every headless surface owes the way back up from Power off, and none of them had it.** `RobotShutdown` tears the
+  backend down, and everything behind `get_backend` — `motors/*` included — then answers 503. So `WakeRobotIntent`
+  sent `motors/set_mode` at a robot that could only refuse, and the widget's tile did the same through
+  `RobotAppLauncher`: powering off from Control Centre or Shortcuts worked, and nothing but the app's own Wake up
+  button could undo it. `RobotPower.resume()` (in `ReachyKit`) is the fix and **`daemon/start?wake_up=true` is what
+  makes it fit the budget** — the daemon enables the motors and plays the animation itself once the backend is up, so
+  one accepted call is the whole sequence and nothing has to be polled. A cold start is ninety seconds; an intent has
+  seconds, so neither the intent nor the tile waits for it. The intent says so in its dialog and the tile refuses with
+  `Failure.startingBackend` rather than racing the start.
+- **A snapshot can say "awake" and be believed; it cannot say "asleep".** `RobotSnapshot.isAwake` is false for a
+  parked robot *and* for a torn-down backend, and those take opposite sequences — so `RobotAppLauncher` skips the
+  status read only on `assumeAwake == true`, and asks the daemon for anything else. The round trip that saves is
+  still at most one either way, which is the invariant `asksTheDaemonWhenUnsure` measures.
 - **A running app has no title, so nothing may speak the daemon's word for one.** `AppManager.start_app` files the
   status as `AppInfo(name=…, source_kind=INSTALLED)` with an empty `extra`, so `RobotApp.title` off a
   `current-app-status` or a `start-app` reply _is_ the Python entry point — Siri saying `dance_party` where the store
