@@ -63,3 +63,14 @@ generated notes. Credentials never enter the repository or CI.
 Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without
 uploading; `mise run release:macos -- --no-notarize` stops after the signed
 export.
+
+## Xcode Cloud (optional, continuous TestFlight)
+
+`Apps/ci_scripts/ci_post_clone.sh` makes a generated project buildable on
+Xcode Cloud: it installs the pinned tools through the committed `bin/mise`
+bootstrap, generates the workspace, and stamps `CI_BUILD_NUMBER` in as the
+build number. Signing there is managed by Apple — no certificates leave the
+account — and TestFlight distribution is a post-action checkbox. The setup
+quirks (create the workflow from a local Xcode, start the build counter above
+the last local upload, Git LFS is unsupported so never build the snapshot
+scheme there) are commented at the top of the script.
