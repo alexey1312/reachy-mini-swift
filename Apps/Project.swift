@@ -78,6 +78,7 @@ let project = Project(
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],
+            resources: ["ReachyMini/Resources/**"],
             entitlements: .dictionary([
                 "com.apple.security.application-groups": .array([.string(appGroup)]),
             ]),

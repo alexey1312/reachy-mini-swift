@@ -1,7 +1,11 @@
 # reachy-mini-swift
 
+<img src="docs/media/icon.png" width="96" align="left" alt="Hey Reachy app icon" />
+
 **Hey Reachy** — a native macOS / iPadOS / iOS client for the **Reachy Mini Wireless** robot by
 [Pollen Robotics](https://www.pollen-robotics.com).
+
+<br clear="left" />
 
 [![CI](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml)
 
