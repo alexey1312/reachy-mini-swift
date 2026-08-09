@@ -17,6 +17,10 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     public enum Failure: Error, Equatable, Sendable {
         /// The channel took the buffer and refused it — full, or closing.
         case refused
+        /// The session ended while a send was still waiting for a channel.
+        /// Appended after `refused`: a bare enum reaches the UI as its
+        /// declaration index.
+        case closed
     }
 
     /// Messages that arrive before anyone is listening. Capped because the robot
@@ -28,15 +32,19 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     private var channel: RTCDataChannel?
     private var continuation: AsyncStream<String>.Continuation?
     private var backlog: [String] = []
-    private var waitingForChannel: [CheckedContinuation<RTCDataChannel, Never>] = []
+    private var waitingForChannel: [CheckedContinuation<RTCDataChannel, any Error>] = []
 
     public func messages() -> AsyncStream<String> {
         AsyncStream { continuation in
             lock.lock()
+            let previous = self.continuation
             self.continuation = continuation
             let pending = backlog
             backlog = []
             lock.unlock()
+            // A replaced subscriber must hear the end of its stream, not hang on
+            // a continuation nothing will ever yield to again.
+            previous?.finish()
             for text in pending {
                 continuation.yield(text)
             }
@@ -51,7 +59,7 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     }
 
     public func send(_ text: String) async throws {
-        let channel = await attachedChannel()
+        let channel = try await attachedChannel()
         let buffer = RTCDataBuffer(data: Data(text.utf8), isBinary: false)
         guard channel.sendData(buffer) else { throw Failure.refused }
     }
@@ -67,14 +75,19 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     }
 
     /// Called once the robot's channel is open. Anything already waiting to send
-    /// goes out now.
+    /// goes out now. The channel being replaced, if any, stops calling back —
+    /// its delegate is cleared so a late `.closed` from it cannot reach us.
     func attach(_ channel: RTCDataChannel) {
         channel.delegate = self
         lock.lock()
+        let replaced = self.channel
         self.channel = channel
         let waiting = waitingForChannel
         waitingForChannel = []
         lock.unlock()
+        if let replaced, replaced !== channel {
+            replaced.delegate = nil
+        }
         for continuation in waiting {
             continuation.resume(returning: channel)
         }
@@ -88,27 +101,38 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     /// waiting for this negotiation to finish.
     func detachPeer() {
         lock.lock()
+        let dropped = channel
         channel = nil
         lock.unlock()
+        dropped?.delegate = nil
     }
 
     /// The session is gone. Ends the message stream, which is what tells
-    /// `RemoteControlChannel` to fail everything still pending.
+    /// `RemoteControlChannel` to fail everything still pending — and fails the
+    /// sends still waiting for a channel, which otherwise stay suspended (and
+    /// retained, with their payloads) forever.
     func close() {
         lock.lock()
+        let dropped = channel
         channel = nil
         let continuation = continuation
         self.continuation = nil
         backlog = []
+        let waiting = waitingForChannel
+        waitingForChannel = []
         lock.unlock()
+        dropped?.delegate = nil
+        for waiter in waiting {
+            waiter.resume(throwing: Failure.closed)
+        }
         continuation?.finish()
     }
 
-    private func attachedChannel() async -> RTCDataChannel {
+    private func attachedChannel() async throws -> RTCDataChannel {
         if let channel = current() {
             return channel
         }
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             enqueue(continuation)
         }
     }
@@ -121,7 +145,7 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
         return channel
     }
 
-    private func enqueue(_ continuation: CheckedContinuation<RTCDataChannel, Never>) {
+    private func enqueue(_ continuation: CheckedContinuation<RTCDataChannel, any Error>) {
         lock.lock()
         // Attached between the check and here — resume rather than wait forever.
         if let channel {
@@ -152,6 +176,12 @@ extension WebRTCDataChannel: RTCDataChannelDelegate {
     /// negotiating another — so the control channel above is left intact.
     public func dataChannelDidChangeState(_ dataChannel: RTCDataChannel) {
         guard dataChannel.readyState == .closed else { return }
+        // Only the channel currently attached may detach the peer. The *old*
+        // channel's asynchronous `.closed` lands here after a renegotiation has
+        // already attached its replacement, and detaching unconditionally nils
+        // the new channel out — sends wait forever while messages still arrive,
+        // a half-dead control surface with no visible cause.
+        guard dataChannel === current() else { return }
         detachPeer()
     }
 
