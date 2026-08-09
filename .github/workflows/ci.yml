@@ -74,11 +74,11 @@ jobs:
       - name: Build & test
         run: mise run test
 
-  # `swift build` never reaches Apps/ReachySpike — it is an Xcode target, not an SPM
+  # `swift build` never reaches Apps/ReachyMini — it is an Xcode target, not an SPM
   # one, so nothing but SwiftLint ever looked at it. This job is the only thing that
   # compiles the app shell and the Tuist manifest that generates it.
   app-build:
-    name: App Build (ReachySpike, macOS + iOS)
+    name: App Build (ReachyMini, macOS + iOS)
     runs-on: macos-15
     needs: lint
     timeout-minutes: 60
@@ -116,11 +116,39 @@ jobs:
         run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
 
       # `build:app` generates the project first (depends = ["project"]).
-      - name: Build ReachySpike
+      - name: Build ReachyMini
         run: mise run build:app
 
       # The macOS destination leaves ReachyWidget out entirely (iOS-only extension,
       # embedded under `condition: .when([.ios])`), so until this step the widget's
       # sources were compiled by nothing at all.
-      - name: Build ReachySpike + widget (iOS)
+      - name: Build ReachyMini + widget (iOS)
         run: mise run build:app:ios
+
+      # Release guards archive-ability: nothing else compiles this configuration,
+      # so without these steps a broken Release first surfaces at archive time.
+      - name: Build ReachyMini (macOS, Release)
+        run: mise run build:app:release
+
+      - name: Build ReachyMini + widget (iOS, Release)
+        run: mise run build:app:ios:release
+
+  # The one job that launches the app binary: XCUITest walks the connect gate on
+  # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  smoke:
+    name: Smoke (iOS Simulator)
+    runs-on: macos-15
+    needs: lint
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+        with:
+          experimental: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test
+        run: mise run test:smoke

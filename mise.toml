@@ -59,11 +59,11 @@ set -o pipefail
 swift build --configuration release 2>&1 | xcsift
 """
 
-# `build` and `test` are SwiftPM only — Apps/ReachySpike is an Xcode target and
+# `build` and `test` are SwiftPM only — Apps/ReachyMini is an Xcode target and
 # nothing else compiles it. Signing is off: the runner has no team, and the
 # personal one lives in CLAUDE.local.md.
 [tasks."build:app"]
-description = "Build the ReachySpike app target (macOS)"
+description = "Build the ReachyMini app target (macOS)"
 depends = ["project"]
 # `-resultBundlePath` is what makes build insights reach tuist.dev. Tuist writes a
 # `tuist inspect build` post-action into every generated scheme, and it reads the
@@ -73,9 +73,9 @@ depends = ["project"]
 # activity log" and, being a post-action, leaves the build green.
 run = '''
 set -o pipefail
-RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachySpike-macOS.xcresult
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyMini-macOS.xcresult
 rm -rf "$RESULT_BUNDLE"
-xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'platform=macOS' -configuration Debug \
   -derivedDataPath Apps/DerivedData \
   -resultBundlePath "$RESULT_BUNDLE" \
@@ -89,14 +89,48 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
 # it is not built at all. `generic/platform=iOS` compiles it without needing a
 # device, a simulator or a signing identity.
 [tasks."build:app:ios"]
-description = "Build the ReachySpike app and its widget extension (iOS, unsigned)"
+description = "Build the ReachyMini app and its widget extension (iOS, unsigned)"
 depends = ["project"]
 run = '''
 set -o pipefail
-RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachySpike-iOS.xcresult
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyMini-iOS.xcresult
 rm -rf "$RESULT_BUNDLE"
-xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'generic/platform=iOS' -configuration Debug \
+  -derivedDataPath Apps/DerivedData \
+  -resultBundlePath "$RESULT_BUNDLE" \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  build 2>&1 | xcsift
+'''
+
+# Release builds exist to guard archive-ability: nothing else compiles the
+# Release configuration, so a broken one would first surface at archive time.
+[tasks."build:app:release"]
+description = "Build the ReachyMini app target (macOS, Release, unsigned)"
+depends = ["project"]
+run = '''
+set -o pipefail
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyMini-macOS-release.xcresult
+rm -rf "$RESULT_BUNDLE"
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination 'platform=macOS' -configuration Release \
+  -derivedDataPath Apps/DerivedData \
+  -resultBundlePath "$RESULT_BUNDLE" \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  build 2>&1 | xcsift
+'''
+
+[tasks."build:app:ios:release"]
+description = "Build the ReachyMini app and widget (iOS, Release, unsigned)"
+depends = ["project"]
+run = '''
+set -o pipefail
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyMini-iOS-release.xcresult
+rm -rf "$RESULT_BUNDLE"
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination 'generic/platform=iOS' -configuration Release \
   -derivedDataPath Apps/DerivedData \
   -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
@@ -108,6 +142,16 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
 description = "Build, install and launch on a connected iPhone (see Scripts/device-run.sh)"
 depends = ["project"]
 run = "./Scripts/device-run.sh"
+
+[tasks."release:ios"]
+description = "Archive the iOS app and upload it to TestFlight (see Scripts/release-ios.sh)"
+depends = ["project"]
+run = "./Scripts/release-ios.sh"
+
+[tasks."release:macos"]
+description = "Archive, notarize and zip the macOS app (see Scripts/release-macos.sh)"
+depends = ["project"]
+run = "./Scripts/release-macos.sh"
 
 [tasks.test]
 description = "Run all tests (parallel)"
@@ -124,6 +168,44 @@ run = """
 set -o pipefail
 swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
 """
+
+# Smoke tests boot the actual app binary on a simulator — the one wiring nothing
+# else exercises. No OS pin: unlike the snapshot suite these assert on structure,
+# not pixels, so whatever runtime the machine has is fine. Labels are matched in
+# English, hence the pinned test language (the snapshot suite's trade).
+[tasks."test:smoke"]
+description = "Launch the app on a simulator and smoke the connect gate (XCUITest)"
+depends = ["project"]
+run = '''
+set -o pipefail
+SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
+xcrun simctl boot "$SIM" 2>/dev/null || true
+xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination "platform=iOS Simulator,name=${SIM}" \
+  -derivedDataPath Apps/DerivedData \
+  -testLanguage en -testRegion US \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  2>&1 | xcsift
+'''
+
+[tasks."test:smoke:sim"]
+description = "Smoke the whole user path against a running sim daemon (start with: mise run sim-daemon)"
+depends = ["project"]
+run = '''
+set -o pipefail
+SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
+xcrun simctl boot "$SIM" 2>/dev/null || true
+# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment.
+xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination "platform=iOS Simulator,name=${SIM}" \
+  -derivedDataPath Apps/DerivedData \
+  -testLanguage en -testRegion US \
+  CODE_SIGNING_ALLOWED=NO \
+  TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
+  -skipPackagePluginValidation -skipMacroValidation \
+  2>&1 | xcsift
+'''
 
 [tasks."test:sim"]
 description = "Integration tests against a running sim daemon (start with: mise run sim-daemon)"
@@ -200,7 +282,7 @@ run = '''
 set -euo pipefail
 SIM="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 # The playbook plugin only ever scans its own target's sources, so the CLI is driven directly.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachySpike/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated \
   --config Apps
 ./bin/mise run project
@@ -226,7 +308,7 @@ if [ -n "$DRIFT" ]; then
   echo "hk.pkl references $DRIFT but mise.toml pins $PINNED — bump both together." >&2
   exit 1
 fi
-swiftlint lint --strict Sources Tests Apps/ReachySpike Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
+swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
 actionlint
 '''
 
@@ -257,7 +339,7 @@ set -euo pipefail
 # The storybook target globs `Generated/**`, which is gitignored — tuist rejects a glob whose
 # directory does not exist, so generation fails outright on a fresh clone (and in CI) unless the
 # playbook is written first. Cheap enough to redo every time.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachySpike/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated --config Apps
 TUIST="$(./bin/mise where tuist)/tuist"
 cd Apps && exec env -u TOOLCHAINS "$TUIST" generate --no-open
@@ -270,7 +352,7 @@ description = "Upload an iOS app-bundle size analysis to tuist.dev"
 run = '''
 #!/bin/bash
 set -euo pipefail
-BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachySpike.app')}}"
+BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
 if [ ! -e "$BUNDLE" ]; then
   echo "No bundle at $BUNDLE — build for a device first (see CLAUDE.local.md)." >&2
   exit 1

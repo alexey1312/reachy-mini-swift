@@ -22,21 +22,45 @@ let project = Project(
             requirement: .upToNextMajor(from: "1.19.4")
         ),
     ],
-    settings: .settings(configurations: [
-        // Set project-wide rather than per target: the previews and the playbook reach ReachyUI's
-        // internal screens through `@testable import`, and it is the *package* target that has to
-        // be built with testability for that to link.
-        .debug(name: .debug, settings: ["ENABLE_TESTABILITY": "YES"]),
-        .release(name: .release),
-    ]),
+    settings: .settings(
+        // One version for the app and the widget: App Store validation requires
+        // the extension's CFBundleShortVersionString to match its host's.
+        base: [
+            // Beta: the first tag is 0.1.0, and the tag and the shipped version
+            // have to be the same number to be worth reading.
+            "MARKETING_VERSION": "0.1.0",
+            "CURRENT_PROJECT_VERSION": "1",
+        ],
+        configurations: [
+            // Set project-wide rather than per target: the previews and the playbook reach ReachyUI's
+            // internal screens through `@testable import`, and it is the *package* target that has to
+            // be built with testability for that to link.
+            .debug(name: .debug, settings: ["ENABLE_TESTABILITY": "YES"]),
+            .release(name: .release),
+        ]
+    ),
     targets: [
         .target(
-            name: "ReachySpike",
+            name: "ReachyMini",
             destinations: [.iPhone, .iPad, .mac],
             product: .app,
-            bundleId: "com.alexey1312.ReachyMiniSpike",
+            bundleId: "com.alexey1312.ReachyMini",
             deploymentTargets: .multiplatform(iOS: "18.0", macOS: "15.0"),
             infoPlist: .extendingDefault(with: [
+                // The product name is the internal identifier; this is the brand.
+                "CFBundleDisplayName": .string("Hey Reachy"),
+                "CFBundleName": .string("Hey Reachy"),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                // Spelled out because `actool` does not write it: it fills
+                // CFBundleIcons from the catalogue and leaves the top level
+                // empty, which App Store Connect rejects the upload over. Found
+                // by unpacking the exported .ipa, not by any build warning.
+                "CFBundleIconName": .string("AppIcon"),
+                // HTTPS-exempt encryption only; answered here once so App Store
+                // Connect never asks per build.
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
+                "LSApplicationCategoryType": .string("public.app-category.utilities"),
                 // Phase 0.4 device checks: Local Network permission + Bonjour + ATS
                 "NSLocalNetworkUsageDescription": .string(
                     "Discovers and connects to your Reachy Mini robot on the local network."
@@ -69,15 +93,13 @@ let project = Project(
                 // is running regardless of what is registered here.
                 "CFBundleURLTypes": .array([
                     .dictionary([
-                        "CFBundleURLName": .string("com.alexey1312.ReachyMiniSpike"),
+                        "CFBundleURLName": .string("com.alexey1312.ReachyMini"),
                         "CFBundleURLSchemes": .array([.string("reachy-mini-swift")]),
                     ]),
                 ]),
             ]),
-            sources: ["ReachySpike/Sources/**"],
-            entitlements: .dictionary([
-                "com.apple.security.application-groups": .array([.string(appGroup)]),
-            ]),
+            sources: ["ReachyMini/Sources/**"],
+            resources: ["ReachyMini/Resources/**"],
             dependencies: [
                 .package(product: "ReachyKit"),
                 .package(product: "ReachyUI"),
@@ -88,7 +110,16 @@ let project = Project(
                 // iOS only, and conditional so the macOS build of this app does not
                 // try to embed an extension that has no macOS destination.
                 .target(name: "ReachyWidget", condition: .when([.ios])),
-            ]
+            ],
+            // Two files rather than one generated dictionary: the macOS build is
+            // sandboxed and hardened for Developer ID, and those keys are
+            // macOS-only — signing an iOS build with them fails against any
+            // provisioning profile. The `[sdk=macosx*]` override picks per SDK.
+            settings: .settings(base: [
+                "SWIFT_VERSION": "6.0",
+                "CODE_SIGN_ENTITLEMENTS": "ReachyMini/Entitlements/ReachyMini-iOS.entitlements",
+                "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "ReachyMini/Entitlements/ReachyMini-macOS.entitlements",
+            ])
         ),
         // Deliberately thin: a timeline provider over the shared snapshot and a
         // view. It depends on ReachyWidgetUI rather than ReachyUI so that a
@@ -97,10 +128,13 @@ let project = Project(
             name: "ReachyWidget",
             destinations: [.iPhone, .iPad],
             product: .appExtension,
-            bundleId: "com.alexey1312.ReachyMiniSpike.Widget",
+            bundleId: "com.alexey1312.ReachyMini.Widget",
             deploymentTargets: .iOS("18.0"),
             infoPlist: .extendingDefault(with: [
-                "CFBundleDisplayName": .string("Reachy Mini"),
+                "CFBundleDisplayName": .string("Hey Reachy"),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
                 // Its own process, so it needs its own copy of the group name.
                 "ReachyAppGroupIdentifier": .string(appGroup),
                 // The control buttons run their intent in *this* process, and it
@@ -134,6 +168,22 @@ let project = Project(
                 // direct dependency to `import` a module, and this target's controls name
                 // their titles with `.reachy(_:)`.
                 .package(product: "ReachyDesign"),
+            ],
+            settings: .settings(base: ["SWIFT_VERSION": "6.0"])
+        ),
+        // Smoke tests: the one thing snapshots cannot see is the app binary itself
+        // booting. iOS-only — XCUITest on macOS needs Accessibility permission on
+        // the runner, which CI cannot grant.
+        .target(
+            name: "ReachyMiniUITests",
+            destinations: [.iPhone, .iPad],
+            product: .uiTests,
+            bundleId: "com.alexey1312.ReachyMiniUITests",
+            deploymentTargets: .iOS("18.0"),
+            infoPlist: .default,
+            sources: ["ReachyMiniUITests/Sources/**"],
+            dependencies: [
+                .target(name: "ReachyMini"),
             ]
         ),
         .target(
@@ -150,7 +200,7 @@ let project = Project(
             // the target it is attached to (`GeneratePlaybookCommand` ignores the config's
             // `sources`, and `playbook_configuration` has no such key), so it cannot see the
             // previews that live in ReachyUI. `mise run storybook` runs the CLI instead.
-            // `SpikeView` belongs to ReachySpike, which an app target cannot import; its two
+            // `DeviceCheckView` belongs to ReachyMini, which an app target cannot import; its two
             // source files are compiled in directly so the catalogue can show that screen too.
             sources: [
                 "ReachyStorybook/Sources/**",
@@ -158,9 +208,9 @@ let project = Project(
                 "../Sources/ReachyDesign/Previews/**",
                 "../Sources/ReachyUI/Previews/**",
                 "../Sources/ReachyWidgetUI/Previews/**",
-                "ReachySpike/Sources/SpikeView.swift",
-                "ReachySpike/Sources/SpikeModel.swift",
-                "ReachySpike/Previews/**",
+                "ReachyMini/Sources/DeviceCheckView.swift",
+                "ReachyMini/Sources/DeviceCheckModel.swift",
+                "ReachyMini/Previews/**",
             ],
             dependencies: [
                 .package(product: "ReachyDesign"),
@@ -180,9 +230,9 @@ let project = Project(
                 "../Sources/ReachyDesign/Previews/**",
                 "../Sources/ReachyUI/Previews/**",
                 "../Sources/ReachyWidgetUI/Previews/**",
-                "ReachySpike/Sources/SpikeView.swift",
-                "ReachySpike/Sources/SpikeModel.swift",
-                "ReachySpike/Previews/**",
+                "ReachyMini/Sources/DeviceCheckView.swift",
+                "ReachyMini/Sources/DeviceCheckModel.swift",
+                "ReachyMini/Previews/**",
             ],
             dependencies: [
                 .package(product: "ReachyDesign"),

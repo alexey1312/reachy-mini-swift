@@ -70,7 +70,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 
 ```bash
 ./bin/mise run build          # Debug build (piped through xcsift)
-./bin/mise run build:app      # Build the ReachySpike app target (generates first)
+./bin/mise run build:app      # Build the ReachyMini app target (generates first)
 ./bin/mise run build:app:ios  # Same, for iOS — the only task that compiles the widget
 ./bin/mise run device         # Build, install and launch on the connected iPhone
 ./bin/mise run test           # All tests, parallel
@@ -82,13 +82,17 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run inspect:bundle # Upload an iOS bundle-size analysis to tuist.dev
 ./bin/mise run sim-daemon     # Simulated robot daemon (MuJoCo, LAN-reachable)
 ./bin/mise run test:sim       # Integration tests against a running sim-daemon
+./bin/mise run test:smoke     # XCUITest: boot the app on a simulator, walk the gate
+./bin/mise run test:smoke:sim # Same plus the full user path against a running sim-daemon
+./bin/mise run release:ios    # Archive Release and upload to TestFlight (docs/release.md)
+./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
 ./bin/mise run test:snapshots:record  # Re-record the reference images
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
 ```
 
-`build` / `test` are SwiftPM only — they never compile `Apps/ReachySpike`. Use `build:app` for that; CI runs it as a
+`build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it as a
 separate job, so app-target breakage no longer reaches `main` unnoticed.
 **`build:app` builds for macOS, where `ReachyWidget` does not exist** — the extension is `destinations: [.iPhone,
 .iPad]` and `Project.swift` embeds it behind `condition: .when([.ios])`, so a macOS destination compiles none of its
@@ -96,13 +100,18 @@ sources and reports success over a widget that does not build. That is how `miss
 `ReachyAppsWidget.swift` reached `main` in #7. `build:app:ios` (`-destination 'generic/platform=iOS'`, unsigned) is
 what covers it, and CI runs both.
 `test:filter` matches type names (`RobotSessionAudioTests`), not `@Suite` display names.
+`Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
+queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
+(`test:smoke:sim`) is gated on `REACHY_SMOKE_HOST` exactly as `test:sim` is on `REACHY_SIM_HOST`, so a plain run
+skips it silently. Tuist folds a `.uiTests` target into its host's scheme rather than generating one of its own —
+there is no `ReachyMiniUITests` scheme, both smoke tasks test the `ReachyMini` scheme.
 `SimulatorIntegrationTests` is gated on `REACHY_SIM_HOST`, so plain `test` **skips it silently and reports green** —
 run `test:sim` against a live `sim-daemon` to exercise it.
 `swift test --skip-build` runs the previously built binary: rebuild with `swift build --build-tests` after editing a
 test, or the run silently verifies stale code.
 Everything pipes through xcsift, which on long runs can truncate and report `status: incomplete` while hiding the real
 result — verify the artifact, or rerun the tool directly
-(`./bin/mise x -- swiftlint lint --strict Sources Tests Apps/ReachySpike`). Always pass those explicit paths — a bare
+(`./bin/mise x -- swiftlint lint --strict Sources Tests Apps/ReachyMini`). Always pass those explicit paths — a bare
 `.` walks into `Apps/DerivedData`, and swiftformat then "fails" on generated and vendored sources.
 **swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
 `allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
@@ -166,7 +175,7 @@ Snapshots live in `Apps/` as an Xcode target because they need an iOS simulator,
 and `Project.swift` globs it unconditionally, so generation — and with it `build:app` and every snapshot task — failed
 outright on a fresh clone and in CI until the generator ran. Do not drop that step.
 `Apps/<App>/Previews/**` is in the storybook and snapshot targets' `sources` but **not** in the app target's
-(`ReachySpike/Sources/**` only), so a helper the app itself must see belongs in `Sources/`.
+(`ReachyMini/Sources/**` only), so a helper the app itself must see belongs in `Sources/`.
 **Previews compile only in the Xcode targets, so `swift build` cannot vet them** — and Prefire copies each preview
 body into a generated file, where a leading-dot call resolves against the type expected _there_. A `static func`
 helper for an element type therefore belongs on that element (`KnownRobotsModel.Entry.preview`), not on its owner:

@@ -6,7 +6,7 @@ test_configuration:
     - ${PROJECT_DIR}/../Sources/ReachyDesign/Previews
     - ${PROJECT_DIR}/../Sources/ReachyUI/Previews
     - ${PROJECT_DIR}/../Sources/ReachyWidgetUI/Previews
-    - ${PROJECT_DIR}/ReachySpike/Previews
+    - ${PROJECT_DIR}/ReachyMini/Previews
   testable_imports:
     - ReachyDesign
     - ReachyKit

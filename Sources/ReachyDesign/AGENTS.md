@@ -154,7 +154,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 `.reachy("Wake up")` returns a `LocalizedStringResource` bound to `Bundle.module`.
 
 It lives here because **both executables link this target**, so SwiftPM copies `ReachyMini_ReachyDesign.bundle` into
-each — verified on a device build: `en.lproj/Localizable.strings` is present in `ReachySpike.app` _and_ in
+each — verified on a device build: `en.lproj/Localizable.strings` is present in `ReachyMini.app` _and_ in
 `PlugIns/ReachyWidget.appex`. One catalogue, one hand-off to a translator, two processes served.
 
 Three things measured rather than assumed:

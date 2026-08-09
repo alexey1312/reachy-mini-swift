@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build ReachySpike for a physical iPhone, install it and launch it.
+# Build ReachyMini for a physical iPhone, install it and launch it.
 #
 # The signing team is the only thing that cannot be discovered: several teams exist on a
 # typical machine and only one owns com.alexey1312.*. It lives outside every worktree, in
@@ -8,7 +8,7 @@ set -euo pipefail
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/reachy-mini/device.env"
 DERIVED=Apps/DerivedData
-PRODUCT="$DERIVED/Build/Products/Debug-iphoneos/ReachySpike.app"
+PRODUCT="$DERIVED/Build/Products/Debug-iphoneos/ReachyMini.app"
 
 launch=true
 install=true
@@ -102,7 +102,7 @@ udid="${selection%%$'\t'*}"
 core_id="${selection##*$'\t'}"
 
 set -o pipefail
-xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination "id=$udid" -configuration Debug \
   -derivedDataPath "$DERIVED" \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \

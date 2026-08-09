@@ -34,7 +34,7 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   - A tapped command **selects the Robot tab and runs only against a connected session**. On a cold launch that
     means it is dropped — the gate is up and the tab was the default anyway. Queueing it until the session settles
     is a change to the one guard in `RootLifecycle.runQuickAction`.
-  - The delegate itself is `Apps/ReachySpike/Sources/QuickActionSceneDelegate.swift`, the only UIKit in the app
+  - The delegate itself is `Apps/ReachyMini/Sources/QuickActionSceneDelegate.swift`, the only UIKit in the app
     target. Overriding the scene configuration does **not** cost SwiftUI its window — verified by installing on a
     booted simulator and screenshotting, which is the only thing that can say so.
   - **What actually got installed is readable without a long press.** SpringBoard files the items per app, so
@@ -139,7 +139,7 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `NavigationHost`, and adding one would put an empty large-title bar on all thirteen references.
   `PrivacySettingsLink` is the one deep link — the same six lines used to sit in three screens, each under
   `#if os(iOS)`, so on macOS a refusal was reported with **no way at all to act on it**. It is `public`
-  only because `SpikeView` calls it. And the Local Network banner now lives in
+  only because `DeviceCheckView` calls it. And the Local Network banner now lives in
   `ConnectionScreen.privacySection`, outside the route segments, for the reason `setUpSection` is: it used
   to sit in `NetworkRobotsSection`, where only one of the three routes could show it, while the manual
   address — where a blocked user goes next — failed just as silently.
@@ -361,7 +361,7 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   key `.task` work uses, and for the same reason: a snapshot has to render the state it was handed.
 - Screens take their model through an initialiser with a default (`init(session:model:)`), so production call sites
   are unchanged and previews inject a frozen one.
-- A defaulted argument whose value is `@MainActor` (`= SpikeModel()`, `= .preview()`) compiles in the SwiftPM targets
+- A defaulted argument whose value is `@MainActor` (`= DeviceCheckModel()`, `= .preview()`) compiles in the SwiftPM targets
   but not in the `Apps/` ones, where it is evaluated nonisolated. Use `nil` and resolve it in the body.
 - A model that already takes a factory closure (`OnboardingModel(session:)`, `BLEConsoleModel(link:)`) needs no new
   seam — hand it a `BLELink.preview(…)`, which sits on an inert `PreviewBLETransport` and is assigned its state

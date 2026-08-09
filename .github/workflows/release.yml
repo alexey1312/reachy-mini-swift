@@ -1,0 +1,41 @@
+name: Release
+
+# Fires on a bare-semver tag (the pattern cliff.toml recognises). The job only
+# writes the GitHub release with generated notes: signed artifacts are produced
+# locally by `mise run release:ios` / `release:macos`, because signing
+# certificates and App Store Connect keys deliberately never reach CI.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  MISE_GITHUB_GITHUB_ATTESTATIONS: false
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # git-cliff walks the whole history to find the previous tag.
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v4
+        with:
+          experimental: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate release notes
+        run: git-cliff --latest --strip all -o release-notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file release-notes.md

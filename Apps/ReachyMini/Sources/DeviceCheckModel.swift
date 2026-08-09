@@ -2,10 +2,10 @@ import Foundation
 import Observation
 import ReachyKit
 
-/// Phase 0.4 spike: manual connect + state-stream counter with live frequency.
+/// The phase 0.4 device check: manual connect + state-stream counter with live frequency.
 @MainActor
 @Observable
-final class SpikeModel {
+final class DeviceCheckModel {
     var host: String = UserDefaults.standard.string(forKey: "lastHost") ?? "127.0.0.1" {
         didSet { UserDefaults.standard.set(host, forKey: "lastHost") }
     }
@@ -78,7 +78,7 @@ final class SpikeModel {
     }
 
     #if DEBUG
-        /// Frozen spike state for previews. Here rather than beside the previews because every
+        /// Frozen device-check state for previews. Here rather than beside the previews because every
         /// field below is `private(set)`.
         static func preview(
             host: String = "192.168.1.42",
@@ -88,8 +88,8 @@ final class SpikeModel {
             frameCount: Int = 0,
             hertz: Double = 0,
             diagnostics: StateStreamDiagnostics = .init()
-        ) -> SpikeModel {
-            let model = SpikeModel()
+        ) -> DeviceCheckModel {
+            let model = DeviceCheckModel()
             model.host = host
             model.handshakeSummary = handshakeSummary
             model.lastError = lastError

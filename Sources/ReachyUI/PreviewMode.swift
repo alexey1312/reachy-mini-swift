@@ -20,3 +20,12 @@ extension EnvironmentValues {
         set { self[ReachyPreviewModeKey.self] = newValue }
     }
 }
+
+public extension View {
+    /// The same switch previews flip, reachable from the app target: the UI smoke
+    /// test launches the app with `--reachy-smoke` so it renders frozen instead of
+    /// chasing a robot that does not exist.
+    func reachyPreviewMode(_ enabled: Bool) -> some View {
+        environment(\.reachyPreviewMode, enabled)
+    }
+}
