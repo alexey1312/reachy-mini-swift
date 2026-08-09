@@ -87,6 +87,12 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     the switcher capsule is inset by `Space.xs` and meets a 16 pt continuous corner, so the corner shaved it. The
     three floating captures carrying a switcher or a badge all moved and `Floating viewport — no camera`, which
     carries neither, did not. `windowOnly(_:)` is where that lives.
+  - **The window's shadow is cast by a background twin of its surface, never by the subtree.** `.shadow` on the
+    composite re-rasterised a live `RTCMTLVideoView`/`RealityView` on every video frame and offset tick — and it
+    changed what it wrapped: the `.window` role's `.bar` material muddied to gray in the shadow's offscreen pass, and
+    the chrome's overhang past the rounded corner dragged a shadow bulge along. The measurements are in
+    `ReachyDesign/AGENTS.md` under the `.shadow`-over-a-material entry; 36 references moved when the twin landed,
+    every bounding box hugging the window rect plus its shadow.
   - **The drag is a pure function of the gesture, and `.position` never sees it.** `dragTranslation` stores the
     translation minus the `activation` SwiftUI reported when it woke the recogniser up — that first `onChanged`
     already carries everything the finger travelled before `minimumDistance`, so taking it at face value teleported
