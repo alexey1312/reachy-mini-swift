@@ -30,16 +30,14 @@
 - **At home on Apple platforms** — status and apps widgets, Control Center power controls, Siri / App Intents
   (wake, sleep, power off, launch any installed app), Home Screen quick actions, full localization readiness.
 
-_Screenshots and a one-minute demo from a live robot are on their way._
-
-<!-- Drop three PNGs into docs/media/ and uncomment:
 <p align="center">
-  <img src="docs/media/store.png" width="260" alt="App store tab" />
-  <img src="docs/media/teleop.png" width="260" alt="Teleop with the 3D viewer" />
-  <img src="docs/media/onboarding.png" width="260" alt="Bluetooth onboarding" />
+  <img src="docs/media/live.jpg" width="220" alt="Live tab: RealityKit model mirroring the robot from its own URDF" />
+  <img src="docs/media/moves.jpg" width="220" alt="Moves tab with the floating 3D viewport" />
+  <img src="docs/media/store.jpg" width="220" alt="App store: discovering robot apps while the conversation app runs in the dock" />
+  <img src="docs/media/robot.jpg" width="220" alt="Robot tab: connected over the LAN, wake, sleep and power off" />
 </p>
-Demo video: <link>
--->
+
+_A one-minute demo video from a live robot is on its way._
 
 ## Scope
 
