@@ -11,6 +11,11 @@ import ReachyWidgetUI
 /// its own items, and is built by `ReachyQuickAction` — the two systems are
 /// described side by side there. Six of the ten App Shortcuts an app may declare
 /// are used here.
+///
+/// `\(.applicationName)` is `CFBundleDisplayName`, so every phrase below reads
+/// "… Hey Reachy". `INAlternativeAppNames` in `Project.swift` adds "Reachy" beside
+/// it, which is the spoken form these were written for; changing the display name
+/// silently rewrites all six phrases.
 struct ReachyShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
