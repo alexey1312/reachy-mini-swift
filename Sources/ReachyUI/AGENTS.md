@@ -87,6 +87,12 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     the switcher capsule is inset by `Space.xs` and meets a 16 pt continuous corner, so the corner shaved it. The
     three floating captures carrying a switcher or a badge all moved and `Floating viewport — no camera`, which
     carries neither, did not. `windowOnly(_:)` is where that lives.
+  - **The window's shadow is cast by a background twin of its surface, never by the subtree.** `.shadow` on the
+    composite re-rasterised a live `RTCMTLVideoView`/`RealityView` on every video frame and offset tick — and it
+    changed what it wrapped: the `.window` role's `.bar` material muddied to gray in the shadow's offscreen pass, and
+    the chrome's overhang past the rounded corner dragged a shadow bulge along. The measurements are in
+    `ReachyDesign/AGENTS.md` under the `.shadow`-over-a-material entry; 36 references moved when the twin landed,
+    every bounding box hugging the window rect plus its shadow.
   - **The drag is a pure function of the gesture, and `.position` never sees it.** `dragTranslation` stores the
     translation minus the `activation` SwiftUI reported when it woke the recogniser up — that first `onChanged`
     already carries everything the finger travelled before `minimumDistance`, so taking it at face value teleported
@@ -97,11 +103,25 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     only the resting point, because it is a layout modifier and driving it from the gesture ran a layout pass over a
     subtree hosting a rendering `RealityView`. `endDrag()` hangs off `onDisappear` as well — SwiftUI can drop a
     `DragGesture` without ever ending it, and this subtree really is unmounted mid-gesture.
+  - **The gesture is measured in `.floatingViewportBounds`, never `.local`.** It is attached inside the very subtree
+    `DragOffset` displaces, so a locally-measured translation had the drawn offset fed back into it one frame late —
+    `offset(t) = Δfinger(t) − offset(t−1)`, a non-decaying alternation: the window vibrated at frame rate, tracked at
+    half the finger's speed, and the polluted `predictedEndTranslation`/`velocity` picked wrong corners and seeded
+    the spring wrong. The named space (declared on the overlay's `GeometryReader` in `FloatingViewportModifier`) is
+    the rectangle `bounds` and `.position` already live in and the one thing a drag cannot move. The model needed no
+    change — translations reach it as pure values, which is also why no model test could have caught this.
   - **A release is decided by `predictedEndTranslation`, not by where the finger stopped.** That is what makes a
     flick enough to dock, and `Motion.absorb(velocity:)` is seeded from `DragGesture.Value.velocity` so a thrown
     window continues instead of restarting from a standstill. A spring's initial velocity is a fraction of the
     _journey_ per second, so `releaseDistance(for:in:)` exists to tell the view how long the journey is — it shares
     `resolved(_:in:)` with `dragEnded` rather than duplicating the branch.
+  - **A gesture may hide the window only in the corner it already holds.** A throw whose predicted point lands
+    nearest a _different_ corner is aimed at that corner, however much sideways speed it carries — a fast vertical
+    flick predicts hundreds of points of x from a few degrees of drift, and used to trip the 44 pt overshoot and
+    hide the window at the top of an edge. The corner-equality guard in `resolved(_:in:)` also pins the edge for
+    free (a point clamped against an edge is always in that edge's half), so reaching the far edge takes two
+    gestures: park in a corner there, then push out. VoiceOver's explicit "Hide at…" actions go through
+    `beginDocking` and stay free to pick either edge.
 - **`.unreachable` belongs to the shell, not the gate.** Only `.idle` and `.connecting` show the gate. A network blip
   must not pull the tab bar out from under a finger, and the robot screen already reports the state in place.
 - **The gate's fork has progress conditions, and they only ever delay.** For `.connected`, `isConnectedEnough` waits

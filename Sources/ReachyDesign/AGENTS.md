@@ -66,6 +66,16 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   **A byte-identical control is what makes that reading safe**: the same run left the floating-window capture at 0
   differing pixels, which is what ruled out the shared container as the cause. Quantify with a throwaway `swiftc`
   script over `CGImageSourceCreateWithURL` — eyeballing a 3/255 delta reports "identical".
+- **`.shadow` over a subtree carrying a material muddies the material.** The shadow's offscreen pass renders the
+  material without a backdrop to sample, so the `.bar` in a `.window` surface came out gray in the references — with
+  the loading card inside standing out white on it, read for a while as the intended look. Measured on
+  `FloatingViewport`: the same window with the shadow moved to a background twin (`shape.fill(.background)` +
+  `.shadow`, behind the surface) renders uniformly white, the material sampling in place. The twin is also the cheap
+  form — an opaque window's silhouette is its shape, and a shape whose contents never change is one Core Animation
+  can cache instead of re-blurring a live video subtree every frame. The bare docked tab — no material in frame —
+  moved by only 8/255 between the two forms, which sizes the pure path difference; the window captures moved up to
+  70/255, all of it the material clearing and the chrome's corner-overhang losing the drop shadow it had been
+  dragging along.
 - **No reference image is evidence about the safe area.** `Apps/ReachyUISnapshotTests/PreviewTests.stencil` sets
   `snapshot.device.safeArea = .zero` before every capture, so the home indicator, the status bar and every inset
   derived from them are simply absent from all ~1100 of them. This is not a detail: it is the whole reason the

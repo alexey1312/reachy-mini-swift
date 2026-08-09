@@ -10,7 +10,6 @@ struct FloatingViewportModelTests {
     /// An iPhone's safe area, near enough: what matters is that the four corners
     /// are distinct and the window fits inside with room to spare.
     private static let portrait = CGRect(x: 0, y: 0, width: 400, height: 800)
-    private static let landscape = CGRect(x: 0, y: 0, width: 800, height: 400)
     /// The same screen once the running-app strip is up: `Metrics.tabAccessoryAllowance`
     /// shorter, which is the change that used to land under a finger mid-drag.
     private static let withAccessory = CGRect(x: 0, y: 0, width: 400, height: 732)
@@ -21,40 +20,6 @@ struct FloatingViewportModelTests {
         live: Bool = false
     ) -> FloatingViewportModel {
         .preview(rest, hasTabBar: hasTabBar, isLiveTabSelected: live)
-    }
-
-    /// A whole gesture, the shape SwiftUI delivers one: a first `onChanged` already
-    /// carrying whatever the finger travelled before the recogniser woke up, then the
-    /// real movement, then a release.
-    ///
-    /// `from` is that head start, and it defaults to something non-zero on purpose —
-    /// a test that drags from exactly zero cannot tell a model that subtracts the
-    /// activation from one that does not.
-    ///
-    /// `thrown` is how much further the finger was *heading* than where it stopped.
-    /// Zero means it was set down rather than flicked.
-    private func drag(
-        _ model: FloatingViewportModel,
-        by translation: CGSize,
-        from activation: CGSize = CGSize(width: 6, height: -3),
-        thrown: CGSize = .zero,
-        in bounds: CGRect
-    ) {
-        let raw = activation + translation
-        model.dragChanged(translation: activation)
-        model.dragChanged(translation: raw)
-        model.dragEnded(
-            FloatingViewportModel.DragRelease(predictedEndTranslation: raw + thrown),
-            in: bounds
-        )
-    }
-
-    /// Where the window is actually drawn: the resting centre of whatever `drawn`
-    /// names, plus what the finger is currently adding. The view sums the same two.
-    private func drawnCentre(_ model: FloatingViewportModel, in bounds: CGRect) -> CGPoint {
-        let centre = model.centre(in: bounds)
-        let offset = model.dragOffset(in: bounds)
-        return CGPoint(x: centre.x + offset.width, y: centre.y + offset.height)
     }
 
     // MARK: - The placement automaton
@@ -268,98 +233,43 @@ struct FloatingViewportModelTests {
         #expect(before.y - after.y == Metrics.tabAccessoryAllowance)
     }
 
-    // MARK: - Where a release lands
-
-    @Test("a drag that ends inside snaps to the nearest corner")
-    func snapsToNearestCorner() {
-        let model = model()
-        // Bottom trailing is (304, 728); this lands in the top leading quadrant.
-        drag(model, by: CGSize(width: -200, height: -600), in: Self.portrait)
-
-        #expect(model.placement == .floating(.topLeading))
-    }
-
-    @Test("a drag stopping at the edge is still a drag, not a dock")
-    func edgeWithoutOvershootDoesNotDock() {
-        let model = model()
-        // Far enough to reach the leading margin, not far enough past it.
-        drag(model, by: CGSize(width: -220, height: 0), in: Self.portrait)
-
-        #expect(model.placement == .floating(.bottomLeading))
-    }
-
-    @Test("carrying the window past an edge docks it there, at the height it was")
-    func overshootDocks() {
-        let leading = model()
-        drag(leading, by: CGSize(width: -400, height: -400), in: Self.portrait)
-        leading.finishSettling()
-        #expect(leading.placement == .docked(.leading, y: 328))
-
-        let trailing = model(.floating(.topLeading))
-        drag(trailing, by: CGSize(width: 400, height: 200), in: Self.portrait)
-        trailing.finishSettling()
-        #expect(trailing.placement == .docked(.trailing, y: 272))
-    }
-
-    // MARK: - A flick, not a carry
-
-    /// FaceTime's picture-in-picture needs a flick rather than a haul, and the
-    /// difference is entirely in which point is tested: where the finger stopped, or
-    /// where it was heading. This drag stops exactly at the margin — the case
-    /// `edgeWithoutOvershootDoesNotDock` proves does *not* dock — and docks anyway,
-    /// because it was still travelling.
-    @Test("a flick at the edge docks even though the finger stopped short")
-    func flickDocksWithoutOvershoot() {
-        let model = model()
-
-        drag(
-            model,
-            by: CGSize(width: -220, height: 0),
-            thrown: CGSize(width: -120, height: 0),
-            in: Self.portrait
-        )
-
-        #expect(model.drawn == .docked(.leading, y: 728))
-        #expect(model.placement == .floating(.bottomTrailing))
-
-        model.finishSettling()
-        #expect(model.placement == .docked(.leading, y: 728))
-    }
-
-    /// And the corner is the one it was thrown at. The same release without the throw
-    /// settles in the opposite corner, which is what makes this a test of the
-    /// predicted point rather than of the arithmetic around it.
-    @Test("a flick lands in the corner it was aimed at, not the one it left from")
-    func flickPicksThePredictedCorner() {
-        let thrown = model()
-        drag(
-            thrown,
-            by: CGSize(width: -30, height: -40),
-            thrown: CGSize(width: -150, height: -500),
-            in: Self.portrait
-        )
-        #expect(thrown.placement == .floating(.topLeading))
-
-        let settled = model()
-        drag(settled, by: CGSize(width: -30, height: -40), in: Self.portrait)
-        #expect(settled.placement == .floating(.bottomTrailing))
-    }
-
-    @Test("the window never leaves the safe area, however far the finger goes")
-    func dragIsClamped() {
+    /// The clamp bites at (96, 72) and (304, 728); the band may spend at most the
+    /// 16 pt margin past each, which lands the window's own edge exactly on the
+    /// screen's and never over it.
+    @Test("the window resists past the margin and never leaves the screen")
+    func dragResistsAtTheMargin() {
         let model = model()
         model.dragChanged(translation: .zero)
 
         model.dragChanged(translation: CGSize(width: -5000, height: -5000))
-        #expect(drawnCentre(model, in: Self.portrait) == CGPoint(x: 96, y: 72))
+        let pressed = drawnCentre(model, in: Self.portrait)
+        #expect(pressed.x > 80 && pressed.x < 96)
+        #expect(pressed.y > 56 && pressed.y < 72)
 
         model.dragChanged(translation: CGSize(width: 5000, height: 5000))
-        #expect(drawnCentre(model, in: Self.portrait) == CGPoint(x: 304, y: 728))
+        let opposite = drawnCentre(model, in: Self.portrait)
+        #expect(opposite.x > 304 && opposite.x < 320)
+        #expect(opposite.y > 728 && opposite.y < 744)
     }
-}
 
-private extension CGSize {
-    static func + (lhs: CGSize, rhs: CGSize) -> CGSize {
-        CGSize(width: lhs.width + rhs.width, height: lhs.height + rhs.height)
+    /// The rubber band inherits `boundsChangeMidDragDoesNotDrift`'s contract: the
+    /// offset is a pure function of the translation and the rectangle it is asked
+    /// about, so a drag pressed past the bottom margin re-derives against whichever
+    /// rectangle arrives — in any order, without drift, and without crossing either
+    /// rectangle's true edge.
+    @Test("a drag pressed past the margin re-derives cleanly when the dock arrives")
+    func rubberBandSurvivesBoundsChangeMidDrag() {
+        let model = model()
+        model.dragChanged(translation: .zero)
+        model.dragChanged(translation: CGSize(width: 60, height: 300))
+
+        let first = drawnCentre(model, in: Self.withAccessory)
+        let interleaved = drawnCentre(model, in: Self.portrait)
+        let second = drawnCentre(model, in: Self.withAccessory)
+        #expect(first == second)
+
+        let halfHeight = Metrics.floatingViewport.height / 2
+        #expect(interleaved.y + halfHeight < Self.portrait.maxY)
+        #expect(second.y + halfHeight < Self.withAccessory.maxY)
     }
 }

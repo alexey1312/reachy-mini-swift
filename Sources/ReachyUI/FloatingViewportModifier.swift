@@ -72,6 +72,7 @@ private struct FloatingViewportModifier: ViewModifier {
                         .onChange(of: bounds) { _, new in model.fit(to: new) }
                     }
                 }
+                .coordinateSpace(.floatingViewportBounds)
             }
             .onChange(of: hasTabBar, initial: true) { _, value in
                 model.hasTabBar = value
@@ -106,5 +107,16 @@ private struct FloatingViewportModifier: ViewModifier {
             width: geometry.size.width,
             height: max(0, geometry.size.height - Metrics.tabBarAllowance - accessory)
         )
+    }
+}
+
+extension CoordinateSpaceProtocol where Self == NamedCoordinateSpace {
+    /// The overlay's own space: the one rectangle that does not move while the window
+    /// is dragged. The drag gesture rides *inside* the subtree `DragOffset` displaces,
+    /// so measuring it `.local` fed the drawn offset back into the translation one
+    /// frame late — the window vibrated at frame rate and tracked at half the finger's
+    /// speed. This is also the space `bounds` and `.position` already live in.
+    static var floatingViewportBounds: NamedCoordinateSpace {
+        .named("FloatingViewport.bounds")
     }
 }

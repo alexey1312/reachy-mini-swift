@@ -60,6 +60,16 @@ struct FloatingViewport: View {
         .frame(width: size.width, height: size.height)
         .clipShape(shape)
         .reachySurface(.window, in: shape)
+        // The shadow is cast by a twin of the surface's own opaque fill, behind it —
+        // the window is opaque and its chrome sits inside its rectangle, so the
+        // silhouette is identical. On the subtree itself it re-rasterised a live
+        // `RTCMTLVideoView`/`RealityView` on every video frame and every offset tick;
+        // a shape whose contents never change is one Core Animation can cache.
+        .background {
+            shape
+                .fill(.background)
+                .shadow(color: .black.opacity(0.2), radius: isDocked ? 8 : 12, y: isDocked ? 0 : 4)
+        }
         // **The chrome goes outside the clip**, which is where it has always been. Moved
         // inside it once, and the references named the mistake exactly: a capsule inset
         // by `Space.xs` meets a 16 pt continuous corner, so the corner shaved it. The
@@ -67,7 +77,6 @@ struct FloatingViewport: View {
         // `Floating viewport — no camera`, which carries neither, did not.
         .overlay(alignment: .topLeading) { windowOnly { switcher } }
         .overlay(alignment: .bottomTrailing) { windowOnly { reconnectingBadge } }
-        .shadow(color: .black.opacity(0.2), radius: isDocked ? 8 : 12, y: isDocked ? 0 : 4)
         .contentShape(.rect)
         // A non-zero minimum distance is what leaves the tap intact: at 0 the drag
         // claims every touch, and tapping is how the window is both opened and
@@ -200,7 +209,7 @@ struct FloatingViewport: View {
     // MARK: - Gestures
 
     private var drag: some Gesture {
-        DragGesture(minimumDistance: 4)
+        DragGesture(minimumDistance: 4, coordinateSpace: .floatingViewportBounds)
             .onChanged { model.dragChanged(translation: $0.translation) }
             .onEnded(release)
     }
