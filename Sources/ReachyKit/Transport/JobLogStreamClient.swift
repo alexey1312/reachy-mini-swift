@@ -86,15 +86,24 @@ public struct JobLogStreamClient: Sendable {
                 continuation.yield(.closed)
                 continuation.finish()
             }
-            while !Task.isCancelled {
-                guard let message = try? await socket.receive() else { return }
-                guard case let .string(text) = message else { continue }
-                for event in Self.events(in: text) {
-                    continuation.yield(event)
-                    if case .rejected = event {
-                        return
+            // `receive()` does not observe task cancellation (see
+            // `ConversationRPCClient.read`), and this socket only ever wakes
+            // on a new log line — a consumer that leaves mid-job would park
+            // here forever, and the `defer` above would never run. The
+            // handler makes `receive()` throw so the task can actually end.
+            await withTaskCancellationHandler {
+                while !Task.isCancelled {
+                    guard let message = try? await socket.receive() else { return }
+                    guard case let .string(text) = message else { continue }
+                    for event in Self.events(in: text) {
+                        continuation.yield(event)
+                        if case .rejected = event {
+                            return
+                        }
                     }
                 }
+            } onCancel: {
+                socket.cancel(with: .goingAway, reason: nil)
             }
         }
         continuation.onTermination = { _ in task.cancel() }
