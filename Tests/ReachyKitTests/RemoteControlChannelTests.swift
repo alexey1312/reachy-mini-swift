@@ -51,7 +51,12 @@ struct RemoteControlChannelTests {
         let (control, fake) = channel()
 
         async let reply = control.perform("wake_up")
-        try await Task.sleep(for: .milliseconds(50))
+        // The recorded send is what proves the waiter is registered — it is
+        // fired only after the continuation is filed — so polling for it (rule
+        // 7) replaces a fixed pause a starved runner could beat, where the
+        // reply became "an answer nobody asked for" and the test rode out the
+        // whole command timeout.
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
         fake.emit(#"{"type":"play_uploaded_move","upload_id":"u1","finished":true}"#)
         fake.emit(#"{"status":"ok","command":"goto_sleep","completed":true}"#)
         fake.emit(#"{"status":"ok","command":"wake_up","completed":true}"#)
@@ -143,7 +148,9 @@ struct RemoteControlChannelTests {
         let (control, fake) = channel()
 
         async let reply = control.perform("get_state", correlation: .replyKey("state"))
-        try await Task.sleep(for: .milliseconds(50))
+        // Same shape as above: the send on the wire is the proof the waiter is
+        // registered and the broadcasts below cannot arrive ahead of it.
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
         fake.emit(#"{"type":"daemon_status","robot_name":"reachy","state":"running"}"#)
         fake.emit(#"{"state":{"body_yaw":0.5}}"#)
 
@@ -228,4 +235,22 @@ struct RemoteControlChannelTests {
         #expect(object?["type"] as? String == "set_volume")
         #expect(object?["volume"] as? Double == 42)
     }
+}
+
+/// Nonisolated, unlike `ConnectProgressModelTests`' copy: every condition here
+/// closes over an `@unchecked Sendable` fake, not main-actor state.
+private func waitUntil(
+    _ description: String,
+    timeout: Duration = .seconds(10),
+    _ condition: () -> Bool,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async {
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while ContinuousClock.now < deadline {
+        if condition() {
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }
