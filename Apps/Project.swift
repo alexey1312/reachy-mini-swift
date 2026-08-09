@@ -57,6 +57,12 @@ let project = Project(
                 // empty, which App Store Connect rejects the upload over. Found
                 // by unpacking the exported .ipa, not by any build warning.
                 "CFBundleIconName": .string("AppIcon"),
+                // ITMS-90683: WebRTC (and RealityKit via ARKit) reference the
+                // capture APIs, so the string is required even though the app
+                // never records with the phone's camera. Say exactly that.
+                "NSCameraUsageDescription": .string(
+                    "Hey Reachy never records with your phone's camera; the robot video stack references this API."
+                ),
                 // HTTPS-exempt encryption only; answered here once so App Store
                 // Connect never asks per build.
                 "ITSAppUsesNonExemptEncryption": .boolean(false),
