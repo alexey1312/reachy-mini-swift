@@ -4,6 +4,9 @@
 #   mise run release:ios              # archive → upload to App Store Connect
 #   mise run release:ios -- --no-upload   # archive → export an .ipa locally
 #
+# Signing and uploading go through the Xcode account, not the App Store Connect
+# API key — see release-env.sh for the measurement behind that.
+#
 # The build number is the commit count: monotonic, reproducible, and never
 # stored in the repository — so releasing does not require a version-bump
 # commit for anything but MARKETING_VERSION.
@@ -35,9 +38,6 @@ xcodebuild archive \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   -allowProvisioningUpdates \
-  -authenticationKeyPath "$REACHY_ASC_KEY_PATH" \
-  -authenticationKeyID "$REACHY_ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$REACHY_ASC_ISSUER_ID" \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
 
@@ -54,9 +54,6 @@ xcodebuild -exportArchive \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
   -exportPath Apps/DerivedData/Export/iOS \
   -allowProvisioningUpdates \
-  -authenticationKeyPath "$REACHY_ASC_KEY_PATH" \
-  -authenticationKeyID "$REACHY_ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$REACHY_ASC_ISSUER_ID" \
   2>&1 | xcsift
 
 if [ "$upload" = true ]; then

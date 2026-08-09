@@ -20,22 +20,44 @@ if [ -f "$RELEASE_CONFIG" ]; then
   . "$RELEASE_CONFIG"
 fi
 
-release_env_missing=""
-for var in REACHY_DEVELOPMENT_TEAM REACHY_ASC_KEY_ID REACHY_ASC_ISSUER_ID REACHY_ASC_KEY_PATH; do
-  [ -n "${!var:-}" ] || release_env_missing="$release_env_missing $var"
-done
-
-if [ -n "$release_env_missing" ]; then
+if [ -z "${REACHY_DEVELOPMENT_TEAM:-}" ]; then
   cat >&2 <<EOF
-Missing release credentials:$release_env_missing
+No signing team. Write it once, the way device builds already expect:
 
-Releases are signed and uploaded with an App Store Connect API key
-(App Store Connect → Users and Access → Integrations → App Store Connect API,
-role App Manager). Write the four values once:
+  mkdir -p "$(dirname "$DEVICE_CONFIG")"
+  echo 'REACHY_DEVELOPMENT_TEAM=XXXXXXXXXX' > "$DEVICE_CONFIG"
 
-  mkdir -p "$(dirname "$RELEASE_CONFIG")"
-  cat > "$RELEASE_CONFIG" <<'CONF'
-REACHY_DEVELOPMENT_TEAM=XXXXXXXXXX
+The id is in Xcode → Settings → Accounts, next to the team that owns com.alexey1312.*.
+EOF
+  exit 1
+fi
+
+# The API key is optional, and deliberately unused for signing. xcodebuild takes
+# `-authenticationKey*` as "do everything through cloud signing", and a key below
+# the Admin role cannot manage profiles — the export then fails with "Cloud
+# signing permission error" and "No profiles were found" even though the
+# certificate is right there in the keychain. A key's role cannot be changed
+# after it is created. Without the flags xcodebuild uses the Xcode account, which
+# has the rights, so signing is left to it and the key is kept for the two things
+# that only need to read and submit: notarization, and CI.
+REACHY_HAS_ASC=""
+if [ -n "${REACHY_ASC_KEY_ID:-}" ] && [ -n "${REACHY_ASC_ISSUER_ID:-}" ] && [ -n "${REACHY_ASC_KEY_PATH:-}" ]; then
+  if [ ! -f "$REACHY_ASC_KEY_PATH" ]; then
+    echo "REACHY_ASC_KEY_PATH points at $REACHY_ASC_KEY_PATH, which does not exist." >&2
+    exit 1
+  fi
+  REACHY_HAS_ASC=1
+fi
+
+# Called by the macOS script, where the key is not optional: notarytool has no
+# other way in.
+require_asc_key() {
+  [ -n "$REACHY_HAS_ASC" ] && return 0
+  cat >&2 <<EOF
+Notarization needs an App Store Connect API key (App Store Connect → Users and
+Access → Integrations → App Store Connect API). Write the three values once:
+
+  cat >> "$RELEASE_CONFIG" <<'CONF'
 REACHY_ASC_KEY_ID=XXXXXXXXXX
 REACHY_ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 REACHY_ASC_KEY_PATH=$HOME/.config/reachy-mini/AuthKey_XXXXXXXXXX.p8
@@ -44,9 +66,4 @@ CONF
 The one-time App Store Connect setup is documented in docs/release.md.
 EOF
   exit 1
-fi
-
-if [ ! -f "$REACHY_ASC_KEY_PATH" ]; then
-  echo "REACHY_ASC_KEY_PATH points at $REACHY_ASC_KEY_PATH, which does not exist." >&2
-  exit 1
-fi
+}

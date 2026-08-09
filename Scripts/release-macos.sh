@@ -13,6 +13,7 @@ set -euo pipefail
 . "$(dirname "$0")/release-env.sh"
 
 notarize=true
+require_asc_key
 while [ $# -gt 0 ]; do
   case "$1" in
   --no-notarize) notarize=false ;;
@@ -36,9 +37,6 @@ xcodebuild archive \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   -allowProvisioningUpdates \
-  -authenticationKeyPath "$REACHY_ASC_KEY_PATH" \
-  -authenticationKeyID "$REACHY_ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$REACHY_ASC_ISSUER_ID" \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
 
@@ -48,9 +46,6 @@ xcodebuild -exportArchive \
   -exportOptionsPlist Scripts/exportOptions/developer-id.plist \
   -exportPath "$EXPORT_DIR" \
   -allowProvisioningUpdates \
-  -authenticationKeyPath "$REACHY_ASC_KEY_PATH" \
-  -authenticationKeyID "$REACHY_ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$REACHY_ASC_ISSUER_ID" \
   2>&1 | xcsift
 
 APP="$EXPORT_DIR/ReachyMini.app"

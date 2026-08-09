@@ -52,6 +52,11 @@ let project = Project(
                 "CFBundleName": .string("Hey Reachy"),
                 "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
                 "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                // Spelled out because `actool` does not write it: it fills
+                // CFBundleIcons from the catalogue and leaves the top level
+                // empty, which App Store Connect rejects the upload over. Found
+                // by unpacking the exported .ipa, not by any build warning.
+                "CFBundleIconName": .string("AppIcon"),
                 // HTTPS-exempt encryption only; answered here once so App Store
                 // Connect never asks per build.
                 "ITSAppUsesNonExemptEncryption": .boolean(false),
