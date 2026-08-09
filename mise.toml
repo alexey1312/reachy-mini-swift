@@ -125,6 +125,16 @@ description = "Build, install and launch on a connected iPhone (see Scripts/devi
 depends = ["project"]
 run = "./Scripts/device-run.sh"
 
+[tasks."release:ios"]
+description = "Archive the iOS app and upload it to TestFlight (see Scripts/release-ios.sh)"
+depends = ["project"]
+run = "./Scripts/release-ios.sh"
+
+[tasks."release:macos"]
+description = "Archive, notarize and zip the macOS app (see Scripts/release-macos.sh)"
+depends = ["project"]
+run = "./Scripts/release-macos.sh"
+
 [tasks.test]
 description = "Run all tests (parallel)"
 # --skip-build against a separate build step: building and testing at once hangs.
