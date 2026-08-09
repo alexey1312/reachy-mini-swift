@@ -97,6 +97,13 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     only the resting point, because it is a layout modifier and driving it from the gesture ran a layout pass over a
     subtree hosting a rendering `RealityView`. `endDrag()` hangs off `onDisappear` as well — SwiftUI can drop a
     `DragGesture` without ever ending it, and this subtree really is unmounted mid-gesture.
+  - **The gesture is measured in `.floatingViewportBounds`, never `.local`.** It is attached inside the very subtree
+    `DragOffset` displaces, so a locally-measured translation had the drawn offset fed back into it one frame late —
+    `offset(t) = Δfinger(t) − offset(t−1)`, a non-decaying alternation: the window vibrated at frame rate, tracked at
+    half the finger's speed, and the polluted `predictedEndTranslation`/`velocity` picked wrong corners and seeded
+    the spring wrong. The named space (declared on the overlay's `GeometryReader` in `FloatingViewportModifier`) is
+    the rectangle `bounds` and `.position` already live in and the one thing a drag cannot move. The model needed no
+    change — translations reach it as pure values, which is also why no model test could have caught this.
   - **A release is decided by `predictedEndTranslation`, not by where the finger stopped.** That is what makes a
     flick enough to dock, and `Motion.absorb(velocity:)` is seeded from `DragGesture.Value.velocity` so a thrown
     window continues instead of restarting from a standstill. A spring's initial velocity is a fraction of the

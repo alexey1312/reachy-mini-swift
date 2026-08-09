@@ -200,7 +200,7 @@ struct FloatingViewport: View {
     // MARK: - Gestures
 
     private var drag: some Gesture {
-        DragGesture(minimumDistance: 4)
+        DragGesture(minimumDistance: 4, coordinateSpace: .floatingViewportBounds)
             .onChanged { model.dragChanged(translation: $0.translation) }
             .onEnded(release)
     }
