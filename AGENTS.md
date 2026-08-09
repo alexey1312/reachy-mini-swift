@@ -21,7 +21,9 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 - Tool versions are pinned in `mise.toml` + `mise.lock`. After editing `[tools]`: `trash mise.lock && ./bin/mise lock`.
   Find updates with `./bin/mise latest <tool>` — `mise outdated` reports nothing here, because an exact pin always
   matches its own request.
-- The `hk` version in `mise.toml` must match the `hk@X.Y.Z` package URI in `hk.pkl` (bump together).
+- The `hk` version in `mise.toml` must match the `hk@X.Y.Z` package URI in `hk.pkl`, and the `prefire` pin in
+  `[tools]` must match the `.exact` requirement in `Apps/Project.swift` — the forked `PreviewTests.stencil` is only
+  valid against that one version. Bump each pair together; `mise run lint` enforces both lockstep pairs.
 - `mise run project` (tuist generate) needs a one-time `./bin/mise x -- tuist auth login` — the project is connected
   to tuist.dev (`alexey1312/reachy-mini-swift` in `Apps/Tuist.swift`). That handle names the **tuist.dev project**,
   which happens to match this repository's name only because the pre-rename project was deleted and recreated;
@@ -80,7 +82,9 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   swift-syntax, swift-custom-dump, xctest-dynamic-overlay); `swift build` / `swift test` see only the root package and
   strip them again. Merging a branch that predates them drops them silently too — git sees a clean delete on one side.
   Commit the 25-pin version (run `mise run project` or any snapshot task last), never hand-edit it, and expect the
-  file to show as modified after a plain `mise run test`.
+  file to show as modified after a plain `mise run test`. `mise run lint` fails when the copy at `HEAD` has lost the
+  workspace pins — it reads the commit rather than the working tree, precisely because the tree legitimately
+  oscillates.
 
 ## Quick Reference
 
@@ -91,7 +95,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run device         # Build, install and launch on the connected iPhone
 ./bin/mise run test           # All tests, parallel
 ./bin/mise run test:filter T  # Filter tests
-./bin/mise run lint           # SwiftLint --strict + actionlint + hk lockstep
+./bin/mise run lint           # SwiftLint --strict + actionlint + lockstep/pin checks
 ./bin/mise run format         # Format all (hk fix --all)
 ./bin/mise run format-check   # CI formatting check
 ./bin/mise run project        # tuist generate (Apps/)
@@ -106,6 +110,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
 ./bin/mise run test:snapshots:record  # Re-record the reference images
+./bin/mise run snapshots:build        # Compile previews + snapshot target, run nothing (CI's preview job)
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
 ```
 
@@ -128,7 +133,8 @@ run `test:sim` against a live `sim-daemon` to exercise it.
 test, or the run silently verifies stale code.
 Everything pipes through xcsift, which on long runs can truncate and report `status: incomplete` while hiding the real
 result — verify the artifact, or rerun the tool directly
-(`./bin/mise x -- swiftlint lint --strict Sources Tests Apps/ReachyMini`). Always pass those explicit paths — a bare
+(`./bin/mise x -- swiftlint lint --strict` with the explicit path list the lint task in `mise.toml` names,
+`Apps/ReachyWidget` included). Always pass those explicit paths — a bare
 `.` walks into `Apps/DerivedData`, and swiftformat then "fails" on generated and vendored sources.
 **swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
 `allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
@@ -249,7 +255,10 @@ a `pre-push` hook, and `core.hooksPath` makes git ignore `.git/hooks` — so its
 alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them.
 Adding a reference image still needs an explicit `git add`: the LFS filter decides how a staged file is _stored_, and
 the pre-commit hook only re-stages what it reformatted (`*.swift`, `*.md`) — neither one stages a PNG for you.
-There is no CI job yet: local Xcode and the CI pin differ, so references recorded on one fail on the other.
+No CI job _compares_ references — local Xcode and the CI pin differ, so references recorded on one fail on the
+other. What CI does run is `preview-build` (`mise run snapshots:build`): build-for-testing on a generic destination
+compiles every preview, the Prefire generation and the snapshot target, so a preview that does not compile fails the
+PR instead of surfacing minutes into a local run — or after `record` has already deleted every reference.
 `test:snapshots` compares the images either side of the run and fails if any had to be written — Prefire generates
 `record: .missing`, so a reference that does not exist yet is created rather than compared.
 The compact root used to capture as a near-blank ghost, which made `Root-connected`, `Root-no-camera` and
