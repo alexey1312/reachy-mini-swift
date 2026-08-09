@@ -92,6 +92,34 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   build 2>&1 | xcsift
 '''
 
+# Release builds exist to guard archive-ability: nothing else compiles the
+# Release configuration, so a broken one would first surface at archive time.
+[tasks."build:app:release"]
+description = "Build the ReachyMini app target (macOS, Release, unsigned)"
+depends = ["project"]
+run = '''
+set -o pipefail
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination 'platform=macOS' -configuration Release \
+  -derivedDataPath Apps/DerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  build 2>&1 | xcsift
+'''
+
+[tasks."build:app:ios:release"]
+description = "Build the ReachyMini app and widget (iOS, Release, unsigned)"
+depends = ["project"]
+run = '''
+set -o pipefail
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination 'generic/platform=iOS' -configuration Release \
+  -derivedDataPath Apps/DerivedData \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  build 2>&1 | xcsift
+'''
+
 [tasks.device]
 description = "Build, install and launch on a connected iPhone (see Scripts/device-run.sh)"
 depends = ["project"]

@@ -108,3 +108,11 @@ jobs:
       # sources were compiled by nothing at all.
       - name: Build ReachyMini + widget (iOS)
         run: mise run build:app:ios
+
+      # Release guards archive-ability: nothing else compiles this configuration,
+      # so without these steps a broken Release first surfaces at archive time.
+      - name: Build ReachyMini (macOS, Release)
+        run: mise run build:app:release
+
+      - name: Build ReachyMini + widget (iOS, Release)
+        run: mise run build:app:ios:release

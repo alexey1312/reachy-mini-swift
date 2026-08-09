@@ -22,13 +22,21 @@ let project = Project(
             requirement: .upToNextMajor(from: "1.19.4")
         ),
     ],
-    settings: .settings(configurations: [
-        // Set project-wide rather than per target: the previews and the playbook reach ReachyUI's
-        // internal screens through `@testable import`, and it is the *package* target that has to
-        // be built with testability for that to link.
-        .debug(name: .debug, settings: ["ENABLE_TESTABILITY": "YES"]),
-        .release(name: .release),
-    ]),
+    settings: .settings(
+        // One version for the app and the widget: App Store validation requires
+        // the extension's CFBundleShortVersionString to match its host's.
+        base: [
+            "MARKETING_VERSION": "1.0.0",
+            "CURRENT_PROJECT_VERSION": "1",
+        ],
+        configurations: [
+            // Set project-wide rather than per target: the previews and the playbook reach ReachyUI's
+            // internal screens through `@testable import`, and it is the *package* target that has to
+            // be built with testability for that to link.
+            .debug(name: .debug, settings: ["ENABLE_TESTABILITY": "YES"]),
+            .release(name: .release),
+        ]
+    ),
     targets: [
         .target(
             name: "ReachyMini",
@@ -40,6 +48,12 @@ let project = Project(
                 // The product name is the internal identifier; this is the brand.
                 "CFBundleDisplayName": .string("Hey Reachy"),
                 "CFBundleName": .string("Hey Reachy"),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                // HTTPS-exempt encryption only; answered here once so App Store
+                // Connect never asks per build.
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
+                "LSApplicationCategoryType": .string("public.app-category.utilities"),
                 // Phase 0.4 device checks: Local Network permission + Bonjour + ATS
                 "NSLocalNetworkUsageDescription": .string(
                     "Discovers and connects to your Reachy Mini robot on the local network."
@@ -79,9 +93,6 @@ let project = Project(
             ]),
             sources: ["ReachyMini/Sources/**"],
             resources: ["ReachyMini/Resources/**"],
-            entitlements: .dictionary([
-                "com.apple.security.application-groups": .array([.string(appGroup)]),
-            ]),
             dependencies: [
                 .package(product: "ReachyKit"),
                 .package(product: "ReachyUI"),
@@ -92,7 +103,16 @@ let project = Project(
                 // iOS only, and conditional so the macOS build of this app does not
                 // try to embed an extension that has no macOS destination.
                 .target(name: "ReachyWidget", condition: .when([.ios])),
-            ]
+            ],
+            // Two files rather than one generated dictionary: the macOS build is
+            // sandboxed and hardened for Developer ID, and those keys are
+            // macOS-only — signing an iOS build with them fails against any
+            // provisioning profile. The `[sdk=macosx*]` override picks per SDK.
+            settings: .settings(base: [
+                "SWIFT_VERSION": "6.0",
+                "CODE_SIGN_ENTITLEMENTS": "ReachyMini/Entitlements/ReachyMini-iOS.entitlements",
+                "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "ReachyMini/Entitlements/ReachyMini-macOS.entitlements",
+            ])
         ),
         // Deliberately thin: a timeline provider over the shared snapshot and a
         // view. It depends on ReachyWidgetUI rather than ReachyUI so that a
@@ -105,6 +125,9 @@ let project = Project(
             deploymentTargets: .iOS("18.0"),
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": .string("Hey Reachy"),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
                 // Its own process, so it needs its own copy of the group name.
                 "ReachyAppGroupIdentifier": .string(appGroup),
                 // The control buttons run their intent in *this* process, and it
@@ -138,7 +161,8 @@ let project = Project(
                 // direct dependency to `import` a module, and this target's controls name
                 // their titles with `.reachy(_:)`.
                 .package(product: "ReachyDesign"),
-            ]
+            ],
+            settings: .settings(base: ["SWIFT_VERSION": "6.0"])
         ),
         .target(
             name: "ReachyStorybook",
