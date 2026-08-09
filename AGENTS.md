@@ -33,8 +33,24 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   device bundle, and rejects a macOS one (which keeps `Info.plist` under `Contents/`, where the command wants it at
   the root). Size numbers only mean something off a Release archive — a Debug bundle carries `__preview.dylib`,
   `*.debug.dylib` and the provisioning profile, none of which ship.
-- Do **not** set `enableCaching` — without a running cache daemon every compile task waits out a CAS socket deadline,
-  and CI has no daemon.
+- `mise run share [path]` uploads a built app to tuist.dev Previews and prints the share link. The default path is
+  the `mise run device` product because that one is signed with the personal team — a preview of the unsigned CI
+  build would not install on a device. The server refuses an identical re-upload (`duplicate_app_build`): rebuild or
+  bump the build number before sharing again.
+- **The Xcode compilation cache is on by default** — `enableCaching` in `Apps/Tuist.swift` reads `TUIST_CACHE_ENABLED`
+  (default true) and bakes `COMPILATION_CACHE_*` settings into the generated project, pointing at the Unix socket of a
+  per-user LaunchAgent that `tuist setup cache` creates once (bootstrap.sh runs it best-effort; it needs a tuist.dev
+  session). A missing daemon is **not** the cliff it used to be: the plugin fails fast on an absent socket and the
+  local CAS inside DerivedData keeps serving hits — an incremental rebuild measured 23 s with the daemon and 22 s
+  without. CI still defaults `TUIST_CACHE_ENABLED=false` at the workflow level; `app-build` flips it on only after its
+  own `tuist setup cache` step sees a live socket, because a fork has no session to start one and because a `.sock`
+  file outlives a dead daemon — existence is not liveness. **Cache keys embed absolute paths**, so hits only come from
+  a stable DerivedData path: a clean rebuild in the same DD replays from cache (119 s → 39 s measured), while the same
+  build in a different DD misses every key and re-uploads everything. `Apps/DerivedData` and CI's fixed workspace path
+  both qualify; a first build with an empty cache pays a population surcharge. Everything is named after the project
+  handle (`alexey1312_reachy-mini-swift` in the LaunchAgent, socket and ci.yml): renaming the tuist.dev project
+  orphans all three silently — exactly how the pre-rename project's agent was found dead here. The agent's first
+  start can lose a race and exit 1; KeepAlive restarts it, check `launchctl list | grep tuist.cache`.
 - **Build insights reach tuist.dev through a scheme post-action, not through a command.** `tuist generate` writes
   `tuist inspect build` into every generated scheme's build action (and `tuist inspect test` into
   `ReachyUISnapshotTests`' test action), pointing at the mise-installed binary by absolute path. That post-action
@@ -80,6 +96,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run format-check   # CI formatting check
 ./bin/mise run project        # tuist generate (Apps/)
 ./bin/mise run inspect:bundle # Upload an iOS bundle-size analysis to tuist.dev
+./bin/mise run share          # Upload a built app to tuist.dev Previews (share link)
 ./bin/mise run sim-daemon     # Simulated robot daemon (MuJoCo, LAN-reachable)
 ./bin/mise run test:sim       # Integration tests against a running sim-daemon
 ./bin/mise run test:smoke     # XCUITest: boot the app on a simulator, walk the gate

@@ -30,6 +30,17 @@ echo "==> Enabling Git LFS for this clone"
 # Install only the local filters so git-lfs does not reject those existing hooks.
 ./bin/mise x -- git lfs install --local --skip-repo
 
+# Apps/Tuist.swift enables the Xcode compilation cache by default, and the cache
+# only answers through this per-user LaunchAgent — without it every compile task
+# waits out a CAS socket deadline. Needs a tuist.dev session, hence best-effort.
+echo "==> Setting up the Tuist Xcode cache service (LaunchAgent)"
+TUIST="$(./bin/mise where tuist)/tuist"
+(cd Apps && env -u TOOLCHAINS "$TUIST" setup cache) || {
+  echo "WARNING: tuist setup cache failed — no tuist.dev session?"
+  echo "         Run './bin/mise x -- tuist auth login' and re-run bootstrap,"
+  echo "         or generate with TUIST_CACHE_ENABLED=false to build uncached."
+}
+
 echo "==> Done"
 ./bin/mise run setup
 echo ""

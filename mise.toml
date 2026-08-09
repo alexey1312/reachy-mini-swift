@@ -366,6 +366,23 @@ TUIST="$(./bin/mise where tuist)/tuist"
 cd Apps && exec "$TUIST" inspect bundle "$BUNDLE"
 '''
 
+[tasks.share]
+description = "Upload a built app to tuist.dev Previews and print the share link"
+# The Debug-iphoneos default is the `mise run device` product: signed with the personal
+# team, so the preview installs on registered devices — the unsigned CI build would not.
+run = '''
+#!/bin/bash
+set -euo pipefail
+BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
+if [ ! -e "$BUNDLE" ]; then
+  echo "No bundle at $BUNDLE — run 'mise run device -- --build-only' first." >&2
+  exit 1
+fi
+BUNDLE="$(cd "$(dirname "$BUNDLE")" && pwd)/$(basename "$BUNDLE")"
+TUIST="$(./bin/mise where tuist)/tuist"
+cd Apps && exec env -u TOOLCHAINS "$TUIST" share "$BUNDLE"
+'''
+
 [tasks.clean]
 description = "Clean build artifacts"
 run = "swift package clean && rm -rf .build"

@@ -14,6 +14,10 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_GITHUB_ATTESTATIONS: false
+  # Read by Apps/Tuist.swift at generation. Off for every job by default — with the
+  # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
+  # waits out a CAS socket deadline. app-build flips it on once its service is up.
+  TUIST_CACHE_ENABLED: "false"
 
 jobs:
   lint:
@@ -114,6 +118,23 @@ jobs:
         if: ${{ !github.event.pull_request.head.repo.fork }}
         working-directory: Apps
         run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
+
+      # The compilation cache answers only through the service `tuist setup cache`
+      # starts, so the env flips to true strictly after its socket is live — settings
+      # baked in with no service behind them stall every compile task instead (the
+      # workflow-level default covers forks, which have no session to set it up with).
+      - name: Set up Tuist cache
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        working-directory: Apps
+        run: |
+          mise x -- tuist setup cache || true
+          SOCK="$HOME/.local/state/tuist/alexey1312_reachy-mini-swift.sock"
+          for _ in $(seq 1 10); do [ -S "$SOCK" ] && break; sleep 1; done
+          if [ -S "$SOCK" ]; then
+            echo "TUIST_CACHE_ENABLED=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Tuist cache service did not start — building uncached."
+          fi
 
       # `build:app` generates the project first (depends = ["project"]).
       - name: Build ReachyMini
