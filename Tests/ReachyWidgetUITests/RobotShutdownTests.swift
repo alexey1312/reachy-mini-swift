@@ -9,8 +9,14 @@ import Testing
 /// gone.
 @Suite("Robot shutdown", .timeLimit(.minutes(1)))
 struct RobotShutdownTests {
-    private func shutdown(_ client: StubAppsClient) -> RobotShutdown {
-        RobotShutdown(apps: client, daemon: client)
+    private func shutdown(
+        _ client: StubAppsClient,
+        appStopTimeout: Duration = .seconds(5)
+    ) -> RobotShutdown {
+        var configuration = RobotSession.Configuration.widgetIntent
+        configuration.appStopTimeout = appStopTimeout
+        configuration.appStopPollInterval = .milliseconds(10)
+        return RobotShutdown(apps: client, daemon: client, configuration: configuration)
     }
 
     @Test("the running app is stopped before the backend goes")
@@ -20,7 +26,45 @@ struct RobotShutdownTests {
 
         try await shutdown(client).perform()
 
-        #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .stopDaemon(gotoSleep: true)])
+        #expect(client.calls == [
+            .currentAppStatus,
+            .stopCurrentApp,
+            .currentAppStatus,
+            .stopDaemon(gotoSleep: true),
+        ])
+    }
+
+    /// A 200 from `stop-current-app` is not the app letting go: the daemon clears
+    /// its own slot several awaits later, past the return-to-zero it performs on
+    /// the app's behalf. `stop?goto_sleep=true` parks the robot itself, so asking
+    /// for it on top of that hand-back puts two motions on one robot.
+    @Test("the teardown waits for the daemon to stop naming the app")
+    func waitsForTheAppToLetGo() async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+        client.stoppingReads = 3
+
+        try await shutdown(client).perform()
+
+        #expect(client.parkedOverARunningApp == false)
+        #expect(client.calls.last == .stopDaemon(gotoSleep: true))
+    }
+
+    /// The daemon's `stopping` is a one-way door no client can open, and an intent
+    /// has seconds. Both branches end in the same calls, so the elapsed time is the
+    /// assertion (project rule 7).
+    @Test("an app that never lets go is waited out, not waited on forever")
+    func shutsDownAnywayWhenTheAppWedges() async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+        client.stoppingReads = .max
+
+        let start = ContinuousClock.now
+        try await shutdown(client, appStopTimeout: .milliseconds(300)).perform()
+        let elapsed = start.duration(to: .now)
+
+        #expect(elapsed >= .milliseconds(250))
+        #expect(client.calls.last == .stopDaemon(gotoSleep: true))
     }
 
     /// The parking is the daemon's: `stop?goto_sleep=true` enables the motors,

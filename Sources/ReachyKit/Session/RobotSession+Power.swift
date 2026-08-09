@@ -33,13 +33,25 @@ public extension RobotSession {
 
     /// Mirror image of wake: the animation must finish *before* power is cut,
     /// otherwise the head drops wherever it happens to be.
+    ///
+    /// **The app holding the robot is stopped first**, which is the same rule
+    /// `powerOff` follows one rung further down the ladder and for the same reason:
+    /// `move/play/goto_sleep` is an animation and `motors/set_mode/disabled` is a
+    /// switch, so neither tells the app manager anything. An app left running has
+    /// the motors taken out from under it and dies on its next command — a
+    /// traceback nobody asked for, in place of the app the user deliberately left
+    /// running. `releaseRunningApp()` is where the waiting is explained.
     func sleep() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
+        // Claimed before the first suspension point, like `wake()`: stopping the
+        // app is a suspension point too, and a second tap during it would otherwise
+        // start a second sleep.
         powerTransition = .goingToSleep
         defer { powerTransition = nil }
         do {
             try assertSupportedDaemon()
+            await releaseRunningApp()
             try await RobotPower(client: client, configuration: configuration).sleep()
         } catch {
             report(error)
@@ -58,7 +70,10 @@ public extension RobotSession {
     /// teardown drops the media server and the JSON-RPC relay and never touches the
     /// app manager, leaving the app running against a backend that has gone. A
     /// failure to stop it is reported and does not abort — the robot's body is
-    /// parked either way, and that is the half that matters.
+    /// parked either way, and that is the half that matters. `releaseRunningApp()`
+    /// is that step, and it waits: the daemon parks the robot as part of this
+    /// teardown, and doing so while the app is still handing it back is what the
+    /// wait exists to prevent.
     ///
     /// What comes back is the daemon's own HTTP server, which survives all of this —
     /// and that is also why `phase` stays `.connected` and the connect gate is never
@@ -73,13 +88,7 @@ public extension RobotSession {
         defer { powerTransition = nil }
         do {
             try assertSupportedDaemon()
-            if runningApp?.isBusy == true {
-                do {
-                    try await stopCurrentApp()
-                } catch {
-                    report(error)
-                }
-            }
+            await releaseRunningApp()
             try await client.stopDaemon(gotoSleep: true)
         } catch {
             report(error)
@@ -92,6 +101,57 @@ public extension RobotSession {
 }
 
 extension RobotSession {
+    /// Hands the robot back before either transition parks it.
+    ///
+    /// **Neither half of this is the daemon's.** `Daemon.stop` drops the media
+    /// server and the JSON-RPC relay and never touches the app manager, and
+    /// `move/play/goto_sleep` only plays an animation — so an app is still driving
+    /// the robot at the moment the motors go, and dies on its next command. That
+    /// belongs to both rungs of the ladder rather than to powering off alone, which
+    /// is why this sits between them instead of inside `powerOff`.
+    ///
+    /// **The wait is the point, not politeness.** A 200 from `stop-current-app`
+    /// does not mean the app is gone: the daemon sets `stopping` before any I/O and
+    /// clears its own slot on the last line of `stop_current_app`, past the
+    /// return-to-zero it performs on the app's behalf (`apps/manager.py:283`,
+    /// `:355`). Parking on top of that hand-back puts two motions on one robot, and
+    /// `play_move` takes its guard non-blocking (`backend/abstract.py:412`) — so
+    /// one of the two silently does nothing, and which one is not ours to choose.
+    ///
+    /// Neither a refusal nor a timeout aborts anything. Parking the robot matters
+    /// more than proof that the app let go, the same trade `waitForMoveToFinish`
+    /// makes; the failure goes on the screen and the transition carries on.
+    func releaseRunningApp() async {
+        guard runningApp?.isBusy == true else { return }
+        do {
+            try await stopCurrentApp()
+        } catch {
+            report(error)
+            return
+        }
+        await waitForRunningAppToStop()
+    }
+
+    /// Polls until the daemon stops naming an app as holding the robot.
+    ///
+    /// Reads `runningApp` rather than the client, because `stopCurrentApp` and
+    /// `refreshCurrentApp` are what write it — so the common case, where the stop's
+    /// own re-read already found the slot clear, costs no further request at all.
+    ///
+    /// **Only a reading that arrived may reach a verdict.** `refreshCurrentApp`
+    /// leaves the last status in place when it throws, so an unreachable poll keeps
+    /// waiting rather than concluding that the app is gone — the rule
+    /// `RunningAppModel` learned the hard way, where timing a stale reading turned a
+    /// Wi-Fi blip into a wedged daemon.
+    func waitForRunningAppToStop() async {
+        let deadline = ContinuousClock.now + configuration.appStopTimeout
+        while runningApp?.isBusy == true, !Task.isCancelled {
+            guard ContinuousClock.now < deadline else { return }
+            try? await Task.sleep(for: configuration.appStopPollInterval)
+            try? await refreshCurrentApp()
+        }
+    }
+
     /// Polls the daemon's authoritative running-move list until `uuid` is gone.
     /// A timeout returns normally: parking the motors matters more than proof
     /// that the animation ran to completion.
