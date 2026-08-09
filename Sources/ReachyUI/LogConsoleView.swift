@@ -143,7 +143,10 @@ struct LogConsoleView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem {
-            Button(model.paused ? "Resume" : "Pause", systemImage: model.paused ? "play" : "pause") {
+            Button(
+                model.paused ? .reachy("Resume") : .reachy("Pause"),
+                systemImage: model.paused ? "play" : "pause"
+            ) {
                 model.paused.toggle()
             }
         }
@@ -151,7 +154,7 @@ struct LogConsoleView: View {
             ToolbarSpacer(.fixed)
         }
         ToolbarItemGroup {
-            ShareLink(item: model.export(address: source), preview: SharePreview("Log")) {
+            ShareLink(item: model.export(address: source), preview: SharePreview(.reachy("Log"))) {
                 Label(.reachy("Export"), systemImage: "square.and.arrow.up")
             }
             .disabled(model.visible.isEmpty)

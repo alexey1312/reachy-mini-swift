@@ -69,7 +69,9 @@ public struct RobotWidgetContent: Equatable, Sendable {
         if let failed = snapshot.failedApp(at: date) {
             return String(localized: .reachy("\(failed.title ?? failed.name) stopped"))
         }
-        return snapshot.isAwake ? "Awake" : "Asleep"
+        return snapshot.isAwake
+            ? String(localized: .reachy("Awake"))
+            : String(localized: .reachy("Asleep"))
     }
 
     private static func symbol(for snapshot: RobotSnapshot, at date: Date) -> String {

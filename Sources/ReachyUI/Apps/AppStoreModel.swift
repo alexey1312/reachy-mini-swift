@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ReachyDesign
 import ReachyKit
 
 /// Drives the robot's app store: what is installed, what could be, and what is
@@ -15,10 +16,10 @@ final class AppStoreModel {
             rawValue
         }
 
-        var title: String {
+        var title: LocalizedStringResource {
             switch self {
-            case .installed: "Installed"
-            case .discover: "Discover"
+            case .installed: .reachy("Installed")
+            case .discover: .reachy("Discover")
             }
         }
     }
