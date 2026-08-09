@@ -83,32 +83,6 @@ public final class RobotSession {
         public let uuid: String
     }
 
-    public struct Configuration: Sendable {
-        /// Upstream polls every 3 s (5 s over robot Wi-Fi).
-        public var pollInterval: Duration = .seconds(3)
-        /// Consecutive successful probes required to leave `.unreachable`.
-        public var requiredConsecutiveSuccesses = 2
-        /// Move task polling is intentionally cheaper than rendering/state streaming.
-        public var movePollInterval: Duration = .milliseconds(500)
-        /// Upstream waits this long for a wake/sleep animation before moving on.
-        public var moveCompletionTimeout: Duration = .seconds(10)
-        /// Backend startup budget — upstream's `STARTUP.TIMEOUT_NORMAL`.
-        public var daemonStartTimeout: Duration = .seconds(90)
-        /// Shutdown budget. Shorter than the start, and not by guesswork: the
-        /// daemon's teardown is the sleep animation plus a backend thread it joins
-        /// with a 5 s cap, where a start builds a media pipeline and loads a model.
-        public var daemonStopTimeout: Duration = .seconds(60)
-        /// Motors need a moment to hold their pose before the animation starts.
-        public var motorSettleDelay: Duration = .milliseconds(300)
-        /// Connect-time readiness budget. We never start a backend during connect,
-        /// so a stopped one is reported at once — this only covers the window
-        /// between `state == running` and `backend.ready`.
-        public var readinessTimeout: Duration = .seconds(8)
-        public var readinessPollInterval: Duration = .milliseconds(500)
-
-        public init() {}
-    }
-
     // `internal(set)` rather than `private(set)`: the connect and power protocols
     // live in sibling files, and a `private` setter is scoped to this one. The preview
     // fixtures do the same, parking a session in a state no real connection would reach.

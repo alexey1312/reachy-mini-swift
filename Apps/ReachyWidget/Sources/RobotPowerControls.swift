@@ -30,6 +30,8 @@ struct SleepRobotControl: ControlWidget {
             }
         }
         .displayName("Put Reachy Mini to sleep")
-        .description("Plays the sleep animation, then parks the motors.")
+        // Says the app out loud: sleeping stops whatever holds the robot, because
+        // parking the motors under a running app is what kills it.
+        .description("Stops the running app, plays the sleep animation, then parks the motors.")
     }
 }

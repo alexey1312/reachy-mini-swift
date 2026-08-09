@@ -21,21 +21,34 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
     private let stopFailure: (any Error)?
     private let appStopFailure: (any Error)?
     private var runningStatus: RobotAppStatus?
+    /// Readings after the stop that still name the app, which is what the real
+    /// route does: it answers 200 and clears its own slot several awaits later.
+    private let stoppingReads: Int
+    private var remainingStoppingReads = 0
+    private var appHeldTheRobotAtStop = false
 
     init(
         running: RobotAppStatus? = nil,
         stopsOnRequest: Bool = true,
         stopFailure: (any Error)? = nil,
-        appStopFailure: (any Error)? = nil
+        appStopFailure: (any Error)? = nil,
+        stoppingReads: Int = 0
     ) {
         runningStatus = running
         self.stopsOnRequest = stopsOnRequest
         self.stopFailure = stopFailure
         self.appStopFailure = appStopFailure
+        self.stoppingReads = stoppingReads
     }
 
     var recordedSteps: [Step] {
         lock.withLock { steps }
+    }
+
+    /// The daemon parks the robot as part of its teardown, so being asked for it
+    /// while the app is still handing the robot back is the bug, not a detail.
+    var toreDownOverARunningApp: Bool {
+        lock.withLock { appHeldTheRobotAtStop }
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -77,6 +90,7 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
         }
         lock.withLock {
             steps.append(.stopDaemon(gotoSleep: gotoSleep))
+            appHeldTheRobotAtStop = remainingStoppingReads > 0
             if stopsOnRequest {
                 state = .stopped
             }
@@ -84,7 +98,13 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
     }
 
     func currentAppStatus() async throws -> RobotAppStatus? {
-        lock.withLock { runningStatus }
+        lock.withLock { () -> RobotAppStatus? in
+            guard remainingStoppingReads > 0 else { return runningStatus }
+            if remainingStoppingReads != .max {
+                remainingStoppingReads -= 1
+            }
+            return RobotAppStatus.preview(.stopping)
+        }
     }
 
     func stopCurrentApp() async throws {
@@ -93,6 +113,7 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
         }
         lock.withLock {
             steps.append(.stopApp)
+            remainingStoppingReads = stoppingReads
             runningStatus = nil
         }
     }
@@ -108,6 +129,8 @@ struct RobotSessionPowerOffTests {
         var config = RobotSession.Configuration()
         config.pollInterval = .milliseconds(20)
         config.daemonStopTimeout = stopTimeout
+        config.appStopTimeout = .seconds(5)
+        config.appStopPollInterval = .milliseconds(10)
         return RobotSession(configuration: config) { _ in client }
     }
 
@@ -136,6 +159,21 @@ struct RobotSessionPowerOffTests {
         await session.powerOff()
         #expect(client.recordedSteps == [.stopApp, .stopDaemon(gotoSleep: true)])
         #expect(session.robotError == nil)
+        session.disconnect()
+    }
+
+    /// A 200 from `stop-current-app` is not the app letting go: the daemon clears
+    /// its own slot several awaits later, past the return-to-zero it performs on the
+    /// app's behalf. `stop?goto_sleep=true` parks the robot, so asking for it on top
+    /// of that hand-back puts two motions on one robot.
+    @Test("the teardown waits for the daemon to stop naming the app")
+    func waitsForTheAppToLetGo() async {
+        let client = PowerOffClient(running: .preview(.running), stoppingReads: 3)
+        let session = await connected(client)
+        try? await session.refreshCurrentApp()
+        await session.powerOff()
+        #expect(client.toreDownOverARunningApp == false)
+        #expect(client.recordedSteps == [.stopApp, .stopDaemon(gotoSleep: true)])
         session.disconnect()
     }
 

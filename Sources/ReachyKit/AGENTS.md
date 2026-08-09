@@ -63,6 +63,18 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   it. An unmatched name passes through untouched — a local app with no Hub card is still an app, and a wrong match
   would put somebody else's settings port on this one. Nothing above this layer should re-derive it:
   `RobotSession.runningApp`, the dock, the app page and the widget snapshot all read the joined value.
+- **Both rungs of the power ladder hand the robot back first, and the wait is the part that matters.**
+  `releaseRunningApp()` (`RobotSession+Power`) stops the app holding the robot and then polls until the daemon stops
+  naming it — `sleep()` and `powerOff()` both go through it, because neither transition tells the app manager
+  anything: `Daemon.stop` drops the media server and the JSON-RPC relay and never touches it, and
+  `move/play/goto_sleep` is an animation while `motors/set_mode/disabled` is a switch. An app left running has the
+  motors taken out from under it and dies on its next command, which is what "sleeping killed my app" turned out to
+  be. The **wait** is not politeness: a 200 from `stop-current-app` is not the app letting go (the daemon sets
+  `stopping` before any I/O and clears its own slot on the last line, past the return-to-zero it performs on the
+  app's behalf), so parking on top of it puts two motions on one robot and `play_move` takes its guard
+  non-blocking — one of the two silently does nothing. Bounded by `appStopTimeout` and never fatal: a refusal is
+  reported and a timeout is ignored, because a head held up for the daemon's one-way `stopping` wedge is the worse
+  outcome. The intent-side twin is `RobotAppRelease` in `ReachyWidgetUI`, on a much shorter budget.
 - **`robotError` is the robot's connection and power, and nothing else.** It was `lastError`, every funnel in the
   session wrote to it, and that is the second half of the same bug: a genuine Apps failure surfaced on the Robot tab
   too. Now `withClient`, `withAppsClient`, `withWiFiClient`, `withHFAuthClient` and `withUpdateClient` only throw —

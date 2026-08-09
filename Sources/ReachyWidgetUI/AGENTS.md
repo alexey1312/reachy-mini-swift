@@ -38,11 +38,20 @@ reverse.
 
 ## The intents, and who each one is for
 
-Three protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher` and `RobotShutdown` —
-and one piece of bookkeeping, `RobotAppCommand`. Each has a twin in `RobotSession`, and the twins are not shared code
-on purpose: a session reads its own cached state and reports each failure onto a screen, while an intent has seconds,
-one client, and one sentence. Say which is which in the doc comment when adding the next pair.
+Five protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
+`RobotSleep` and `RobotShutdown` — and one piece of bookkeeping, `RobotAppCommand`. Each has a twin in `RobotSession`,
+and the twins are not shared code on purpose: a session reads its own cached state and reports each failure onto a
+screen, while an intent has seconds, one client, and one sentence. Say which is which in the doc comment when adding
+the next pair.
 
+- **`RobotAppRelease` is the step both parking intents take first, and `RobotSleep` exists because of it.** Neither
+  `move/play/goto_sleep` nor `daemon/stop` says anything to the app manager, so an app left running has the motors
+  taken out from under it and dies on its next command — sleeping had to grow the same step powering off already
+  had. It could not go into `RobotPower`: that one holds a `RobotAPIClient`, knows nothing about apps, and adding
+  one would put the app manager inside the wake sequence too. **The wait is the part that is easy to drop**: a 200
+  from `stop-current-app` is not the app letting go, so the reading is what says the robot is free. `.widgetIntent`
+  cuts that budget to six seconds against the session's thirty, which is a real trade — the session waits for a slow
+  stop, an intent gives up and parks anyway rather than being killed with nothing written down.
 - **`RobotAppCommand` is the bookkeeping half and there are four callers**: the widget tile and Shortcuts' start,
   stop and toggle. Pending state, the snapshot write and both timeline reloads live there once. A caller with no tile
   behind it (`StopRobotAppIntent`) passes no `appID` and files no pending caption — `RobotAppLaunchState` is keyed by

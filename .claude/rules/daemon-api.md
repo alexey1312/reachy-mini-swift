@@ -252,6 +252,12 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.
+  - **Sleeping does not stop the app either**, the same gap `daemon/stop` has. `set_mode/disabled` is a switch and
+    the app manager is never told, so an app is still driving when the motors go and dies on its next command. Both
+    the client's sleep and its power-off therefore stop the app first *and wait for the daemon to stop naming it* —
+    a 200 from `stop-current-app` is not the app letting go (see the `stopping` section above), and parking on top
+    of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot, where `play_move`'s
+    non-blocking guard silently drops one of them. `RobotSession.releaseRunningApp` and `RobotAppRelease`.
 - `daemon/start?wake_up=<bool>` returns a job id immediately and starts the backend in the background (409 while
   another job runs); poll `daemon/status` until `running`. With `wake_up=true` the daemon enables the motors itself.
   - **That flag is what lets a caller with no time wake a robot at all.** `motors/set_mode` is behind `get_backend`

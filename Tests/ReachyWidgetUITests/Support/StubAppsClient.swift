@@ -13,6 +13,7 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         case daemonStatus
         case setMotorMode(Components.Schemas.MotorControlMode)
         case wakeUp
+        case gotoSleep
         case startApp(String)
         case startDaemon(wakeUp: Bool)
         case stopDaemon(gotoSleep: Bool)
@@ -35,6 +36,18 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
     var moveNeverFinishes = false
     var stopAppFails = false
     var stopDaemonFails = false
+    /// Readings after a stop that still name the app as holding the robot — what
+    /// the real route does, since it answers 200 and clears its own slot several
+    /// awaits later. `Int.max` is the app that never lets go.
+    var stoppingReads = 0
+    private var remainingStoppingReads = 0
+    private var appHeldTheRobotAtParking = false
+
+    /// Whether the robot was parked — by the animation or by the daemon's own
+    /// teardown — while the daemon still named an app as holding it.
+    var parkedOverARunningApp: Bool {
+        lock.withLock { appHeldTheRobotAtParking }
+    }
 
     var calls: [Call] {
         lock.withLock { recorded }
@@ -65,7 +78,9 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
     }
 
     func gotoSleep() async throws -> String {
-        "sleep-uuid"
+        record(.gotoSleep)
+        lock.withLock { appHeldTheRobotAtParking = remainingStoppingReads > 0 }
+        return "sleep-uuid"
     }
 
     func runningMoveUUIDs() async throws -> Set<String> {
@@ -77,8 +92,11 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         lock.withLock { isBackendRunning = true }
     }
 
+    /// The daemon parks the robot itself on the way down, so this counts as a
+    /// parking too — asking for it over a live app is the same mistake.
     func stopDaemon(gotoSleep: Bool) async throws {
         record(.stopDaemon(gotoSleep: gotoSleep))
+        lock.withLock { appHeldTheRobotAtParking = remainingStoppingReads > 0 }
         if stopDaemonFails {
             throw Refused()
         }
@@ -88,7 +106,13 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
 
     func currentAppStatus() async throws -> RobotAppStatus? {
         record(.currentAppStatus)
-        return lock.withLock { running }
+        return lock.withLock { () -> RobotAppStatus? in
+            guard remainingStoppingReads > 0 else { return running }
+            if remainingStoppingReads != .max {
+                remainingStoppingReads -= 1
+            }
+            return Self.status(name: "dance_party", state: "stopping")
+        }
     }
 
     func startApp(named name: String) async throws -> RobotAppStatus {
@@ -103,7 +127,10 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         if stopAppFails {
             throw Refused()
         }
-        lock.withLock { running = nil }
+        lock.withLock {
+            remainingStoppingReads = stoppingReads
+            running = nil
+        }
     }
 
     // MARK: - Fixtures
