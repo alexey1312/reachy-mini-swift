@@ -107,6 +107,26 @@ struct ConnectProgressModelTests {
         await waitUntil("the final frame is released") { model.holdsGate == false }
     }
 
+    @Test("a phase arriving during the trailing dwell is still shown")
+    func trailingDwellDoesNotStrandALatePhase() async {
+        let model = ConnectProgressModel(dwell: .milliseconds(150))
+        model.observe(.connecting(.handshaking))
+        model.observe(.connecting(.checkingBackend(identity)))
+
+        await waitUntil("the second stage is shown") {
+            model.displayed == .connecting(.checkingBackend(identity))
+        }
+        // The drain is now inside its trailing dwell: the queue is empty but the
+        // task is still alive, so this phase is queued rather than shown — and a
+        // session settled on `.connected` never calls `observe` again. Releasing
+        // the gate without looking back at the queue stranded it there for good,
+        // with the gate showing "checking backend" over a connected robot.
+        model.observe(.connected(identity))
+
+        await waitUntil("the connected frame is shown") { model.displayed == .connected(identity) }
+        await waitUntil("the gate is released") { model.holdsGate == false }
+    }
+
     @Test("a failure is shown without waiting and drops what was queued")
     func failureBypassesTheDwell() {
         let model = ConnectProgressModel(dwell: .seconds(30))
