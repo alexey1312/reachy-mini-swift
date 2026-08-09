@@ -57,6 +57,10 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run inspect:bundle # Upload an iOS bundle-size analysis to tuist.dev
 ./bin/mise run sim-daemon     # Simulated robot daemon (MuJoCo, LAN-reachable)
 ./bin/mise run test:sim       # Integration tests against a running sim-daemon
+./bin/mise run test:smoke     # XCUITest: boot the app on a simulator, walk the gate
+./bin/mise run test:smoke:sim # Same plus the full user path against a running sim-daemon
+./bin/mise run release:ios    # Archive Release and upload to TestFlight (docs/release.md)
+./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
 ./bin/mise run test:snapshots:record  # Re-record the reference images
@@ -71,6 +75,10 @@ sources and reports success over a widget that does not build. That is how `miss
 `ReachyAppsWidget.swift` reached `main` in #7. `build:app:ios` (`-destination 'generic/platform=iOS'`, unsigned) is
 what covers it, and CI runs both.
 `test:filter` matches type names (`RobotSessionAudioTests`), not `@Suite` display names.
+`Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
+queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
+(`test:smoke:sim`) is gated on `REACHY_SMOKE_HOST` exactly as `test:sim` is on `REACHY_SIM_HOST`, so a plain run
+skips it silently.
 `SimulatorIntegrationTests` is gated on `REACHY_SIM_HOST`, so plain `test` **skips it silently and reports green** —
 run `test:sim` against a live `sim-daemon` to exercise it.
 `swift test --skip-build` runs the previously built binary: rebuild with `swift build --build-tests` after editing a

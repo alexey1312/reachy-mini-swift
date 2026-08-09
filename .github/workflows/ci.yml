@@ -116,3 +116,23 @@ jobs:
 
       - name: Build ReachyMini + widget (iOS, Release)
         run: mise run build:app:ios:release
+
+  # The one job that launches the app binary: XCUITest walks the connect gate on
+  # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  smoke:
+    name: Smoke (iOS Simulator)
+    runs-on: macos-15
+    needs: lint
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+        with:
+          experimental: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test
+        run: mise run test:smoke

@@ -164,6 +164,21 @@ let project = Project(
             ],
             settings: .settings(base: ["SWIFT_VERSION": "6.0"])
         ),
+        // Smoke tests: the one thing snapshots cannot see is the app binary itself
+        // booting. iOS-only — XCUITest on macOS needs Accessibility permission on
+        // the runner, which CI cannot grant.
+        .target(
+            name: "ReachyMiniUITests",
+            destinations: [.iPhone, .iPad],
+            product: .uiTests,
+            bundleId: "com.alexey1312.ReachyMiniUITests",
+            deploymentTargets: .iOS("18.0"),
+            infoPlist: .default,
+            sources: ["ReachyMiniUITests/Sources/**"],
+            dependencies: [
+                .target(name: "ReachyMini"),
+            ]
+        ),
         .target(
             name: "ReachyStorybook",
             destinations: [.iPhone, .iPad],

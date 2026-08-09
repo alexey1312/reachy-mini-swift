@@ -151,6 +151,44 @@ set -o pipefail
 swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
 """
 
+# Smoke tests boot the actual app binary on a simulator — the one wiring nothing
+# else exercises. No OS pin: unlike the snapshot suite these assert on structure,
+# not pixels, so whatever runtime the machine has is fine. Labels are matched in
+# English, hence the pinned test language (the snapshot suite's trade).
+[tasks."test:smoke"]
+description = "Launch the app on a simulator and smoke the connect gate (XCUITest)"
+depends = ["project"]
+run = '''
+set -o pipefail
+SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
+xcrun simctl boot "$SIM" 2>/dev/null || true
+xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination "platform=iOS Simulator,name=${SIM}" \
+  -derivedDataPath Apps/DerivedData \
+  -testLanguage en -testRegion US \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  2>&1 | xcsift
+'''
+
+[tasks."test:smoke:sim"]
+description = "Smoke the whole user path against a running sim daemon (start with: mise run sim-daemon)"
+depends = ["project"]
+run = '''
+set -o pipefail
+SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
+xcrun simctl boot "$SIM" 2>/dev/null || true
+# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment.
+xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination "platform=iOS Simulator,name=${SIM}" \
+  -derivedDataPath Apps/DerivedData \
+  -testLanguage en -testRegion US \
+  CODE_SIGNING_ALLOWED=NO \
+  TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
+  -skipPackagePluginValidation -skipMacroValidation \
+  2>&1 | xcsift
+'''
+
 [tasks."test:sim"]
 description = "Integration tests against a running sim daemon (start with: mise run sim-daemon)"
 run = """
@@ -252,7 +290,7 @@ if [ -n "$DRIFT" ]; then
   echo "hk.pkl references $DRIFT but mise.toml pins $PINNED — bump both together." >&2
   exit 1
 fi
-swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
+swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
 actionlint
 '''
 
