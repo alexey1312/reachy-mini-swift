@@ -50,6 +50,14 @@ let project = Project(
                 // The product name is the internal identifier; this is the brand.
                 "CFBundleDisplayName": .string("Hey Reachy"),
                 "CFBundleName": .string("Hey Reachy"),
+                // What `\(.applicationName)` in `ReachyShortcuts` resolves to, and
+                // the display name alone reads badly inside a phrase: "Wake up Hey
+                // Reachy". Siri matches every phrase against these as well.
+                // Deliberately not "Reachy Mini" — that is the name of Pollen's own
+                // app, and on a phone carrying both it would be ambiguous.
+                "INAlternativeAppNames": .array([
+                    .dictionary(["INAlternativeAppName": .string("Reachy")]),
+                ]),
                 "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
                 "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
                 // Spelled out because `actool` does not write it: it fills
