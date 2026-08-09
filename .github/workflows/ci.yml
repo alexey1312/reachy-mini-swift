@@ -82,6 +82,12 @@ jobs:
     runs-on: macos-15
     needs: lint
     timeout-minutes: 60
+    # `id-token` is what lets the step below authenticate over OIDC instead of a stored token.
+    # Job-level permissions replace the defaults wholesale, hence the explicit `contents: read`
+    # for checkout.
+    permissions:
+      id-token: write
+      contents: read
     env:
       DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
     steps:
@@ -96,10 +102,20 @@ jobs:
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # `build:app` generates the project first (depends = ["project"]). No
-      # `tuist auth login`: Apps/Tuist.swift sets optionalAuthentication, so
-      # generation works without a tuist.dev session. This repo is not connected to
-      # the server project, so there is no binary cache to pull either.
+      # Build insights reach tuist.dev through the `tuist inspect build` post-action Tuist
+      # writes into every generated scheme, and that post-action needs a session. OIDC mints a
+      # short-lived one with no stored secret, but only for a branch of this repository: a
+      # fork's workflow gets no id-token, so the step is skipped there. It also needs the
+      # repository connected to the server project, without which the server answers "No
+      # projects linked to the repository" — a warning rather than a red build, since this job
+      # exists to compile the app shell and the widget, not to carry telemetry. Generation
+      # itself needs none of it: Apps/Tuist.swift sets optionalAuthentication.
+      - name: Authenticate with tuist.dev (OIDC)
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        working-directory: Apps
+        run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
+
+      # `build:app` generates the project first (depends = ["project"]).
       - name: Build ReachySpike
         run: mise run build:app
 
