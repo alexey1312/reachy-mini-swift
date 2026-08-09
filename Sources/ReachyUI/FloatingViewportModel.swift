@@ -254,8 +254,8 @@ final class FloatingViewportModel {
         )
     }
 
-    /// A drag that carried — or threw — the window past an edge switches it off;
-    /// anything else snaps to the nearest corner.
+    /// A drag that carried — or threw — the window past its own corner's edge
+    /// switches it off; anything else snaps to the nearest corner.
     ///
     /// **The predicted end point decides, not where the finger stopped.** That is what
     /// makes a flick enough: the window keeps going the way it was thrown, and a
@@ -302,13 +302,24 @@ final class FloatingViewportModel {
         let anchor = Self.centre(of: corner, in: bounds)
         let moved = CGPoint(x: anchor.x + thrown.width, y: anchor.y + thrown.height)
         let resting = Self.clamped(moved, in: bounds)
-        if moved.x < resting.x - Self.dockOvershoot {
-            return .docked(.leading, y: Self.clampedTabY(moved.y, in: bounds))
+        let nearest = Self.nearestCorner(to: resting, in: bounds)
+        // Hiding is offered only in the corner the window already holds: a throw that
+        // changes corner is aimed at a corner, however much sideways speed it carries.
+        // A fast vertical flick predicts hundreds of points of x from a few degrees of
+        // drift, and used to trip the overshoot and hide the window at the top of an
+        // edge. Equality with `corner` also pins the edge — a point clamped against an
+        // edge is always in that edge's half, so a trailing corner can only ever
+        // overshoot trailing. VoiceOver's explicit "Hide at…" actions go through
+        // `beginDocking` and stay free to pick either edge.
+        if nearest == corner {
+            if moved.x < resting.x - Self.dockOvershoot {
+                return .docked(.leading, y: Self.clampedTabY(moved.y, in: bounds))
+            }
+            if moved.x > resting.x + Self.dockOvershoot {
+                return .docked(.trailing, y: Self.clampedTabY(moved.y, in: bounds))
+            }
         }
-        if moved.x > resting.x + Self.dockOvershoot {
-            return .docked(.trailing, y: Self.clampedTabY(moved.y, in: bounds))
-        }
-        return .floating(Self.nearestCorner(to: resting, in: bounds) ?? corner)
+        return .floating(nearest ?? corner)
     }
 
     /// Forgets the gesture. Called from `dragEnded`, and from the window's

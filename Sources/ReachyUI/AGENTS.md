@@ -115,6 +115,13 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     window continues instead of restarting from a standstill. A spring's initial velocity is a fraction of the
     _journey_ per second, so `releaseDistance(for:in:)` exists to tell the view how long the journey is — it shares
     `resolved(_:in:)` with `dragEnded` rather than duplicating the branch.
+  - **A gesture may hide the window only in the corner it already holds.** A throw whose predicted point lands
+    nearest a _different_ corner is aimed at that corner, however much sideways speed it carries — a fast vertical
+    flick predicts hundreds of points of x from a few degrees of drift, and used to trip the 44 pt overshoot and
+    hide the window at the top of an edge. The corner-equality guard in `resolved(_:in:)` also pins the edge for
+    free (a point clamped against an edge is always in that edge's half), so reaching the far edge takes two
+    gestures: park in a corner there, then push out. VoiceOver's explicit "Hide at…" actions go through
+    `beginDocking` and stay free to pick either edge.
 - **`.unreachable` belongs to the shell, not the gate.** Only `.idle` and `.connecting` show the gate. A network blip
   must not pull the tab bar out from under a finger, and the robot screen already reports the state in place.
 - **The gate's fork has progress conditions, and they only ever delay.** For `.connected`, `isConnectedEnough` waits
