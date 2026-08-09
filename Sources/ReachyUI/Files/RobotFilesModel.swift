@@ -38,6 +38,11 @@ final class RobotFilesModel {
     /// Whether the Keychain has been consulted. See `loadStoredCredentials()`.
     private var hasLoadedCredentials = false
 
+    /// Coalesces overlapping listings (`AppStoreModel.loadID`'s pattern): a slow
+    /// answer for directory A must not land under path B after the user has
+    /// already navigated on.
+    private var listingID: UUID?
+
     /// The password field. Not `private(set)`: the sheet binds to it.
     var username: String
     /// Empty until `loadStoredCredentials()` or the user fills it in. The factory
@@ -187,16 +192,25 @@ final class RobotFilesModel {
 
     func refresh() async {
         guard phase == .browsing else { return }
+        let requestID = UUID()
+        listingID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if listingID == requestID {
+                isLoading = false
+            }
+        }
         do {
-            entries = try await files.list(path).sorted(by: Self.ordered)
+            let listed = try await files.list(path).sorted(by: Self.ordered)
+            guard listingID == requestID else { return }
+            entries = listed
             hasListed = true
             lastError = nil
         } catch is CancellationError {
             // Leaving the screen mid-listing learned nothing: it may neither report
             // a failure nor clear one still being read.
         } catch {
+            guard listingID == requestID else { return }
             // A refusal is an answer. Without this the screen keeps the full-bleed
             // "Reading the folder…" overlay up for good — and that overlay covers
             // the very error row the failure just filled in.
