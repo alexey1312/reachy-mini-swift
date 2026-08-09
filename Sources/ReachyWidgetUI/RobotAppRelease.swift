@@ -54,7 +54,9 @@ struct RobotAppRelease: Sendable {
         while !Task.isCancelled {
             do {
                 let status = try await apps.currentAppStatus()
-                if status?.isBusy != true { return true }
+                if status?.isBusy != true {
+                    return true
+                }
             } catch {
                 // A reading that never arrived is not evidence either way.
             }
