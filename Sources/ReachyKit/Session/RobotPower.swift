@@ -99,7 +99,15 @@ public struct RobotPower: Sendable {
         let deadline = ContinuousClock.now + configuration.moveCompletionTimeout
         while ContinuousClock.now < deadline {
             guard !Task.isCancelled else { return }
-            guard let running = try? await client.runningMoveUUIDs() else { return }
+            // A failed poll proves nothing about the animation — returning on a
+            // dropped packet cut power mid-move, exactly the head-drop this wait
+            // exists to prevent (the session-side twin already continues here).
+            // A remote connection still exits at once: it reports no running
+            // moves by answering [] successfully, not by throwing.
+            guard let running = try? await client.runningMoveUUIDs() else {
+                try? await Task.sleep(for: configuration.movePollInterval)
+                continue
+            }
             if !running.contains(uuid) {
                 return
             }
