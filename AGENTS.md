@@ -23,9 +23,10 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   matches its own request.
 - The `hk` version in `mise.toml` must match the `hk@X.Y.Z` package URI in `hk.pkl` (bump together).
 - `mise run project` (tuist generate) needs a one-time `./bin/mise x -- tuist auth login` — the project is connected
-  to tuist.dev (`alexey1312/reachy-mini-desktop-app-swift` in `Apps/Tuist.swift`). That handle names the **tuist.dev
-  project**, not this repository, and deliberately keeps the pre-rename name: renaming the GitHub repo does not rename
-  the server-side project, so "fixing" it to match `reachy-mini-swift` points generation at a project that does not exist.
+  to tuist.dev (`alexey1312/reachy-mini-swift` in `Apps/Tuist.swift`). That handle names the **tuist.dev project**,
+  which happens to match this repository's name only because the pre-rename project was deleted and recreated;
+  renaming the GitHub repo does not rename the server-side project, so check `tuist project list` before assuming
+  the two stay in step. Deleting the old project took its build and bundle history with it.
 - Run every `tuist` command from `Apps/` — `Tuist.swift` lives there and tuist only searches _upward_, so from the repo
   root it finds no manifest and reports the project as unconnected to the server (`run 'tuist init'`).
 - Use `mise run inspect:bundle [path]` rather than `tuist inspect bundle`: it handles the cwd, defaults to the iOS
@@ -33,7 +34,31 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   the root). Size numbers only mean something off a Release archive — a Debug bundle carries `__preview.dylib`,
   `*.debug.dylib` and the provisioning profile, none of which ship.
 - Do **not** set `enableCaching` — without a running cache daemon every compile task waits out a CAS socket deadline,
-  and CI has neither the daemon nor cache credentials (this repo is not connected to the tuist.dev project).
+  and CI has no daemon.
+- **Build insights reach tuist.dev through a scheme post-action, not through a command.** `tuist generate` writes
+  `tuist inspect build` into every generated scheme's build action (and `tuist inspect test` into
+  `ReachyUISnapshotTests`' test action), pointing at the mise-installed binary by absolute path. That post-action
+  reads the `.xcactivitylog` in `Apps/DerivedData/Logs/Build`, and **`xcodebuild` writes one only when a result
+  bundle is requested** — Xcode.app writes one unconditionally. So every recorded build run came from the GUI, while
+  `mise run build:app` ran the post-action, got "couldn't find the most recent activity log", and left the build
+  green: a post-action's exit code is not the build's. Hence `-resultBundlePath` on the xcodebuild tasks; drop it and
+  the insights silently stop. `tuist xcodebuild build` is the alternative the docs name, but it would have to wrap
+  the xcsift pipe.
+- **On CI the post-action also needs a session, and it comes from OIDC, not a secret.**
+  `permissions: id-token: write` plus a `tuist auth login` step, which the pinned CLI answers with "Detected CI
+  environment, authenticating with OIDC…". A fork's workflow gets no id-token, so the step is skipped there by
+  design. What OIDC does require is the GitHub **repository connected to the server project** — and installing the
+  Tuist GitHub app on the account is only half of that: the connection is a second, per-project step, and without it
+  the server refuses the exchange with "No projects linked to the repository". The readable indicator is
+  `repository_url`, which `tuist project show` prints only into the session log, not to the terminal; while it is
+  `null`, OIDC has nothing to authorize against and PR comments cannot arrive either. The step warns rather than
+  fails on that, deliberately: `app-build` is what compiles the widget, and telemetry must not be what reddens it. Fallback if the connection is not wanted: an account token with the `ci`
+  scope group (`tuist account tokens create alexey1312 --scopes ci --name github-ci`) in a `TUIST_TOKEN` secret —
+  `tuist project tokens` is deprecated, and a user session is interactive.
+  `Apps/Tuist.swift` sets `optionalAuthentication: true` so a fork can still generate, which is exactly what makes a
+  missing session invisible: nothing fails, the data just never arrives. Check for `is_ci: true` after changing
+  anything here — the CLI's own `build list` decoder is broken in 4.203.1 and errors on a 200 response, so read the
+  JSON out of `~/.local/state/tuist/sessions/*/logs.txt`.
 - `Package.resolved` **oscillates between the two build systems, and neither is wrong.** `xcodebuild` resolves the
   whole Tuist workspace and writes back to the root package's file, adding five pins (Prefire, swift-snapshot-testing,
   swift-syntax, swift-custom-dump, xctest-dynamic-overlay); `swift build` / `swift test` see only the root package and
