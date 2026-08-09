@@ -8,14 +8,43 @@ struct JoystickDeflection: Equatable, Sendable {
     static let zero = JoystickDeflection()
 }
 
+/// Which rotation zone a deflection is in.
+///
+/// It lives beside the mapping rather than beside the pad because the mapping is
+/// what decides it — the pad only draws what it is told.
+enum JoystickRotationSide: Equatable, Sendable {
+    case left, right
+}
+
 /// Turns a joystick deflection into a head pose and a body rotation speed.
 ///
-/// The first `rotationThreshold` of sideways travel is head yaw; past it the head
-/// holds at its limit and the body starts turning, at a speed that grows from zero
-/// at the boundary. `maxBodyYawRate` must stay below `TargetSlewLimiter.bodyYawRate`
-/// or the limiter would cap the turn rather than merely smooth it.
+/// A vertical line at `±rotationThreshold` cuts the pad into three bands: inside it
+/// sideways travel is head yaw, and the whole slice beyond it — its top and bottom
+/// corners as much as its middle — turns the body, at a speed that grows from zero at
+/// the boundary. `maxBodyYawRate` must stay below `TargetSlewLimiter.bodyYawRate` or
+/// the limiter would cap the turn rather than merely smooth it.
+///
+/// **The boundary is a straight line and not a radius**, because it is also where head
+/// yaw saturates: the head stops moving exactly as the body starts, which is what
+/// makes the handover continuous. A radial zone would part the two — a push into the
+/// corner is far from the centre while its sideways component is not, so the body
+/// would begin turning under a head still halfway through its own travel.
 struct JoystickMapping: Equatable, Sendable {
-    var rotationThreshold = 0.7
+    /// Where head yaw ends and body rotation begins, as a fraction of the pad's
+    /// sideways travel.
+    ///
+    /// It was 0.7, which on a round pad put the boundary outside the diagonal: the rim
+    /// only reaches `|x| = 0.7` within 45.6° of level, so a thumb pushed hard left and
+    /// a little up sat against the edge of the pad and the robot did not turn — the
+    /// zone read as "strictly left and right" because that is what it was. Half the
+    /// travel puts the boundary at 60° off level, so every direction from level out to
+    /// past the diagonal turns the body, and the zone covers two thirds of each side
+    /// of the pad rather than half.
+    ///
+    /// A feel constant: it costs head-yaw resolution (the full ±`headAngle` now
+    /// arrives at half travel), and only the robot can settle whether that trade is
+    /// right.
+    var rotationThreshold = 0.5
     /// Comfortable head range; the daemon clamps anyway.
     var headAngle = 40.0 * .pi / 180
     /// Radians per second at full sideways deflection — a half turn in three seconds.
@@ -36,6 +65,13 @@ struct JoystickMapping: Equatable, Sendable {
         guard over > 0 else { return 0 }
         let ramp = (over / (1 - rotationThreshold)).clamped(to: 0 ... 1)
         return deflection.x < 0 ? ramp * maxBodyYawRate : -ramp * maxBodyYawRate
+    }
+
+    /// Which zone the knob is in, if any — defined as "the body is turning", so the
+    /// slice the pad shades and the rotation that slice stands for cannot disagree.
+    func rotationSide(_ deflection: JoystickDeflection) -> JoystickRotationSide? {
+        guard bodyYawRate(deflection) != 0 else { return nil }
+        return deflection.x > 0 ? .right : .left
     }
 }
 
