@@ -53,7 +53,7 @@ one client, and one sentence. Say which is which in the doc comment when adding 
 - **`isDiscoverable = false` does not remove an intent from `Metadata.appintents`** — it is recorded there as a flag.
   Reading the built metadata to check what Shortcuts offers means reading `isDiscoverable`, not looking for an
   absence:
-  `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachySpike.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
+  `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private

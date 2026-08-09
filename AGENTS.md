@@ -45,7 +45,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 
 ```bash
 ./bin/mise run build          # Debug build (piped through xcsift)
-./bin/mise run build:app      # Build the ReachySpike app target (generates first)
+./bin/mise run build:app      # Build the ReachyMini app target (generates first)
 ./bin/mise run build:app:ios  # Same, for iOS — the only task that compiles the widget
 ./bin/mise run device         # Build, install and launch on the connected iPhone
 ./bin/mise run test           # All tests, parallel
@@ -63,7 +63,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
 ```
 
-`build` / `test` are SwiftPM only — they never compile `Apps/ReachySpike`. Use `build:app` for that; CI runs it as a
+`build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it as a
 separate job, so app-target breakage no longer reaches `main` unnoticed.
 **`build:app` builds for macOS, where `ReachyWidget` does not exist** — the extension is `destinations: [.iPhone,
 .iPad]` and `Project.swift` embeds it behind `condition: .when([.ios])`, so a macOS destination compiles none of its
@@ -77,7 +77,7 @@ run `test:sim` against a live `sim-daemon` to exercise it.
 test, or the run silently verifies stale code.
 Everything pipes through xcsift, which on long runs can truncate and report `status: incomplete` while hiding the real
 result — verify the artifact, or rerun the tool directly
-(`./bin/mise x -- swiftlint lint --strict Sources Tests Apps/ReachySpike`). Always pass those explicit paths — a bare
+(`./bin/mise x -- swiftlint lint --strict Sources Tests Apps/ReachyMini`). Always pass those explicit paths — a bare
 `.` walks into `Apps/DerivedData`, and swiftformat then "fails" on generated and vendored sources.
 **swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
 `allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
@@ -141,7 +141,7 @@ Snapshots live in `Apps/` as an Xcode target because they need an iOS simulator,
 and `Project.swift` globs it unconditionally, so generation — and with it `build:app` and every snapshot task — failed
 outright on a fresh clone and in CI until the generator ran. Do not drop that step.
 `Apps/<App>/Previews/**` is in the storybook and snapshot targets' `sources` but **not** in the app target's
-(`ReachySpike/Sources/**` only), so a helper the app itself must see belongs in `Sources/`.
+(`ReachyMini/Sources/**` only), so a helper the app itself must see belongs in `Sources/`.
 **Previews compile only in the Xcode targets, so `swift build` cannot vet them** — and Prefire copies each preview
 body into a generated file, where a leading-dot call resolves against the type expected _there_. A `static func`
 helper for an element type therefore belongs on that element (`KnownRobotsModel.Entry.preview`), not on its owner:

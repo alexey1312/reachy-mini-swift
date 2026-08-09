@@ -2,7 +2,7 @@ import ReachyUI
 import SwiftUI
 
 @main
-struct ReachySpikeApp: App {
+struct ReachyMiniApp: App {
     // Carries the Home Screen quick actions and nothing else. The menu they appear
     // in is UIKit's, and a scene delegate is the only way to be told one was
     // tapped — `ReachyQuickAction` says why App Shortcuts cannot cover it.
@@ -17,7 +17,7 @@ struct ReachySpikeApp: App {
             // one of them — it is handed to Settings → Advanced, where a phase 0
             // device check belongs now that connecting is a first-class flow.
             ReachyRootView {
-                SpikeView()
+                DeviceCheckView()
             }
         }
     }

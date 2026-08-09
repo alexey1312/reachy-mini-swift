@@ -59,15 +59,15 @@ set -o pipefail
 swift build --configuration release 2>&1 | xcsift
 """
 
-# `build` and `test` are SwiftPM only — Apps/ReachySpike is an Xcode target and
+# `build` and `test` are SwiftPM only — Apps/ReachyMini is an Xcode target and
 # nothing else compiles it. Signing is off: the runner has no team, and the
 # personal one lives in CLAUDE.local.md.
 [tasks."build:app"]
-description = "Build the ReachySpike app target (macOS)"
+description = "Build the ReachyMini app target (macOS)"
 depends = ["project"]
 run = '''
 set -o pipefail
-xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'platform=macOS' -configuration Debug \
   -derivedDataPath Apps/DerivedData \
   CODE_SIGNING_ALLOWED=NO \
@@ -80,11 +80,11 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
 # it is not built at all. `generic/platform=iOS` compiles it without needing a
 # device, a simulator or a signing identity.
 [tasks."build:app:ios"]
-description = "Build the ReachySpike app and its widget extension (iOS, unsigned)"
+description = "Build the ReachyMini app and its widget extension (iOS, unsigned)"
 depends = ["project"]
 run = '''
 set -o pipefail
-xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'generic/platform=iOS' -configuration Debug \
   -derivedDataPath Apps/DerivedData \
   CODE_SIGNING_ALLOWED=NO \
@@ -188,7 +188,7 @@ run = '''
 set -euo pipefail
 SIM="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 # The playbook plugin only ever scans its own target's sources, so the CLI is driven directly.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachySpike/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated \
   --config Apps
 ./bin/mise run project
@@ -214,7 +214,7 @@ if [ -n "$DRIFT" ]; then
   echo "hk.pkl references $DRIFT but mise.toml pins $PINNED — bump both together." >&2
   exit 1
 fi
-swiftlint lint --strict Sources Tests Apps/ReachySpike Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
+swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
 actionlint
 '''
 
@@ -245,7 +245,7 @@ set -euo pipefail
 # The storybook target globs `Generated/**`, which is gitignored — tuist rejects a glob whose
 # directory does not exist, so generation fails outright on a fresh clone (and in CI) unless the
 # playbook is written first. Cheap enough to redo every time.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachySpike/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated --config Apps
 TUIST="$(./bin/mise where tuist)/tuist"
 cd Apps && exec env -u TOOLCHAINS "$TUIST" generate --no-open
@@ -258,7 +258,7 @@ description = "Upload an iOS app-bundle size analysis to tuist.dev"
 run = '''
 #!/bin/bash
 set -euo pipefail
-BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachySpike.app')}}"
+BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
 if [ ! -e "$BUNDLE" ]; then
   echo "No bundle at $BUNDLE — build for a device first (see CLAUDE.local.md)." >&2
   exit 1

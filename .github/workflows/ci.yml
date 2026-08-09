@@ -74,11 +74,11 @@ jobs:
       - name: Build & test
         run: mise run test
 
-  # `swift build` never reaches Apps/ReachySpike — it is an Xcode target, not an SPM
+  # `swift build` never reaches Apps/ReachyMini — it is an Xcode target, not an SPM
   # one, so nothing but SwiftLint ever looked at it. This job is the only thing that
   # compiles the app shell and the Tuist manifest that generates it.
   app-build:
-    name: App Build (ReachySpike, macOS + iOS)
+    name: App Build (ReachyMini, macOS + iOS)
     runs-on: macos-15
     needs: lint
     timeout-minutes: 60
@@ -100,11 +100,11 @@ jobs:
       # `tuist auth login`: Apps/Tuist.swift sets optionalAuthentication, so
       # generation works without a tuist.dev session. This repo is not connected to
       # the server project, so there is no binary cache to pull either.
-      - name: Build ReachySpike
+      - name: Build ReachyMini
         run: mise run build:app
 
       # The macOS destination leaves ReachyWidget out entirely (iOS-only extension,
       # embedded under `condition: .when([.ios])`), so until this step the widget's
       # sources were compiled by nothing at all.
-      - name: Build ReachySpike + widget (iOS)
+      - name: Build ReachyMini + widget (iOS)
         run: mise run build:app:ios

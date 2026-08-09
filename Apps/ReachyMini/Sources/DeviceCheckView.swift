@@ -8,18 +8,18 @@ import SwiftUI
 
 /// Phase 0.4 device-check screen: discovery, manual connect, stream counter.
 /// Checklist it serves — see docs/research/phase0.md.
-struct SpikeView: View {
-    @State private var model: SpikeModel
+struct DeviceCheckView: View {
+    @State private var model: DeviceCheckModel
     @State private var discovery: RobotBrowser
     /// ReachyUI's `\.reachyPreviewMode` is internal to that module, so this screen carries its own
     /// switch: a preview hands in a seeded browser and must not also start Bonjour.
     private let browsesLiveNetwork: Bool
 
-    /// `nil` defaults rather than `SpikeModel()`: a default argument is evaluated in a nonisolated
+    /// `nil` defaults rather than `DeviceCheckModel()`: a default argument is evaluated in a nonisolated
     /// context and both of these are main-actor isolated.
     @MainActor
-    init(model: SpikeModel? = nil, discovery: RobotBrowser? = nil, browsesLiveNetwork: Bool = true) {
-        _model = State(initialValue: model ?? SpikeModel())
+    init(model: DeviceCheckModel? = nil, discovery: RobotBrowser? = nil, browsesLiveNetwork: Bool = true) {
+        _model = State(initialValue: model ?? DeviceCheckModel())
         _discovery = State(initialValue: discovery ?? RobotBrowser())
         self.browsesLiveNetwork = browsesLiveNetwork
     }

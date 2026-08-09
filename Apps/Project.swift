@@ -31,12 +31,15 @@ let project = Project(
     ]),
     targets: [
         .target(
-            name: "ReachySpike",
+            name: "ReachyMini",
             destinations: [.iPhone, .iPad, .mac],
             product: .app,
-            bundleId: "com.alexey1312.ReachyMiniSpike",
+            bundleId: "com.alexey1312.ReachyMini",
             deploymentTargets: .multiplatform(iOS: "18.0", macOS: "15.0"),
             infoPlist: .extendingDefault(with: [
+                // The product name is the internal identifier; this is the brand.
+                "CFBundleDisplayName": .string("Hey Reachy"),
+                "CFBundleName": .string("Hey Reachy"),
                 // Phase 0.4 device checks: Local Network permission + Bonjour + ATS
                 "NSLocalNetworkUsageDescription": .string(
                     "Discovers and connects to your Reachy Mini robot on the local network."
@@ -69,12 +72,12 @@ let project = Project(
                 // is running regardless of what is registered here.
                 "CFBundleURLTypes": .array([
                     .dictionary([
-                        "CFBundleURLName": .string("com.alexey1312.ReachyMiniSpike"),
+                        "CFBundleURLName": .string("com.alexey1312.ReachyMini"),
                         "CFBundleURLSchemes": .array([.string("reachy-mini-swift")]),
                     ]),
                 ]),
             ]),
-            sources: ["ReachySpike/Sources/**"],
+            sources: ["ReachyMini/Sources/**"],
             entitlements: .dictionary([
                 "com.apple.security.application-groups": .array([.string(appGroup)]),
             ]),
@@ -97,10 +100,10 @@ let project = Project(
             name: "ReachyWidget",
             destinations: [.iPhone, .iPad],
             product: .appExtension,
-            bundleId: "com.alexey1312.ReachyMiniSpike.Widget",
+            bundleId: "com.alexey1312.ReachyMini.Widget",
             deploymentTargets: .iOS("18.0"),
             infoPlist: .extendingDefault(with: [
-                "CFBundleDisplayName": .string("Reachy Mini"),
+                "CFBundleDisplayName": .string("Hey Reachy"),
                 // Its own process, so it needs its own copy of the group name.
                 "ReachyAppGroupIdentifier": .string(appGroup),
                 // The control buttons run their intent in *this* process, and it
@@ -150,7 +153,7 @@ let project = Project(
             // the target it is attached to (`GeneratePlaybookCommand` ignores the config's
             // `sources`, and `playbook_configuration` has no such key), so it cannot see the
             // previews that live in ReachyUI. `mise run storybook` runs the CLI instead.
-            // `SpikeView` belongs to ReachySpike, which an app target cannot import; its two
+            // `DeviceCheckView` belongs to ReachyMini, which an app target cannot import; its two
             // source files are compiled in directly so the catalogue can show that screen too.
             sources: [
                 "ReachyStorybook/Sources/**",
@@ -158,9 +161,9 @@ let project = Project(
                 "../Sources/ReachyDesign/Previews/**",
                 "../Sources/ReachyUI/Previews/**",
                 "../Sources/ReachyWidgetUI/Previews/**",
-                "ReachySpike/Sources/SpikeView.swift",
-                "ReachySpike/Sources/SpikeModel.swift",
-                "ReachySpike/Previews/**",
+                "ReachyMini/Sources/DeviceCheckView.swift",
+                "ReachyMini/Sources/DeviceCheckModel.swift",
+                "ReachyMini/Previews/**",
             ],
             dependencies: [
                 .package(product: "ReachyDesign"),
@@ -180,9 +183,9 @@ let project = Project(
                 "../Sources/ReachyDesign/Previews/**",
                 "../Sources/ReachyUI/Previews/**",
                 "../Sources/ReachyWidgetUI/Previews/**",
-                "ReachySpike/Sources/SpikeView.swift",
-                "ReachySpike/Sources/SpikeModel.swift",
-                "ReachySpike/Previews/**",
+                "ReachyMini/Sources/DeviceCheckView.swift",
+                "ReachyMini/Sources/DeviceCheckModel.swift",
+                "ReachyMini/Previews/**",
             ],
             dependencies: [
                 .package(product: "ReachyDesign"),
