@@ -78,7 +78,8 @@ what covers it, and CI runs both.
 `Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
 queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
 (`test:smoke:sim`) is gated on `REACHY_SMOKE_HOST` exactly as `test:sim` is on `REACHY_SIM_HOST`, so a plain run
-skips it silently.
+skips it silently. Tuist folds a `.uiTests` target into its host's scheme rather than generating one of its own —
+there is no `ReachyMiniUITests` scheme, both smoke tasks test the `ReachyMini` scheme.
 `SimulatorIntegrationTests` is gated on `REACHY_SIM_HOST`, so plain `test` **skips it silently and reports green** —
 run `test:sim` against a live `sim-daemon` to exercise it.
 `swift test --skip-build` runs the previously built binary: rebuild with `swift build --build-tests` after editing a
