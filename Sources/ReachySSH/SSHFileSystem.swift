@@ -53,7 +53,10 @@ public actor SSHFileSystem: RobotFileSystem {
         }
         let attempt = Task { try await establish(credentials) }
         connecting = attempt
-        defer { connecting = nil }
+        // `disconnect()` may have cleared the slot — or a reconnect refilled it —
+        // while this attempt was suspended; clearing blindly would erase the
+        // successor's handle and revive the very race this task exists to stop.
+        defer { if connecting == attempt { connecting = nil } }
         return try await attempt.value
     }
 
@@ -96,6 +99,11 @@ public actor SSHFileSystem: RobotFileSystem {
 
     public func disconnect() async {
         connecting?.cancel()
+        // Cleared as well as cancelled: the doomed attempt only notices the
+        // cancellation once its handshake lands, seconds later, and a reconnect
+        // arriving before then must start fresh rather than join it and inherit
+        // its `CancellationError`.
+        connecting = nil
         try? await sftp?.close()
         try? await client?.close()
         sftp = nil
