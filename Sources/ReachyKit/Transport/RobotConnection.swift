@@ -249,6 +249,25 @@ public actor RobotConnection {
         return Set(moves.map(\.uuid))
     }
 
+    /// The zero pose, sent as one `goto` rather than as a teleop target: the daemon
+    /// ignores `set_target` while a move is running, and this is what runs right
+    /// after one. Every axis is named explicitly — an omitted field means "leave
+    /// this one where it is", and the whole point is that nothing is left behind.
+    public func gotoNeutral(duration: TimeInterval) async throws -> String {
+        // `head_pose` is an `anyOf` of two pose shapes, which the generator renders
+        // as a struct with one optional per branch rather than as an enum — filling
+        // `value1` is how the flat XYZRPY form is chosen. `antennas` is a
+        // `prefixItems` tuple, and the generator has no type for that either.
+        try await client.gotoApiMoveGotoPost(
+            body: .json(.init(
+                headPose: .init(value1: .init(x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0)),
+                antennas: OpenAPIRuntime.OpenAPIArrayContainer(unvalidatedValue: [0.0, 0.0]),
+                bodyYaw: 0,
+                duration: duration
+            ))
+        ).ok.body.json.uuid
+    }
+
     public func stopMove(uuid: String) async throws {
         _ = try await client.stopMoveApiMoveStopPost(body: .json(.init(uuid: uuid))).ok
     }

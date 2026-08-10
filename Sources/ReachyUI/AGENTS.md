@@ -122,6 +122,15 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     free (a point clamped against an edge is always in that edge's half), so reaching the far edge takes two
     gestures: park in a corner there, then push out. VoiceOver's explicit "Hide at…" actions go through
     `beginDocking` and stay free to pick either edge.
+- **A move belongs to the robot, not to the Moves screen, and `onDisappear` no longer stops one.** It used to:
+  leaving the tab killed the dance. That was indefensible next to restoring a move across a relaunch — force-quit the
+  app and the dance survived, glance at the camera and it did not. `MoveActivityBar` is the strip that replaced the
+  bare Stop button, because two of the four phases have no control at all: an adopted move (`/api/move/running` names
+  nothing, so it says "A move is running on the robot" with no row highlighted) and the second of parking, which
+  offers no Stop because there is nothing left to stop. Showing the parking phase is not decoration — it holds the
+  daemon's one move slot, so a screen silent about it would claim an idle robot while it was still travelling.
+  `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view: every phase in it is a phase where
+  `_try_start_move` would drop the play without a word.
 - **`.unreachable` belongs to the shell, not the gate.** Only `.idle` and `.connecting` show the gate. A network blip
   must not pull the tab bar out from under a finger, and the robot screen already reports the state in place.
 - **The gate's fork has progress conditions, and they only ever delay.** For `.connected`, `isConnectedEnough` waits

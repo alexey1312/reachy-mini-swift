@@ -15,6 +15,8 @@ public protocol RobotAPIClient: Sendable {
     func listMoves(dataset: String) async throws -> [String]
     func playMove(dataset: String, move: String) async throws -> String
     func runningMoveUUIDs() async throws -> Set<String>
+    /// Walks the robot back to its zero pose; returns the move task's UUID.
+    func gotoNeutral(duration: TimeInterval) async throws -> String
     func stopMove(uuid: String) async throws
     func stopSound() async throws
     func urdf() async throws -> String
@@ -59,6 +61,10 @@ public extension RobotAPIClient {
     }
 
     func runningMoveUUIDs() async throws -> Set<String> {
+        throw URLError(.unsupportedURL)
+    }
+
+    func gotoNeutral(duration _: TimeInterval) async throws -> String {
         throw URLError(.unsupportedURL)
     }
 

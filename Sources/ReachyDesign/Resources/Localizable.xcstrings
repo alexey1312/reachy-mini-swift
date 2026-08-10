@@ -4,6 +4,9 @@
     "3D model": {
       "extractionState": "manual"
     },
+    "A move is running on the robot": {
+      "extractionState": "manual"
+    },
     "A new robot has no network yet, so the first conversation happens over Bluetooth. It takes a couple of minutes.": {
       "extractionState": "manual"
     },
@@ -689,6 +692,9 @@
       "extractionState": "manual"
     },
     "Restoring": {
+      "extractionState": "manual"
+    },
+    "Returning to neutral…": {
       "extractionState": "manual"
     },
     "Robot": {

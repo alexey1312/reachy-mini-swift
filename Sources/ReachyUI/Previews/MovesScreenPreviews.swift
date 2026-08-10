@@ -31,11 +31,23 @@ import SwiftUI
 }
 
 #Preview("Moves — playing") {
-    PreviewScene.movesScreen(.preview(currentMove: .preview(move: "happy_dance")))
+    PreviewScene.movesScreen(.preview(moveActivity: .playing(.preview(move: "happy_dance"))))
 }
 
 #Preview("Moves — stopping") {
-    PreviewScene.movesScreen(.preview(currentMove: .preview(move: "happy_dance"), isStoppingMove: true))
+    PreviewScene.movesScreen(.preview(moveActivity: .stopping(.preview(move: "happy_dance"))))
+}
+
+// A move found already running on connect. `/api/move/running` answers with UUIDs
+// alone, so there is no row to highlight and the strip says so in words.
+#Preview("Moves — unidentified playback") {
+    PreviewScene.movesScreen(.preview(moveActivity: .playing(.preview(uuid: "adopted"))))
+}
+
+// The second the robot spends walking back to zero after a move. No Stop: there is
+// nothing left to stop, and cancelling the parking would leave it mid-pose.
+#Preview("Moves — returning to neutral") {
+    PreviewScene.movesScreen(.preview(moveActivity: .recentring(uuid: "goto-preview")))
 }
 
 // Browsing stays available while the robot sleeps; only playback is gated.

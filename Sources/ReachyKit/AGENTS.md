@@ -75,6 +75,33 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   non-blocking — one of the two silently does nothing. Bounded by `appStopTimeout` and never fatal: a refusal is
   reported and a timeout is ignored, because a head held up for the daemon's one-way `stopping` wedge is the worse
   outcome. The intent-side twin is `RobotAppRelease` in `ReachyWidgetUI`, on a much shorter budget.
+- **The daemon has exactly one move slot, it refuses the second caller in silence, and everything in
+  `RobotSession+Moves` follows from that.** `play_move` opens with `if not self._try_start_move(): return`
+  (`backend/abstract.py`) — non-blocking, no error, and the route has _already_ filed a fresh UUID through
+  `create_move_task`. So a second play is accepted, answered with a plausible id, and moves nothing. Three separate
+  bugs were that one fact: a relaunched app tapping over a dance it had forgotten, `goto_sleep` skipped over a
+  running move while `set_mode/disabled` cut the motors mid-pose a moment later, and a parking `goto` swallowing the
+  tap that followed it. `clearTheFloor` and `releaseMove` are the two ways the slot is emptied first; whatever is
+  added next owes the same.
+- **`GET /api/move/running` answers UUIDs and nothing else, and it does not know what a dance is.** No dataset, no
+  name — and `wake_up`, `goto_sleep` and `goto` are `create_move_task` calls too, so they appear in it exactly like a
+  recorded move. Two consequences, both load-bearing: a move adopted on connect gets `MovePlayback.identity == nil`
+  and the screen says so rather than guessing, and the adoption is skipped entirely while `powerTransition != nil` or
+  the robot's own standing-up animation reads as playback. `MovePlaybackStore` is what closes the naming gap — one
+  `UserDefaults` record of the last play, matched by UUID, keyed by `RobotIdentity.deduplicationKey`. A robot woken by
+  something other than this session still slips through; the monitor clears it within a poll or two, which is the
+  accepted cost of covering the relaunch case at all.
+- **`MoveActivity` is one value because the phases are mutually exclusive.** `currentMove` and `isStoppingMove` are
+  derived from it, not stored beside it, so `.stopping` and `.recentring` cannot both be true. `.recentring` carries
+  a bare UUID rather than a `MovePlayback`: parking is not playback, has no row to highlight, and must leave
+  `currentMove` nil or the screen offers Stop over a move nobody started.
+- **Parking is followed by the same poll as a dance, never timed against `recentreDuration`.** A `goto` can be
+  cancelled — `playMove` does exactly that — or fail, and the phase has to end when the task does. It is also skipped
+  in three places on purpose: between two dances (it would refuse the second), after a stop the daemon rejected (the
+  move is still running), and while the robot is asleep (motors disabled, so the task travels nowhere).
+- **`RobotSession.swift` is at SwiftLint's file and type limits.** Recorded moves moved out to
+  `RobotSession+Moves.swift` when adding parking crossed both at once. New session behaviour belongs in a
+  `RobotSession+<Feature>.swift`, not in the class body.
 - **`robotError` is the robot's connection and power, and nothing else.** It was `lastError`, every funnel in the
   session wrote to it, and that is the second half of the same bug: a genuine Apps failure surfaced on the Robot tab
   too. Now `withClient`, `withAppsClient`, `withWiFiClient`, `withHFAuthClient` and `withUpdateClient` only throw —

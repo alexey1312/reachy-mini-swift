@@ -57,6 +57,7 @@ public extension RobotSession {
         defer { powerTransition = nil }
         do {
             try assertSupportedDaemon()
+            await releaseMove()
             await releaseRunningApp()
             try await RobotPower(client: client, configuration: configuration).sleep()
         } catch {
@@ -94,6 +95,7 @@ public extension RobotSession {
         defer { powerTransition = nil }
         do {
             try assertSupportedDaemon()
+            await releaseMove()
             await releaseRunningApp()
             try await client.stopDaemon(gotoSleep: true)
         } catch {
