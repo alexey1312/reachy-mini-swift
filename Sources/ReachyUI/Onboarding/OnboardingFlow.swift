@@ -85,7 +85,15 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             }
             .padding()
             .frame(maxWidth: .infinity)
-            .reachyScrim(ignoringSafeArea: .bottom)
+            // `.page` and not `.scrim`, which is what this was. A scrim carries
+            // glass, glass renders a light surface whatever is behind it, and this
+            // footer sits at the bottom of a sheet where — on the steps that fit on
+            // one screen, which is most of them — nothing passes under it at all.
+            // So the effect backed no content and read as a grey strip stuck to the
+            // bottom of the screen with a button in it. The page's own background
+            // still hides what scrolls under it on the steps that do scroll, and
+            // says nothing on the ones that do not.
+            .reachySurface(.page, ignoringSafeArea: .bottom)
         }
     }
 }

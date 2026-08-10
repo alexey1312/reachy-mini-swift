@@ -81,11 +81,58 @@ Developer ID runs first on purpose: it is the artifact that always ships, and a
 failed App Store upload should not also cost you the zip. Pick one channel with
 `--channel appstore` or `--channel developer-id`.
 
+Both archive commands compile with the Xcode compilation cache off
+(`COMPILATION_CACHE_ENABLE_CACHING=NO`) and then run
+`Scripts/check-appintents-metadata.sh` against the archive before anything is
+exported or uploaded. The intents live in a static SPM library, so the
+Shortcuts app only ever sees what `appintentsmetadataprocessor` extracted into
+`Metadata.appintents` — and extraction failing is a warning, never a build
+error. TestFlight 0.1.1 shipped exactly that way: green archive, no actions in
+the Shortcuts app. The check names every missing action instead; if it fails,
+the fix is in the build, not in App Store Connect.
+
 Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without
 uploading; `mise run release:macos -- --no-notarize` stops the Developer ID
 channel after the signed export, and `--no-upload` makes the App Store channel
 leave a `.pkg` in `Export/macOS/AppStore` instead of uploading it. Each flag
 belongs to one channel and is ignored by the other.
+
+## The public beta
+
+`https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,
+`c48f6abb-c178-40a2-8747-b6513add766e`, capped at 500 testers. The link is in
+the README; raising the cap is one `groups edit --public-link-limit`, lowering
+it below the people who already joined is not.
+
+Uploading is not distributing. An upload reaches the internal group by itself,
+because `Internal` carries `hasAccessToAllBuilds`; the public group has to be
+attached per build, per platform, and each one is its own Beta App Review:
+
+```bash
+mise run asc -- builds add-groups --app 6799644194 --latest --platform IOS \
+  --group c48f6abb-c178-40a2-8747-b6513add766e --submit --confirm
+mise run asc -- builds add-groups --app 6799644194 --latest --platform MAC_OS \
+  --group c48f6abb-c178-40a2-8747-b6513add766e --submit --confirm
+mise run asc -- testflight review submissions list --build-id "<id>"
+```
+
+What review reads lives at the app level, not the build level, so it is written
+once and stays: the tester-facing text in `testflight app-localizations`
+(description, feedback email, marketing URL, and the privacy policy at
+`docs/privacy.md` — which has to resolve on `main`, or review fails on a 404),
+and the reviewer-facing contact and notes in `testflight review edit`. The notes
+carry the thing no reviewer can guess — that the app needs a robot nobody at
+Apple has, that the Bluetooth sheet auto-presenting on first launch hides the
+Local Network alert underneath it, and that Hugging Face sign-in is the one path
+that completes without hardware. Beta App Review has no demo account to give,
+because the app has no accounts.
+
+Testers see the same What to Test note per build:
+
+```bash
+mise run asc -- builds test-notes create --build-id "<id>" \
+  --locale en-US --whats-new "..."
+```
 
 ## Querying App Store Connect
 

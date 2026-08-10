@@ -119,6 +119,7 @@ struct BLEConsoleScreen: View {
                         }
                     }
             }
+            .reachySheet()
         }
     }
 

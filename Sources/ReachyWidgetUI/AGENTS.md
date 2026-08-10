@@ -12,8 +12,17 @@ reverse.
   what "running" should look like — `RunningAppCaption` owns that for the app, `RobotAppTileView.statusTone` for the
   widget, and they disagree on purpose: a tile is already tinted and badged, and a fourth green signal would turn the
   grid into a status board.
-- Both executable bundles must include `ReachyWidgetIntentsPackage` through their own `AppIntentsPackage`; otherwise
-  configuration metadata disappears even though button intents may still run.
+- **No `AppIntentsPackage` conformance anywhere, and the absence is load-bearing.** Xcode 26 extracts this package's
+  intents into each executable's own `extract.actionsdata` by itself, so the conformance chain the targets used to
+  declare added only an `extract.packagedata` naming this package by mangled symbol. linkd resolves that name
+  against the executable and cannot for a statically linked SwiftPM module — and a Debug install keeps the code in
+  `ReachyMini.debug.dylib`, which iOS 26.4's linkd still probes under the old `*.preview.dylib` name — so one
+  unresolvable include made it discard the bundle's **entire** metadata (`aggregateMetadataIsEmpty`): no Shortcuts
+  section, no actions, no widget configuration, on every install path including Xcode's. The buttons kept working
+  because a `ControlWidgetButton` holds its intent in code. Measured by reading linkd's log on the simulator either
+  side of removing the conformances (`log show --predicate 'process == "linkd"'`);
+  `Scripts/check-appintents-metadata.sh` fails on a reappearing `extract.packagedata`, so it cannot come back
+  quietly.
 - `RobotAppQuery.entities(for:)` restores saved configuration: never access the network or omit requested identifiers,
   because WidgetKit prunes missing selections. Live refresh belongs in `suggestedEntities()`.
 - **An integer literal in `@Parameter(size:)` means _exactly_ that many, and it is a requirement the widget cannot
@@ -65,6 +74,10 @@ the next pair.
   `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
+  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the six Shortcuts-facing
+  actions, a non-empty `autoShortcuts` and the appex's configuration intent, from every Release build task and from
+  both release archives before upload. It exists because extraction failing is a warning, never a build error —
+  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private
   `runningApp()` and none may add a second `currentAppStatus` — the whole budget is a few seconds.
   `RobotAppLauncherTests.readsTheStatusOnce` holds that line.

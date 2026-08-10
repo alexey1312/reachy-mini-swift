@@ -1,3 +1,5 @@
+import AppIntents
+import ReachyDesign
 import ReachyUI
 import SwiftUI
 
@@ -9,6 +11,17 @@ struct ReachyMiniApp: App {
     #if os(iOS)
         @UIApplicationDelegateAdaptor(QuickActionAppDelegate.self) private var appDelegate
     #endif
+
+    init() {
+        // The parameterized phrases ("Start \(\.$app) on …") resolve against entity
+        // values the system captured last, and the App Intents contract is that the
+        // app calls this whenever those values may have changed — launch is the one
+        // moment that always precedes Shortcuts being opened. It is also the only
+        // registration nudge an install Xcode did not push (TestFlight) ever gets
+        // from this app: an Xcode install registers the shortcuts itself, which is
+        // how the gap stayed invisible on every development build.
+        ReachyShortcuts.updateAppShortcutParameters()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -24,5 +37,10 @@ struct ReachyMiniApp: App {
             .reachyPreviewMode(ProcessInfo.processInfo.arguments.contains("--reachy-smoke"))
             .reachyThemeFromSettings()
         }
+        // Only a first launch reads this — macOS persists the frame afterwards, so
+        // a window already on screen keeps the size its reader gave it.
+        #if os(macOS)
+        .defaultSize(Metrics.window)
+        #endif
     }
 }

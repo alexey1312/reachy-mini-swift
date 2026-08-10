@@ -213,6 +213,29 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `toolbarColorScheme(.dark)` to keep the title readable (drop one and the title goes white-on-white or
   black-on-black); the camera's forced a white `Connecting…` for the same reason. `RTCMTLVideoView` clears its own
   unfilled area, so the video never needed the SwiftUI backdrop — that one only ever painted the safe-area insets.
+- **A representable wrapping a renderer owes SwiftUI a `sizeThatFits`, and the reference images cannot tell you it is
+  missing.** `RTCMTLVideoView` reports the _stream's_ frame size as its intrinsic content size, and without a
+  `sizeThatFits` the default forwards that through `systemLayoutSizeFitting` — so `CameraVideoView` sized itself to
+  whatever resolution WebRTC happened to be sending, and this file's `.frame(maxWidth: .infinity, maxHeight:
+  .infinity)` centred the result. On a landscape iPhone that was a ~140 pt picture in the middle of an 874 pt screen,
+  with `CameraViewport`'s bottom `safeAreaInset` stacked under it, so the joystick came up off the bottom edge too.
+  **Every `Camera —` reference passed throughout**, and had to: a preview session carries no track, the video frame
+  size is zero, and a view with no intrinsic size takes the proposal — the exact case the bug does not occur in. It
+  returns the proposal explicitly now, which is why adopting it moved nothing. The rule generalises: a headless
+  capture of a renderer certifies the layout around an _empty_ rectangle, never the rectangle.
+- **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
+  a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
+  `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine
+  of them; the modifier declares the width and measures the height, and `ReachyDesign/AGENTS.md` carries the
+  reasoning along with the two shapes it had before that, both of which shipped. **No snapshot can catch a missing
+  one** — the suite runs on an iOS simulator, where the modifier does nothing.
+- **Every `Form` in this target names `.formStyle(.grouped)`, and the one that did not was reported as a sheet bug.**
+  macOS defaults a `Form` to `.columns`, which puts each label in a right-aligned leading column — and inside a sheet
+  that column was laid out past the leading edge, so `HFSignInScreen` rendered "Remote access" as "mote access" with
+  its sentence cut off on the other side. It looks exactly like a sheet 100 pt too narrow, and widening the sheet
+  hides it without fixing it. **Nothing here could have caught it**: iOS renders a `Form` grouped whether the style is
+  named or not, so the references say the same thing either way — expected to move nothing, and not yet confirmed by
+  a full run.
 - Deployment floor is iOS 18 / macOS 15 (`Package.swift`, `Apps/Project.swift`), set by `RealityView`.
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.
