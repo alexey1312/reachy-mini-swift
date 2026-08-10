@@ -72,9 +72,15 @@ public struct StateStreamClient: Sendable {
             while !Task.isCancelled {
                 let socket = session.webSocketTask(with: url)
                 socket.resume()
-                do {
+                // `receive()` does not observe task cancellation (see
+                // `ConversationRPCClient.read`), so a cancelled consumer would
+                // stay parked in it until the next 10 Hz frame — and exiting on
+                // the `Task.isCancelled` check alone would leave the socket
+                // open. The handler makes `receive()` throw; the unconditional
+                // cancel below covers the checked exit.
+                await withTaskCancellationHandler {
                     while !Task.isCancelled {
-                        let message = try await socket.receive()
+                        guard let message = try? await socket.receive() else { return }
                         diagnostics.receivedFrames += 1
                         let data: Data?
                         switch message {
@@ -109,9 +115,10 @@ public struct StateStreamClient: Sendable {
                             continuation.yield(.init(state: nil, frame: frame, diagnostics: diagnostics))
                         }
                     }
-                } catch {
+                } onCancel: {
                     socket.cancel(with: .goingAway, reason: nil)
                 }
+                socket.cancel(with: .goingAway, reason: nil)
                 guard !Task.isCancelled else { break }
                 try? await Task.sleep(for: backoff)
                 backoff = min(backoff * 2, configuration.maxBackoff)

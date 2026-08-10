@@ -239,6 +239,24 @@ xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyUISnaps
   2>&1 | xcsift
 '''
 
+# Previews compile only in the Xcode targets (`Package.swift` excludes `Previews/**`),
+# so `swift build` cannot vet them and a broken preview otherwise first surfaces
+# minutes into a local snapshot run — or after `record` has deleted every reference.
+# build-for-testing against a generic destination compiles the previews, the Prefire
+# generation and the snapshot target without needing a simulator runtime or comparing
+# a single reference, which is what lets CI run it on any Xcode image.
+[tasks."snapshots:build"]
+description = "Compile the snapshot target without running it (CI's whole preview coverage)"
+depends = ["project"]
+run = """
+set -o pipefail
+xcodebuild build-for-testing -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyUISnapshotTests \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath Apps/DerivedData \
+  CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation \
+  2>&1 | xcsift
+"""
+
 [tasks."test:snapshots"]
 description = "Snapshot-test every ReachyUI preview (fails if a reference had to be recorded)"
 run = '''
@@ -282,7 +300,8 @@ run = '''
 set -euo pipefail
 SIM="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 # The playbook plugin only ever scans its own target's sources, so the CLI is driven directly.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Sources/ReachyWidgetUI/Previews \
+  Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated \
   --config Apps
 ./bin/mise run project
@@ -299,7 +318,7 @@ xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 '''
 
 [tasks.lint]
-description = "Run SwiftLint, actionlint, and the hk version lockstep check"
+description = "Run SwiftLint, actionlint, and the version lockstep checks"
 run = '''
 set -o pipefail
 PINNED="$(sed -nE 's/^hk = "([0-9.]+)".*/\1/p' mise.toml)"
@@ -308,7 +327,25 @@ if [ -n "$DRIFT" ]; then
   echo "hk.pkl references $DRIFT but mise.toml pins $PINNED — bump both together." >&2
   exit 1
 fi
-swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests 2>&1 | xcsift
+# The forked PreviewTests.stencil is only valid against one Prefire, which is why the
+# package requirement is .exact — the CLI in [tools] has to move in lockstep with it.
+PREFIRE_CLI="$(sed -nE 's|^"github:BarredEwe/Prefire\[exe=prefire\]" = "([0-9.]+)".*|\1|p' mise.toml)"
+PREFIRE_PKG="$(sed -nE 's|.*BarredEwe/Prefire", requirement: \.exact\("([0-9.]+)"\).*|\1|p' Apps/Project.swift)"
+if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ]; then
+  echo "mise.toml pins prefire '$PREFIRE_CLI' but Apps/Project.swift pins '$PREFIRE_PKG' — bump both together." >&2
+  exit 1
+fi
+# xcodebuild resolves the whole Tuist workspace into Package.resolved; a plain
+# swift build/test strips those pins again and a merge can drop them silently.
+# The committed file is what has to carry them (the working tree legitimately
+# oscillates), so the check reads HEAD.
+for PIN in prefire swift-snapshot-testing; do
+  if ! git show HEAD:Package.resolved | grep -q "\"$PIN\""; then
+    echo "Package.resolved at HEAD lost the Xcode-workspace pin '$PIN' — run 'mise run project' (or any snapshot task) last and commit the 25-pin version." >&2
+    exit 1
+  fi
+done
+swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget 2>&1 | xcsift
 actionlint
 '''
 
@@ -339,7 +376,8 @@ set -euo pipefail
 # The storybook target globs `Generated/**`, which is gitignored — tuist rejects a glob whose
 # directory does not exist, so generation fails outright on a fresh clone (and in CI) unless the
 # playbook is written first. Cheap enough to redo every time.
-prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Apps/ReachyMini/Previews \
+prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Sources/ReachyWidgetUI/Previews \
+  Apps/ReachyMini/Previews \
   --output Apps/ReachyStorybook/Generated --config Apps
 TUIST="$(./bin/mise where tuist)/tuist"
 cd Apps && exec env -u TOOLCHAINS "$TUIST" generate --no-open

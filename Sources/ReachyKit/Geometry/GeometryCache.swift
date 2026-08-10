@@ -65,7 +65,8 @@ public struct GeometryCache: Sendable {
     }
 
     public func storedMesh(digest: String, named mesh: String) -> Data? {
-        try? Data(contentsOf: meshURL(for: digest, mesh: mesh))
+        guard Self.isSafeMeshName(mesh) else { return nil }
+        return try? Data(contentsOf: meshURL(for: digest, mesh: mesh))
     }
 
     // MARK: - Writing
@@ -79,7 +80,18 @@ public struct GeometryCache: Sendable {
     }
 
     public func store(mesh: Data, digest: String, named name: String) throws {
+        guard Self.isSafeMeshName(name) else {
+            throw CocoaError(.fileWriteInvalidFileName)
+        }
         try write(mesh, to: meshURL(for: digest, mesh: name))
+    }
+
+    /// Mesh names come out of the robot-served URDF, and the daemon is
+    /// unauthenticated plaintext on the LAN — "the robot" is whoever answered
+    /// first. A name carrying a path separator or `..` would escape the cache
+    /// directory on write, so it is refused rather than resolved.
+    static func isSafeMeshName(_ name: String) -> Bool {
+        !name.isEmpty && name != ".." && !name.contains("/") && !name.contains("\\")
     }
 
     public func finalize(digest: String, meshes: [String]) throws {

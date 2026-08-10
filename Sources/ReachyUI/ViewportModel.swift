@@ -24,7 +24,7 @@ final class ViewportModel {
         var title: String {
             switch self {
             case .scene: String(localized: .reachy("3D model"))
-            case .camera: "Camera"
+            case .camera: String(localized: .reachy("Camera"))
             }
         }
 

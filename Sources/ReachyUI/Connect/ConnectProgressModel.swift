@@ -132,13 +132,21 @@ final class ConnectProgressModel {
     }
 
     private func drainQueue() async {
-        while !queue.isEmpty {
+        repeat {
+            while !queue.isEmpty {
+                await waitOutDwell()
+                guard !Task.isCancelled else { return }
+                show(queue.removeFirst())
+            }
             await waitOutDwell()
             guard !Task.isCancelled else { return }
-            show(queue.removeFirst())
-        }
-        await waitOutDwell()
-        guard !Task.isCancelled else { return }
+            // A phase observed during that trailing dwell was queued — `observe`
+            // saw the frame still inside its floor, and `startDrainIfNeeded`
+            // no-oped because this task still existed. Releasing the gate over
+            // it would strand it forever: `observe` only runs on a phase
+            // *change*, so a session already settled on `.connected` never
+            // fires again, and the gate sits on the previous stage for good.
+        } while !queue.isEmpty
         holdsGate = false
         drain = nil
         holdingSince = nil

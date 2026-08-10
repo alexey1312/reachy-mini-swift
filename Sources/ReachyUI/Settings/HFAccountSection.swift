@@ -196,19 +196,22 @@ struct HFAccountSection: View {
     private var robotAccountText: String {
         guard let robotAccount else { return "…" }
         if robotAccount.isLoggedIn {
-            return robotAccount.username.map { String(localized: .reachy("Linked to \($0)")) } ?? "Linked"
+            return robotAccount.username.map { String(localized: .reachy("Linked to \($0)")) }
+                ?? String(localized: .reachy("Linked"))
         }
         return String(localized: .reachy("Not linked"))
     }
 
     private func relayText(_ relay: RelayStatus) -> String {
         switch relay.state {
-        case .connected: "Online"
-        case .connecting, .reconnecting: "Connecting…"
+        case .connected: String(localized: .reachy("Online"))
+        case .connecting, .reconnecting: String(localized: .reachy("Connecting…"))
         case .waitingForToken: String(localized: .reachy("Waiting for a token"))
-        case .stopped: "Off"
+        case .stopped: String(localized: .reachy("Off"))
         case .unavailable: relay.message ?? String(localized: .reachy("Not available on this robot"))
-        case .error: relay.message ?? "Error"
+        case .error: relay.message ?? String(localized: .reachy("Error"))
+        // The daemon's own word for a state this app does not know — runtime
+        // text, which is what keeps this slot a String (rule 9).
         case let .unknown(state): state
         }
     }

@@ -154,6 +154,30 @@ jobs:
       - name: Build ReachyMini + widget (iOS, Release)
         run: mise run build:app:ios:release
 
+  # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
+  # so build-test can never see them, and a preview that does not compile otherwise
+  # first surfaces minutes into a local snapshot run, or after `record` has already
+  # deleted every reference. build-for-testing compiles the previews, the generated
+  # Prefire tests and the snapshot target; no simulator runtime and no references
+  # are involved, which is what makes it runnable on CI's Xcode at all.
+  preview-build:
+    name: Preview Build (ReachyUISnapshotTests)
+    runs-on: macos-15
+    needs: lint
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+        with:
+          experimental: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile previews and snapshot target
+        run: mise run snapshots:build
+
   # The one job that launches the app binary: XCUITest walks the connect gate on
   # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
   smoke:

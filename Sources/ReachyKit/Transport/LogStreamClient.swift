@@ -32,20 +32,11 @@ public struct LogStreamClient: Sendable {
             while !Task.isCancelled {
                 let socket = session.webSocketTask(with: url)
                 socket.resume()
-                do {
-                    while true {
-                        let message = try await socket.receive()
-                        if case let .string(text) = message {
-                            continuation.yield(text)
-                            backoff = .milliseconds(500)
-                        }
-                    }
-                } catch {
-                    socket.cancel(with: .goingAway, reason: nil)
+                await Self.read(from: socket, into: continuation) {
+                    backoff = .milliseconds(500)
                 }
-                if Task.isCancelled {
-                    break
-                }
+                socket.cancel(with: .goingAway, reason: nil)
+                guard !Task.isCancelled else { break }
                 try? await Task.sleep(for: backoff)
                 backoff = min(backoff * 2, .seconds(15))
             }
@@ -53,5 +44,30 @@ public struct LogStreamClient: Sendable {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+
+    /// Pumps one socket until it fails or the consumer goes away.
+    ///
+    /// `URLSessionWebSocketTask.receive()` does not observe task cancellation
+    /// (`ConversationRPCClient.read` documents why): a dismissed log console
+    /// would stay parked in it until the next journal line, holding the socket
+    /// open at line rate for the life of the app. Cancelling the socket by
+    /// hand is what makes `receive()` throw and the loop end.
+    private static func read(
+        from socket: URLSessionWebSocketTask,
+        into continuation: AsyncStream<String>.Continuation,
+        onFrame: () -> Void
+    ) async {
+        await withTaskCancellationHandler {
+            while !Task.isCancelled {
+                guard let message = try? await socket.receive() else { return }
+                if case let .string(text) = message {
+                    continuation.yield(text)
+                    onFrame()
+                }
+            }
+        } onCancel: {
+            socket.cancel(with: .goingAway, reason: nil)
+        }
     }
 }

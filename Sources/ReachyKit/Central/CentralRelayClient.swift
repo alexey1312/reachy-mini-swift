@@ -20,22 +20,20 @@ public actor CentralRelayClient {
         public var clientName: String
         /// The robot allows 60 s of silence before calling the stream dead;
         /// central sends a keepalive well inside that.
+        ///
+        /// No reconnect schedule lives here: this client makes one attempt per
+        /// `events()` stream, and retrying belongs to the consumer
+        /// (`RemoteRobotLink`), which knows whether a failure is worth it.
         public var readTimeout: Duration
-        public var reconnectInterval: Duration
-        public var maxReconnectInterval: Duration
 
         public init(
             baseURL: URL = CentralRelayClient.defaultBaseURL,
             clientName: String = "Reachy Mini",
-            readTimeout: Duration = .seconds(60),
-            reconnectInterval: Duration = .seconds(5),
-            maxReconnectInterval: Duration = .seconds(60)
+            readTimeout: Duration = .seconds(60)
         ) {
             self.baseURL = baseURL
             self.clientName = clientName
             self.readTimeout = readTimeout
-            self.reconnectInterval = reconnectInterval
-            self.maxReconnectInterval = maxReconnectInterval
         }
     }
 

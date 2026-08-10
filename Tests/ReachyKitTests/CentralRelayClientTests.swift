@@ -86,12 +86,19 @@ struct CentralRelayClientTests {
                 false
             }
         } }
-        // The POST is fired from the stream's task; give it a moment to land.
-        try? await Task.sleep(for: .milliseconds(200))
+        /// The POST is fired from the stream's task; poll for it rather than
+        /// betting a fixed pause outlasts a loaded runner (project rule 7).
+        func announced() -> Bool {
+            StubURLProtocol.bodies(for: session)
+                .compactMap { try? JSONDecoder().decode(SignalingMessage.self, from: $0) }
+                .contains { $0 == .setPeerStatus(roles: ["listener"], name: "ReachyMini Swift") }
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !announced(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
 
-        let posted = StubURLProtocol.bodies(for: session)
-            .compactMap { try? JSONDecoder().decode(SignalingMessage.self, from: $0) }
-        #expect(posted.contains { $0 == .setPeerStatus(roles: ["listener"], name: "ReachyMini Swift") })
+        #expect(announced())
     }
 
     /// A token that central refuses is not something to retry: every attempt with
