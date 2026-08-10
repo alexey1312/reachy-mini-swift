@@ -13,9 +13,11 @@
 # products, run against whatever bundle it is handed.
 #
 # Checked: the six Shortcuts-facing intents and a non-empty `autoShortcuts`
-# (the extracted ReachyShortcuts provider) in the app's own metadata, and the
+# (the extracted ReachyShortcuts provider) in the app's own metadata, the
 # widget configuration intent in the appex's (iOS only — that metadata is what
-# the widget's Edit sheet is built from).
+# the widget's Edit sheet is built from), and that no `extract.packagedata`
+# exists anywhere — an AppIntentsPackage conformance emits one, and linkd
+# rejects the bundle's entire metadata over it (aggregateMetadataIsEmpty).
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
@@ -78,6 +80,17 @@ for appex in appex_files:
 
 if (target / "PlugIns").is_dir() and not appex_files:
     failures.append("the app embeds an appex but no extract.actionsdata was found inside it")
+
+# An extract.packagedata names an AppIntentsPackage by mangled symbol, which
+# linkd resolves against the executable — impossible for a statically linked
+# SwiftPM module, so its presence alone makes linkd discard the bundle's whole
+# metadata (aggregateMetadataIsEmpty): no Shortcuts section, no widget
+# configuration. Sources/ReachyWidgetUI/AGENTS.md has the story.
+for package in target.rglob("extract.packagedata"):
+    failures.append(
+        f"{package}: an AppIntentsPackage conformance is back — linkd rejects "
+        "all metadata over it (see Sources/ReachyWidgetUI/AGENTS.md)"
+    )
 
 if failures:
     print(f"App Intents metadata check FAILED for {target}:", file=sys.stderr)
