@@ -1,3 +1,4 @@
+import ReachyDesign
 import ReachyUI
 import SwiftUI
 
@@ -23,5 +24,10 @@ struct ReachyMiniApp: App {
             // starts no Bonjour browse and no sockets while under XCUITest.
             .reachyPreviewMode(ProcessInfo.processInfo.arguments.contains("--reachy-smoke"))
         }
+        // Only a first launch reads this — macOS persists the frame afterwards, so
+        // a window already on screen keeps the size its reader gave it.
+        #if os(macOS)
+        .defaultSize(Metrics.window)
+        #endif
     }
 }

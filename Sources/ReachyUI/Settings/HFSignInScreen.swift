@@ -20,6 +20,13 @@ struct HFSignInScreen: View {
         Form {
             HFAccountSection(session: session, model: model)
         }
+        // The style every other `Form` in this target names, and the one this
+        // screen was missing: macOS defaults a `Form` to `.columns`, which puts
+        // each label in a right-aligned leading column — and in a sheet that
+        // column was laid out past the leading edge, so "Remote access" arrived
+        // as "mote access". Reported as the sheet being too narrow, which is
+        // what it looks like and was not.
+        .formStyle(.grouped)
         // Named for what the user came to do, not for the service: the section
         // inside already carries "Hugging Face" as its header, and a screen
         // repeating it says nothing twice.

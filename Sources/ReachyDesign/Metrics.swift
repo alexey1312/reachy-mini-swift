@@ -50,18 +50,30 @@ public enum Metrics {
     public static let tabAccessoryAllowance: CGFloat = 68
     /// A `Form` left to itself fills a 1024 pt iPad and reads as broken.
     public static let readableForm: CGFloat = 560
-    /// What a sheet measures on macOS, where nothing else supplies a size.
+    /// What the app's window asks to open at on macOS, where nothing else says.
     ///
-    /// A sheet there is sized by its content's *ideal* size, and a `Form` or a
-    /// `ScrollView` has no ideal width to offer — so AppKit picks something cramped
-    /// and the content is clipped rather than laid out again. Reported twice off one
-    /// build: the Hugging Face sheet lost its `LabeledContent` labels off the leading
-    /// edge and their values off the trailing one, and the onboarding step's heading
-    /// was cut in half under the title of a sheet too short to hold the step.
+    /// A `WindowGroup` declaring no size gets one from its content, which came out
+    /// short enough to cut the connection screen's last card off at the bottom edge
+    /// on a first launch. Taller than it is wide on purpose: every screen here is a
+    /// column of cards capped at `readableForm`, so height is what they need and
+    /// width past the cap is only margin.
     ///
-    /// Wide enough for the widest thing a sheet here holds — a `Form` at
-    /// `readableForm` with its margins — and tall enough that the longest onboarding
-    /// step needs no scrolling. iOS supplies its own sheet geometry and never reads
-    /// this.
-    public static let sheet = CGSize(width: 600, height: 680)
+    /// **Asks, and does not get all of it.** A `WindowGroup`'s resizability is
+    /// `.automatic`, which clamps the window to what its content will accept, so
+    /// this is an upper request rather than a measurement: with it the window opens
+    /// at ~634x593 and without it at ~619x531 — measured on a 1512 pt display with
+    /// the saved frame deleted, which is the only state that reads this at all.
+    /// macOS persists the frame from then on, so changing this moves nothing for
+    /// anyone who has already opened the app.
+    public static let window = CGSize(width: 720, height: 680)
+    /// How wide a sheet is on macOS, where nothing else supplies a width.
+    ///
+    /// A sheet there is sized by its content's *ideal* size, and neither a `Form`
+    /// nor a `ScrollView` offers an ideal width — so AppKit picks something cramped
+    /// and clips what does not fit rather than laying it out again. Wide enough for
+    /// the widest thing a sheet here holds: a `Form` at `readableForm`, plus its
+    /// margins. **Only the width is declared** — `reachySheet()` measures the
+    /// height, and says why a constant there was wrong. iOS supplies its own sheet
+    /// geometry and never reads this.
+    public static let sheetWidth: CGFloat = 600
 }

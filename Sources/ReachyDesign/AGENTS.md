@@ -21,7 +21,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                   |
 | `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                |
 | `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                             |
-| `ReachySheet.swift`        | The size a sheet takes on macOS, and why iOS never reads it                         |
+| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none |
 | `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback           |
 
 ## Rules
@@ -36,15 +36,27 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   and says nothing on the ones that do not. The two consoles keep `reachyScrim` — over a log tail there _is_ content
   passing under, and the effect is the notice that there is. Glass-free but **not** `.window`: a window is raised off
   what is behind it and takes a `.bar` material, and a page is the thing behind it.
-- **Every sheet's content carries `reachySheet()`, because on macOS nothing else gives it a size.** A sheet there is
+- **Every sheet's content carries `reachySheet()`, because on macOS nothing else gives it a width.** A sheet there is
   laid out at its content's _ideal_ size, and a `Form`, a `ScrollView` or a `NavigationStack` over one offers no ideal
-  width — AppKit picks something cramped and clips what does not fit rather than laying it out again. Two reports off
-  one build: the Hugging Face sheet at ~440 pt lost its `LabeledContent` labels off the leading edge and their values
-  off the trailing one, and the onboarding sheet at ~400 pt was shorter than the step, so the scroll view carried the
-  heading up under the title and cut it in half. `Metrics.sheet` is the minimum, and a minimum rather than a fixed
-  size because a macOS sheet is not resizable — the minimum _is_ the size, and content that wants more still grows.
-  **No reference can catch the next one**: the snapshot suite runs on an iOS simulator, where this modifier does
-  nothing at all. It is a `#if os(macOS)`, not an `#available` — a platform difference, not a version one.
+  width — AppKit picks something cramped and clips what does not fit rather than laying it out again. So one axis is
+  declared and the other measured: `Metrics.sheetWidth`, then `presentationSizing(.fitted)` to ask the content how
+  tall it wants to be _at that width_. **No reference can catch a missing one**: the snapshot suite runs on an iOS
+  simulator, where this modifier does nothing at all. It is a `#if os(macOS)`, not an `#available` — a platform
+  difference, not a version one, and `presentationSizing` is available at this app's floor.
+  It went through two other shapes first, each shipped, each reported as a bug of its own:
+  1. **A minimum in both axes.** "A minimum, so content that wants more still grows" is false for everything in
+     these sheets: a `Form` and a `ScrollView` are _flexible_ and never want more than the floor they are handed, so
+     the minimum was the final height of every one of them. The sign-in sheet came up as a 680 pt slab with a single
+     card adrift in the middle of it, taller than the window it hung off.
+  2. **`.form` for the width.** `FormPresentationSizing` proposes ~435 pt on macOS — which is the ~440 pt the
+     original bug was reported at, arrived at from the other direction. A form's width is the system's idea of a
+     settings sheet, not of this one.
+- **A sheet reading too narrow is worth one look at the `Form` inside it before it is worth a width.** The Hugging
+  Face sheet's `LabeledContent` rows losing "Remote access" off the leading edge read exactly like a sheet 100 pt too
+  narrow, and were not: macOS defaults a `Form` to `.columns`, which lays every label in a right-aligned leading
+  column, and that column was placed past the sheet's own leading edge — outside the container, not clipped by it.
+  `HFSignInScreen` was the one `Form` in the app without `.formStyle(.grouped)`, and a wider sheet had only been
+  hiding it. A symptom at the edge of a container is not evidence about the container.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
   headless snapshot (`RunningAppDock`'s `windowEdge` records the same about `.bar`). Without a fill that _does_ render,
   every surface would be invisible to the reference images and the layout and text on each card would silently lose

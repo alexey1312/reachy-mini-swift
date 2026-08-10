@@ -225,12 +225,17 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   capture of a renderer certifies the layout around an _empty_ rectangle, never the rectangle.
 - **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
   a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
-  `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. Reported as
-  two separate bugs off one build, and they were one: the Hugging Face sheet drew its `LabeledContent` labels off
-  the leading edge and their values off the trailing one, and the onboarding sheet was shorter than the step, so
-  the scroll view carried the heading up under the title and cut it in half. There are nine of them; `Metrics.sheet` is
-  the size and `ReachyDesign/AGENTS.md` carries the reasoning. **No snapshot can catch a missing one** — the suite
-  runs on an iOS simulator, where the modifier does nothing.
+  `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine
+  of them; the modifier declares the width and measures the height, and `ReachyDesign/AGENTS.md` carries the
+  reasoning along with the two shapes it had before that, both of which shipped. **No snapshot can catch a missing
+  one** — the suite runs on an iOS simulator, where the modifier does nothing.
+- **Every `Form` in this target names `.formStyle(.grouped)`, and the one that did not was reported as a sheet bug.**
+  macOS defaults a `Form` to `.columns`, which puts each label in a right-aligned leading column — and inside a sheet
+  that column was laid out past the leading edge, so `HFSignInScreen` rendered "Remote access" as "mote access" with
+  its sentence cut off on the other side. It looks exactly like a sheet 100 pt too narrow, and widening the sheet
+  hides it without fixing it. **Nothing here could have caught it**: iOS renders a `Form` grouped whether the style is
+  named or not, so the references say the same thing either way — expected to move nothing, and not yet confirmed by
+  a full run.
 - Deployment floor is iOS 18 / macOS 15 (`Package.swift`, `Apps/Project.swift`), set by `RealityView`.
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.
