@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 import ReachyKit
 @preconcurrency import WebRTC
 
@@ -60,8 +61,15 @@ public final class CameraSession {
     private var peerConnection: RTCPeerConnection?
     private var delegateAdapter: PeerConnectionDelegateAdapter?
     private var micTrack: RTCAudioTrack?
-    private var eventsTask: Task<Void, Never>?
+    /// `@ObservationIgnored` because `deinit` reads it: the macro would turn a
+    /// tracked property into a MainActor-isolated accessor, which a nonisolated
+    /// `deinit` may not call — a stored property it may.
+    @ObservationIgnored private var eventsTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
+    /// The deactivation still in flight, if any — see `deactivateAudioSession()`.
+    private var audioDeactivationTask: Task<Void, Never>?
+
+    private static let log = Logger(subsystem: "com.alexey1312.ReachyMini", category: "CameraSession")
     private struct LocalCandidate {
         var sdp: String
         var sdpMLineIndex: Int32
@@ -84,6 +92,28 @@ public final class CameraSession {
     public init(signaling: any RobotSignaling) {
         self.signaling = signaling
         connection = nil
+    }
+
+    /// The backstop for an owner that drops the session without `stop()`. The
+    /// `weak self` in `start()` is what lets this run at all — but on its own it
+    /// only half-closes the leak: `eventsTask` keeps consuming, and against an
+    /// unreachable robot the captured signaling client redials the socket every
+    /// half-second for as long as the app lives, with the `guard let self` never
+    /// reached because a dead host yields no events. A stopped (or never
+    /// started) session has `eventsTask == nil` and nothing to undo — previews
+    /// construct sessions constantly and must not touch the shared audio session.
+    ///
+    /// `signaling` is bound before the `Task` so the closure never captures
+    /// `self`, which a `deinit` may not escape (`RobotFilesModel` sets the idiom).
+    deinit {
+        guard let eventsTask else { return }
+        eventsTask.cancel()
+        dataChannel.close()
+        let signaling = signaling
+        Task { await signaling.disconnect() }
+        #if os(iOS)
+            Task { await Self.releaseAudioSession() }
+        #endif
     }
 
     public func start() {
@@ -299,6 +329,10 @@ public final class CameraSession {
 
     private func configureAudioSession() {
         #if os(iOS)
+            // A stop() a moment ago may still be retrying deactivation; left
+            // running, it would deactivate the session this start just opened.
+            audioDeactivationTask?.cancel()
+            audioDeactivationTask = nil
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
             try? session.setActive(true)
@@ -311,12 +345,34 @@ public final class CameraSession {
     /// `.notifyOthersOnDeactivation` is what lets them resume.
     private func deactivateAudioSession() {
         #if os(iOS)
-            try? AVAudioSession.sharedInstance().setActive(
-                false,
-                options: [.notifyOthersOnDeactivation]
-            )
+            audioDeactivationTask?.cancel()
+            audioDeactivationTask = Task { await Self.releaseAudioSession() }
         #endif
     }
+
+    #if os(iOS)
+        /// `setActive(false)` races WebRTC's own audio unit, which
+        /// `peerConnection.close()` winds down on its background thread after
+        /// `stop()` has already returned — deactivating immediately commonly
+        /// fails "session is busy", and a `try?` there made the release silently
+        /// not happen. So: retry briefly, and log when the OS still refuses,
+        /// because a swallowed failure looks exactly like the ducked-audio bug
+        /// this method exists to end.
+        private static func releaseAudioSession() async {
+            for _ in 0 ..< 5 {
+                do {
+                    try AVAudioSession.sharedInstance().setActive(
+                        false,
+                        options: [.notifyOthersOnDeactivation]
+                    )
+                    return
+                } catch {
+                    guard (try? await Task.sleep(for: .milliseconds(200))) != nil else { return }
+                }
+            }
+            log.warning("Audio session would not deactivate; other apps' audio may stay ducked")
+        }
+    #endif
 }
 
 /// Bridges nonisolated WebRTC delegate callbacks onto the MainActor session.

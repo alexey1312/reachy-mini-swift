@@ -33,6 +33,11 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     private var continuation: AsyncStream<String>.Continuation?
     private var backlog: [String] = []
     private var waitingForChannel: [CheckedContinuation<RTCDataChannel, any Error>] = []
+    /// Set by `close()`, cleared by `attach(_:)`. Draining the waiters is not
+    /// enough on its own: a send racing `close()` can pass its nil-channel check
+    /// before the drain and enqueue after it, and that waiter would never be
+    /// resumed — the suspended-forever send in a narrower window.
+    private var closed = false
 
     public func messages() -> AsyncStream<String> {
         AsyncStream { continuation in
@@ -80,6 +85,9 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     func attach(_ channel: RTCDataChannel) {
         channel.delegate = self
         lock.lock()
+        // A restarted session reuses this object (`CameraSession.dataChannel`
+        // is a `let`), so a close is over the moment a new channel arrives.
+        closed = false
         let replaced = self.channel
         self.channel = channel
         let waiting = waitingForChannel
@@ -113,6 +121,7 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
     /// retained, with their payloads) forever.
     func close() {
         lock.lock()
+        closed = true
         let dropped = channel
         channel = nil
         let continuation = continuation
@@ -147,6 +156,13 @@ public final class WebRTCDataChannel: NSObject, RemoteDataChannel, @unchecked Se
 
     private func enqueue(_ continuation: CheckedContinuation<RTCDataChannel, any Error>) {
         lock.lock()
+        // Closed between the check and here — fail fast rather than join a
+        // queue that has already been drained and will never be again.
+        if closed {
+            lock.unlock()
+            continuation.resume(throwing: Failure.closed)
+            return
+        }
         // Attached between the check and here — resume rather than wait forever.
         if let channel {
             lock.unlock()
