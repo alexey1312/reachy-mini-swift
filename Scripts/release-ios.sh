@@ -65,6 +65,14 @@ xcodebuild -exportArchive \
 if [ "$upload" = true ]; then
   echo "Uploaded build $BUILD_NUMBER to App Store Connect. TestFlight shows it after processing (minutes)."
 else
+  # The archive was already checked, but the .ipa is what actually ships, and
+  # -exportArchive re-signs and repacks on the way — so prove the metadata
+  # survived the export too. Only the --no-upload path leaves an .ipa behind;
+  # `destination: upload` hands the artifact straight to App Store Connect.
+  IPA="$(ls Apps/DerivedData/Export/iOS/*.ipa | head -1)"
+  UNPACKED="$(mktemp -d -t reachy-ipa-check)"
+  ditto -x -k "$IPA" "$UNPACKED"
+  Scripts/check-appintents-metadata.sh "$UNPACKED"/Payload/*.app
   echo "Exported without uploading:"
   ls Apps/DerivedData/Export/iOS/*.ipa
 fi
