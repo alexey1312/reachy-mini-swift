@@ -1,6 +1,7 @@
 import ReachyDesign
 import ReachyKit
 import SwiftUI
+import WidgetKit
 
 /// The theme picker.
 ///
@@ -54,6 +55,9 @@ struct AppearanceSection: View {
     private func tile(_ theme: ReachyTheme) -> some View {
         Button {
             rawTheme = theme.rawValue
+            #if !os(macOS)
+                WidgetCenter.shared.reloadAllTimelines()
+            #endif
         } label: {
             VStack(spacing: Space.sm) {
                 Radius.rect(Radius.lg)

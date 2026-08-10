@@ -1,3 +1,4 @@
+import ReachyDesign
 import ReachyKit
 import ReachyWidgetUI
 import SwiftUI
@@ -74,6 +75,7 @@ struct RobotStatusWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: ReachyWidgetKind.status, provider: RobotStatusProvider()) { entry in
             RobotWidgetView(content: entry.content)
+                .reachyTheme(ThemeStore(defaults: KnownRobots.defaults).theme)
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(ReachyDeepLink.robot.url)
         }

@@ -1,4 +1,5 @@
 import AppIntents
+import ReachyDesign
 import ReachyKit
 import ReachyWidgetUI
 import SwiftUI
@@ -89,6 +90,7 @@ struct ReachyAppsWidget: Widget {
             provider: ReachyAppsProvider()
         ) { entry in
             RobotAppsWidgetView(content: entry.content)
+                .reachyTheme(ThemeStore(defaults: KnownRobots.defaults).theme)
                 .containerBackground(.fill.tertiary, for: .widget)
                 // Every pixel a tile's `Button` does not claim. On iOS 18 this is
                 // the *only* way a widget opens the app — an intent running in an
