@@ -70,15 +70,22 @@ ARCHIVE=Apps/DerivedData/Archives/ReachyMini-macOS.xcarchive
 EXPORT_DIR=Apps/DerivedData/Export/macOS
 
 set -o pipefail
+# COMPILATION_CACHE_ENABLE_CACHING=NO and the metadata check: same reasoning as
+# release-ios.sh — a shipping archive compiles clean, and an archive whose
+# Metadata.appintents came out empty ships an app with no actions in the
+# Shortcuts app while the build stays green.
 xcodebuild archive \
   -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'generic/platform=macOS' -configuration Release \
   -archivePath "$ARCHIVE" -derivedDataPath Apps/DerivedData \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  COMPILATION_CACHE_ENABLE_CACHING=NO \
   -allowProvisioningUpdates \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
+
+Scripts/check-appintents-metadata.sh "$ARCHIVE"
 
 if [ "$wants_developer_id" = true ]; then
   /bin/rm -rf "$EXPORT_DIR/DeveloperID"
