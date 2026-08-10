@@ -7,21 +7,24 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## What is here
 
-| File                       | Holds                                                                               |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                        |
-| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out |
-| `Tone.swift`               | Semantic colour roles over system styles — no palette, no `.xcassets`               |
-| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork              |
-| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture       |
-| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                        |
-| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in        |
-| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`                                              |
-| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                        |
-| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                   |
-| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                |
-| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                             |
-| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback           |
+| File                       | Holds                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                    |
+| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                             |
+| `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`             |
+| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, and the `Color(hex:)` the picker draws its tiles with |
+| `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                  |
+| `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                            |
+| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                          |
+| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture                                   |
+| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                                                    |
+| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                    |
+| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`                                                                          |
+| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                    |
+| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                               |
+| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                            |
+| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                         |
+| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                       |
 
 ## Rules
 
