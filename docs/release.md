@@ -81,6 +81,16 @@ Developer ID runs first on purpose: it is the artifact that always ships, and a
 failed App Store upload should not also cost you the zip. Pick one channel with
 `--channel appstore` or `--channel developer-id`.
 
+Both archive commands compile with the Xcode compilation cache off
+(`COMPILATION_CACHE_ENABLE_CACHING=NO`) and then run
+`Scripts/check-appintents-metadata.sh` against the archive before anything is
+exported or uploaded. The intents live in a static SPM library, so the
+Shortcuts app only ever sees what `appintentsmetadataprocessor` extracted into
+`Metadata.appintents` — and extraction failing is a warning, never a build
+error. TestFlight 0.1.1 shipped exactly that way: green archive, no actions in
+the Shortcuts app. The check names every missing action instead; if it fails,
+the fix is in the build, not in App Store Connect.
+
 Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without
 uploading; `mise run release:macos -- --no-notarize` stops the Developer ID
 channel after the signed export, and `--no-upload` makes the App Store channel

@@ -32,15 +32,26 @@ BUILD_NUMBER="$(git rev-list --count HEAD)"
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-iOS.xcarchive
 
 set -o pipefail
+# COMPILATION_CACHE_ENABLE_CACHING=NO: the shipping artifact gets a clean,
+# uncached compile. The cache went on by default the day before 0.1.1 was
+# archived, and 0.1.1 is the build that installed from TestFlight with no
+# Shortcuts actions at all — an archive is rare enough that replayed
+# compilations buy nothing worth that variable. The metadata check below is
+# what proves the archive either way, before anything is uploaded.
 xcodebuild archive \
   -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination 'generic/platform=iOS' -configuration Release \
   -archivePath "$ARCHIVE" -derivedDataPath Apps/DerivedData \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  COMPILATION_CACHE_ENABLE_CACHING=NO \
   -allowProvisioningUpdates \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
+
+# An archive whose Metadata.appintents came out empty ships an app with no
+# actions in the Shortcuts app, and nothing in the build reddens over it.
+Scripts/check-appintents-metadata.sh "$ARCHIVE"
 
 EXPORT_OPTIONS="$(appstore_export_options "$upload")"
 

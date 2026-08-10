@@ -65,6 +65,10 @@ the next pair.
   `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
+  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the six Shortcuts-facing
+  actions, a non-empty `autoShortcuts` and the appex's configuration intent, from every Release build task and from
+  both release archives before upload. It exists because extraction failing is a warning, never a build error —
+  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private
   `runningApp()` and none may add a second `currentAppStatus` — the whole budget is a few seconds.
   `RobotAppLauncherTests.readsTheStatusOnce` holds that line.
