@@ -22,6 +22,7 @@ struct ReachyMiniApp: App {
             // The smoke test's seam: frozen like a preview, so the launched app
             // starts no Bonjour browse and no sockets while under XCUITest.
             .reachyPreviewMode(ProcessInfo.processInfo.arguments.contains("--reachy-smoke"))
+            .reachyThemeFromSettings()
         }
     }
 }
