@@ -156,6 +156,17 @@ read the store itself would overwrite whatever a preview injected from outside, 
 only ever capture the default: green results over unverified code, which is the original defect wearing a new
 disguise. With the modifier at the entry point, a preview writes `.reachyTheme(.orchid)` and gets orchid.
 
+**Correction, added after Task 5's implementation found this wrong.** The snapshot suite does not inherit the
+entry point's application, in either direction. `#Preview` bodies are instantiated directly by Prefire's
+generated test methods, which never construct `ReachyRootView` and never pass through either app's
+`WindowGroup`/`NavigationStack` content view — so `.reachyThemeFromSettings()` at `ReachyMiniApp` and
+`ReachyStorybookApp` cannot reach a single capture. The paragraph above is still the right reason to keep
+`ThemeStore` out of `ReachyRootView`'s own body — for the app and the storybook themselves — but it is not why any
+reference image ends up themed. What themes those is a second mechanism, added once Task 5's review caught the
+gap: the forked `Apps/ReachyUISnapshotTests/PreviewTests.stencil` wraps every preview body it inlines in
+`Group { … }.reachyTheme(.fallback)` (commit `85cf545`). `ReachyTheme.accent` resolves against `ReachyDesign`'s
+own bundled colour catalogue, which is why that theme reaches a test bundle depending on neither app target.
+
 ### The widget
 
 `ReachyWidgetUI` already depends on `ReachyDesign` and `ReachyKit` (`Package.swift:106`), so it reads the same
@@ -248,8 +259,11 @@ only, on a device, which is the worst place to find it.
 followed by an explicit `git add` of the PNGs, which no hook stages.
 
 **Every existing reference is re-recorded once, in graphite.** They are currently system blue; after this change
-the entry point applies the default, so the whole set moves. Run `mise run test:snapshots` first to see the extent,
-per the standing rule that `record` overwrites blind.
+the whole set moves. **Correction:** not because "the entry point applies the default" — it does not reach a
+`#Preview` at all, per the correction under "`ThemeStore` and propagation" above. What actually moves the set is
+`Apps/ReachyUISnapshotTests/PreviewTests.stencil` wrapping every inlined preview body in `.reachyTheme(.fallback)`,
+landed one commit after the entry-point wiring once review caught the gap. Run `mise run test:snapshots` first to
+see the extent, per the standing rule that `record` overwrites blind.
 
 Adding a preview directory is not one edit: `Apps/.prefire.yml` `sources`, the `sources` of both preview-hosting
 targets in `Project.swift`, `testable_imports`, and the explicit directory list handed to `prefire playbook` in
@@ -266,8 +280,10 @@ Sequenced so the riskiest unknown is retired first and each step lands green.
 2. **`ReachyTheme` + generated colorsets + `ThemeStore`,** with `ThemeStoreTests` and `ReachyThemeContrastTests`.
    No UI. The contrast test guards the palette from here on.
 3. **Propagation:** environment key, `.reachyTheme(_:)`, entry-point application in `ReachyMiniApp` and
-   `ReachyStorybook`; `AccentColor.colorset` repainted to graphite. The theme gallery previews land here too — they
-   are what proves propagation works. Re-record the reference set in this step; it is the commit that moves it.
+   `ReachyStorybook`; `AccentColor.colorset` repainted to graphite. The theme gallery previews land here too — each
+   one calls `.reachyTheme(_:)` on itself directly, which is what proves the modifier paints all six accents (not
+   the entry-point wiring, which no preview passes through). **Correction:** re-recording the reference set took a
+   second commit within this step, not the entry-point commit alone — see the corrections above.
 4. **Icons:** script extended to emit `.icon` alternates, fallback catalogues and picker tiles; build settings in
    `Project.swift`; `ThemeIconNameTests`.
 5. **`AppearanceSection`** with its previews and references, plus the failure caption.

@@ -8,8 +8,16 @@ snapshot, with graphite as a default that no longer collides with `Tone.danger`.
 **Architecture:** `ReachyTheme` is a token in `ReachyDesign` carrying sRGB constants; those constants generate the
 asset catalogue that SwiftUI reads and feed the test that guards them. A theme reaches the UI through
 `EnvironmentValues.reachyTheme` and one `.tint(_:)` applied at the scene entry point — never at `ReachyRootView`,
-so previews can inject a theme the root cannot overwrite. Persistence is one string in the shared App Group suite,
-which is also how the widget process sees it.
+so the app and the storybook can each apply their own choice without `ReachyRootView` overwriting it. Persistence
+is one string in the shared App Group suite, which is also how the widget process sees it.
+
+**Correction, added after Task 5's implementation.** The entry-point application above does not reach the
+snapshot suite — `#Preview` bodies are instantiated directly by Prefire and never pass through `ReachyMiniApp` or
+`ReachyStorybookApp`. What themes every capture is a second mechanism, added as a Task 5 follow-up once review
+caught the gap: the forked `Apps/ReachyUISnapshotTests/PreviewTests.stencil` wraps every preview body it inlines
+in `Group { … }.reachyTheme(.fallback)` (commit `85cf545`). `ReachyTheme.accent` resolves against `ReachyDesign`'s
+own bundled colour catalogue, which is why that theme reaches a test bundle with no dependency on either app
+target. See Task 5 below.
 
 **Tech Stack:** Swift 6 strict concurrency, SwiftUI, swift-testing, SwiftPM + Tuist, Prefire snapshots.
 
@@ -745,6 +753,16 @@ git commit -m "feat(theme): carry the theme through the environment and the tint
 ### Task 5: Apply at the entry points and re-record the references
 
 The commit that turns the app graphite. Every reference image moves here, once.
+
+**Correction, added after implementation.** It took two commits, not one, and the first did not touch the
+snapshot suite at all. `.reachyThemeFromSettings()` at `ReachyMiniApp` and `ReachyStorybookApp` cannot reach a
+single `#Preview` — Prefire instantiates preview bodies directly, never through `ReachyRootView` or either
+`WindowGroup`/`NavigationStack`. Step 4 below measured 44 references moving from the entry-point commit alone, not
+"a large number" of the ~1100, and that delta was never explained — it is not evidence the entry point reached the
+suite. A follow-up commit, `85cf545`, wrapped every preview body inlined by
+`Apps/ReachyUISnapshotTests/PreviewTests.stencil` in `Group { … }.reachyTheme(.fallback)`; that is what actually
+re-recorded 978 of the 1272 references. The steps below are left as originally written — read their
+"moves"/"re-record" language as describing the state after both commits, not the entry-point commit alone.
 
 **Files:**
 

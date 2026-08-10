@@ -2,9 +2,11 @@ import SwiftUI
 
 /// What a colour *means* here, resolved against the system styles.
 ///
-/// There is no palette and no asset catalogue behind this, on purpose: a role
-/// that cannot name a literal colour cannot pin a foreground under adaptive
-/// chrome — the trap `ReachyUI/AGENTS.md` records the app falling into twice.
+/// The palette behind `.brand` is `ReachyTheme` — six generated colour sets, one of
+/// which the scene root applies as its tint. The other four roles stay system
+/// colours on purpose: a role that pinned its own literal could not adapt under
+/// chrome, which is the trap `ReachyUI/AGENTS.md` records the app falling into
+/// twice.
 public enum Tone: Sendable, CaseIterable {
     case danger
     case warning

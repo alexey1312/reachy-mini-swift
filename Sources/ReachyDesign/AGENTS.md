@@ -25,6 +25,27 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## Rules
 
+- **A theme is applied at a scene's entry point, never inside a root view.** Environment resolves nearest-to-leaf,
+  so a root reading `ThemeStore` itself would override whatever an ancestor injected — a preview, `ReachyMiniApp`,
+  or `ReachyStorybook`. `ReachyMiniApp` and `ReachyStorybook` apply it; `ReachyRootView` does not. **Neither entry
+  point reaches the snapshot suite, though** — `#Preview` bodies are instantiated directly by Prefire and never
+  pass through either scene. What themes every capture is the forked
+  `Apps/ReachyUISnapshotTests/PreviewTests.stencil`, which wraps each inlined preview body in
+  `Group { … }.reachyTheme(.fallback)`; `ReachyTheme.accent` resolves against this module's own bundled colour
+  catalogue (`Color(colorSetName, bundle: .module)`), which is why that theme reaches a test bundle depending on
+  neither app target.
+- **Theme colours are Swift constants; `Theme*.colorset` is generated.** `Scripts/render-theme-colors.swift` is the
+  only thing that may write it — including the catalogue's own root `Contents.json` — from `ReachyTheme.palette`,
+  and `ReachyThemeTests` fails if the generated files and the constants disagree. Edit the constants, re-run the
+  script, never hand-edit the JSON.
+- **A new theme must pass the separation rule**, enforced by `Tests/ReachyDesignTests/ReachyThemeTests.swift`:
+  3:1 against its background in both appearances, and either ≥30° of hue or a ≥1.8 luminance-contrast ratio away
+  from `danger`, `warning` and `success`. Coral failed both limbs against `danger`, which is why the app's first
+  accent is not among the themes; bronze is the rule's other limb in practice — it sits 1.5° from `warning` and
+  separates by lightness (1.97) instead.
+- **`AccentColor.colorset` in the app target still matters.** It paints the first frame and every surface drawn
+  outside our hierarchy — system alerts, the share sheet. It must equal `ReachyTheme.fallback` or launch flashes
+  another colour.
 - **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
   not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
@@ -127,7 +148,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   `quiet` (`.borderless`), and that one is not a glass question: it exists because three bordered capsules in a row
   broke their labels across two lines on an iPhone, and stacking them gave a ragged column of three different widths.
   Both were recorded as references before being read. `.borderless` rather than `.plain` — plain drops the tint, and a
-  tintless label beside a blue one reads as disabled.
+  tintless label beside a tinted one reads as disabled.
 - **`glassEffectID` morphing between screens.** Worth having only once a layout is built around it, and there is no
   equivalent below the floor.
 - **A gesture-carrying spring beyond `absorb(velocity:)`.** It is the module's only `Animation` that is a function
