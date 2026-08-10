@@ -52,6 +52,7 @@ struct SystemUpdateCard: View {
                         }
                     }
                 }
+                .reachySheet()
             }
         }
     }

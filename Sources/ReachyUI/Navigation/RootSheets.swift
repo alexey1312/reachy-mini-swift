@@ -34,6 +34,7 @@ struct RootSheets: ViewModifier {
                             }
                         }
                 }
+                .reachySheet()
             }
             .sheet(isPresented: $router.showsRemoteRobots) {
                 NavigationStack {
@@ -47,6 +48,7 @@ struct RootSheets: ViewModifier {
                         signIn: { HFSignInScreen(session: session, model: HFSignInModel(account: hfAccount)) }
                     )
                 }
+                .reachySheet()
             }
             .sheet(isPresented: $router.showsPermissions) {
                 NavigationStack {
@@ -60,6 +62,7 @@ struct RootSheets: ViewModifier {
                             }
                         }
                 }
+                .reachySheet()
             }
     }
 

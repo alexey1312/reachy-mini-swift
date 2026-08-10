@@ -12,6 +12,20 @@ public enum SurfaceRole: Sendable, CaseIterable {
     case badge
     /// The backdrop behind a header, a footer or a console.
     case scrim
+    /// The page's own background, drawn under something pinned to an edge of it.
+    ///
+    /// Opaque and nothing else — no glass, no material — and that is the whole
+    /// point. A bar at the edge of a plain page has one job, to hide what passes
+    /// under it, and `.scrim` does that job while also announcing itself. That is
+    /// right over a log tail and wrong at the bottom of a sheet: glass renders a
+    /// light surface whatever is behind it, so on a dark onboarding step the
+    /// footer read as a grey strip stuck to the bottom of the screen with a button
+    /// in it — reported as a bug, and it was one.
+    ///
+    /// Distinct from `.window`, which is also glass-free but takes a `.bar`
+    /// material: a window is raised *off* whatever is behind it, and this is the
+    /// thing behind it.
+    case page
     /// A raised, opaque, glass-free panel: the running-app strip where it has to
     /// back itself, and the floating live view.
     ///
@@ -92,7 +106,7 @@ public extension View {
         background { ReachySurfaceFill(role, in: shape) }
     }
 
-    /// A `.scrim` that paints the inset beside it as well.
+    /// A surface that paints the inset beside it as well.
     ///
     /// `background(_:)` taking a `ShapeStyle` defaults to `ignoresSafeAreaEdges:
     /// .all`, and every bar this replaces relied on that without saying so: a strip
@@ -100,11 +114,21 @@ public extension View {
     /// home indicator sits on a stripe of window colour. `reachySurface` uses the
     /// `ViewBuilder` form of `background`, which stops at the safe area — so the
     /// bars that need the old behaviour ask for it by name.
-    func reachyScrim(ignoringSafeArea edges: Edge.Set = .all) -> some View {
+    func reachySurface(
+        _ role: SurfaceRole,
+        in shape: some Shape = .rect,
+        ignoringSafeArea edges: Edge.Set
+    ) -> some View {
         background {
-            ReachySurfaceFill(.scrim, in: .rect)
+            ReachySurfaceFill(role, in: shape)
                 .ignoresSafeArea(edges: edges)
         }
+    }
+
+    /// The `.scrim` spelling of the above — what the two consoles ask for, and the
+    /// name three call sites already used.
+    func reachyScrim(ignoringSafeArea edges: Edge.Set = .all) -> some View {
+        reachySurface(.scrim, ignoringSafeArea: edges)
     }
 }
 
@@ -113,13 +137,14 @@ extension SurfaceRole {
         switch self {
         case .chrome, .card: .regular
         case .scrim, .window: .bar
-        case .badge: nil
+        case .badge, .page: nil
         }
     }
 
     /// A badge takes no effect at all: it sits inside a card and floats over
     /// nothing, so there is nothing behind it for glass to refract or a material
-    /// to blur. Its fill alone is the surface.
+    /// to blur. Its fill alone is the surface. A page is the same claim from the
+    /// other side: it *is* the backdrop, so there is nothing behind it either.
     @available(iOS 26.0, macOS 26.0, *)
     var glass: Glass? {
         switch self {
@@ -127,7 +152,7 @@ extension SurfaceRole {
         // glass on one would react to every scroll passing under it.
         case .chrome: .regular.interactive()
         case .card, .scrim: .regular
-        case .badge, .window: nil
+        case .badge, .window, .page: nil
         }
     }
 
@@ -135,7 +160,7 @@ extension SurfaceRole {
     /// and `.background` there would punch a hole straight through to the screen.
     var baseFill: AnyShapeStyle {
         switch self {
-        case .chrome, .card, .scrim, .window: AnyShapeStyle(.background)
+        case .chrome, .card, .scrim, .window, .page: AnyShapeStyle(.background)
         case .badge: AnyShapeStyle(.fill.quaternary)
         }
     }

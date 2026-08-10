@@ -127,6 +127,7 @@ private struct RunningAppModifier: ViewModifier {
                         }
                     }
                     .presentationDetents([.large])
+                    .reachySheet()
                 }
             }
             .task(id: polls) {
