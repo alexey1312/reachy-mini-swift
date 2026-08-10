@@ -16,7 +16,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture       |
 | `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                        |
 | `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in        |
-| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`                                              |
+| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                      |
 | `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                        |
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                   |
 | `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                |
@@ -27,6 +27,14 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 - **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
   not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
+- **A backdrop under a bar is not automatically a `.scrim`, and the difference is whether anything passes under it.**
+  A scrim carries glass, glass renders a light surface whatever is behind it, and a footer at the bottom of a sheet
+  where the step fits on one screen is backing nothing at all — so it reads as a grey strip stuck to the bottom of the
+  screen with a button in it, which is how `OnboardingStepScaffold`'s footer was reported. `.page` is that footer's
+  role: the opaque page fill and no effect over it, which still hides what scrolls under on the steps that do scroll
+  and says nothing on the ones that do not. The two consoles keep `reachyScrim` — over a log tail there _is_ content
+  passing under, and the effect is the notice that there is. Glass-free but **not** `.window`: a window is raised off
+  what is behind it and takes a `.bar` material, and a page is the thing behind it.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
   headless snapshot (`RunningAppDock`'s `windowEdge` records the same about `.bar`). Without a fill that _does_ render,
   every surface would be invisible to the reference images and the layout and text on each card would silently lose
@@ -199,8 +207,13 @@ one:
 - `ViewportStatus.loading` moved its reference image because `Radius.rect` is `.continuous` where
   `RoundedRectangle(cornerRadius: 12)` defaulted to `.circular`. That is the intended correction, not a regression.
 - `background(_:in:)` taking a `ShapeStyle` defaults to `ignoresSafeAreaEdges: .all`; `reachySurface` uses the
-  `ViewBuilder` form, which does not. A scrim that today paints into the safe area (`LogConsoleView`,
-  `OnboardingFlow`, `BLEConsoleScreen`) needs its own `.ignoresSafeArea` when it adopts the role.
+  `ViewBuilder` form, which does not. A bar that today paints into the safe area (`LogConsoleView`, `OnboardingFlow`,
+  `BLEConsoleScreen`) asks for it by name — `reachySurface(_:in:ignoringSafeArea:)`, of which `reachyScrim` is now
+  the `.scrim` spelling rather than the only one.
+- **The onboarding footer was the first of these to come back off `.scrim`, and it is a role change, not a fix to the
+  role.** `.page` is what it takes now; the entry under Rules says why. Every `Onboarding —` reference moves with it,
+  and the dark half moves furthest: the footer band renders as glass-white there today and becomes the page's own
+  black. `Design — surfaces` gains a capsule for the new case.
 
 ## Both appearances, and what glass does to the dark half
 
