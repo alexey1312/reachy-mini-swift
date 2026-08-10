@@ -64,6 +64,28 @@ Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without
 uploading; `mise run release:macos -- --no-notarize` stops after the signed
 export.
 
+## Querying App Store Connect
+
+`mise run asc` is the App Store Connect CLI with the same key already loaded —
+`Scripts/asc.sh` maps the `REACHY_ASC_*` values onto the `ASC_*` names the tool
+reads, so nothing is stored twice and no keychain profile exists to drift.
+Everything after `--` goes to `asc`:
+
+```bash
+mise run asc -- apps list
+mise run asc -- builds list --app 6799644194   # did the TestFlight upload land?
+mise run asc -- testflight beta-groups list --app 6799644194
+```
+
+`asc` resolves a stored profile before the environment, so an `asc auth login`
+run by hand silently outranks this wrapper — `mise run asc -- auth status`
+prints which of the two is answering. The key is App Manager, not Admin, so the
+same limit release-ios.sh documents applies: it can read and submit, and it
+cannot manage provisioning profiles.
+
+The CLI also ships 23 agent skills (`asc install-skills`, pinned to a reviewed
+commit) covering TestFlight, metadata, submissions and signing.
+
 ## Xcode Cloud (optional, continuous TestFlight)
 
 `Apps/ci_scripts/ci_post_clone.sh` makes a generated project buildable on

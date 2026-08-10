@@ -16,6 +16,7 @@ set -euo pipefail
 . "$(dirname "$0")/release-env.sh"
 
 upload=true
+require_development_team
 while [ $# -gt 0 ]; do
   case "$1" in
   --no-upload) upload=false ;;
