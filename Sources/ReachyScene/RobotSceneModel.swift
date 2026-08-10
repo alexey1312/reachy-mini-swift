@@ -100,6 +100,11 @@ public final class RobotSceneModel {
         } catch is CancellationError {
             return
         } catch {
+            // A cancelled load that fails with a real error — a URLError landing
+            // after stop() — is still a cancelled load: writing `.failed` here
+            // would repaint a successor attempt's phase, and the nil below would
+            // erase its handle. Same hazard `RobotSession`'s poll loop guards on.
+            guard !Task.isCancelled else { return }
             phase = .failed(Self.describe(error))
             // A failed load must not pin `geometryTask` for good: `start()`
             // guards on it, so leaving it set made the failure terminal — no
