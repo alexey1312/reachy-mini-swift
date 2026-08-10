@@ -1,15 +1,16 @@
+import ReachyDesign
 import SwiftUI
-
-/// Which rotation zone the knob is in.
-enum JoystickRotationSide: Equatable {
-    case left, right
-}
 
 /// 2D touch pad emitting a normalized deflection; snaps back to center on release.
 ///
-/// Past `mapping.rotationThreshold` sideways the knob enters a rotation zone, which
-/// the pad marks with a lit arc and a haptic tick. The pad only reports where the
-/// knob is — turning that into head pose or body rotation is `TeleopDriver`'s job.
+/// The pad is banded rather than marked: the middle is head yaw, and the slice past
+/// `mapping.rotationThreshold` on either side is where the body turns. That slice is
+/// shaded whole — a push into its top or bottom corner turns the robot exactly as a
+/// level one does — and it lights up, with a haptic tick, when the knob enters it. It
+/// used to be a pair of short arcs at the left and right of the rim, which drew a
+/// third of the area the zone actually covered and taught the reader to aim level.
+/// The pad only reports where the knob is; turning that into head pose or body
+/// rotation is `TeleopDriver`'s job.
 struct JoystickPad: View {
     var mapping: JoystickMapping
     var onChange: (JoystickDeflection) -> Void
@@ -27,8 +28,7 @@ struct JoystickPad: View {
     }
 
     private var rotationSide: JoystickRotationSide? {
-        guard abs(deflection.x) > mapping.rotationThreshold else { return nil }
-        return deflection.x > 0 ? .right : .left
+        mapping.rotationSide(deflection)
     }
 
     var body: some View {
@@ -39,11 +39,11 @@ struct JoystickPad: View {
                     .fill(.quaternary.opacity(0.3))
                 Circle()
                     .strokeBorder(.tertiary, lineWidth: 1)
-                zoneArc(.left)
-                zoneArc(.right)
+                rotationZone(.left)
+                rotationZone(.right)
                 Circle()
                     .fill(.tint)
-                    .frame(width: 56, height: 56)
+                    .frame(width: Metrics.joystickKnob, height: Metrics.joystickKnob)
                     .offset(x: CGFloat(deflection.x) * radius, y: CGFloat(deflection.y) * radius)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -69,13 +69,62 @@ struct JoystickPad: View {
             }
     }
 
-    /// Where the body starts turning. Lit while the knob is inside it.
-    private func zoneArc(_ side: JoystickRotationSide) -> some View {
-        Circle()
-            .trim(from: 0, to: 0.1)
-            .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round))
-            .rotationEffect(.degrees(side == .right ? -18 : 162))
-            .foregroundStyle(rotationSide == side ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
-            .padding(3)
+    /// Where the body turns. Shaded at rest so its extent is legible before a finger
+    /// is anywhere near it, lit while the knob is inside it. Drawn over the pad's own
+    /// border, so the lit state reaches the rim.
+    private func rotationZone(_ side: JoystickRotationSide) -> some View {
+        let zone = RotationZone(side: side, threshold: mapping.rotationThreshold)
+        let isActive = rotationSide == side
+        return ZStack {
+            zone
+                .fill(isActive ? Tone.brand.style : AnyShapeStyle(.quaternary))
+                .opacity(isActive ? 0.3 : 0.45)
+            zone
+                .strokeBorder(isActive ? Tone.brand.style : AnyShapeStyle(.tertiary), lineWidth: 1)
+        }
+    }
+}
+
+/// The slice of the pad past the head zone: the disc, cut by the vertical chord at
+/// `±threshold` of its radius, which is exactly where `JoystickMapping` starts turning
+/// the body.
+///
+/// Built by intersecting the disc with a half-plane rather than by sweeping an arc:
+/// `addArc` would have to be handed the right winding for a y-down space to cut off
+/// the near side rather than the far one, and an intersection is correct by
+/// construction — the shading cannot drift away from the mapping's boundary.
+private struct RotationZone: InsettableShape {
+    var side: JoystickRotationSide
+    /// Where the chord sits, as a fraction of the pad's radius.
+    var threshold: Double
+    var inset: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.width, rect.height) / 2 - inset
+        guard radius > 0 else { return Path() }
+        let centre = CGPoint(x: rect.midX, y: rect.midY)
+        let disc = Path(
+            ellipseIn: CGRect(
+                x: centre.x - radius,
+                y: centre.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            )
+        )
+        let direction: CGFloat = side == .right ? 1 : -1
+        let chord = centre.x + direction * CGFloat(threshold.clamped(to: 0 ... 1)) * radius
+        let halfPlane = CGRect(
+            x: side == .right ? chord : chord - radius * 2,
+            y: centre.y - radius,
+            width: radius * 2,
+            height: radius * 2
+        )
+        return disc.intersection(Path(halfPlane))
+    }
+
+    func inset(by amount: CGFloat) -> RotationZone {
+        var copy = self
+        copy.inset += amount
+        return copy
     }
 }
