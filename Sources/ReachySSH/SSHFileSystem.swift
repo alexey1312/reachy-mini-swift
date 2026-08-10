@@ -56,7 +56,11 @@ public actor SSHFileSystem: RobotFileSystem {
         // `disconnect()` may have cleared the slot — or a reconnect refilled it —
         // while this attempt was suspended; clearing blindly would erase the
         // successor's handle and revive the very race this task exists to stop.
-        defer { if connecting == attempt { connecting = nil } }
+        defer {
+            if connecting == attempt {
+                connecting = nil
+            }
+        }
         return try await attempt.value
     }
 
