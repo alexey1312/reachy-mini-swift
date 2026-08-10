@@ -238,7 +238,7 @@ On macOS the strip renders the colours but makes no promise about the Dock icon.
 **`ThemeStoreTests`** — round trip, empty key → `.fallback`, unknown raw value → `.fallback`, and that writing
 through one store instance is visible to another over the same injected `UserDefaults`.
 
-**`ReachyThemeContrastTests`** — the rule that this whole feature exists to enforce, as a red test:
+**`ReachyThemeTests`** — the rule that this whole feature exists to enforce, as a red test:
 
 - every accent ≥ 3 : 1 against white (light) and against `#1C1C1E` (dark);
 - every accent separated from `Tone.danger`, `Tone.warning` and `Tone.success` by **either** ≥ 30° of hue **or** a
@@ -277,7 +277,7 @@ Sequenced so the riskiest unknown is retired first and each step lands green.
 1. **Icon Composer prototype.** One reference `.icon` plus one alternate, `setAlternateIconName` exercised on
    hardware via `mise run device`. Confirms `supportsAlternateIcons` under Xcode 26.4.1. If it fails, the icon half
    of the feature is re-planned before anything is built on it; the colour half is unaffected.
-2. **`ReachyTheme` + generated colorsets + `ThemeStore`,** with `ThemeStoreTests` and `ReachyThemeContrastTests`.
+2. **`ReachyTheme` + generated colorsets + `ThemeStore`,** with `ThemeStoreTests` and `ReachyThemeTests`.
    No UI. The contrast test guards the palette from here on.
 3. **Propagation:** environment key, `.reachyTheme(_:)`, entry-point application in `ReachyMiniApp` and
    `ReachyStorybook`; `AccentColor.colorset` repainted to graphite. The theme gallery previews land here too — each

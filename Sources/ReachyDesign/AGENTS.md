@@ -37,10 +37,11 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   `Group { … }.reachyTheme(.fallback)`; `ReachyTheme.accent` resolves against this module's own bundled colour
   catalogue (`Color(colorSetName, bundle: .module)`), which is why that theme reaches a test bundle depending on
   neither app target.
-- **Theme colours are Swift constants; `Theme*.colorset` is generated.** `Scripts/render-theme-colors.swift` is the
-  only thing that may write it — including the catalogue's own root `Contents.json` — from `ReachyTheme.palette`,
-  and `ReachyThemeTests` fails if the generated files and the constants disagree. Edit the constants, re-run the
-  script, never hand-edit the JSON.
+- **Theme colours are Swift constants; `Theme*.colorset` is generated — from a second, hand-kept copy of them.**
+  `Scripts/render-theme-colors.swift` cannot link `ReachyDesign`, so it carries its own duplicate of
+  `ReachyTheme.palette` and writes the catalogue — including the catalogue's own root `Contents.json` — from that
+  copy. A new or changed theme means editing both files by hand before re-running the script; `ReachyThemeTests`
+  only catches the two drifting apart, it does not keep them together. Never hand-edit the generated JSON.
 - **A new theme must pass the separation rule**, enforced by `Tests/ReachyDesignTests/ReachyThemeTests.swift`:
   3:1 against its background in both appearances, and either ≥30° of hue or a ≥1.8 luminance-contrast ratio away
   from `danger`, `warning` and `success`. Coral failed both limbs against `danger`, which is why the app's first
