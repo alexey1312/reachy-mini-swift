@@ -1,0 +1,49 @@
+import ReachyDesign
+@testable import ReachyUI
+import SwiftUI
+
+#Preview("Appearance — picker") {
+    Form {
+        AppearanceSection()
+    }
+    .formStyle(.grouped)
+}
+
+#Preview("Appearance — graphite") { themedSample(.graphite) }
+#Preview("Appearance — bronze") { themedSample(.bronze) }
+#Preview("Appearance — teal") { themedSample(.teal) }
+#Preview("Appearance — indigo") { themedSample(.indigo) }
+#Preview("Appearance — orchid") { themedSample(.orchid) }
+#Preview("Appearance — rose") { themedSample(.rose) }
+
+/// One screen per theme, so a reference exists for each accent rather than for the
+/// default alone. A `Form` with the controls that actually carry the tint — a
+/// button, a link-styled row, a toggle, a segmented picker.
+@MainActor
+func themedSample(_ theme: ReachyTheme) -> some View {
+    ThemeSample()
+        .reachyTheme(theme)
+}
+
+private struct ThemeSample: View {
+    @State private var isOn = true
+    @State private var segment = 0
+
+    var body: some View {
+        Form {
+            Section {
+                Button(.reachy("Set up a new robot over Bluetooth")) {}
+                Toggle(.reachy("Automatic reconnect"), isOn: $isOn)
+                Picker(.reachy("Source"), selection: $segment) {
+                    Text(.reachy("This network")).tag(0)
+                    Text(.reachy("Manual")).tag(1)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text(.reachy("Appearance"))
+            }
+            AppearanceSection()
+        }
+        .formStyle(.grouped)
+    }
+}

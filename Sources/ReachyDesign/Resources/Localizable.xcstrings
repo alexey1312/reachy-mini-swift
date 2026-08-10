@@ -40,6 +40,9 @@
     "Antennas": {
       "extractionState": "manual"
     },
+    "Appearance": {
+      "extractionState": "manual"
+    },
     "Apps": {
       "extractionState": "manual"
     },
@@ -50,6 +53,9 @@
       "extractionState": "manual"
     },
     "Asking…": {
+      "extractionState": "manual"
+    },
+    "Automatic reconnect": {
       "extractionState": "manual"
     },
     "Automatic reconnect paused": {
@@ -86,6 +92,9 @@
       "extractionState": "manual"
     },
     "Body yaw": {
+      "extractionState": "manual"
+    },
+    "Bronze": {
       "extractionState": "manual"
     },
     "Browse Discover to install one from Hugging Face.": {
@@ -331,6 +340,9 @@
     "Going to sleep…": {
       "extractionState": "manual"
     },
+    "Graphite": {
+      "extractionState": "manual"
+    },
     "Hardware ID": {
       "extractionState": "manual"
     },
@@ -371,6 +383,9 @@
       "extractionState": "manual"
     },
     "Include pre-release versions": {
+      "extractionState": "manual"
+    },
+    "Indigo": {
       "extractionState": "manual"
     },
     "Info and above": {
@@ -452,6 +467,9 @@
       "extractionState": "manual"
     },
     "Maintenance": {
+      "extractionState": "manual"
+    },
+    "Manual": {
       "extractionState": "manual"
     },
     "Manual address": {
@@ -604,6 +622,9 @@
     "Options": {
       "extractionState": "manual"
     },
+    "Orchid": {
+      "extractionState": "manual"
+    },
     "Other network…": {
       "extractionState": "manual"
     },
@@ -736,6 +757,9 @@
     "Robots on this network": {
       "extractionState": "manual"
     },
+    "Rose": {
+      "extractionState": "manual"
+    },
     "Running": {
       "extractionState": "manual"
     },
@@ -832,6 +856,9 @@
     "Someone is driving this robot over Hugging Face.": {
       "extractionState": "manual"
     },
+    "Source": {
+      "extractionState": "manual"
+    },
     "Speaking…": {
       "extractionState": "manual"
     },
@@ -902,6 +929,9 @@
       "extractionState": "manual"
     },
     "Teaching the servos new steps…": {
+      "extractionState": "manual"
+    },
+    "Teal": {
       "extractionState": "manual"
     },
     "Test sound": {
@@ -1013,6 +1043,9 @@
       "extractionState": "manual"
     },
     "This device has no Bluetooth": {
+      "extractionState": "manual"
+    },
+    "This network": {
       "extractionState": "manual"
     },
     "This robot": {

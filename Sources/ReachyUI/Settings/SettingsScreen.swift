@@ -37,6 +37,7 @@ struct SettingsScreen: View {
             if session.supportsWirelessFeatures {
                 SystemUpdateCard(session: session)
             }
+            AppearanceSection()
             privacySection
             AdvancedSettingsSection(session: session)
         }

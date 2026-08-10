@@ -66,3 +66,32 @@ public extension ReachyTheme {
         Color(colorSetName, bundle: .module)
     }
 }
+
+public extension ReachyTheme {
+    /// Colour names, not robot vocabulary — a translator gets the same six words a
+    /// paint chart would use.
+    var title: LocalizedStringResource {
+        switch self {
+        case .graphite: .reachy("Graphite")
+        case .bronze: .reachy("Bronze")
+        case .teal: .reachy("Teal")
+        case .indigo: .reachy("Indigo")
+        case .orchid: .reachy("Orchid")
+        case .rose: .reachy("Rose")
+        }
+    }
+}
+
+public extension Color {
+    /// A fixed sRGB colour from a palette constant. Not adaptive on purpose — the
+    /// gradient stops describe an icon, which has one appearance.
+    init(hex: UInt32) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255,
+            opacity: 1
+        )
+    }
+}
