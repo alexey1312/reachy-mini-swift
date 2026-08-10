@@ -110,6 +110,10 @@ let package = Package(
         // one test target cannot import another's sources.
         .target(name: "ReachyTestSupport"),
         .testTarget(
+            name: "ReachyDesignTests",
+            dependencies: ["ReachyDesign"]
+        ),
+        .testTarget(
             name: "HuggingFaceAuthTests",
             dependencies: ["HuggingFaceAuth", "ReachyTestSupport"]
         ),
