@@ -34,7 +34,35 @@ struct LiveTab: View {
                             }
                         }
                     }
+                    if floating.hasTabBar {
+                        ToolbarItem { optionsMenu }
+                    }
                 }
+        }
+    }
+
+    /// The switch for the floating window, and the reason it is here rather than in
+    /// Settings: this is the screen the window belongs to, and it is the one screen
+    /// guaranteed to be reachable in both states — off makes every placement
+    /// `.inline`, so the tab draws the viewport and carries this toolbar either way.
+    ///
+    /// Behind `hasTabBar` because the window does not exist without one. A sidebar
+    /// keeps Live beside every other destination, so there is nothing to float and
+    /// nothing to switch off; the flag is read off the model rather than from
+    /// `horizontalSizeClass`, which keeps the target's one size-class branch its
+    /// only one.
+    ///
+    /// A menu rather than a bare icon: the complaint that led here was that the
+    /// only way to put the window away could not be found, and what is found is a
+    /// word, not a glyph.
+    private var optionsMenu: some View {
+        Menu {
+            Toggle(.reachy("Mini window"), isOn: Binding(
+                get: { floating.isEnabled },
+                set: { floating.setEnabled($0) }
+            ))
+        } label: {
+            Label(.reachy("Live options"), systemImage: "pip")
         }
     }
 

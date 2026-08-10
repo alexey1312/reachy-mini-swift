@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import ReachyDesign
 @testable import ReachyUI
 import SwiftUI
@@ -96,7 +97,100 @@ struct FloatingViewportModelTests {
         #expect(model.placement == .inline)
     }
 
-    // MARK: - The off switch, in two phases
+    // MARK: - The switch on the Live tab
+
+    /// Off is a fourth input to the same derivation, not a fourth state: every
+    /// placement collapses to `.inline`, which is exactly the shape a sidebar layout
+    /// already had. So the tab draws the viewport, the overlay draws nothing, and
+    /// nothing in `RootLifecycle` has to learn that the switch exists.
+    @Test("switched off, nothing floats and nothing streams")
+    func disabledCollapsesToInline() {
+        let rests: [FloatingViewportModel.Placement] = [
+            .floating(.topLeading),
+            .floating(.bottomTrailing),
+            .docked(.leading, y: 200),
+        ]
+        for rest in rests {
+            for live in [true, false] {
+                let model = FloatingViewportModel.preview(rest, isLiveTabSelected: live, isEnabled: false)
+                #expect(model.placement == .inline)
+                #expect(model.isInline)
+                #expect(!model.isStreaming)
+            }
+        }
+    }
+
+    /// `rest` remembers a window that was thrown at an edge, so switching back on
+    /// without this returns a 44 pt tab at the screen's border — indistinguishable
+    /// from a switch that does nothing, which is the complaint it exists to answer.
+    @Test("switching back on lands in a corner, not where the window was left")
+    func enablingReturnsToACorner() throws {
+        let model = try switchable()
+        model.beginDocking(.leading, in: Self.portrait)
+        model.finishSettling()
+        #expect(model.rest == .docked(.leading, y: 728))
+
+        model.setEnabled(false)
+        #expect(model.placement == .inline)
+
+        model.setEnabled(true)
+        #expect(model.rest == .floating(.bottomTrailing))
+        #expect(model.placement == .floating(.bottomTrailing))
+        #expect(model.isStreaming)
+    }
+
+    /// The guard, and it is load-bearing: a `Toggle` writes its binding whenever
+    /// SwiftUI decides to, and without this any such write would yank a window the
+    /// reader had put away back into a corner.
+    @Test("writing the switch to what it already says moves nothing")
+    func idleWriteIsANoOp() throws {
+        let model = try switchable()
+        model.beginDocking(.trailing, in: Self.portrait)
+        model.finishSettling()
+
+        model.setEnabled(true)
+        #expect(model.rest == .docked(.trailing, y: 728))
+    }
+
+    /// The one input to `placement` that outlives the app. A docked window belongs
+    /// to the connection and comes back with the next one; being switched off does
+    /// not, which is the whole difference between the gesture and this.
+    @Test("the switch outlives the model that wrote it")
+    func choiceIsRemembered() throws {
+        let preferences = try FloatingViewportPreferences(defaults: #require(isolatedDefaults()))
+
+        #expect(FloatingViewportModel(preferences: preferences).isEnabled)
+
+        FloatingViewportModel(preferences: preferences).setEnabled(false)
+        #expect(!FloatingViewportModel(preferences: preferences).isEnabled)
+
+        FloatingViewportModel(preferences: preferences).setEnabled(true)
+        #expect(FloatingViewportModel(preferences: preferences).isEnabled)
+    }
+
+    /// A suite nothing has written reads as on: the window is what this app has
+    /// always done, and never having found the switch is not a decision.
+    @Test("an untouched preference reads as on")
+    func defaultsToEnabled() throws {
+        let preferences = try FloatingViewportPreferences(defaults: #require(isolatedDefaults()))
+        #expect(preferences.isEnabled)
+    }
+
+    /// `swift test --parallel` runs suites concurrently against one `UserDefaults`
+    /// table, so every test that writes gets a table of its own.
+    private func isolatedDefaults() -> UserDefaults? {
+        UserDefaults(suiteName: "FloatingViewportModelTests.\(UUID().uuidString)")
+    }
+
+    private func switchable() throws -> FloatingViewportModel {
+        let model = try FloatingViewportModel(
+            preferences: FloatingViewportPreferences(defaults: #require(isolatedDefaults()))
+        )
+        model.hasTabBar = true
+        return model
+    }
+
+    // MARK: - Putting the window away, in two phases
 
     /// **The whole point of `settling`.** While the window is animating into its edge
     /// the renderer is still mounted and the stream still running, so RealityKit is

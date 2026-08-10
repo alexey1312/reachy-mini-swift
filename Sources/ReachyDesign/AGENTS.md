@@ -227,6 +227,14 @@ What that means when reading a dark reference:
 - The roles that carry no glass — `.badge`, `.window` — and everything outside a surface are truthful, and that is
   where the dark half earns its keep: `LogConsoleView`'s level palette, the status captions, every screen background.
 - A dark reference is therefore evidence about _content_, and evidence about glass only on device.
+- **The navigation bar is one of those glass surfaces, so a toolbar item moves the dark reference and only the dark
+  one.** Measured when the Live tab gained its options menu: of the 20 references for the five Live-tab root previews,
+  the 5 `iPhone-…-dark` moved and the other 15 — light iPhone and both iPad — came back byte-identical, the iPad pair
+  legitimately (no tab bar, so no menu) and the light iPhone pair because a white glyph on the bar's white glass is
+  the bar. The delta was 196 × 43 px in the top-trailing corner, and cropping it showed the existing `Controller`
+  glyph shifted left with the new one beside it. **Read the dark capture before concluding a toolbar item did not
+  render** — the light one looked, convincingly, like a change that had not happened, and re-testing it with the
+  condition removed reproduced the same empty bar.
 
 ## Previews
 
