@@ -249,6 +249,19 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   torn down (`daemon.stop()` sets `self.backend = None`); every route behind the `get_backend` dependency
   (`move/*`, `state/*` incl. `ws/full`, `motors/*`, `kinematics/*`, `volume/*`) answers **503 "Backend not running"**.
   `camera/*` uses `get_daemon` instead, and `/logs/ws/daemon` is mounted at the app root — both outside that gate.
+- **Every motion route files a task in one module-level `move_tasks` dict**, so `goto`, `wake_up`, `goto_sleep` and a
+  recorded move are indistinguishable in `GET /api/move/running` — which returns `[{uuid}]` and no other field. There
+  is no route that names a running move. `POST /api/move/stop` awaits the cancellation before answering, so a 200
+  means the slot is already free.
+  - `/api/move/ws/updates` pushes `move_started` / `move_completed` / `move_failed` / `move_cancelled` with the uuid,
+    but **only to listeners already attached** — nothing is sent on connect. Same shape as `conversation.turn`: a
+    client joining mid-move learns nothing until the next transition, so a `GET /running` is needed regardless and
+    the socket buys only latency. `RobotSession` polls and does not open it.
+  - `POST /api/move/goto` with zeros is the "return to neutral" the daemon performs for itself after an app releases
+    the robot. **The generated Swift is not the shape the spec suggests**: `head_pose`'s `anyOf` becomes
+    `HeadPosePayload` with one optional per branch (`value1` = `XYZRPYPose`), not an enum, and `antennas`
+    (a `prefixItems` tuple) has no generated type at all — it arrives as `OpenAPIRuntime.OpenAPIArrayContainer`.
+    An omitted field means "leave that axis alone", so all three are sent explicitly.
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.

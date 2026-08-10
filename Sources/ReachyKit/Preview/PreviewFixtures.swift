@@ -272,7 +272,12 @@
             dataset: String = "pollen-robotics/reachy-mini-dances-library",
             uuid: String = "preview-playback"
         ) -> RobotSession.MovePlayback {
-            .init(dataset: dataset, move: move, uuid: uuid)
+            .init(uuid: uuid, identity: .init(dataset: dataset, move: move))
+        }
+
+        /// Playback adopted from `/api/move/running`, which names nothing.
+        static func preview(uuid: String) -> RobotSession.MovePlayback {
+            .init(uuid: uuid, identity: nil)
         }
     }
 
@@ -293,8 +298,7 @@
             error: String? = nil,
             powerTransition: PowerTransition? = nil,
             compatibilityWarning: String? = nil,
-            currentMove: MovePlayback? = nil,
-            isStoppingMove: Bool = false,
+            moveActivity: MoveActivity? = nil,
             // The dock is mounted on the root, so every root preview needs a way to
             // reach a state that otherwise requires an app running on a real robot.
             runningApp: RobotAppStatus? = nil,
@@ -315,8 +319,7 @@
             session.robotError = error
             session.powerTransition = powerTransition
             session.compatibilityWarning = compatibilityWarning
-            session.currentMove = currentMove
-            session.isStoppingMove = isStoppingMove
+            session.moveActivity = moveActivity
             session.runningApp = runningApp
             session.automaticConnectionAllowed = automaticConnectionAllowed
             return session

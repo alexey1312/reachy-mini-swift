@@ -78,9 +78,64 @@ public final class RobotSession {
     }
 
     public struct MovePlayback: Equatable, Sendable {
-        public let dataset: String
-        public let move: String
+        /// Which recorded move this is. Absent for playback the app did not start:
+        /// `/api/move/running` answers with UUIDs and nothing else — no dataset, no
+        /// name — so a move found already running after a relaunch can only be
+        /// named when the UUID matches the one this app persisted.
+        public struct Identity: Equatable, Sendable {
+            public let dataset: String
+            public let move: String
+
+            public init(dataset: String, move: String) {
+                self.dataset = dataset
+                self.move = move
+            }
+        }
+
         public let uuid: String
+        public let identity: Identity?
+
+        public init(uuid: String, identity: Identity?) {
+            self.uuid = uuid
+            self.identity = identity
+        }
+
+        public var dataset: String? {
+            identity?.dataset
+        }
+
+        public var move: String? {
+            identity?.move
+        }
+    }
+
+    /// What the robot is doing about moves, as one value.
+    ///
+    /// Three independent flags would allow combinations that do not exist —
+    /// stopping and parking at once — and the screen would have to rule them out
+    /// by hand. `currentMove` and `isStoppingMove` are derived from this rather
+    /// than stored beside it, so they cannot disagree with it.
+    public enum MoveActivity: Equatable, Sendable {
+        case playing(MovePlayback)
+        case stopping(MovePlayback)
+        /// The daemon's own zero pose, which is a move task like any other.
+        case recentring(uuid: String)
+
+        /// `nil` while parking: returning to neutral is not playback. It has no
+        /// dataset, no row to highlight in the library, and nothing to stop.
+        public var playback: MovePlayback? {
+            switch self {
+            case let .playing(playback), let .stopping(playback): playback
+            case .recentring: nil
+            }
+        }
+
+        var uuid: String {
+            switch self {
+            case let .playing(playback), let .stopping(playback): playback.uuid
+            case let .recentring(uuid): uuid
+            }
+        }
     }
 
     // `internal(set)` rather than `private(set)`: the connect and power protocols
@@ -104,8 +159,31 @@ public final class RobotSession {
     /// Answered by the handshake, not by the version string: `/api/daemon/robot-name`
     /// postdates 1.9.0, and the name field is greyed out rather than left to fail on save.
     public internal(set) var supportsRename = true
-    public internal(set) var currentMove: MovePlayback?
-    public internal(set) var isStoppingMove = false
+    public internal(set) var moveActivity: MoveActivity?
+
+    public var currentMove: MovePlayback? {
+        moveActivity?.playback
+    }
+
+    public var isStoppingMove: Bool {
+        if case .stopping = moveActivity {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// The robot is walking back to its zero pose. Nothing to stop, and the
+    /// library is briefly unavailable — a play issued now would be dropped by
+    /// `_try_start_move` without a word.
+    public var isRecentring: Bool {
+        if case .recentring = moveActivity {
+            true
+        } else {
+            false
+        }
+    }
+
     /// The app holding the robot, as the daemon last reported it — raw, including
     /// the states the widget snapshot filters out. A dock has to be able to say
     /// "stopped with an error", which is exactly what `isBusy` discards.
@@ -148,10 +226,15 @@ public final class RobotSession {
     /// being able to ask. Written wherever this session lists them anyway, so it
     /// costs the robot nothing. Lives in `RobotSession+Apps`.
     let appsCache: RobotAppsCacheStore
+    /// What this session last asked the robot to play, kept across launches so a
+    /// move found still running can be named rather than merely noticed.
+    let playbacks: MovePlaybackStore
     private var pollTask: Task<Void, Never>?
-    private var movePollTask: Task<Void, Never>?
     private var pathMonitor: NWPathMonitor?
-    private var moveCache: [String: [String]] = [:]
+    /// Not `private`: recorded moves live in `RobotSession+Moves`, a sibling file.
+    var movePollTask: Task<Void, Never>?
+    var moveRestoreTask: Task<Void, Never>?
+    var moveCache: [String: [String]] = [:]
     /// Both lists cost the robot a Hugging Face round trip, so they are held for
     /// the life of the connection — and only that long. Not `private`: the store
     /// lives in `RobotSession+Apps`, a sibling file.
@@ -175,83 +258,14 @@ public final class RobotSession {
         configuration: Configuration = .init(),
         snapshots: RobotSnapshotStore = RobotSnapshotStore(),
         appsCache: RobotAppsCacheStore = RobotAppsCacheStore(),
+        playbacks: MovePlaybackStore = MovePlaybackStore(),
         makeClient: @escaping @Sendable (RobotAddress) throws -> any RobotAPIClient
     ) {
         self.configuration = configuration
         self.snapshots = snapshots
         self.appsCache = appsCache
+        self.playbacks = playbacks
         self.makeClient = makeClient
-    }
-
-    /// Returns a session-scoped cached dataset index. Actual move assets stay daemon-side.
-    public func moves(in dataset: String, refresh: Bool = false) async throws -> [String] {
-        if !refresh, let cached = moveCache[dataset] {
-            return cached
-        }
-        let moves = try await withClient { try await $0.listMoves(dataset: dataset) }
-        moveCache[dataset] = moves
-        return moves
-    }
-
-    /// Throws rather than reporting: a move that would not play is the moves
-    /// screen's news, and `MovesModel` is what puts it on screen.
-    public func playMove(dataset: String, move: String) async throws {
-        guard let client else { throw ReachyKitError.notConnected }
-        if currentMove != nil {
-            _ = await stopMove()
-        }
-        let uuid = try await client.playMove(dataset: dataset, move: move)
-        let playback = MovePlayback(dataset: dataset, move: move, uuid: uuid)
-        currentMove = playback
-        startMonitoring(playback, client: client)
-    }
-
-    /// Stops both daemon tasks: motion and the separately-owned sound player, and
-    /// answers with whatever refused — empty when both stopped.
-    ///
-    /// Returned rather than thrown because the two are stopped in parallel and
-    /// both are seen through: parking the motors matters more than reporting, so
-    /// there is no single failure to throw. The caller decides what to do with
-    /// the list; `MovesModel.stop` joins it into its own error slot.
-    @discardableResult
-    public func stopMove() async -> [String] {
-        guard let client, let playback = currentMove, !isStoppingMove else { return [] }
-        isStoppingMove = true
-        movePollTask?.cancel()
-        movePollTask = nil
-
-        let errors = await withTaskGroup(of: String?.self, returning: [String].self) { group in
-            group.addTask {
-                do {
-                    try await client.stopMove(uuid: playback.uuid)
-                    return nil
-                } catch {
-                    return "Move: \(error)"
-                }
-            }
-            group.addTask {
-                do {
-                    try await client.stopSound()
-                    return nil
-                } catch {
-                    return "Sound: \(error)"
-                }
-            }
-
-            var errors: [String] = []
-            for await error in group {
-                if let error {
-                    errors.append(error)
-                }
-            }
-            return errors
-        }
-
-        if currentMove?.uuid == playback.uuid {
-            currentMove = nil
-        }
-        isStoppingMove = false
-        return errors.sorted()
     }
 
     func resetConnectionState() {
@@ -259,6 +273,8 @@ public final class RobotSession {
         pollTask = nil
         movePollTask?.cancel()
         movePollTask = nil
+        moveRestoreTask?.cancel()
+        moveRestoreTask = nil
         pathMonitor?.cancel()
         pathMonitor = nil
         client = nil
@@ -266,8 +282,7 @@ public final class RobotSession {
         lastStatus = nil
         compatibilityWarning = nil
         supportsRename = true
-        currentMove = nil
-        isStoppingMove = false
+        moveActivity = nil
         powerTransition = nil
         runningApp = nil
         moveCache = [:]
@@ -275,37 +290,6 @@ public final class RobotSession {
         installedAppsCache = nil
         hfAccountCache = nil
         phase = .idle
-    }
-
-    /// Polls the daemon's authoritative running-task list so natural completion
-    /// clears the UI. Two misses avoid racing task registration just after play.
-    private func startMonitoring(_ playback: MovePlayback, client: any RobotAPIClient) {
-        movePollTask?.cancel()
-        movePollTask = Task { [configuration] in
-            var consecutiveMisses = 0
-            while !Task.isCancelled, currentMove?.uuid == playback.uuid {
-                try? await Task.sleep(for: configuration.movePollInterval)
-                guard !Task.isCancelled, currentMove?.uuid == playback.uuid else { return }
-                do {
-                    let running = try await client.runningMoveUUIDs()
-                    guard !Task.isCancelled, currentMove?.uuid == playback.uuid else { return }
-                    if running.contains(playback.uuid) {
-                        consecutiveMisses = 0
-                    } else {
-                        consecutiveMisses += 1
-                        if consecutiveMisses >= 2 {
-                            try? await client.stopSound()
-                            guard !Task.isCancelled, currentMove?.uuid == playback.uuid else { return }
-                            currentMove = nil
-                            movePollTask = nil
-                            return
-                        }
-                    }
-                } catch {
-                    // A transient status failure must not claim that playback ended.
-                }
-            }
-        }
     }
 
     /// Network changes shouldn't wait for the next poll tick: losing the path

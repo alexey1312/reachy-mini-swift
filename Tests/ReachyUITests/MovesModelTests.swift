@@ -313,6 +313,22 @@ struct MovesModelTests {
         session.disconnect()
     }
 
+    /// Every phase in which the daemon would refuse a play has to refuse the tap
+    /// first: `_try_start_move` drops one silently and answers with a fresh UUID,
+    /// so a row left live over a busy robot reports a dance that never started.
+    @Test("the library is tappable only when nothing else holds the robot")
+    func rowAvailabilityByPhase() {
+        let model = MovesModel.preview()
+        let playing = RobotSession.MoveActivity.playing(.preview(move: "wave"))
+
+        #expect(model.rowsAreEnabled(.preview()))
+        // Playing stays tappable: picking another move is how you change dance.
+        #expect(model.rowsAreEnabled(.preview(moveActivity: playing)))
+        #expect(!model.rowsAreEnabled(.preview(moveActivity: .stopping(.preview(move: "wave")))))
+        #expect(!model.rowsAreEnabled(.preview(moveActivity: .recentring(uuid: "goto"))))
+        #expect(!model.rowsAreEnabled(.preview(status: .preview(motorMode: .disabled))))
+    }
+
     /// `stopMove` answers with a list rather than throwing, because both daemon
     /// tasks are stopped in parallel and both are seen through. Joining it is the
     /// model's job now.

@@ -80,6 +80,21 @@ final class MovesModel {
             && (loading || !attemptedDatasets.contains(selectedLibrary.dataset))
     }
 
+    /// Whether a row may be tapped.
+    ///
+    /// Lives here rather than in the view because it is a rule about the robot,
+    /// not about layout, and because every phase in it was found the same way: the
+    /// daemon's `_try_start_move` refuses a play without saying so and hands back
+    /// a fresh UUID, so a row left live over a busy robot puts a dance on screen
+    /// that never started. Browsing the library stays available throughout —
+    /// only playing needs the robot.
+    ///
+    /// Playing is deliberately *not* in the list: picking another move while one
+    /// runs is how you change dance, and `playMove` clears the floor first.
+    func rowsAreEnabled(_ session: RobotSession) -> Bool {
+        !startingMove && !session.isStoppingMove && !session.isRecentring && session.isAwake
+    }
+
     func load(session: RobotSession, refresh: Bool = false) async {
         let dataset = selectedLibrary.dataset
         // A library fetched earlier this session is already on screen; entering the loading

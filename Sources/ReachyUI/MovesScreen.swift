@@ -50,8 +50,7 @@ struct MovesScreen: View {
                                     }
                                 }
                             }
-                            // Browsing the library stays available; only playback needs a woken robot.
-                            .disabled(model.startingMove || session.isStoppingMove || !session.isAwake)
+                            .disabled(!model.rowsAreEnabled(session))
                         }
                     }
                 }
@@ -71,27 +70,10 @@ struct MovesScreen: View {
         )
         .navigationTitle(.reachy("Moves"))
         .safeAreaInset(edge: .bottom) {
-            if session.currentMove != nil {
-                Button {
+            if let activity = session.moveActivity {
+                MoveActivityBar(activity: activity) {
                     Task { await model.stop(session: session) }
-                } label: {
-                    HStack(spacing: 8) {
-                        if session.isStoppingMove {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "stop.fill")
-                        }
-                        Text(session.isStoppingMove ? "Stopping…" : "Stop")
-                    }
-                    .frame(minWidth: 120)
                 }
-                .reachyButton(.prominent)
-                .buttonBorderShape(.capsule)
-                .controlSize(.large)
-                .tint(.red)
-                .disabled(session.isStoppingMove)
-                .padding()
             }
         }
         .toolbar {
@@ -105,10 +87,6 @@ struct MovesScreen: View {
         .task(id: model.selection) {
             guard !previewMode else { return }
             await model.load(session: session)
-        }
-        .onDisappear {
-            guard !previewMode else { return }
-            Task { await session.stopMove() }
         }
     }
 }
