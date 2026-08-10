@@ -28,7 +28,7 @@ let project = Project(
         base: [
             // Beta: the first tag is 0.1.0, and the tag and the shipped version
             // have to be the same number to be worth reading.
-            "MARKETING_VERSION": "0.1.0",
+            "MARKETING_VERSION": "0.1.1",
             "CURRENT_PROJECT_VERSION": "1",
         ],
         configurations: [
@@ -133,6 +133,10 @@ let project = Project(
                 "SWIFT_VERSION": "6.0",
                 "CODE_SIGN_ENTITLEMENTS": "ReachyMini/Entitlements/ReachyMini-iOS.entitlements",
                 "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "ReachyMini/Entitlements/ReachyMini-macOS.entitlements",
+                // Notarization rejects a Developer ID app without it: the executable
+                // signs with flags=0x0 and the notary answers "does not have the
+                // hardened runtime enabled" per architecture.
+                "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
             ])
         ),
         // Deliberately thin: a timeline provider over the shared snapshot and a
