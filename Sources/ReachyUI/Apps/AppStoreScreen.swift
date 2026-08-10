@@ -106,6 +106,7 @@ struct AppStoreScreen: View {
                 ) { selected = nil }
             }
             .presentationDetents([.medium, .large])
+            .reachySheet()
         }
         .task {
             guard !previewMode else { return }

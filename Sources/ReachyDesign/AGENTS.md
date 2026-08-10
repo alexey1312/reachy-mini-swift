@@ -21,6 +21,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                   |
 | `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                |
 | `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                             |
+| `ReachySheet.swift`        | The size a sheet takes on macOS, and why iOS never reads it                         |
 | `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback           |
 
 ## Rules
@@ -35,6 +36,15 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   and says nothing on the ones that do not. The two consoles keep `reachyScrim` — over a log tail there _is_ content
   passing under, and the effect is the notice that there is. Glass-free but **not** `.window`: a window is raised off
   what is behind it and takes a `.bar` material, and a page is the thing behind it.
+- **Every sheet's content carries `reachySheet()`, because on macOS nothing else gives it a size.** A sheet there is
+  laid out at its content's _ideal_ size, and a `Form`, a `ScrollView` or a `NavigationStack` over one offers no ideal
+  width — AppKit picks something cramped and clips what does not fit rather than laying it out again. Two reports off
+  one build: the Hugging Face sheet at ~440 pt lost its `LabeledContent` labels off the leading edge and their values
+  off the trailing one, and the onboarding sheet at ~400 pt was shorter than the step, so the scroll view carried the
+  heading up under the title and cut it in half. `Metrics.sheet` is the minimum, and a minimum rather than a fixed
+  size because a macOS sheet is not resizable — the minimum _is_ the size, and content that wants more still grows.
+  **No reference can catch the next one**: the snapshot suite runs on an iOS simulator, where this modifier does
+  nothing at all. It is a `#if os(macOS)`, not an `#available` — a platform difference, not a version one.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
   headless snapshot (`RunningAppDock`'s `windowEdge` records the same about `.bar`). Without a fill that _does_ render,
   every surface would be invisible to the reference images and the layout and text on each card would silently lose

@@ -74,6 +74,7 @@ struct ConnectionScreen: View {
         .onAppear(perform: appeared)
         .sheet(isPresented: $showsOnboarding) {
             OnboardingFlow(onFinish: finishOnboarding) { showsOnboarding = false }
+                .reachySheet()
         }
         .onChange(of: browser.services) { _, services in
             knownRobots?.updateDiscovered(Set(services.compactMap(\.hardwareID)))

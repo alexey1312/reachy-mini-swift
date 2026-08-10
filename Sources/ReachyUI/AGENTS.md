@@ -223,6 +223,14 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   size is zero, and a view with no intrinsic size takes the proposal — the exact case the bug does not occur in. It
   returns the proposal explicitly now, which is why adopting it moved nothing. The rule generalises: a headless
   capture of a renderer certifies the layout around an _empty_ rectangle, never the rectangle.
+- **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
+  a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
+  `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. Reported as
+  two separate bugs off one build, and they were one: the Hugging Face sheet drew its `LabeledContent` labels off
+  the leading edge and their values off the trailing one, and the onboarding sheet was shorter than the step, so
+  the scroll view carried the heading up under the title and cut it in half. There are nine of them; `Metrics.sheet` is
+  the size and `ReachyDesign/AGENTS.md` carries the reasoning. **No snapshot can catch a missing one** — the suite
+  runs on an iOS simulator, where the modifier does nothing.
 - Deployment floor is iOS 18 / macOS 15 (`Package.swift`, `Apps/Project.swift`), set by `RealityView`.
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.

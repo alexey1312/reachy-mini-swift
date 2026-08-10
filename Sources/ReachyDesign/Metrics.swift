@@ -50,4 +50,18 @@ public enum Metrics {
     public static let tabAccessoryAllowance: CGFloat = 68
     /// A `Form` left to itself fills a 1024 pt iPad and reads as broken.
     public static let readableForm: CGFloat = 560
+    /// What a sheet measures on macOS, where nothing else supplies a size.
+    ///
+    /// A sheet there is sized by its content's *ideal* size, and a `Form` or a
+    /// `ScrollView` has no ideal width to offer — so AppKit picks something cramped
+    /// and the content is clipped rather than laid out again. Reported twice off one
+    /// build: the Hugging Face sheet lost its `LabeledContent` labels off the leading
+    /// edge and their values off the trailing one, and the onboarding step's heading
+    /// was cut in half under the title of a sheet too short to hold the step.
+    ///
+    /// Wide enough for the widest thing a sheet here holds — a `Form` at
+    /// `readableForm` with its margins — and tall enough that the longest onboarding
+    /// step needs no scrolling. iOS supplies its own sheet geometry and never reads
+    /// this.
+    public static let sheet = CGSize(width: 600, height: 680)
 }
