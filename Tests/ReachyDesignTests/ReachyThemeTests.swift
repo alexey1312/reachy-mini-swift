@@ -112,4 +112,41 @@ struct ReachyThemeTests {
         #expect(hueApart == false)
         #expect(lightnessApart == false)
     }
+
+    /// The catalogue is generated, so this asserts the generator was actually run:
+    /// a palette edit without a regeneration would otherwise ship a colour nothing
+    /// verified. Read from source rather than from `Bundle.module` — a built
+    /// catalogue is a compiled `Assets.car`, not JSON.
+    @Test("the generated catalogue matches the constants", arguments: ReachyTheme.allCases)
+    func catalogueMatchesConstants(theme: ReachyTheme) throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // ReachyDesignTests
+            .deletingLastPathComponent() // Tests
+            .deletingLastPathComponent() // repo root
+        let contents = root
+            .appendingPathComponent("Sources/ReachyDesign/Resources/Assets.xcassets")
+            .appendingPathComponent("\(theme.colorSetName).colorset/Contents.json")
+
+        let data = try Data(contentsOf: contents)
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let colors = try #require(json["colors"] as? [[String: Any]])
+
+        func hex(at index: Int) throws -> UInt32 {
+            let entry = try #require(colors[index]["color"] as? [String: Any])
+            let components = try #require(entry["components"] as? [String: String])
+            var value: UInt32 = 0
+            for key in ["red", "green", "blue"] {
+                let channel = try #require(components[key])
+                let scanned = try #require(UInt32(channel.replacingOccurrences(of: "0x", with: ""), radix: 16))
+                value = value << 8 | scanned
+            }
+            return value
+        }
+
+        #expect(colors.count == 2)
+        let light = try hex(at: 0)
+        let dark = try hex(at: 1)
+        #expect(light == theme.palette.light)
+        #expect(dark == theme.palette.dark)
+    }
 }
