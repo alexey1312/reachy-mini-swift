@@ -33,6 +33,17 @@ import SwiftUI
     PreviewScene.root(.preview(), viewport: .preview(sceneModel: .preview(.buildingScene)))
 }
 
+// The pair to `Root — connected`, and it only means anything read against it: same robot, same tab,
+// same everything except the switch on the Live tab. Without both, a capture with no window in the
+// corner cannot say whether the window is switchable or merely absent.
+#Preview("Root — mini window off") {
+    PreviewScene.root(
+        .preview(),
+        viewport: .preview(sceneModel: .preview(.buildingScene)),
+        floating: .preview(isEnabled: false)
+    )
+}
+
 // `.unreachable` keeps the shell rather than dropping back to the gate: a network blip must not pull
 // the tab bar out from under a finger. This is the capture that proves it.
 #Preview("Root — unreachable") {

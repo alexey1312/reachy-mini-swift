@@ -122,6 +122,15 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     free (a point clamped against an edge is always in that edge's half), so reaching the far edge takes two
     gestures: park in a corner there, then push out. VoiceOver's explicit "Hide at…" actions go through
     `beginDocking` and stay free to pick either edge.
+  - **The switch on the Live tab is a fourth input to `placement`, not a fourth state.** `isEnabled` collapses every
+    placement to `.inline`, which is the shape a regular width already had — so the tab draws the viewport,
+    `isStreaming` goes false, and `RootLifecycle` needed no change at all. It is the only one of the four inputs that
+    outlives the app (`FloatingViewportPreferences`, `UserDefaults.standard`, absent reads as on), and that is exactly
+    what separates it from the docked tab: a tab at the edge is somewhere the window _is_, so it belongs to the
+    connection, while "do not offer it" does not. **Switching it back on resets `rest` to a corner**, because
+    restoring a window that was thrown at an edge returns a 44 pt tab and reads as a switch that does nothing —
+    which is the complaint the switch exists to answer. The menu is behind `floating.hasTabBar` rather than a second
+    size-class read, and it is a menu rather than a bare glyph because what a reader finds is a word.
 - **A move belongs to the robot, not to the Moves screen, and `onDisappear` no longer stops one.** It used to:
   leaving the tab killed the dance. That was indefensible next to restoring a move across a relaunch — force-quit the
   app and the dance survived, glance at the camera and it did not. `MoveActivityBar` is the strip that replaced the

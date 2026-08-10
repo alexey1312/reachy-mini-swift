@@ -27,26 +27,6 @@ import SwiftUI
 @MainActor
 @Observable
 final class FloatingViewportModel {
-    /// Which corner the window rests in. Stored as a corner and not as a point, so
-    /// a rotation or a split-view resize needs no migration at all.
-    enum Corner: Hashable, CaseIterable {
-        case topLeading
-        case topTrailing
-        case bottomLeading
-        case bottomTrailing
-    }
-
-    enum Placement: Equatable {
-        /// The Live tab draws the viewport, full size. Also the whole of the story
-        /// on a regular width, where there is no floating window.
-        case inline
-        /// The overlay draws it and the stream is running.
-        case floating(Corner)
-        /// The overlay draws a tab at the edge and the stream is stopped. `y` is
-        /// the tab's centre, kept from wherever the window was let go of.
-        case docked(HorizontalEdge, y: CGFloat)
-    }
-
     /// What a finished drag carries: where the finger was *heading*, never where it
     /// stopped. A flick and a haul end in the same place and mean different things, and
     /// the finger that was set down needs no second point — at rest SwiftUI predicts
@@ -74,6 +54,16 @@ final class FloatingViewportModel {
 
     /// Whether the Live tab is the selected one. Written by the shell.
     var isLiveTabSelected = false
+
+    /// Whether the window is offered at all — the only one of `placement`'s four
+    /// inputs that outlives the app.
+    ///
+    /// **The gesture is not half of this switch.** Throwing the window at an edge
+    /// answers "get out of the way for a minute" and leaves a tab saying how to get
+    /// it back; this answers "do not offer it". Off collapses `placement` to
+    /// `.inline` — the shape a sidebar layout already had, which is why nothing in
+    /// `RootLifecycle` needs to know it exists.
+    private(set) var isEnabled: Bool
 
     /// Whether the running-app strip is on screen. Written by the shell, because
     /// neither placement the strip can take is reported to the overlay's safe area —
@@ -116,8 +106,15 @@ final class FloatingViewportModel {
     /// the window teleporting by a speed-dependent amount at every touch-down.
     private var activation: CGSize?
 
+    private let preferences: FloatingViewportPreferences
+
+    init(preferences: FloatingViewportPreferences = FloatingViewportPreferences()) {
+        self.preferences = preferences
+        isEnabled = preferences.isEnabled
+    }
+
     var placement: Placement {
-        isLiveTabSelected || !hasTabBar ? .inline : rest
+        isLiveTabSelected || !hasTabBar || !isEnabled ? .inline : rest
     }
 
     /// The placement the geometry draws: where an animation in flight is heading, and
@@ -166,6 +163,21 @@ final class FloatingViewportModel {
     }
 
     // MARK: - Placement
+
+    /// The switch on the Live tab, and the only writer of `isEnabled`.
+    ///
+    /// **Coming back lands in a corner, never where the window was left.** `rest`
+    /// remembers one that was thrown at an edge, and restoring a 44 pt tab is
+    /// indistinguishable from a switch that does nothing — which is the very
+    /// complaint this exists to answer, wearing a different hat.
+    func setEnabled(_ enabled: Bool) {
+        guard isEnabled != enabled else { return }
+        isEnabled = enabled
+        preferences.isEnabled = enabled
+        if enabled {
+            rest = .floating(.bottomTrailing)
+        }
+    }
 
     /// The window was tapped: grow it, then let the caller select the tab. Split
     /// in two so the model never has to know what a `router` is.
@@ -355,9 +367,14 @@ final class FloatingViewportModel {
             _ rest: Placement = .floating(.bottomTrailing),
             settling: Placement? = nil,
             hasTabBar: Bool = true,
-            isLiveTabSelected: Bool = false
+            isLiveTabSelected: Bool = false,
+            isEnabled: Bool = true
         ) -> FloatingViewportModel {
-            let model = FloatingViewportModel()
+            // Assigned rather than switched, and read out of an inert suite: a
+            // reference must render the state it was handed, and `setEnabled` both
+            // writes to `UserDefaults` and moves `rest` back to a corner.
+            let model = FloatingViewportModel(preferences: .preview)
+            model.isEnabled = isEnabled
             model.rest = rest
             model.settling = settling
             model.hasTabBar = hasTabBar
