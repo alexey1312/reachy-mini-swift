@@ -7,7 +7,11 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   anyOf branches the generator can't handle — see `Scripts/normalize-openapi.py`).
 - Pydantic `Optional[X]` without a default is _required and nullable_; the normalizer must also drop such properties
   from `required`, or the generated Swift field is non-Optional and a real null throws (`DaemonStatus.backend_status`).
-- WebSocket endpoints are hand-written (not in the spec) — see `Transport/`.
+- WebSocket endpoints are hand-written (not in the spec) — see `Transport/`. **Every socket pump wraps `receive()`
+  in `withTaskCancellationHandler`**, because `URLSessionWebSocketTask.receive()` does not observe task cancellation
+  (`ConversationRPCClient.read` documents the mechanism): without the `onCancel` `socket.cancel`, a cancelled
+  consumer stays parked until the robot's next frame and the socket leaks. All four stream clients carry the
+  pattern — keep the next one in step, and close the socket on every exit path, not only the throwing one.
 - Unknown JSON fields must never break decoding (daemon updates independently of this app).
 - `RobotAPIClient` supplies throwing defaults for everything except `handshake`, `daemonStatus`, `wakeUp` and
   `gotoSleep` — every test double must implement those four. `/wifi/*` and `/update/*` live on separate protocols so

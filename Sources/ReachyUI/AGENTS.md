@@ -208,6 +208,29 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.
 
+## The joystick's rotation zone
+
+`JoystickMapping` splits the pad with a **vertical line** at `±rotationThreshold`, not with a radius and not with a
+sector, and the reason is the handover: that same line is where head yaw saturates, so the head stops moving exactly
+as the body starts. A radial zone parts the two — a push into the corner is far from the centre while its sideways
+component is not, so the body would begin turning under a head still halfway through its own travel. A sector rule
+(`|x| > |y|`) has the opposite problem: crossing its 45° edge at full deflection would drop the rate from most to
+nothing, so the taper it would need to be jolt-free leaves a boundary too fuzzy to draw or to tick a haptic on.
+
+- **The threshold was 0.7 and is 0.5, because on a round pad 0.7 sits outside the diagonal.** The rim only reaches
+  `|x| = 0.7` within 45.6° of level, so a thumb pushed hard left and slightly up was against the edge of the pad with
+  the robot not turning — reported as the zone being "strictly left and right", which is what it was. At 0.5 the
+  boundary is 60° off level and the slice covers two thirds of each side of the pad. It costs head-yaw resolution
+  (the full ±`headAngle` now arrives at half travel) and, like every constant in the teleop path, it is a guess until
+  someone feels it on the robot.
+- **`mapping.rotationSide(_:)` is what the pad shades, and it is defined as `bodyYawRate != 0`.** The pad used to
+  carry its own copy of the predicate; a lit slice that did not turn, or a turn under an unlit one, is now
+  unrepresentable rather than merely untested.
+- **The slice is drawn by intersecting the disc with a half-plane, not by sweeping an arc.** `Path.addArc` would have
+  to be handed the right winding for a y-down space to keep the near side rather than the far one, and getting that
+  backwards renders the complement — a mistake no test catches and only a simulator shows. The intersection is
+  correct by construction and cannot drift away from the mapping's boundary.
+
 ## Errors
 
 **An error is shown by the screen whose action caused it.** A daemon failure goes into the slot on that screen's

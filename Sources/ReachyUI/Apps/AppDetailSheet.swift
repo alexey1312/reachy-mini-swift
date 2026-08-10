@@ -342,7 +342,7 @@ struct JobProgressRow: View {
             EmptyView()
         case let .running(operation):
             Label {
-                Text(.reachy("\(operation.title) \(operation.app.title)…"))
+                Text(operation.progressCaption)
             } icon: {
                 ProgressView()
                     .controlSize(.small)

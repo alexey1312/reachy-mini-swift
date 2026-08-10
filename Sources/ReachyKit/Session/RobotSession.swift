@@ -340,6 +340,12 @@ public final class RobotSession {
                         consecutiveSuccesses = 1
                     }
                 } catch {
+                    // A cancelled poll learned nothing about the robot: the request
+                    // aborted by `disconnect()` or a new attempt throws in here too,
+                    // and writing `.unreachable` would overwrite the phase the
+                    // canceller just set. Same hazard `isAttemptLive` guards on the
+                    // connect path.
+                    guard !Task.isCancelled else { return }
                     consecutiveSuccesses = 0
                     phase = .unreachable(identity)
                 }

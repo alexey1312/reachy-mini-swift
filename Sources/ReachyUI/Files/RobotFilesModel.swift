@@ -38,6 +38,10 @@ final class RobotFilesModel {
     /// Whether the Keychain has been consulted. See `loadStoredCredentials()`.
     private var hasLoadedCredentials = false
 
+    /// Coalesces overlapping listings (`AppStoreModel.loadID`'s pattern): a
+    /// stale answer must not land under a path the user has since left.
+    private var listingID: UUID?
+
     /// The password field. Not `private(set)`: the sheet binds to it.
     var username: String
     /// Empty until `loadStoredCredentials()` or the user fills it in. The factory
@@ -83,14 +87,6 @@ final class RobotFilesModel {
         let files = files
         Task { await files.disconnect() }
     }
-
-    // MARK: - Places worth a shortcut
-
-    /// The directory the 2026-08-07 incident lived in. A bookmark rather than a
-    /// jail: the audience is advanced users, and a path jail is code that can only
-    /// ever be wrong about what someone needs to reach.
-    static let appsSitePackages = "/venvs/apps_venv/lib/python3.12/site-packages"
-    static let home = "/home/pollen"
 
     // MARK: - Session
 
@@ -187,16 +183,25 @@ final class RobotFilesModel {
 
     func refresh() async {
         guard phase == .browsing else { return }
+        let requestID = UUID()
+        listingID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if listingID == requestID {
+                isLoading = false
+            }
+        }
         do {
-            entries = try await files.list(path).sorted(by: Self.ordered)
+            let listed = try await files.list(path).sorted(by: Self.ordered)
+            guard listingID == requestID else { return }
+            entries = listed
             hasListed = true
             lastError = nil
         } catch is CancellationError {
             // Leaving the screen mid-listing learned nothing: it may neither report
             // a failure nor clear one still being read.
         } catch {
+            guard listingID == requestID else { return }
             // A refusal is an answer. Without this the screen keeps the full-bleed
             // "Reading the folder…" overlay up for good — and that overlay covers
             // the very error row the failure just filled in.
@@ -385,15 +390,5 @@ final class RobotFilesModel {
         static func previewEntries(at path: String = PreviewFileSystem.appPackage) -> [RemoteFile] {
             PreviewFileSystem.brokenPersonality().entries(at: path).sorted(by: ordered)
         }
-    }
-
-    /// Keeps a preview's password out of the real Keychain.
-    struct EphemeralCredentialStore: SSHCredentialStore {
-        func credentials(forRobot _: String) throws -> SSHCredentials? {
-            nil
-        }
-
-        func save(_: SSHCredentials, forRobot _: String) throws {}
-        func clear(robot _: String) throws {}
     }
 #endif

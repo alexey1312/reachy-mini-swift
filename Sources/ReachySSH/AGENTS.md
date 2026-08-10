@@ -55,7 +55,10 @@ warnings-as-errors policy. Do not go hunting for them in this target — there i
    bound first so the closure never captures `self`), chosen over `.onDisappear` because it fires exactly when the
    last reference goes. Any future owner needs the same.
 3. **Open the SFTP subsystem once per connection.** `openSFTP()` costs a child channel plus a round trip and logs
-   its own warning about "too many SFTPClient handles". `SSHFileSystem` holds the one it opened.
+   its own warning about "too many SFTPClient handles". `SSHFileSystem` holds the one it opened. `connect` is
+   single-flight for the same reason: the actor is reentrant across the handshake's suspensions, so a second call
+   joins the attempt in flight rather than racing it — the loser of that race was a live `SSHClient` overwritten
+   unclosed. `disconnect()` cancels the attempt, and the handshake checks for that before publishing its result.
 4. **TOFU is two connections, because it has to be.** `validateHostKey` must resolve an `EventLoopPromise` during
    the handshake; there is no way to suspend it while a person reads a fingerprint. So `TOFUHostKeyValidator`
    **records the offered key and refuses**; `mapConnectFailure` reads that record — not the thrown error, which NIO

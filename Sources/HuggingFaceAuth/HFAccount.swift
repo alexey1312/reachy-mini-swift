@@ -33,6 +33,10 @@ public final class HFAccount {
     /// The PKCE pair and state of the sign-in currently in flight. Held here so a
     /// callback can be checked against what this app actually asked for.
     private var pending: (pkce: HFOAuth.PKCE, state: String)?
+    /// The renewal in flight, shared so overlapping callers do not spend the same
+    /// refresh token twice — the Hub can rotate them, and the second exchange
+    /// would then fail and knock a freshly renewed session into `needsReauth`.
+    private var renewal: Task<String?, Never>?
 
     public init(
         configuration: HFOAuthConfiguration = .reachyMini,
@@ -144,13 +148,28 @@ public final class HFAccount {
     public func currentToken() async -> String? {
         guard let token else { return nil }
         guard token.isExpired(at: now()) else { return token.accessToken }
+        if let renewal {
+            return await renewal.value
+        }
+        let renewal = Task { await renew(token) }
+        self.renewal = renewal
+        defer { self.renewal = nil }
+        return await renewal.value
+    }
+
+    private func renew(_ expired: HFToken) async -> String? {
         do {
-            let renewed = try await exchanger.refreshing(token)
+            let renewed = try await exchanger.refreshing(expired)
+            // The user may have signed out — or into another account — while the
+            // exchange was in flight. Their decision wins: writing the renewed
+            // token back would resurrect a session they just ended.
+            guard token?.accessToken == expired.accessToken else { return nil }
             try keep(renewed)
             state = .signedIn(username: renewed.username ?? "")
             return renewed.accessToken
         } catch {
-            state = .needsReauth(username: token.username)
+            guard token?.accessToken == expired.accessToken else { return nil }
+            state = .needsReauth(username: expired.username)
             return nil
         }
     }

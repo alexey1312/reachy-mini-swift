@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 import ReachyKit
 @preconcurrency import WebRTC
 
@@ -60,8 +61,15 @@ public final class CameraSession {
     private var peerConnection: RTCPeerConnection?
     private var delegateAdapter: PeerConnectionDelegateAdapter?
     private var micTrack: RTCAudioTrack?
-    private var eventsTask: Task<Void, Never>?
+    /// `@ObservationIgnored` because `deinit` reads it: the macro would turn a
+    /// tracked property into a MainActor-isolated accessor, which a nonisolated
+    /// `deinit` may not call — a stored property it may.
+    @ObservationIgnored private var eventsTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
+    /// The deactivation still in flight, if any — see `deactivateAudioSession()`.
+    private var audioDeactivationTask: Task<Void, Never>?
+
+    private static let log = Logger(subsystem: "com.alexey1312.ReachyMini", category: "CameraSession")
     private struct LocalCandidate {
         var sdp: String
         var sdpMLineIndex: Int32
@@ -86,16 +94,43 @@ public final class CameraSession {
         connection = nil
     }
 
+    /// The backstop for an owner that drops the session without `stop()`. The
+    /// `weak self` in `start()` is what lets this run at all — but on its own it
+    /// only half-closes the leak: `eventsTask` keeps consuming, and against an
+    /// unreachable robot the captured signaling client redials the socket every
+    /// half-second for as long as the app lives, with the `guard let self` never
+    /// reached because a dead host yields no events. A stopped (or never
+    /// started) session has `eventsTask == nil` and nothing to undo — previews
+    /// construct sessions constantly and must not touch the shared audio session.
+    ///
+    /// `signaling` is bound before the `Task` so the closure never captures
+    /// `self`, which a `deinit` may not escape (`RobotFilesModel` sets the idiom).
+    deinit {
+        guard let eventsTask else { return }
+        eventsTask.cancel()
+        dataChannel.close()
+        let signaling = signaling
+        Task { await signaling.disconnect() }
+        #if os(iOS)
+            Task { await Self.releaseAudioSession() }
+        #endif
+    }
+
     public func start() {
         guard eventsTask == nil else { return }
         // Read before anyone can tap, so a mic already refused in Settings shows as
         // refused rather than as an ordinary muted button waiting to be pressed.
         refreshMicPermission()
         configureAudioSession()
-        eventsTask = Task { [signaling, connection] in
+        // `weak self`: `handle` captures the session, so a strong capture keeps
+        // `self → eventsTask → self` alive for as long as the signaling stream
+        // runs — an owner that drops the session without `stop()` would leak it
+        // and its socket (`RobotSceneModel.startStreaming` makes the same trade).
+        eventsTask = Task { [weak self, signaling, connection] in
             // Sim registers no producer until media is acquired; harmless elsewhere.
             try? await connection?.acquireMedia()
             for await event in await signaling.events() {
+                guard let self else { return }
                 await handle(event)
             }
         }
@@ -106,6 +141,7 @@ public final class CameraSession {
         eventsTask = nil
         teardownPeer()
         dataChannel.close()
+        deactivateAudioSession()
         phase = .connecting
         let signaling = signaling
         Task { await signaling.disconnect() } // best-effort endSession; ws close also suffices
@@ -293,60 +329,50 @@ public final class CameraSession {
 
     private func configureAudioSession() {
         #if os(iOS)
+            // A stop() a moment ago may still be retrying deactivation; left
+            // running, it would deactivate the session this start just opened.
+            audioDeactivationTask?.cancel()
+            audioDeactivationTask = nil
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
             try? session.setActive(true)
         #endif
     }
-}
 
-/// Bridges nonisolated WebRTC delegate callbacks onto the MainActor session.
-private final class PeerConnectionDelegateAdapter: NSObject, RTCPeerConnectionDelegate, @unchecked Sendable {
-    private weak var owner: CameraSession?
-
-    init(owner: CameraSession) {
-        self.owner = owner
+    /// The mirror `stop()` owes `configureAudioSession()`: leaving the camera
+    /// used to keep the app holding a record-category session — other apps'
+    /// audio stayed ducked and the OS went on treating this one as a recorder.
+    /// `.notifyOthersOnDeactivation` is what lets them resume.
+    private func deactivateAudioSession() {
+        #if os(iOS)
+            audioDeactivationTask?.cancel()
+            audioDeactivationTask = Task { await Self.releaseAudioSession() }
+        #endif
     }
 
-    func peerConnection(_: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-        let sdp = candidate.sdp
-        let index = candidate.sdpMLineIndex
-        let mid = candidate.sdpMid
-        Task { @MainActor [owner] in
-            owner?.handleLocalCandidate(sdp: sdp, sdpMLineIndex: index, sdpMid: mid)
+    #if os(iOS)
+        /// `setActive(false)` races WebRTC's own audio unit, which
+        /// `peerConnection.close()` winds down on its background thread after
+        /// `stop()` has already returned — deactivating immediately commonly
+        /// fails "session is busy", and a `try?` there made the release silently
+        /// not happen. So: retry briefly, and log when the OS still refuses,
+        /// because a swallowed failure looks exactly like the ducked-audio bug
+        /// this method exists to end.
+        private static func releaseAudioSession() async {
+            for _ in 0 ..< 5 {
+                do {
+                    try AVAudioSession.sharedInstance().setActive(
+                        false,
+                        options: [.notifyOthersOnDeactivation]
+                    )
+                    return
+                } catch {
+                    guard await (try? Task.sleep(for: .milliseconds(200))) != nil else { return }
+                }
+            }
+            log.warning("Audio session would not deactivate; other apps' audio may stay ducked")
         }
-    }
-
-    func peerConnection(_: RTCPeerConnection, didAdd rtpReceiver: RTCRtpReceiver, streams _: [RTCMediaStream]) {
-        guard let track = rtpReceiver.track as? RTCVideoTrack else { return }
-        Task { @MainActor [owner] in
-            owner?.handleRemote(videoTrack: track)
-        }
-    }
-
-    func peerConnection(_: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-        guard newState == .failed else { return }
-        Task { @MainActor [owner] in
-            owner?.restartSession()
-        }
-    }
-
-    /// The robot is the one that opens the channel, and only once negotiation is
-    /// far enough along — so this, not construction, is when the control surface
-    /// becomes usable.
-    func peerConnection(_: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {
-        Task { @MainActor [owner] in
-            owner?.adopt(dataChannel)
-        }
-    }
-
-    // Required by the protocol; nothing to do.
-    func peerConnection(_: RTCPeerConnection, didChange _: RTCSignalingState) {}
-    func peerConnection(_: RTCPeerConnection, didAdd _: RTCMediaStream) {}
-    func peerConnection(_: RTCPeerConnection, didRemove _: RTCMediaStream) {}
-    func peerConnectionShouldNegotiate(_: RTCPeerConnection) {}
-    func peerConnection(_: RTCPeerConnection, didChange _: RTCIceGatheringState) {}
-    func peerConnection(_: RTCPeerConnection, didRemove _: [RTCIceCandidate]) {}
+    #endif
 }
 
 #if DEBUG

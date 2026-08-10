@@ -100,7 +100,16 @@ public final class RobotSceneModel {
         } catch is CancellationError {
             return
         } catch {
+            // A cancelled load that fails with a real error — a URLError landing
+            // after stop() — is still a cancelled load: writing `.failed` here
+            // would repaint a successor attempt's phase, and the nil below would
+            // erase its handle. Same hazard `RobotSession`'s poll loop guards on.
+            guard !Task.isCancelled else { return }
             phase = .failed(Self.describe(error))
+            // A failed load must not pin `geometryTask` for good: `start()`
+            // guards on it, so leaving it set made the failure terminal — no
+            // way back short of discarding the whole model.
+            geometryTask = nil
         }
     }
 
@@ -115,6 +124,9 @@ public final class RobotSceneModel {
         let stewart = StewartGeometry(urdf: geometry.urdf)
         solver = stewart.map(PassiveJointSolver.init)
         let graph = RobotSceneGraph(urdf: geometry.urdf, meshes: meshes, geometry: stewart)
+        // A rebuild replaces the robot rather than stacking a second one on the
+        // same container (the lighting rig stays — it is added once, in init).
+        self.graph?.root.removeFromParent()
         self.graph = graph
         container.addChild(graph.root)
         // Framing has to wait for the meshes: before they exist the model has no

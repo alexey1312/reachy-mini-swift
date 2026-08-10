@@ -46,4 +46,24 @@ extension RobotFilesModel {
         }
         return trail
     }
+
+    // MARK: - Places worth a shortcut
+
+    /// The directory the 2026-08-07 incident lived in. A bookmark rather than a
+    /// jail: the audience is advanced users, and a path jail is code that can only
+    /// ever be wrong about what someone needs to reach.
+    static let appsSitePackages = "/venvs/apps_venv/lib/python3.12/site-packages"
+    static let home = "/home/pollen"
 }
+
+#if DEBUG
+    /// Keeps a preview's password out of the real Keychain.
+    struct EphemeralCredentialStore: SSHCredentialStore {
+        func credentials(forRobot _: String) throws -> SSHCredentials? {
+            nil
+        }
+
+        func save(_: SSHCredentials, forRobot _: String) throws {}
+        func clear(robot _: String) throws {}
+    }
+#endif

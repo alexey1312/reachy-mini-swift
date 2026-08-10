@@ -25,11 +25,13 @@ final class AppInstallModel {
             }
         }
 
-        var title: String {
+        /// One whole sentence per case (a sentence is one key): a translator
+        /// cannot reorder an English fragment interpolated into a format string.
+        var progressCaption: LocalizedStringResource {
             switch self {
-            case .install: "Installing"
-            case .update: "Updating"
-            case .remove: "Removing"
+            case let .install(app): .reachy("Installing \(app.title)…")
+            case let .update(app): .reachy("Updating \(app.title)…")
+            case let .remove(app): .reachy("Removing \(app.title)…")
             }
         }
 
