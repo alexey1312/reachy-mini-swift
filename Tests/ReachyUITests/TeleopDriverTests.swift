@@ -11,7 +11,9 @@ struct TeleopDriverTests {
     @Test("inside the head zone the joystick moves the head and nothing else")
     func headOnly() {
         let driver = TeleopDriver()
-        driver.apply(.init(x: 0.5, y: -0.25))
+        // Half of the head zone, taken from the mapping rather than spelled out: a
+        // literal that happened to equal the boundary would test nothing.
+        driver.apply(.init(x: driver.mapping.rotationThreshold / 2, y: -0.25))
         #expect(driver.target.yaw < 0)
         #expect(driver.target.pitch < 0)
         #expect(driver.bodyYawRate == 0)
@@ -66,7 +68,7 @@ struct TeleopDriverTests {
         let driver = TeleopDriver()
         #expect(driver.isBodyTurned == false)
 
-        driver.apply(.init(x: 0.5, y: -0.25))
+        driver.apply(.init(x: driver.mapping.rotationThreshold / 2, y: -0.25))
         #expect(driver.target.yaw != 0)
         #expect(driver.isBodyTurned == false)
 
