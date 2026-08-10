@@ -112,6 +112,9 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
 
 # Release builds exist to guard archive-ability: nothing else compiles the
 # Release configuration, so a broken one would first surface at archive time.
+# Each ends by asserting the built app carries its App Intents metadata —
+# extraction failing is a warning, never a build error, and an app that ships
+# without it shows no actions in the Shortcuts app (TestFlight 0.1.1 did).
 [tasks."build:app:release"]
 description = "Build the ReachyMini app target (macOS, Release, unsigned)"
 depends = ["project"]
@@ -126,6 +129,7 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
   build 2>&1 | xcsift
+Scripts/check-appintents-metadata.sh Apps/DerivedData/Build/Products/Release/ReachyMini.app
 '''
 
 [tasks."build:app:ios:release"]
@@ -142,6 +146,7 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
   build 2>&1 | xcsift
+Scripts/check-appintents-metadata.sh Apps/DerivedData/Build/Products/Release-iphoneos/ReachyMini.app
 '''
 
 [tasks.device]
