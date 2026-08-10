@@ -43,7 +43,7 @@ func entry(_ hex: UInt32, dark: Bool) -> String {
                   "value" : "dark"
                 }
               ],
-        \n
+
         """
         : ""
     return """
@@ -63,6 +63,22 @@ func entry(_ hex: UInt32, dark: Bool) -> String {
 }
 
 let catalogue = URL(fileURLWithPath: "Sources/ReachyDesign/Resources/Assets.xcassets")
+try FileManager.default.createDirectory(at: catalogue, withIntermediateDirectories: true)
+try """
+{
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+
+""".write(
+    to: catalogue.appendingPathComponent("Contents.json"),
+    atomically: true,
+    encoding: .utf8
+)
+print("wrote Assets.xcassets/Contents.json")
+
 for theme in themes {
     let directory = catalogue.appendingPathComponent("\(theme.name).colorset")
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
