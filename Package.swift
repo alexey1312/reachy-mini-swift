@@ -29,7 +29,7 @@ let package = Package(
         .package(url: "https://github.com/stasel/WebRTC.git", from: "150.0.0"),
         // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
         // rather than the `from:` every other dependency here uses.
-        .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
+        .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.12.1")),
     ],
     targets: [
         // This app's own Hugging Face session — sign-in, token custody, renewal.
