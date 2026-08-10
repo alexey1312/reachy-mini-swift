@@ -1,6 +1,6 @@
 #!/bin/bash
-# Sourced by release-ios.sh and release-macos.sh: loads and checks the release
-# credentials. Like the device signing team, they live outside every worktree in
+# Sourced by release-ios.sh, release-macos.sh and asc.sh: loads and checks the
+# release credentials. Like the device signing team, they live outside every worktree in
 # ~/.config/reachy-mini/, so nothing is copied when a workspace is created and
 # nothing account-specific ever lands in the repository.
 #
@@ -20,7 +20,10 @@ if [ -f "$RELEASE_CONFIG" ]; then
   . "$RELEASE_CONFIG"
 fi
 
-if [ -z "${REACHY_DEVELOPMENT_TEAM:-}" ]; then
+# Demanded by the two scripts that archive; asc.sh sources this file for the API key
+# alone and never signs anything, so the check cannot run on load.
+require_development_team() {
+  [ -n "${REACHY_DEVELOPMENT_TEAM:-}" ] && return 0
   cat >&2 <<EOF
 No signing team. Write it once, the way device builds already expect:
 
@@ -30,7 +33,7 @@ No signing team. Write it once, the way device builds already expect:
 The id is in Xcode → Settings → Accounts, next to the team that owns com.alexey1312.*.
 EOF
   exit 1
-fi
+}
 
 # The API key is optional, and deliberately unused for signing. xcodebuild takes
 # `-authenticationKey*` as "do everything through cloud signing", and a key below
@@ -49,13 +52,13 @@ if [ -n "${REACHY_ASC_KEY_ID:-}" ] && [ -n "${REACHY_ASC_ISSUER_ID:-}" ] && [ -n
   REACHY_HAS_ASC=1
 fi
 
-# Called by the macOS script, where the key is not optional: notarytool has no
-# other way in.
+# Called by the macOS script, where notarytool has no other way in, and by asc.sh,
+# which is nothing but the key.
 require_asc_key() {
   [ -n "$REACHY_HAS_ASC" ] && return 0
   cat >&2 <<EOF
-Notarization needs an App Store Connect API key (App Store Connect → Users and
-Access → Integrations → App Store Connect API). Write the three values once:
+This needs an App Store Connect API key (App Store Connect → Users and Access →
+Integrations → App Store Connect API). Write the three values once:
 
   cat >> "$RELEASE_CONFIG" <<'CONF'
 REACHY_ASC_KEY_ID=XXXXXXXXXX

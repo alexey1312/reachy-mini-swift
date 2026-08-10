@@ -13,6 +13,7 @@ set -euo pipefail
 . "$(dirname "$0")/release-env.sh"
 
 notarize=true
+require_development_team
 require_asc_key
 while [ $# -gt 0 ]; do
   case "$1" in

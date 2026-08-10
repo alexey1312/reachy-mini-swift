@@ -18,9 +18,16 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 - **Never** call tools bare (`swift build`, `swiftlint`) — always `./bin/mise run <task>` or `./bin/mise x -- <tool>`,
   which guarantees pinned versions and PATH.
 - Swift itself is managed by swiftly via `.swift-version`, not by mise.
-- Tool versions are pinned in `mise.toml` + `mise.lock`. After editing `[tools]`: `trash mise.lock && ./bin/mise lock`.
+- Tool versions are pinned in `mise.toml` + `mise.lock`. After editing `[tools]`, lock **that tool only**:
+  `./bin/mise lock <tool>`, which is purely additive. `trash mise.lock && ./bin/mise lock` re-resolves the fuzzy
+  selectors too — `python = "3.12"` stayed 3.12.13 but its python-build-standalone build moved a release forward on
+  every platform, so adding one tool arrived as a 14-line unrelated diff.
   Find updates with `./bin/mise latest <tool>` — `mise outdated` reports nothing here, because an exact pin always
-  matches its own request.
+  matches its own request. `latest` also hides releases younger than `minimum_release_age` (a day-old `asc` 3.7.0
+  read as 3.6.1, with the real answer only in `ls-remote`'s trailing warning); an exact pin installs one anyway.
+- A `github:` tool takes **`bin=`** to name a bare binary asset and `exe=` to name one inside an archive, and picking
+  the wrong one fails late: `[exe=asc]` installs an unrunnable `asc_3.7.0_macOS` and only errors at "couldn't exec
+  process". Prefire ships a tarball and so uses `exe`; `asc` ships the binary itself and uses `bin`.
 - The `hk` version in `mise.toml` must match the `hk@X.Y.Z` package URI in `hk.pkl`, and the `prefire` pin in
   `[tools]` must match the `.exact` requirement in `Apps/Project.swift` — the forked `PreviewTests.stencil` is only
   valid against that one version. Bump each pair together; `mise run lint` enforces both lockstep pairs.
@@ -107,6 +114,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run test:smoke:sim # Same plus the full user path against a running sim-daemon
 ./bin/mise run release:ios    # Archive Release and upload to TestFlight (docs/release.md)
 ./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
+./bin/mise run asc -- ...     # App Store Connect CLI with the release key loaded
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
 ./bin/mise run test:snapshots:record  # Re-record the reference images

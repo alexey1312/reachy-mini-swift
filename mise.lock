@@ -202,6 +202,45 @@ checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc61
 url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
 url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
 
+[[tools."github:rorkai/App-Store-Connect-CLI"]]
+version = "3.7.0"
+backend = "github:rorkai/App-Store-Connect-CLI"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.linux-arm64"]
+checksum = "sha256:40342bead4369d971db137f22bf91689d23e083a67a8a75355c734847ee629cf"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_linux_arm64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663322"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.linux-arm64-musl"]
+checksum = "sha256:40342bead4369d971db137f22bf91689d23e083a67a8a75355c734847ee629cf"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_linux_arm64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663322"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.linux-x64"]
+checksum = "sha256:bf5fb4a44753a2f9edb797e727c5797422555c36a50843313057a7a3f4a0e0d4"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_linux_amd64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663273"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.linux-x64-musl"]
+checksum = "sha256:bf5fb4a44753a2f9edb797e727c5797422555c36a50843313057a7a3f4a0e0d4"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_linux_amd64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663273"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.macos-arm64"]
+checksum = "sha256:610be35610237ba118822004ed69ed776244bd265442df00870102a1bce4803d"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_macOS_arm64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663389"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.macos-x64"]
+checksum = "sha256:9bc2f272a5a3b8288ca27bb17cd30180a83a6b06c0f44d33429a73a79e7bfef5"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_macOS_amd64"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663350"
+
+[tools."github:rorkai/App-Store-Connect-CLI"."platforms.windows-x64"]
+checksum = "sha256:4906415019d43cc282218f26b131fe8f9af1860c2045b15d983dcacc39f9dfb3"
+url = "https://github.com/rorkai/App-Store-Connect-CLI/releases/download/3.7.0/asc_3.7.0_windows_amd64.exe"
+url_api = "https://api.github.com/repos/rorkai/App-Store-Connect-CLI/releases/assets/507663409"
+
 [[tools.hk]]
 version = "1.54.0"
 backend = "aqua:jdx/hk"
