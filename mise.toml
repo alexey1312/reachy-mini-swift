@@ -448,6 +448,14 @@ python3 Scripts/normalize-openapi.py Sources/ReachyKit/openapi.json
 git diff --stat Sources/ReachyKit/openapi.json
 """
 
+[tasks."theme:colors"]
+description = "Regenerate Theme*.colorset from ReachyTheme.palette"
+run = """
+set -o pipefail
+swift Scripts/render-theme-colors.swift
+git diff --stat Sources/ReachyDesign/Resources
+"""
+
 [tasks.sim-daemon]
 description = "Run simulated Reachy Mini daemon (MuJoCo) reachable from LAN devices"
 run = """

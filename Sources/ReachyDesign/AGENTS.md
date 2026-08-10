@@ -40,16 +40,41 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 - **Theme colours are Swift constants; `Theme*.colorset` is generated — from a second, hand-kept copy of them.**
   `Scripts/render-theme-colors.swift` cannot link `ReachyDesign`, so it carries its own duplicate of
   `ReachyTheme.palette` and writes the catalogue — including the catalogue's own root `Contents.json` — from that
-  copy. A new or changed theme means editing both files by hand before re-running the script; `ReachyThemeTests`
-  only catches the two drifting apart, it does not keep them together. Never hand-edit the generated JSON.
-- **A new theme must pass the separation rule**, enforced by `Tests/ReachyDesignTests/ReachyThemeTests.swift`:
-  3:1 against its background in both appearances, and either ≥30° of hue or a ≥1.8 luminance-contrast ratio away
-  from `danger`, `warning` and `success`. Coral failed both limbs against `danger`, which is why the app's first
-  accent is not among the themes; bronze is the rule's other limb in practice — it sits 1.5° from `warning` and
-  separates by lightness (1.97) instead.
-- **`AccentColor.colorset` in the app target still matters.** It paints the first frame and every surface drawn
-  outside our hierarchy — system alerts, the share sheet. It must equal `ReachyTheme.fallback` or launch flashes
-  another colour.
+  copy. A new or changed theme means editing both files by hand before re-running `./bin/mise run theme:colors`;
+  `ReachyThemeTests` only catches the two drifting apart, it does not keep them together. Never hand-edit the
+  generated JSON, and never invoke the script bare — the mise task is what pins the toolchain.
+- **A new theme must pass the separation rule**, enforced by `Tests/ReachyDesignTests/ReachyThemeTests.swift` and
+  checked in **both** appearances — `palette.light` against the light-appearance system tones, `palette.dark`
+  against the dark ones. `Tone.danger`/`.warning`/`.success` are adaptive, so a rule that only ever read
+  `palette.light` was only ever checking half of what a dark-mode screen renders; `ConnectRail.swift` draws
+  `Tone.warning` and `Tone.brand` on the same node stack, which is exactly where that gap would show. Three limbs,
+  all defined once as `separates(_:from:)` in the test file so `accentSeparation` and the coral canary share the
+  same numbers rather than the canary checking its own private copy:
+  1. **3:1 against its background** — white in light, `#1C1C1E` in dark.
+  2. **≥30° of hue or a ≥1.8 luminance-contrast ratio away from `danger`, `warning` and `success`.** Coral failed
+     both limbs against `danger` in light appearance, which is why the app's first accent is not among the themes.
+     Bronze is the rule's other limb in practice, in **both** appearances: ~1.5° from `warning` and separating by
+     lightness instead — 1.97 at the light accent, 2.10 at the dark one.
+  3. **≥1.8 against `.label`** (black in light, white in dark) — what makes a tinted row read as tappable next to
+     the body text beside it. Graphite clears it in both appearances but only just in dark — 2.24 light / 2.05 dark,
+     measured — which is accepted as this theme's floor rather than a reason to repaint the default fallback.
+     **Teal's dark accent does not clear it** (≈1.75), found only once this limb existed to check for it, and left
+     as a `withKnownIssue` in `accentAgainstLabel` rather than silently repainted: changing a shipped theme's dark
+     accent to fix a test is a palette decision, not something a test file gets to decide on its own.
+- **Bronze's dark accent is `#A86D16`, deliberately darker than a dark-appearance accent usually is.** It shipped as
+  `#E3A24A`, chosen against the light-appearance system tones only, before the separation rule above checked
+  `palette.dark` against the dark ones. Measured against dark `warning` (`#FF9F0A`), `#E3A24A` scored 2.0° of hue and
+  a 1.07 contrast ratio — failing both limbs, and less distinguishable from `warning` than the coral this feature
+  exists to remove. `#A86D16` keeps the same hue (36°, the tone bronze is built on) and separates by lightness
+  instead — 2.10 against dark `warning`, comfortably past the 1.8 floor, and 3.94 against the `#1C1C1E` background,
+  above the 3:1 floor. Escaping the system orange's hue upward runs into near-white before it clears 30°, so the
+  only room to move is downward in lightness — hence a dark-appearance accent that is deliberately darker than the
+  rest of this palette's dark accents tend to be.
+- **`AccentColor.colorset` in the app target still matters, and a test now reads it.** It paints the first frame and
+  every surface drawn outside our hierarchy — system alerts, the share sheet. It must equal `ReachyTheme.fallback`
+  or launch flashes another colour; `ReachyThemeTests.accentColorMatchesFallback` parses the hand-edited JSON the
+  same way `catalogueMatchesConstants` parses the generated one, so a drift between the two is now a test failure
+  rather than a launch flash nobody notices until a device shows it.
 - **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
   not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a

@@ -52,18 +52,34 @@ private enum Colorimetry {
     }
 }
 
-/// The system colours `Tone` resolves to, in light appearance.
-private enum SemanticTone {
-    static let danger: UInt32 = 0xFF3B30
-    static let warning: UInt32 = 0xFF9500
-    static let success: UInt32 = 0x34C759
-    static let all: [(name: String, hex: UInt32)] = [
-        ("danger", danger), ("warning", warning), ("success", success),
-    ]
+/// The system colours `Tone` resolves to, one set per appearance — `Tone.danger`,
+/// `.warning` and `.success` are adaptive, so a light-only rule only ever checked
+/// half of what actually renders.
+private struct SemanticTones: Sendable {
+    let danger: UInt32
+    let warning: UInt32
+    let success: UInt32
+
+    var all: [(name: String, hex: UInt32)] {
+        [("danger", danger), ("warning", warning), ("success", success)]
+    }
+
+    static let light = SemanticTones(danger: 0xFF3B30, warning: 0xFF9500, success: 0x34C759)
+    static let dark = SemanticTones(danger: 0xFF453A, warning: 0xFF9F0A, success: 0x30D158)
 }
 
 private let white: UInt32 = 0xFFFFFF
+private let black: UInt32 = 0x000000
 private let darkBackground: UInt32 = 0x1C1C1E
+
+/// The separation rule itself: ≥30° of hue **or** a ≥1.8 luminance-contrast ratio.
+/// The one place both thresholds are spelled out — `accentSeparation` and
+/// `coralIsRejected` both call this, so loosening either number here loosens the
+/// canary along with the real rule, rather than leaving it checking its own
+/// private copy.
+private func separates(_ accent: UInt32, from tone: UInt32) -> Bool {
+    Colorimetry.hueDistance(accent, tone) >= 30 || Colorimetry.contrastRatio(accent, tone) >= 1.8
+}
 
 @Suite("Theme palette")
 struct ReachyThemeTests {
@@ -87,30 +103,66 @@ struct ReachyThemeTests {
     }
 
     /// The rule coral fails, and the reason this suite exists. Two limbs, because
-    /// bronze sits 1.5 degrees from `warning` and separates by lightness instead —
-    /// a hue-only rule would reject a colour that reads perfectly well.
+    /// bronze sits close to `warning` in hue and separates by lightness instead —
+    /// a hue-only rule would reject a colour that reads perfectly well. Checked in
+    /// both appearances: `Tone.warning` and `Tone.brand` co-occur on
+    /// `ConnectRail`, and a theme that only separated from the light tones could
+    /// still collide with the dark ones on that exact screen.
     @Test("every accent is distinguishable from the semantic tones", arguments: ReachyTheme.allCases)
     func accentSeparation(theme: ReachyTheme) {
-        for semantic in SemanticTone.all {
-            let hueApart = Colorimetry.hueDistance(theme.palette.light, semantic.hex) >= 30
-            let lightnessApart = Colorimetry.contrastRatio(theme.palette.light, semantic.hex) >= 1.8
+        for semantic in SemanticTones.light.all {
             #expect(
-                hueApart || lightnessApart,
-                "\(theme.rawValue) is indistinguishable from \(semantic.name)"
+                separates(theme.palette.light, from: semantic.hex),
+                "\(theme.rawValue) light is indistinguishable from \(semantic.name)"
+            )
+        }
+        for semantic in SemanticTones.dark.all {
+            #expect(
+                separates(theme.palette.dark, from: semantic.hex),
+                "\(theme.rawValue) dark is indistinguishable from \(semantic.name)"
             )
         }
     }
 
     /// Coral is not a case; this proves the rule is what excludes it rather than
     /// taste, and fails loudly if the thresholds are ever loosened enough to let
-    /// it back in.
+    /// it back in — because it calls the very `separates` helper the real rule
+    /// does, rather than spelling the same two numbers out a second time.
     @Test("the rejected coral would fail the separation rule")
     func coralIsRejected() {
         let coral: UInt32 = 0xFF5A3C
-        let hueApart = Colorimetry.hueDistance(coral, SemanticTone.danger) >= 30
-        let lightnessApart = Colorimetry.contrastRatio(coral, SemanticTone.danger) >= 1.8
-        #expect(hueApart == false)
-        #expect(lightnessApart == false)
+        #expect(separates(coral, from: SemanticTones.light.danger) == false)
+    }
+
+    /// A third limb, beside the 3:1 background floor and the tone-separation rule:
+    /// contrast against `.label` (black in light appearance, white in dark) — what
+    /// makes a tinted row read as tappable against the text beside it. Same 1.8
+    /// floor the separation rule's lightness limb uses. Graphite clears it in both
+    /// appearances but only just in dark (measured below); that is accepted and
+    /// recorded in `ReachyDesign/AGENTS.md`, not a reason to repaint the default.
+    ///
+    /// Teal's dark accent does not clear it — discovered by adding this limb,
+    /// which is exactly what the limb is for, and not something this suite may
+    /// decide on its own: repainting a shipped theme's dark accent is a palette
+    /// call, not a test fix. `withKnownIssue` keeps the shortfall visible and the
+    /// suite green pending that call, and still guards every other theme —
+    /// including whatever comes after these six — at the real floor.
+    @Test("every accent holds its own against the primary label", arguments: ReachyTheme.allCases)
+    func accentAgainstLabel(theme: ReachyTheme) {
+        #expect(Colorimetry.contrastRatio(theme.palette.light, black) >= 1.8)
+        if theme == .teal {
+            withKnownIssue(
+                """
+                teal's dark accent (#4FD6DE) measures ~1.75 against the dark-mode \
+                label (white), below the 1.8 floor. Needs a palette decision — see \
+                ReachyDesign/AGENTS.md — not a change to this test.
+                """
+            ) {
+                #expect(Colorimetry.contrastRatio(theme.palette.dark, white) >= 1.8)
+            }
+        } else {
+            #expect(Colorimetry.contrastRatio(theme.palette.dark, white) >= 1.8)
+        }
     }
 
     /// The catalogue is generated, so this asserts the generator was actually run:
@@ -119,34 +171,55 @@ struct ReachyThemeTests {
     /// catalogue is a compiled `Assets.car`, not JSON.
     @Test("the generated catalogue matches the constants", arguments: ReachyTheme.allCases)
     func catalogueMatchesConstants(theme: ReachyTheme) throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // ReachyDesignTests
-            .deletingLastPathComponent() // Tests
-            .deletingLastPathComponent() // repo root
-        let contents = root
+        let contents = repoRoot
             .appendingPathComponent("Sources/ReachyDesign/Resources/Assets.xcassets")
             .appendingPathComponent("\(theme.colorSetName).colorset/Contents.json")
-
-        let data = try Data(contentsOf: contents)
-        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let colors = try #require(json["colors"] as? [[String: Any]])
-
-        func hex(at index: Int) throws -> UInt32 {
-            let entry = try #require(colors[index]["color"] as? [String: Any])
-            let components = try #require(entry["components"] as? [String: String])
-            var value: UInt32 = 0
-            for key in ["red", "green", "blue"] {
-                let channel = try #require(components[key])
-                let scanned = try #require(UInt32(channel.replacingOccurrences(of: "0x", with: ""), radix: 16))
-                value = value << 8 | scanned
-            }
-            return value
-        }
-
-        #expect(colors.count == 2)
-        let light = try hex(at: 0)
-        let dark = try hex(at: 1)
+        let (light, dark) = try colorSetHexPair(at: contents)
         #expect(light == theme.palette.light)
         #expect(dark == theme.palette.dark)
     }
+
+    /// `AccentColor.colorset` is hand-edited, not generated — it paints the first
+    /// frame and everything drawn outside our hierarchy (system alerts, the share
+    /// sheet), and `ReachyDesign/AGENTS.md` states it must equal `.fallback` or
+    /// launch flashes another colour. Nothing else checks that the hand edit was
+    /// kept in step, so a drift here was silent until this test existed.
+    @Test("the app's AccentColor equals the default theme")
+    func accentColorMatchesFallback() throws {
+        let contents = repoRoot
+            .appendingPathComponent("Apps/ReachyMini/Resources/Assets.xcassets")
+            .appendingPathComponent("AccentColor.colorset/Contents.json")
+        let (light, dark) = try colorSetHexPair(at: contents)
+        #expect(light == ReachyTheme.fallback.palette.light)
+        #expect(dark == ReachyTheme.fallback.palette.dark)
+    }
+}
+
+private let repoRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent() // ReachyDesignTests
+    .deletingLastPathComponent() // Tests
+    .deletingLastPathComponent() // repo root
+
+/// Both `Theme*.colorset` (generated) and `AccentColor.colorset` (hand-edited)
+/// share this shape: two universal-idiom entries, light first, dark tagged with
+/// a `luminosity` appearance.
+private func colorSetHexPair(at url: URL) throws -> (light: UInt32, dark: UInt32) {
+    let data = try Data(contentsOf: url)
+    let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let colors = try #require(json["colors"] as? [[String: Any]])
+
+    func hex(at index: Int) throws -> UInt32 {
+        let entry = try #require(colors[index]["color"] as? [String: Any])
+        let components = try #require(entry["components"] as? [String: String])
+        var value: UInt32 = 0
+        for key in ["red", "green", "blue"] {
+            let channel = try #require(components[key])
+            let scanned = try #require(UInt32(channel.replacingOccurrences(of: "0x", with: ""), radix: 16))
+            value = value << 8 | scanned
+        }
+        return value
+    }
+
+    #expect(colors.count == 2)
+    return try (hex(at: 0), hex(at: 1))
 }

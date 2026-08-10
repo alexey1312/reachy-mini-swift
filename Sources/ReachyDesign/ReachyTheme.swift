@@ -38,7 +38,7 @@ public extension ReachyTheme {
         case .graphite:
             Palette(light: 0x3E4757, dark: 0xA9B6CC, gradientTop: 0x9AA6B8, gradientBottom: 0x3E4757)
         case .bronze:
-            Palette(light: 0xB26708, dark: 0xE3A24A, gradientTop: 0xFFC96B, gradientBottom: 0xB26708)
+            Palette(light: 0xB26708, dark: 0xA86D16, gradientTop: 0xFFC96B, gradientBottom: 0xB26708)
         case .teal:
             Palette(light: 0x00A0A8, dark: 0x4FD6DE, gradientTop: 0x5FE0CE, gradientBottom: 0x00A0A8)
         case .indigo:

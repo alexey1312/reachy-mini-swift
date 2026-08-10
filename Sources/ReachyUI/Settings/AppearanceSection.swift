@@ -38,6 +38,10 @@ struct AppearanceSection: View {
                         }
                     }
                     .padding(.vertical, Space.sm)
+                    // The selection ring bleeds Space.xs outside its tile (see the
+                    // overlay below); without this the trailing tile's ring is
+                    // sliced flat against the scroll view's edge.
+                    .padding(.horizontal, Space.xs)
                 }
                 // Only five of six tiles fit at rest, so the row must bring the chosen
                 // one on screen itself — otherwise picking a theme off the fold and

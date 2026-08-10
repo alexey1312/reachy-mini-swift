@@ -43,10 +43,24 @@ struct ThemeStoreTests {
         #expect(ThemeStore(defaults: defaults).theme == .graphite)
     }
 
-    @Test("a value of the wrong type falls back")
-    func wrongType() {
+    /// `UserDefaults.string(forKey:)` coerces a stored number to its string
+    /// representation ("42"), so this falls back through the *second* guard —
+    /// `ReachyTheme(rawValue:)` rejecting a raw value that matches no case — the
+    /// same path `unknownValue` above already covers, not a genuine type mismatch.
+    @Test("a stored number coerces to a string that matches no case, and falls back")
+    func wrongTypeCoercesToString() {
         let defaults = makeDefaults(#function)
         defaults.set(42, forKey: ThemeStore.key)
+        #expect(ThemeStore(defaults: defaults).theme == .graphite)
+    }
+
+    /// `Data` is not coerced to a string at all, so `string(forKey:)` genuinely
+    /// returns nil here — the first guard, and the case `wrongTypeCoercesToString`
+    /// above cannot exercise.
+    @Test("a value string(forKey:) cannot coerce at all falls back")
+    func wrongTypeReturnsNil() {
+        let defaults = makeDefaults(#function)
+        defaults.set(Data(), forKey: ThemeStore.key)
         #expect(ThemeStore(defaults: defaults).theme == .graphite)
     }
 }

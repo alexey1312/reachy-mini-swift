@@ -36,8 +36,14 @@ target. See Task 5 below.
   `git add` — stash unrelated edits first. PNGs need an explicit `git add`.
 - **Two spellings of a localized string**, decided by the type: `.reachy("…")` where SwiftUI takes a
   `LocalizedStringResource`; `String(localized: .reachy("…"))` only where the value must stay a `String`.
-- **The palette is fixed** and must not be re-derived: graphite `#3E4757`/`#A9B6CC`, bronze `#B26708`/`#E3A24A`,
+- **The palette is fixed** and must not be re-derived: graphite `#3E4757`/`#A9B6CC`, bronze `#B26708`/`#A86D16`,
   teal `#00A0A8`/`#4FD6DE`, indigo `#4B47D6`/`#8E8CF0`, orchid `#9038D9`/`#C58AF0`, rose `#D6248A`/`#FF7ABA`.
+  **Correction, added in the final-fix pass before merge.** Bronze's dark value shipped as `#E3A24A` and moved to
+  `#A86D16`: the separation rule only checked `palette.light` against the light-appearance system tones, so nobody
+  measured the dark accent against the dark system orange (`#FF9F0A`) until the rule was parameterised over both
+  appearances — where the original value scored 2.0° of hue and a 1.07 contrast ratio, failing both limbs harder
+  than the coral this branch exists to remove. `#A86D16` clears the dark `warning` by contrast (2.10) at the same
+  hue (36°, the tone is preserved) and clears the 3:1 background floor against `#1C1C1E` (3.94).
 
 ---
 
@@ -399,7 +405,7 @@ Create `Scripts/render-theme-colors.swift`:
 // Generates the theme colour sets from ReachyTheme's constants, deterministically:
 // same constants, same bytes. Run from the repo root after changing a palette:
 //
-//   swift Scripts/render-theme-colors.swift
+//   ./bin/mise run theme:colors
 //
 // The constants are duplicated here rather than imported because this is a script,
 // not a target — it cannot link ReachyDesign. `ReachyThemeTests` is what keeps the
@@ -487,7 +493,7 @@ for theme in themes {
 
 - [ ] **Step 5: Run the generator**
 
-Run: `swift Scripts/render-theme-colors.swift`
+Run: `./bin/mise run theme:colors`
 Expected: six `wrote Theme*.colorset` lines.
 
 - [ ] **Step 6: Run the test to verify it passes**
@@ -498,7 +504,7 @@ Xcode's own `AccentColor.colorset` looks like.
 
 - [ ] **Step 7: Verify the generator is deterministic**
 
-Run: `swift Scripts/render-theme-colors.swift && git diff --stat Sources/ReachyDesign/Resources`
+Run: `./bin/mise run theme:colors && git diff --stat Sources/ReachyDesign/Resources`
 Expected: no output from `git diff` — a second run must produce identical bytes.
 
 - [ ] **Step 8: Commit**
@@ -1165,7 +1171,7 @@ Also fix line 130: "a tintless label beside a blue one reads as disabled" now re
 In the Quick Reference block, after the `update-spec` line:
 
 ```
-swift Scripts/render-theme-colors.swift  # Regenerate Theme*.colorset from ReachyTheme.palette
+./bin/mise run theme:colors   # Regenerate Theme*.colorset from ReachyTheme.palette
 ```
 
 - [ ] **Step 4: Verify formatting**

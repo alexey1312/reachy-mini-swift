@@ -23,14 +23,18 @@ import SwiftUI
 /// that seam every gallery capture would show the fallback tile selected regardless
 /// of which theme is applied above it: `.reachyTheme(_:)` sets the environment and
 /// the tint, never the store.
+///
+/// `AppearanceSection.preview(theme)` writes that store, so it is called here rather
+/// than from inside `ThemeSample.body` — SwiftUI may re-run a `body` arbitrarily
+/// often, and a write there would fire on every one of those re-runs instead of once.
 @MainActor
 func themedSample(_ theme: ReachyTheme) -> some View {
-    ThemeSample(theme: theme)
+    ThemeSample(appearance: AppearanceSection.preview(theme))
         .reachyTheme(theme)
 }
 
 private struct ThemeSample: View {
-    let theme: ReachyTheme
+    let appearance: AppearanceSection
     @State private var isOn = true
     @State private var segment = 0
 
@@ -45,7 +49,7 @@ private struct ThemeSample: View {
                 }
                 .pickerStyle(.segmented)
             }
-            AppearanceSection.preview(theme)
+            appearance
         }
         .formStyle(.grouped)
     }

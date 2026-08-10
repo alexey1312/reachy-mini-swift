@@ -1,7 +1,7 @@
 // Generates the theme colour sets from ReachyTheme's constants, deterministically:
 // same constants, same bytes. Run from the repo root after changing a palette:
 //
-//   swift Scripts/render-theme-colors.swift
+//   ./bin/mise run theme:colors
 //
 // The constants are duplicated here rather than imported because this is a script,
 // not a target — it cannot link ReachyDesign. `ReachyThemeTests` is what keeps the
@@ -17,7 +17,7 @@ struct Theme {
 
 let themes = [
     Theme(name: "ThemeGraphite", light: 0x3E4757, dark: 0xA9B6CC),
-    Theme(name: "ThemeBronze", light: 0xB26708, dark: 0xE3A24A),
+    Theme(name: "ThemeBronze", light: 0xB26708, dark: 0xA86D16),
     Theme(name: "ThemeTeal", light: 0x00A0A8, dark: 0x4FD6DE),
     Theme(name: "ThemeIndigo", light: 0x4B47D6, dark: 0x8E8CF0),
     Theme(name: "ThemeOrchid", light: 0x9038D9, dark: 0xC58AF0),

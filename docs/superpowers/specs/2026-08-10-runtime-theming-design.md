@@ -58,7 +58,7 @@ Six themes. Each carries an accent for both appearances and a two-stop gradient 
 | theme     | accent light | accent dark | hue  | contrast on white / on `#1C1C1E` | icon gradient         |
 | --------- | ------------ | ----------- | ---- | -------------------------------- | --------------------- |
 | graphite¹ | `#3E4757`    | `#A9B6CC`   | 218° | 9.36 / 8.30                      | `#9AA6B8` → `#3E4757` |
-| bronze    | `#B26708`    | `#E3A24A`   | 34°  | 4.34 / 7.72                      | `#FFC96B` → `#B26708` |
+| bronze    | `#B26708`    | `#A86D16`   | 34°  | 4.34 / 3.94                      | `#FFC96B` → `#B26708` |
 | teal      | `#00A0A8`    | `#4FD6DE`   | 183° | 3.18 / 9.73                      | `#5FE0CE` → `#00A0A8` |
 | indigo    | `#4B47D6`    | `#8E8CF0`   | 242° | 6.62 / 5.80                      | `#9B9BF5` → `#4B47D6` |
 | orchid    | `#9038D9`    | `#C58AF0`   | 273° | 5.59 / 6.70                      | `#E8AEFF` → `#9038D9` |
@@ -67,7 +67,7 @@ Six themes. Each carries an accent for both appearances and a two-stop gradient 
 ¹ default.
 
 Teal (3.18) and graphite's neighbours sit near the system blue's own 4.02 on white — that is the iOS norm, not a
-defect. Every dark accent clears 5.8 : 1.
+defect. Every dark accent clears the 3 : 1 background floor; bronze's 3.94 is the tightest of the six.
 
 **Coral is deliberately absent.** It fails the separation rule below against both `danger` (6.0° apart, luminance
 ratio 1.15) and `warning` (25.8°, 1.41) — every theme above passes. Moving it far enough to pass would
@@ -79,6 +79,16 @@ sat 1° from `Tone.warning`, which is drawn on the same screen the accent domina
 (`Connect/ConnectRail.swift:156` fills the Daemon → Version → Backend rail marker with it;
 `Connect/ManualAddressSection.swift:37` uses it for the manual-address caveat). Bronze keeps the tone and separates
 by lightness instead.
+
+**Bronze's dark value was corrected in the final-fix pass before merge.** It shipped as `#E3A24A`, chosen against
+the light-appearance system tones only — the separation rule below checked `palette.light` in both appearances,
+never `palette.dark`. Measured against the dark system orange (`#FF9F0A`) once the rule covered both appearances,
+`#E3A24A` sits 2.0° of hue and a 1.07 contrast ratio away — failing both limbs, and less distinguishable from
+`warning` than the coral this feature exists to remove. `#A86D16` keeps the same hue (36°, the tone this theme is
+built on) and separates by lightness instead, the same trade the light accent already makes: 2.10 against dark
+`warning`, comfortably clear of the 1.8 floor, and 3.94 against the `#1C1C1E` background. Escaping the system
+orange's hue upward runs into near-white before it clears 30°, so the escape is downward in lightness — bronze's
+dark accent is deliberately darker than a dark-appearance accent usually is.
 
 ### `ReachyTheme` (ReachyDesign)
 

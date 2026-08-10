@@ -116,7 +116,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run asc -- ...     # App Store Connect CLI with the release key loaded
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
-swift Scripts/render-theme-colors.swift  # Regenerate Theme*.colorset from ReachyTheme.palette
+./bin/mise run theme:colors   # Regenerate Theme*.colorset from ReachyTheme.palette
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
 ./bin/mise run test:snapshots:record  # Re-record the reference images
 ./bin/mise run snapshots:build        # Compile previews + snapshot target, run nothing (CI's preview job)
