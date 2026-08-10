@@ -42,6 +42,15 @@ generated notes. Credentials never enter the repository or CI.
 4. **Developer ID Application certificate** (macOS) — Xcode → Settings →
    Accounts → Manage Certificates → “+” → Developer ID Application.
 
+5. **macOS ships through both channels**, so the Mac App Store one needs its own
+   signing assets besides the Developer ID certificate: Apple Distribution and
+   Mac Installer Distribution. `-allowProvisioningUpdates` creates them through
+   the Xcode account the same way it does for iOS. The app record already
+   carries a macOS platform beside the iOS one — `mise run asc -- versions list
+   --app 6799644194` shows both — so nothing has to be created in App Store
+   Connect. What is not automatic is the App Group: step 2 registers it per App
+   ID, and the macOS App ID is a separate one from the iOS App ID.
+
 ## Each release
 
 1. Bump `MARKETING_VERSION` in `Apps/Project.swift` (bare semver, e.g. `0.2.0`)
@@ -56,13 +65,27 @@ generated notes. Credentials never enter the repository or CI.
 
    ```bash
    mise run release:ios     # archive → TestFlight
-   mise run release:macos   # archive → Developer ID → notarize → staple → zip
+   mise run release:macos   # archive → both macOS channels (see below)
    gh release upload 0.2.0 Apps/DerivedData/Export/macOS/HeyReachy-0.2.0.zip
    ```
 
+`release:macos` archives once and exports that archive twice, because
+`-exportArchive` re-signs per method — the two artifacts are the same build:
+
+| Channel        | Method            | Artifact                           | Ends up in              |
+| -------------- | ----------------- | ---------------------------------- | ----------------------- |
+| `developer-id` | notarize → staple | `Export/macOS/HeyReachy-<ver>.zip` | GitHub release, by hand |
+| `appstore`     | upload            | `.pkg` (not kept)                  | TestFlight for macOS    |
+
+Developer ID runs first on purpose: it is the artifact that always ships, and a
+failed App Store upload should not also cost you the zip. Pick one channel with
+`--channel appstore` or `--channel developer-id`.
+
 Dry runs: `mise run release:ios -- --no-upload` exports an `.ipa` without
-uploading; `mise run release:macos -- --no-notarize` stops after the signed
-export.
+uploading; `mise run release:macos -- --no-notarize` stops the Developer ID
+channel after the signed export, and `--no-upload` makes the App Store channel
+leave a `.pkg` in `Export/macOS/AppStore` instead of uploading it. Each flag
+belongs to one channel and is ignored by the other.
 
 ## Querying App Store Connect
 

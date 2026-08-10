@@ -52,6 +52,22 @@ if [ -n "${REACHY_ASC_KEY_ID:-}" ] && [ -n "${REACHY_ASC_ISSUER_ID:-}" ] && [ -n
   REACHY_HAS_ASC=1
 fi
 
+# `destination: upload` in the shared plist is what hands the artifact to App Store
+# Connect, and it is the only key a dry run has to change. Generating the copy beats
+# keeping a second file, which would drift the moment either channel gains an option.
+# Takes the value of the caller's own upload flag and echoes the plist to use.
+appstore_export_options() {
+  if [ "${1:-true}" = true ]; then
+    echo Scripts/exportOptions/appstore.plist
+    return 0
+  fi
+  local options
+  options="$(mktemp -t reachy-export-options).plist"
+  plutil -convert xml1 -o "$options" Scripts/exportOptions/appstore.plist
+  plutil -replace destination -string export "$options"
+  echo "$options"
+}
+
 # Called by the macOS script, where notarytool has no other way in, and by asc.sh,
 # which is nothing but the key.
 require_asc_key() {

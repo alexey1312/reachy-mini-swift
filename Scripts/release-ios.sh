@@ -42,13 +42,7 @@ xcodebuild archive \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
 
-EXPORT_OPTIONS=Scripts/exportOptions/appstore.plist
-if [ "$upload" = false ]; then
-  # Same options with the upload turned into a local export.
-  EXPORT_OPTIONS="$(mktemp -t reachy-export-options).plist"
-  plutil -convert xml1 -o "$EXPORT_OPTIONS" Scripts/exportOptions/appstore.plist
-  plutil -replace destination -string export "$EXPORT_OPTIONS"
-fi
+EXPORT_OPTIONS="$(appstore_export_options "$upload")"
 
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
