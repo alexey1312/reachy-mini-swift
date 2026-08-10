@@ -8,8 +8,20 @@ import SwiftUI
 /// gradient *is* the icon's background, it costs no asset, and it does not promise
 /// an icon change on macOS, where there is none.
 struct AppearanceSection: View {
-    @AppStorage(ThemeStore.key, store: KnownRobots.defaults)
-    private var rawTheme: String = ReachyTheme.fallback.rawValue
+    @AppStorage(ThemeStore.key) private var rawTheme: String = ReachyTheme.fallback.rawValue
+
+    /// Injectable so a preview can show a theme both applied and selected.
+    /// `.reachyTheme(_:)` only sets the environment value and the tint — it never
+    /// writes the store — so a gallery preview reading the real `KnownRobots.defaults`
+    /// would always render the fallback selected underneath a differently-tinted
+    /// screen. Same shape as `ThemeFromSettings.init(defaults:)` in `ThemeSettings.swift`.
+    init(defaults: UserDefaults = KnownRobots.defaults) {
+        _rawTheme = AppStorage(
+            wrappedValue: ReachyTheme.fallback.rawValue,
+            ThemeStore.key,
+            store: defaults
+        )
+    }
 
     private var selection: ReachyTheme {
         ReachyTheme(rawValue: rawTheme) ?? .fallback
@@ -17,13 +29,22 @@ struct AppearanceSection: View {
 
     var body: some View {
         Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.md) {
-                    ForEach(ReachyTheme.allCases) { theme in
-                        tile(theme)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Space.md) {
+                        ForEach(ReachyTheme.allCases) { theme in
+                            tile(theme)
+                        }
                     }
+                    .padding(.vertical, Space.sm)
                 }
-                .padding(.vertical, Space.sm)
+                // Only five of six tiles fit at rest, so the row must bring the chosen
+                // one on screen itself — otherwise picking a theme off the fold and
+                // coming back reads as if the choice reverted.
+                .onAppear { proxy.scrollTo(selection.id) }
+                .onChange(of: selection) { _, newSelection in
+                    withAnimation { proxy.scrollTo(newSelection.id) }
+                }
             }
         } header: {
             Text(.reachy("Appearance"))
@@ -37,7 +58,7 @@ struct AppearanceSection: View {
             VStack(spacing: Space.sm) {
                 Radius.rect(Radius.lg)
                     .fill(gradient(theme))
-                    .frame(width: 56, height: 56)
+                    .frame(width: Metrics.themeTile, height: Metrics.themeTile)
                     .overlay {
                         Radius.rect(Radius.lg)
                             .strokeBorder(theme.accent, lineWidth: theme == selection ? 3 : 0)
@@ -51,6 +72,7 @@ struct AppearanceSection: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(theme.title))
         .accessibilityAddTraits(theme == selection ? [.isSelected] : [])
+        .id(theme.id)
     }
 
     private func gradient(_ theme: ReachyTheme) -> LinearGradient {
@@ -64,3 +86,19 @@ struct AppearanceSection: View {
         )
     }
 }
+
+#if DEBUG
+    extension AppearanceSection {
+        /// A suite nothing else reads, with `theme` already written into it — so a
+        /// preview can show the picker with that theme both applied (via
+        /// `.reachyTheme(_:)` on the caller) and selected here, which the tint alone
+        /// cannot prove. Same suite `KnownRobotsModel.preview` and
+        /// `FloatingViewportPreferences.preview` already share, under a key neither
+        /// of them touches.
+        static func preview(_ theme: ReachyTheme) -> AppearanceSection {
+            let defaults = UserDefaults(suiteName: "ReachyUI.previews") ?? .standard
+            ThemeStore(defaults: defaults).theme = theme
+            return AppearanceSection(defaults: defaults)
+        }
+    }
+#endif
