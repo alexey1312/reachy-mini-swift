@@ -34,6 +34,8 @@
 - **Files** — an SFTP browser for the robot's filesystem.
 - **At home on Apple platforms** — status and apps widgets, Control Center power controls, Siri / App Intents
   (wake, sleep, power off, launch any installed app), Home Screen quick actions, full localization readiness.
+- **Six themes** — an accent colour and a matching app icon chosen as one decision in Settings, carried into the
+  widgets too. On iPhone and iPad the Home Screen icon changes with it; on a Mac the theme is colour only.
 
 <p align="center">
   <img src="docs/media/live.jpg" width="220" alt="Live tab: RealityKit model mirroring the robot from its own URDF" />

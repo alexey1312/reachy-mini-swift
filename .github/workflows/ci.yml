@@ -83,7 +83,14 @@ jobs:
   # compiles the app shell and the Tuist manifest that generates it.
   app-build:
     name: App Build (ReachyMini, macOS + iOS)
-    runs-on: macos-15
+    # The one job on macos-26, and only because of the app icon: `actool` on the
+    # Xcode 26.2 that macos-15 tops out at fails `CompileAssetCatalogVariant` for
+    # the macOS variant of an Icon Composer `.icon`, while the iOS variant of the
+    # same tree compiles (Smoke builds and runs it). 26.4.1 is where the macOS
+    # icon compiles, and it exists only on this image — macos-15 offers 26.3 at
+    # most. The simulator-bound jobs stay on macos-15 deliberately: their runtime
+    # and device identifiers are pinned to what that image carries.
+    runs-on: macos-26
     needs: lint
     timeout-minutes: 60
     # `id-token` is what lets the step below authenticate over OIDC instead of a stored token.
@@ -93,7 +100,9 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      # 17E202 — the same build the project is developed against, so a macOS app
+      # build that passes here is one that passes locally.
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -153,6 +162,23 @@ jobs:
 
       - name: Build ReachyMini + widget (iOS, Release)
         run: mise run build:app:ios:release
+
+      # xcsift parses compiler diagnostics and nothing else, so a failure in the
+      # asset or resource phase reaches the log as `errors: 0` next to exit 65 —
+      # which says a build failed and not a word about why. Every task above writes
+      # a result bundle (for the tuist post-action); this reads the issues back out
+      # of it so a CI-only failure is legible without reproducing it by hand.
+      - name: Report build failures
+        if: failure()
+        run: |
+          for bundle in Apps/DerivedData/ResultBundles/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            echo "::group::$bundle"
+            xcrun xcresulttool get build-results --path "$bundle" --format json \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("errors", []), indent=2)[:20000] or "no errors recorded")' \
+              || echo "could not read $bundle"
+            echo "::endgroup::"
+          done
 
   # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
   # so build-test can never see them, and a preview that does not compile otherwise

@@ -1,4 +1,5 @@
 import Prefire
+import ReachyUI
 import SwiftUI
 
 /// Debug-only catalogue of every ReachyUI screen state, built from the same previews that back the
@@ -15,6 +16,7 @@ struct ReachyStorybookApp: App {
                     // field. The list draws its own header, so the bars have nothing else to show.
                     .toolbar(.hidden, for: .navigationBar, .bottomBar)
             }
+            .reachyThemeFromSettings()
         }
     }
 }

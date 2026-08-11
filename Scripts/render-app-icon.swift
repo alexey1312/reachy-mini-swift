@@ -1,11 +1,14 @@
-// Renders the Hey Reachy app icon into the asset catalogue, deterministically:
-// same code, same bytes. Run from the repo root after changing the design:
+// Renders the Hey Reachy app icons — one Icon Composer bundle per ReachyTheme —
+// deterministically: same code, same bytes. Run from the repo root after changing
+// the design:
 //
-//   swift Scripts/render-app-icon.swift
+//   ./bin/mise run theme:icons
 //
-// iOS takes the full-bleed 1024 square and masks it itself; macOS does not mask,
-// so its variants draw the Big Sur rounded rectangle (824/1024, radius 185) with
-// transparent margins and are re-rendered as vectors at every ladder size.
+// Each bundle holds the identical robot glyph on transparency; only icon.json's
+// background gradient differs. `actool` generates everything else from that: the
+// light, dark and tinted appearances, the iOS 18–25 back-deployment rasters and the
+// macOS ladder. There is deliberately no asset catalogue — a same-named
+// `.appiconset` is shadowed by the `.icon` and contributes nothing.
 
 import CoreGraphics
 import Foundation
@@ -26,8 +29,6 @@ func srgb(_ hex: UInt32, alpha: CGFloat = 1) -> CGColor {
     )!
 }
 
-let backgroundTop = srgb(0xFFB84D) // warm amber
-let backgroundBottom = srgb(0xFF5A3C) // coral — also the app's AccentColor
 let shell = srgb(0xFFFFFF)
 let shellShade = srgb(0xF2E9E1)
 let ink = srgb(0x1D1D1F)
@@ -129,26 +130,9 @@ func drawEyes(_ ctx: CGContext, side s: CGFloat, headCenter: CGPoint) {
     }
 }
 
-func drawGradient(_ ctx: CGContext, in rect: CGRect) {
-    let gradient = CGGradient(
-        colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-        colors: [backgroundTop, backgroundBottom] as CFArray,
-        locations: [0, 1]
-    )!
-    ctx.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: rect.midX, y: rect.minY),
-        end: CGPoint(x: rect.midX, y: rect.maxY),
-        options: []
-    )
-}
-
-enum IconShape {
-    case fullBleed // iOS: the system applies its own mask
-    case macRoundedRect // macOS: the icon carries its shape and margins itself
-}
-
-func render(pixels: Int, shape: IconShape) -> CGImage {
+/// The robot on transparency. Every `.icon` bundle carries this same image; only the
+/// background gradient in `icon.json` tells the six themes apart.
+func renderGlyph(pixels: Int) -> CGImage {
     let ctx = CGContext(
         data: nil,
         width: pixels,
@@ -161,25 +145,7 @@ func render(pixels: Int, shape: IconShape) -> CGImage {
     // Flip to top-left origin so the drawing reads like the design.
     ctx.translateBy(x: 0, y: CGFloat(pixels))
     ctx.scaleBy(x: 1, y: -1)
-
-    let canvas = CGRect(x: 0, y: 0, width: pixels, height: pixels)
-    switch shape {
-    case .fullBleed:
-        drawGradient(ctx, in: canvas)
-        drawRobot(ctx, content: canvas)
-    case .macRoundedRect:
-        // Big Sur geometry: an 824/1024 rounded rectangle, radius 185/1024.
-        let inset = canvas.width * (100.0 / 1024.0)
-        let plate = canvas.insetBy(dx: inset, dy: inset)
-        let radius = canvas.width * (185.0 / 1024.0)
-        let path = CGPath(roundedRect: plate, cornerWidth: radius, cornerHeight: radius, transform: nil)
-        ctx.saveGState()
-        ctx.addPath(path)
-        ctx.clip()
-        drawGradient(ctx, in: plate)
-        drawRobot(ctx, content: plate)
-        ctx.restoreGState()
-    }
+    drawRobot(ctx, content: CGRect(x: 0, y: 0, width: pixels, height: pixels))
     return ctx.makeImage()!
 }
 
@@ -194,15 +160,73 @@ func writePNG(_ image: CGImage, to url: URL) {
     print("wrote \(url.path)")
 }
 
+// MARK: - Themes
+
+/// A duplicate of `ReachyTheme.palette`'s gradient stops, for the reason
+/// `render-theme-colors.swift` carries one of the accents: a script run by `swift`
+/// cannot link `ReachyDesign`. `ThemeIconNameTests.iconGradientMatchesPalette` reads
+/// the generated documents back and is what catches the two copies drifting apart —
+/// it does not keep them together, so edit both by hand.
+struct IconTheme {
+    let bundleName: String
+    let gradientTop: UInt32
+    let gradientBottom: UInt32
+}
+
+let iconThemes = [
+    IconTheme(bundleName: "AppIcon", gradientTop: 0x9AA6B8, gradientBottom: 0x3E4757),
+    IconTheme(bundleName: "AppIcon-Bronze", gradientTop: 0xFFC96B, gradientBottom: 0xB26708),
+    IconTheme(bundleName: "AppIcon-Teal", gradientTop: 0x5FE0CE, gradientBottom: 0x00A0A8),
+    IconTheme(bundleName: "AppIcon-Indigo", gradientTop: 0x9B9BF5, gradientBottom: 0x4B47D6),
+    IconTheme(bundleName: "AppIcon-Orchid", gradientTop: 0xE8AEFF, gradientBottom: 0x9038D9),
+    IconTheme(bundleName: "AppIcon-Rose", gradientTop: 0xFFA8CE, gradientBottom: 0xD6248A),
+]
+
 // MARK: - Output
 
-let appIconSet = URL(fileURLWithPath: "Apps/ReachyMini/Resources/Assets.xcassets/AppIcon.appiconset")
-try FileManager.default.createDirectory(at: appIconSet, withIntermediateDirectories: true)
-
-writePNG(render(pixels: 1024, shape: .fullBleed), to: appIconSet.appendingPathComponent("icon-ios-1024.png"))
-for pixels in [16, 32, 64, 128, 256, 512, 1024] {
-    writePNG(
-        render(pixels: pixels, shape: .macRoundedRect),
-        to: appIconSet.appendingPathComponent("icon-mac-\(pixels).png")
+/// Icon Composer writes a fill stop as a colour-space prefix and four fractions.
+/// `srgb:` rather than `display-p3:` because the palette constants are sRGB and a
+/// conversion here would be a second place for a colour to be defined.
+func fillStop(_ hex: UInt32) -> String {
+    String(
+        format: "srgb:%.5f,%.5f,%.5f,1.00000",
+        Double((hex >> 16) & 0xFF) / 255,
+        Double((hex >> 8) & 0xFF) / 255,
+        Double(hex & 0xFF) / 255
     )
+}
+
+func writeIconBundle(_ theme: IconTheme, glyph: CGImage, in resources: URL) throws {
+    let bundle = resources.appendingPathComponent("\(theme.bundleName).icon")
+    try? FileManager.default.removeItem(at: bundle)
+    try FileManager.default.createDirectory(
+        at: bundle.appendingPathComponent("Assets"),
+        withIntermediateDirectories: true
+    )
+    writePNG(glyph, to: bundle.appendingPathComponent("Assets/robot.png"))
+
+    let document: [String: Any] = [
+        "fill": ["linear-gradient": [fillStop(theme.gradientTop), fillStop(theme.gradientBottom)]],
+        "groups": [[
+            "layers": [["image-name": "robot.png", "name": "Robot"]],
+            "shadow": ["kind": "neutral", "opacity": 0.5],
+            "translucency": ["enabled": false, "value": 0.5],
+        ]],
+        "supported-platforms": ["circles": ["watchOS"], "squares": "shared"],
+    ]
+    // `.sortedKeys` is what makes a re-run byte-identical; without it the dictionary's
+    // order is the hash order and every run dirties the diff.
+    let data = try JSONSerialization.data(
+        withJSONObject: document,
+        options: [.prettyPrinted, .sortedKeys]
+    )
+    let json = String(data: data, encoding: .utf8)! + "\n"
+    try json.write(to: bundle.appendingPathComponent("icon.json"), atomically: true, encoding: .utf8)
+    print("wrote \(bundle.path)")
+}
+
+let resources = URL(fileURLWithPath: "Apps/ReachyMini/Resources")
+let glyph = renderGlyph(pixels: 1024)
+for theme in iconThemes {
+    try writeIconBundle(theme, glyph: glyph, in: resources)
 }
