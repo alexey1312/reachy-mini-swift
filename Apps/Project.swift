@@ -55,6 +55,11 @@ let project = Project(
                 // Reachy". Siri matches every phrase against these as well.
                 // Deliberately not "Reachy Mini" — that is the name of Pollen's own
                 // app, and on a phone carrying both it would be ambiguous.
+                // **Siri only, and it is not a Spotlight key** — QA1950 describes it
+                // as the spoken form and says nothing about typed search, so adding
+                // a word here does nothing for a query in the search field. That
+                // half is `Navigation/SpotlightIndex.swift`. Apple's own note there:
+                // put synonyms in it, never the display name itself.
                 "INAlternativeAppNames": .array([
                     .dictionary(["INAlternativeAppName": .string("Reachy")]),
                 ]),
@@ -110,6 +115,16 @@ let project = Project(
                         "CFBundleURLName": .string("com.alexey1312.ReachyMini"),
                         "CFBundleURLSchemes": .array([.string("reachy-mini-swift")]),
                     ]),
+                ]),
+                // The literal value of `CSSearchableItemActionType`, which is how a
+                // tapped Spotlight row reaches `RootLifecycle`. Sources disagree
+                // about whether a *system* activity type has to be declared here at
+                // all — a custom one certainly does — and the failure mode if it
+                // does is silent: the rows are found, the tap opens the app, and it
+                // lands on whatever tab was last selected. Declaring it costs one
+                // line and settles the question. `Navigation/SpotlightIndex.swift`.
+                "NSUserActivityTypes": .array([
+                    .string("com.apple.corespotlightitem"),
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],

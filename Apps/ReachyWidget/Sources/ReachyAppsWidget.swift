@@ -100,7 +100,9 @@ struct ReachyAppsWidget: Widget {
                 // belong on the running app's page rather than in the catalogue.
                 .widgetURL(entry.content.destination.url)
         }
-        .configurationDisplayName("Reachy Apps")
+        // "Hey Reachy" and not "Reachy" — see `RobotStatusWidget`, which carries the
+        // reasoning for both names.
+        .configurationDisplayName("Hey Reachy Apps")
         .description("Start your robot's apps from the Home Screen.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }

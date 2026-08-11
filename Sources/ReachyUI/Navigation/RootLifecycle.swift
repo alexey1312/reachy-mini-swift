@@ -1,3 +1,4 @@
+import CoreSpotlight
 import HuggingFaceAuth
 import ReachyKit
 import ReachyMedia
@@ -33,6 +34,11 @@ struct RootLifecycle: ViewModifier {
                 guard !previewMode else { return }
                 hfAccount.restore()
                 ReachyQuickAction.install()
+                // Here rather than in `ReachyMiniApp.init` for the reason the line
+                // above is: both write into a system index off the app's one
+                // catalogue, and both must stay behind `previewMode` so a snapshot
+                // run and the storybook do not file rows for the simulator.
+                await ReachySpotlightIndex.indexIfNeeded()
             }
             // `initial: true` because a cold launch fills the inbox in
             // `scene(_:willConnectTo:)`, before this body has ever run.
@@ -65,12 +71,26 @@ struct RootLifecycle: ViewModifier {
                 // scheme and belongs to the sign-in session, so `ReachyDeepLink`
                 // refuses it rather than landing the user on a tab mid-authorisation.
                 guard let link = ReachyDeepLink(url: url) else { return }
-                router.follow(link)
-                if case .runningApp = link {
-                    runningApp.requestExpansion(for: session)
-                }
+                follow(link)
+            }
+            // A tapped Spotlight row. Its identifier *is* the deep link, so it lands
+            // exactly where a widget's tap does — the `.runningApp` completion
+            // included, which no row asks for today and one added later would get
+            // without this having to be remembered.
+            .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                guard let link = ReachySpotlightIndex.destination(for: activity) else { return }
+                follow(link)
             }
             .widgetReload(session: session, isPreview: previewMode)
+    }
+
+    /// Selecting the tab is `ReachyRouter`'s; whatever a link has to *do* on arrival
+    /// is the caller's, and there are two callers now.
+    private func follow(_ link: ReachyDeepLink) {
+        router.follow(link)
+        if case .runningApp = link {
+            runningApp.requestExpansion(for: session)
+        }
     }
 
     /// Both the geometry and the state routes sit behind the backend, so a link

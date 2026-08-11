@@ -79,7 +79,14 @@ struct RobotStatusWidget: Widget {
                 // is actually dealt with.
                 .widgetURL(ReachyDeepLink.robot.url)
         }
-        .configurationDisplayName("Reachy Mini")
+        // The brand rather than the robot's model name, and for two reasons that
+        // both point the same way. The gallery's search matches a widget's own name,
+        // so "Reachy Mini" left the word "Hey" absent from every string this
+        // extension publishes — the app was findable there and its widgets were not.
+        // And "Reachy Mini" is what Pollen's own app is called, which is the exact
+        // ambiguity `INAlternativeAppNames` in `Project.swift` refuses for the same
+        // reason: on a phone carrying both, this row named the other one.
+        .configurationDisplayName("Hey Reachy Status")
         .description("Your robot's last known state.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
