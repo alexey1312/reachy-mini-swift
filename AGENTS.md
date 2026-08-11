@@ -54,10 +54,17 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   without. CI still defaults `TUIST_CACHE_ENABLED=false` at the workflow level; only the two app-build jobs ask
   `.github/actions/xcode-workspace` for `compilation-cache: "true"`, and even they flip the variable only once the
   `tuist setup cache` step sees a live socket — a fork has no session to start one with, and a `.sock` file outlives a
-  dead daemon, so existence is not liveness. **On CI it has never been shown to pay**: the app
-  build takes the same time with the socket up as `preview-build` and `smoke` take without it, and a runner's
-  DerivedData is empty every time, so only the _remote_ CAS could help. Establish that it hits before wiring it into
-  more jobs. **Cache keys embed absolute paths**, so hits only come from
+  dead daemon, so existence is not liveness. **On CI it has been measured and it does not pay** — do not switch it on
+  for the other jobs without new evidence. Two things were wrong with the obvious theory, and both were corrected
+  before measuring: the generated project carries `COMPILATION_CACHE_*` but no `SWIFT_ENABLE_EXPLICIT_MODULES`,
+  without which the Swift compiler caches nothing and says so at every build ("swift compiler caching requires
+  explicit module build"); and that setting cannot come from `Apps/Project.swift`, because a project's build settings
+  do not reach the SPM package targets Xcode builds as implicit projects — which is all of ReachyKit, ReachyUI and
+  ReachyMedia. Passing it through `REACHY_XCB_EXTRA` does reach them. With both fixed and the cache service up in all
+  four Xcode jobs, a populate-then-read pair on one commit (run 31462908387, attempts 1 and 2) came out at **13.1 min
+  against 13.2 without any of it** — one job faster, two slower. Reverted. A runner's DerivedData is empty every time,
+  so only the remote CAS can help, and it does not help enough to see.
+  **Cache keys embed absolute paths**, so hits only come from
   a stable DerivedData path: a clean rebuild in the same DD replays from cache (119 s → 39 s measured), while the same
   build in a different DD misses every key and re-uploads everything. `Apps/DerivedData` and CI's fixed workspace path
   both qualify; a first build with an empty cache pays a population surcharge. Everything is named after the project
