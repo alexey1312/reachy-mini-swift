@@ -27,4 +27,25 @@ extension FloatingViewportModel {
         /// the tab's centre, kept from wherever the window was let go of.
         case docked(HorizontalEdge, y: CGFloat)
     }
+
+    /// How far past `bounds` the docked tab may reach at each horizontal edge, so it
+    /// meets the screen's own edge rather than the safe area's.
+    ///
+    /// **It applies to the tab and to nothing else.** A window with a picture in it
+    /// belongs inside the safe area; a 44 pt tab left 62 pt short of the edge reads
+    /// as a window that failed to dock rather than as one hanging off the side.
+    ///
+    /// The two names are `Placement.docked`'s, so they mean `minX` and `maxX` and not
+    /// what the layout direction says — `tabCentre` has always resolved
+    /// `HorizontalEdge` that way.
+    ///
+    /// Zero everywhere but a landscape iPhone, and never symmetric even there: see
+    /// `FloatingViewportModifier.dockBleed(in:)` for why only one edge is ever filled
+    /// in.
+    struct EdgeBleed: Equatable {
+        var leading: CGFloat = 0
+        var trailing: CGFloat = 0
+
+        static let none = EdgeBleed()
+    }
 }

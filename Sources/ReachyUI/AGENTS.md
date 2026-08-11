@@ -15,6 +15,35 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   and writes `FloatingViewportModel.hasTabBar`. False collapses `placement` to `.inline` everywhere — the exact
   behaviour this target had before the window existed, including `viewportIsOnScreen`. This entry used to say nothing
   in the target branched on the size class; do not "restore" it by deleting the branch.
+  - **`dockBleed(in:)` in the same file is the second branch on how the device is held, and it passes the same test.**
+    It reads `UIInterfaceOrientation`, and it asks neither "how wide" nor "how tall" but **"which end of this screen
+    has no cutout in it"** — because that is the one thing no amount of geometry will say. iOS reports the landscape
+    safe-area inset on both sides whatever side the Dynamic Island is physically on, so a docked tab reaching for the
+    glass has to be told which end to reach at or it goes under the island. It forks no layout: one point moves by up
+    to 62 pt, and everything else about the overlay is unchanged. A third branch owes an answer of the same kind —
+    a question the size class cannot answer at all, not a screen it looks better on.
+    - **Both of its cases shipped inverted first, and nothing in this repository could have caught it.**
+      `UIInterfaceOrientation.landscapeLeft` **is** `UIDeviceOrientationLandscapeRight` — the enum is defined as the
+      device's with left and right swapped, and Apple's "home button on the right side" sentence documents the
+      _device_ constant. Carry that sentence across and every case comes out mirrored. The unit tests cannot see it,
+      because `bleed` arrives at `tabCentre` as a number somebody else decided; a snapshot cannot, because the
+      stencil zeroes the safe area; and the two landscape orientations are mirror images of each other, so an
+      inverted mapping is wrong in both and looks equally plausible in both. Right: `.landscapeLeft` puts the home
+      indicator at the **leading** end, `.landscapeRight` at the trailing one.
+    - **What did catch it is the standalone-probe harness, and this is the recipe.** A ~100-line SwiftUI app built
+      with a bare `swiftc -target arm64-apple-ios18.0-simulator`, replicating only the overlay
+      (`TabView` + `.overlay { GeometryReader { … } }`), drawing the tab twice — once flush with `bounds`, once with
+      the bleed — over a HUD of the numbers it read. `UILaunchScreen` in its `Info.plist` is **not optional**:
+      without it iOS runs the app in legacy compatibility mode at a scaled size and every safe-area figure is a lie.
+      Orientation is forced through `UISupportedInterfaceOrientations` rather than by rotating the simulator, which
+      needs an accessibility permission `osascript` does not have. Then `simctl io booted screenshot` and a throwaway
+      `swiftc` bounding-box script over `CGImageSourceCreateWithURL` — the framebuffer stays portrait while the
+      interface rotates, so the app's landscape x-axis is the image's **y**, and eyeballing that is how a 20 pt error
+      gets called close enough. Measured on an iPhone 17 Pro: reader 750 × 382, `l62 r62`; the tab flush with
+      `bounds` at 62 pt from the glass and the bled one at 0, in **both** orientations, with the island's own
+      bounding box starting 14 pt in at the opposite end. The portrait run reproduced the 402 × 778 / t62 b34 already
+      recorded in `FloatingViewportModifier`, which is what certified the probe as a faithful replica before any of
+      its landscape numbers were believed.
 - **Navigation is `ReachyRouter` plus two destinations.** `ReachyRootView` owns what outlives a screen and picks the
   gate or the shell; `Navigation/` holds the router, the effect cluster and the sheet stack; `Shell/` holds the five
   tabs. The five are unconditional — a tab that comes and goes forces the shell to catch its disappearance and drag
@@ -223,6 +252,21 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   size is zero, and a view with no intrinsic size takes the proposal — the exact case the bug does not occur in. It
   returns the proposal explicitly now, which is why adopting it moved nothing. The rule generalises: a headless
   capture of a renderer certifies the layout around an _empty_ rectangle, never the rectangle.
+- **A `safeAreaInset` on a viewport costs a fixed number of points of _height_, and a landscape iPhone has 402 of
+  them.** The entry above was fixed and the same complaint came back: a tiny picture in the middle of a landscape
+  screen, measured at 145 × 80 pt. `sizeThatFits` was working — `CameraViewport`'s bottom inset was taking
+  140 (`JoystickPad`) + 2 × 16 (`.padding()`) = **172 pt**, and the navigation and tab bars the rest, so the camera
+  was filling ~86 pt of height perfectly correctly. Nothing about the code says "landscape"; the constant is the same
+  in both, and 172 out of 874 is invisible while 172 out of 402 is two thirds of the screen. **The two bugs are
+  indistinguishable from a screenshot**, which is why the fix is arithmetic and not inspection: compute the rectangle
+  the renderer is handed, then aspect-fit the stream into it and check the number against the image.
+  The controls are an `overlay(alignment: .bottomTrailing)` now, and **all 318 snapshot tests passed with the move,
+  0 of ~1100 references rewritten** — predicted from the arithmetic before the run and then measured: the pad's own
+  rectangle is `bottom − 156 … bottom − 16` in either form, and the two phases that could have disagreed never
+  overlap (a `safeAreaInset` whose builder returns `EmptyView` reserves nothing, and `teleopControls` is empty in
+  every phase except `.streaming`, which is the one phase `status` is empty in). `LiveTab` still declines
+  `ignoresSafeArea`, and the reason survived the change — an overlay is bounded by what it is applied to, so a
+  full-bleed viewport would put the pad under the tab bar.
 - **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
   a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
   `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine

@@ -34,6 +34,11 @@ struct FloatingViewport: View {
     /// tab bar and the running-app dock both live in that inset, and the window
     /// must not land on either.
     let bounds: CGRect
+    /// How far the *docked tab* may reach back out of that inset, so it meets the
+    /// glass rather than hanging 62 pt short of it in landscape. Defaulted so the
+    /// preview harness, which fakes `bounds` out of a container and has no safe area
+    /// to speak of, needs to say nothing about it.
+    var bleed: FloatingViewportModel.EdgeBleed = .none
     /// Selects the Live tab. Called after the window has finished growing, never
     /// before: the tab and the window cannot both hold the viewport.
     let open: () -> Void
@@ -126,7 +131,9 @@ struct FloatingViewport: View {
     }
 
     private var centre: CGPoint {
-        model.isExpanding ? CGPoint(x: bounds.midX, y: bounds.midY) : model.centre(in: bounds)
+        model.isExpanding
+            ? CGPoint(x: bounds.midX, y: bounds.midY)
+            : model.centre(in: bounds, bleed: bleed)
     }
 
     private var isDocked: Bool {
@@ -226,7 +233,7 @@ struct FloatingViewport: View {
         let carried = FloatingViewportModel.DragRelease(
             predictedEndTranslation: value.predictedEndTranslation
         )
-        let distance = model.releaseDistance(for: carried, in: bounds)
+        let distance = model.releaseDistance(for: carried, in: bounds, bleed: bleed)
         let speed = hypot(value.velocity.width, value.velocity.height)
         withAnimation(Motion.absorb(velocity: speed / max(distance, 1))) {
             model.dragEnded(carried, in: bounds)

@@ -59,6 +59,62 @@ struct FloatingViewportGeometryTests {
         #expect(model.centre(in: Self.portrait) == CGPoint(x: expectedX, y: 400))
     }
 
+    // MARK: - Reaching past the safe area
+
+    /// `bounds` stops where the safe area does, and in landscape that is 62 pt short of
+    /// the glass — so the tab is pushed the rest of the way by exactly that much, and
+    /// ends up straddling the rectangle's own edge.
+    @Test("a bleed carries the tab out to the screen's edge", arguments: [
+        (HorizontalEdge.leading, FloatingViewportModel.EdgeBleed(leading: 62), CGFloat(-40)),
+        (.trailing, FloatingViewportModel.EdgeBleed(trailing: 62), CGFloat(840)),
+    ])
+    func bleedPushesTheTabOut(
+        edge: HorizontalEdge,
+        bleed: FloatingViewportModel.EdgeBleed,
+        expectedX: CGFloat
+    ) {
+        let model = model(.docked(edge, y: 200))
+
+        #expect(model.centre(in: Self.landscape, bleed: bleed) == CGPoint(x: expectedX, y: 200))
+    }
+
+    /// The bleed is filled in at one end only — the one with no cutout in it — so the
+    /// other end has to stay exactly where it was or the tab would leave the screen on
+    /// the side it was never told about.
+    @Test("a bleed at one edge leaves the other edge alone")
+    func bleedIsPerEdge() {
+        let onlyTrailing = FloatingViewportModel.EdgeBleed(trailing: 62)
+
+        #expect(model(.docked(.leading, y: 200)).centre(in: Self.landscape, bleed: onlyTrailing)
+            == CGPoint(x: 22, y: 200))
+        #expect(model(.docked(.trailing, y: 200)).centre(in: Self.landscape, bleed: .none)
+            == CGPoint(x: 778, y: 200))
+    }
+
+    /// The whole reason the bleed is a parameter of `tabCentre` and not of `clamped`: a
+    /// window with a picture in it belongs inside the safe area, and only the 44 pt tab
+    /// belongs against the glass.
+    @Test("a bleed never moves a floating corner", arguments: FloatingViewportModel.Corner.allCases)
+    func bleedLeavesCornersAlone(corner: FloatingViewportModel.Corner) {
+        let bled = FloatingViewportModel.centre(
+            of: .floating(corner),
+            in: Self.landscape,
+            bleed: .init(leading: 62, trailing: 62)
+        )
+
+        #expect(bled == FloatingViewportModel.centre(of: corner, in: Self.landscape))
+    }
+
+    /// The tab may reach past the screen's side and must never reach under the tab bar,
+    /// so the y clamp is deliberately blind to the bleed.
+    @Test("a bleed does not loosen the vertical clamp")
+    func bleedDoesNotReachTheYClamp() {
+        let model = model(.docked(.trailing, y: 9999))
+        let bleed = FloatingViewportModel.EdgeBleed(trailing: 62)
+
+        #expect(model.centre(in: Self.landscape, bleed: bleed).y == 364)
+    }
+
     /// A split view squeezed below the window's own size has no valid position at
     /// all. Centring is the only answer that is not off screen.
     @Test("a rectangle smaller than the window centres it rather than losing it")

@@ -67,6 +67,7 @@ private struct FloatingViewportModifier: ViewModifier {
                             viewport: viewport,
                             session: session,
                             bounds: bounds,
+                            bleed: dockBleed(in: geometry),
                             open: open
                         )
                         .onChange(of: bounds) { _, new in model.fit(to: new) }
@@ -108,6 +109,75 @@ private struct FloatingViewportModifier: ViewModifier {
             height: max(0, geometry.size.height - Metrics.tabBarAllowance - accessory)
         )
     }
+
+    /// How far the docked tab may reach back out of the safe area, and **at which one
+    /// end**.
+    ///
+    /// The gap it closes is the one `available(in:)` deliberately leaves: the reader is
+    /// laid out inside the safe area, so in landscape `bounds` stops 62 pt short of the
+    /// glass and a 44 pt tab hung there with a strip of screen behind it — reported as
+    /// a window that had not finished docking.
+    ///
+    /// **Only one end, and the orientation is the one thing that says which.** iOS
+    /// reports that inset on *both* sides in landscape however the phone is held, so
+    /// filling both in would push the tab under the Dynamic Island on whichever side
+    /// carries it: the island sits x ∈ [17, 50] from the edge, which is 27 pt of a 44 pt
+    /// tab, and a cutout has no pixels and takes no touches. The bleed therefore goes to
+    /// the phone's *bottom* edge — the one end of a landscape screen with nothing cut
+    /// out of it.
+    ///
+    /// **`UIInterfaceOrientation`'s two landscape cases are the device's, swapped, and
+    /// getting them the wrong way round is invisible.** The enum is literally defined as
+    /// `.landscapeLeft = UIDeviceOrientationLandscapeRight`, and the "home button on the
+    /// right side" sentence in Apple's documentation belongs to `UIDeviceOrientation` —
+    /// applied to this one it yields the mirror image. So `.landscapeLeft` holds the
+    /// home indicator at the screen's **leading** end and `.landscapeRight` at its
+    /// trailing one. The two orientations are mirrors of each other, which is exactly
+    /// what makes the mistake unfalsifiable by inspection: an inverted mapping is wrong
+    /// in both and looks plausible in both, and the geometry tests cannot see it at all
+    /// because `bleed` reaches `tabCentre` as a number that has already been decided.
+    /// It was measured instead — a standalone probe on a booted simulator, forced into
+    /// each orientation through `UISupportedInterfaceOrientations` and screenshotted.
+    ///
+    /// Portrait needs no case: there is no horizontal inset there to give back.
+    ///
+    /// **This is the target's second branch on how the device is held**, after
+    /// `hasTabBar`, and `AGENTS.md` carries why neither is a layout fork. It asks where
+    /// the screen's physical edge is, and moves one point to meet it.
+    private func dockBleed(in geometry: GeometryProxy) -> FloatingViewportModel.EdgeBleed {
+        #if os(macOS)
+            .none
+        #else
+            switch interfaceOrientation {
+            case .landscapeLeft: .init(leading: geometry.safeAreaInsets.leading)
+            case .landscapeRight: .init(trailing: geometry.safeAreaInsets.trailing)
+            default: .none
+            }
+        #endif
+    }
+
+    #if !os(macOS)
+        /// Re-read rather than observed: this is only ever called from inside the
+        /// overlay's `GeometryReader`, and a rotation changes that reader's size — so
+        /// the closure runs again with the orientation already settled, and there is no
+        /// notification to subscribe to and unsubscribe from.
+        ///
+        /// **Any window scene, deliberately not the `foregroundActive` one.**
+        /// `WebAuthenticationBrowser` filters on that and is right to — it is choosing a
+        /// window to present in. Here the filter is a silent failure: measured on an
+        /// iPhone 17 Pro with a landscape layout already laid out (reader 750 × 382,
+        /// l62 r62), `connectedScenes` held one scene reporting `.landscapeLeft`, and
+        /// `activationState` was not yet `foregroundActive` — so the filter returned nil,
+        /// the fallback said portrait, and the bleed came out zero with nothing to
+        /// re-run the body once the scene did activate. There is one scene here; asking
+        /// it what orientation it is drawing at needs no liveness test.
+        private var interfaceOrientation: UIInterfaceOrientation {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first?
+                .interfaceOrientation ?? .portrait
+        }
+    #endif
 }
 
 extension CoordinateSpaceProtocol where Self == NamedCoordinateSpace {

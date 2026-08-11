@@ -31,7 +31,7 @@ struct CameraViewport: View {
     var body: some View {
         CameraVideoView(track: session.videoTrack)
             .overlay(alignment: .center) { status }
-            .safeAreaInset(edge: .bottom) { teleopControls }
+            .overlay(alignment: .bottomTrailing) { teleopControls }
             .onAppear { connectTeleop() }
             .onDisappear { driver.stop() }
     }
@@ -60,10 +60,23 @@ struct CameraViewport: View {
 
     /// The pad, and beside it the way back from where the pad can leave you.
     ///
-    /// Both sit in the bottom inset rather than in `ViewportView`'s floating
-    /// cluster: that cluster is built a level up, which does not own this driver
-    /// and covers the 3D scene too, where teleop does not apply. Here they also
-    /// land under the thumb that just turned the robot.
+    /// Both float over the video rather than in `ViewportView`'s cluster: that
+    /// cluster is built a level up, which does not own this driver and covers the
+    /// 3D scene too, where teleop does not apply. Here they also land under the
+    /// thumb that just turned the robot.
+    ///
+    /// **An overlay, and it used to be a bottom `safeAreaInset`.** An inset is
+    /// subtracted from the video's rectangle, and this one costs a fixed
+    /// 140 + 2 × 16 = 172 pt of *height* — nothing on a portrait iPhone's 874, two
+    /// thirds of a landscape one's 402. With the navigation and tab bars taking
+    /// their own share, the camera was left ~86 pt to letterbox 16:9 into and
+    /// rendered a 145 × 80 pt picture in the middle of an 874 pt screen. Nothing
+    /// moves by drawing it over instead: the pad's own rectangle is
+    /// `bottom − 156 … bottom − 16` either way.
+    ///
+    /// It is the same symptom `CameraVideoView`'s doc comment describes and a
+    /// different cause; that one was the renderer's intrinsic size, and it is
+    /// fixed. Measure the rectangle the video is handed before reaching for it.
     @ViewBuilder
     private var teleopControls: some View {
         // No factory means this connection carries no teleop at all, so the
@@ -74,7 +87,6 @@ struct CameraViewport: View {
                 JoystickPad(mapping: driver.mapping) { driver.apply($0) }
                     .frame(width: 140, height: 140)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
             .padding()
             .animation(Motion.stateChange, value: driver.isBodyTurned)
         }

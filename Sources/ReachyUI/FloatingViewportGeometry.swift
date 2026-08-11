@@ -17,14 +17,21 @@ extension FloatingViewportModel {
     ///
     /// `.inline` has no position — the overlay is not on screen — and the middle is the
     /// only answer that is not a lie about a corner.
-    static func centre(of placement: Placement, in bounds: CGRect) -> CGPoint {
+    ///
+    /// `bleed` reaches the docked case and nothing else, on purpose: the tab is the one
+    /// placement that belongs against the screen's edge rather than the safe area's.
+    static func centre(
+        of placement: Placement,
+        in bounds: CGRect,
+        bleed: EdgeBleed = .none
+    ) -> CGPoint {
         switch placement {
         case .inline:
             CGPoint(x: bounds.midX, y: bounds.midY)
         case let .floating(corner):
             centre(of: corner, in: bounds)
         case let .docked(edge, y):
-            tabCentre(edge: edge, y: y, in: bounds)
+            tabCentre(edge: edge, y: y, in: bounds, bleed: bleed)
         }
     }
 
@@ -108,16 +115,27 @@ extension FloatingViewportModel {
 
     /// The tab is flush with the edge — no margin, that is what makes it read as
     /// something hanging off the side rather than as a shrunken window.
+    ///
+    /// **Flush with the _screen's_ edge, which `bounds` is not.** The overlay's reader
+    /// is laid out inside the safe area, so on a landscape iPhone `bounds` stops 62 pt
+    /// short of the glass at each end and the tab hung there with a gap behind it.
+    /// `bleed` is what the caller has measured that gap to be — and it is a caller's
+    /// measurement rather than something derived here, because only the caller can
+    /// tell which of the two ends carries a cutout.
+    ///
+    /// The y clamp deliberately does **not** take it: the tab may reach past the
+    /// screen's side, never under the tab bar.
     static func tabCentre(
         edge: HorizontalEdge,
         y: CGFloat,
         in bounds: CGRect,
-        size: CGSize = Metrics.viewportTab
+        size: CGSize = Metrics.viewportTab,
+        bleed: EdgeBleed = .none
     ) -> CGPoint {
         CGPoint(
             x: edge == .leading
-                ? bounds.minX + size.width / 2
-                : bounds.maxX - size.width / 2,
+                ? bounds.minX - bleed.leading + size.width / 2
+                : bounds.maxX + bleed.trailing - size.width / 2,
             y: clampedTabY(y, in: bounds, size: size)
         )
     }
