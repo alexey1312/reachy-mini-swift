@@ -223,6 +223,21 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   size is zero, and a view with no intrinsic size takes the proposal — the exact case the bug does not occur in. It
   returns the proposal explicitly now, which is why adopting it moved nothing. The rule generalises: a headless
   capture of a renderer certifies the layout around an _empty_ rectangle, never the rectangle.
+- **A `safeAreaInset` on a viewport costs a fixed number of points of _height_, and a landscape iPhone has 402 of
+  them.** The entry above was fixed and the same complaint came back: a tiny picture in the middle of a landscape
+  screen, measured at 145 × 80 pt. `sizeThatFits` was working — `CameraViewport`'s bottom inset was taking
+  140 (`JoystickPad`) + 2 × 16 (`.padding()`) = **172 pt**, and the navigation and tab bars the rest, so the camera
+  was filling ~86 pt of height perfectly correctly. Nothing about the code says "landscape"; the constant is the same
+  in both, and 172 out of 874 is invisible while 172 out of 402 is two thirds of the screen. **The two bugs are
+  indistinguishable from a screenshot**, which is why the fix is arithmetic and not inspection: compute the rectangle
+  the renderer is handed, then aspect-fit the stream into it and check the number against the image.
+  The controls are an `overlay(alignment: .bottomTrailing)` now, and **all 318 snapshot tests passed with the move,
+  0 of ~1100 references rewritten** — predicted from the arithmetic before the run and then measured: the pad's own
+  rectangle is `bottom − 156 … bottom − 16` in either form, and the two phases that could have disagreed never
+  overlap (a `safeAreaInset` whose builder returns `EmptyView` reserves nothing, and `teleopControls` is empty in
+  every phase except `.streaming`, which is the one phase `status` is empty in). `LiveTab` still declines
+  `ignoresSafeArea`, and the reason survived the change — an overlay is bounded by what it is applied to, so a
+  full-bleed viewport would put the pad under the tab bar.
 - **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
   a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
   `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine

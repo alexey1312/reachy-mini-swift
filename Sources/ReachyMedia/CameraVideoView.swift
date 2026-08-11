@@ -15,6 +15,15 @@ import SwiftUI
 /// width and was clipped, which read as full-bleed and is why this was reported as
 /// a landscape bug rather than as the orientation-independent one it is.
 ///
+/// **A second cause produced the same picture, and it is not in this file.** "Tiny
+/// video in the middle of a landscape screen" was reported again after the above
+/// was fixed, and `sizeThatFits` was innocent: `CameraViewport` hung its joystick
+/// off a bottom `safeAreaInset`, which subtracts a fixed 172 pt from the rectangle
+/// this view is handed — nothing out of a portrait iPhone's 874 pt, two thirds of a
+/// landscape one's 402. Filling ~86 pt of height correctly looks exactly like
+/// failing to fill 402. So measure the proposal this view receives before
+/// suspecting what it does with one; the numbers are in `CameraViewport`.
+///
 /// Letterboxing stays the renderer's job — `videoContentMode` below, and
 /// `RTCMTLVideoView` clears its own unfilled area.
 public struct CameraVideoView {

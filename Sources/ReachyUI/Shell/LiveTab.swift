@@ -18,9 +18,13 @@ struct LiveTab: View {
     var body: some View {
         @Bindable var router = router
         return NavigationStack {
-            // No `ignoresSafeArea` here: the camera hangs its joystick off a bottom
-            // safe-area inset, which would then be laid out under the tab bar and
-            // clipped.
+            // No `ignoresSafeArea` here. It used to be the joystick's bottom
+            // safe-area inset that ruled it out; the joystick is an overlay now, and
+            // the reason survives the change intact — an overlay is bounded by the
+            // rectangle it is applied to, so a viewport reaching past the safe area
+            // would put the pad and the recentre button under the tab bar. Full-bleed
+            // video is a separate decision, and it has to answer what the glass bar
+            // renders once the picture passes beneath it.
             content
                 .navigationTitle(.reachy("Live"))
                 .hfAccountToolbar(isPresented: $router.showsAccount)
