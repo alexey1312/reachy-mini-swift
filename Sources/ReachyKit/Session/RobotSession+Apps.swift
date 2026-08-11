@@ -20,6 +20,7 @@ public extension RobotSession {
         let apps = try await withAppsClient { try await $0.availableApps() }
         appCatalogueCache = apps
         recordInstalled(apps.filter(\.isInstalled))
+        await persistCatalogue(apps)
         return apps
     }
 
@@ -272,13 +273,6 @@ private extension RobotSession {
             error: status.error
         )
     }
-
-    var connectedIdentity: RobotIdentity? {
-        switch phase {
-        case let .connected(identity), let .unreachable(identity): identity
-        case .idle, .connecting: nil
-        }
-    }
 }
 
 extension RobotSession {
@@ -294,6 +288,7 @@ extension RobotSession {
         let jobID = try await withAppsClient(call)
         appCatalogueCache = nil
         installedAppsCache = nil
+        await forgetPersistedCatalogue()
         return jobID
     }
 }

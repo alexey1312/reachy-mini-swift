@@ -13,6 +13,7 @@ extension RobotSession {
         }
         let moves = try await withClient { try await $0.listMoves(dataset: dataset) }
         moveCache[dataset] = moves
+        await persistMoveIndex()
         return moves
     }
 
@@ -206,13 +207,6 @@ extension RobotSession {
         }
         guard let uuid = running.sorted().first else { return nil }
         return MovePlayback(uuid: uuid, identity: nil)
-    }
-
-    private var connectedRobotID: String? {
-        switch phase {
-        case let .connected(identity), let .unreachable(identity): identity.deduplicationKey
-        default: nil
-        }
     }
 
     /// Polls the daemon's authoritative running-task list so natural completion

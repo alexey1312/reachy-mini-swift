@@ -95,6 +95,10 @@ public extension RobotSession {
                     )
                 )
             }
+            // Before the gate comes down, so the tab shell's models are built over
+            // catalogues that are already in memory. See `warmCatalogues`.
+            await warmCatalogues(for: handshake.identity, attemptID: attemptID)
+            guard isAttemptLive(attemptID) else { return false }
             phase = .connecting(.checkingBackend(handshake.identity))
             return await settleReadiness(
                 identity: handshake.identity,
