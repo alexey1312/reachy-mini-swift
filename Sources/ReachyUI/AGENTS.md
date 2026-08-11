@@ -70,6 +70,35 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     `strings ~/Library/Developer/CoreSimulator/Devices/<udid>/data/Library/FrontBoard/applicationState.db | grep
     SBSApplicationShortcutItem` prints each title next to its type after one launch. A build proves none of this:
     the items are written at runtime.
+- **`Navigation/SpotlightIndex.swift` is a third system again, and it publishes _destinations_ rather than
+  commands.** App Shortcuts put actions in Spotlight; the icon's menu is UIKit's; this files `CSSearchableItem` rows
+  the index can match against words the app's **name** does not contain. It exists because Spotlight matches an
+  installed app on its display name alone, and this app's name is two words one of which is "Hey" — a token so
+  common in mail, messages and contacts that the app ranks under all of them. Searching "Reachy" always found it and
+  searching "Hey" did not.
+  - **It widens what is findable; it cannot change how iOS _matches_.** Query length, tokenization and ranking are
+    the system's, and no key here overrides any of them — iOS 17/18 has been reported to ignore `keywords` for
+    content items entirely ([FB17330079](https://developer.apple.com/forums/thread/781872)), which is why
+    `alternateNames` carries the same list. Never write this up as the fix for a particular query; a device is the
+    only thing that can say what a given query returns.
+  - **The app's name is read, never written down.** `appName` reads `CFBundleDisplayName` off the running bundle, so
+    the one spelling stays in `Apps/Project.swift` — the same drift `ThemeIconNameTests` guards for the icon names.
+    The keyword list is that name, plus each word of it separately (which is what puts "Hey" in the index as a term
+    of its own), plus one comma-separated catalogue string a translator replaces wholesale rather than translating
+    word for word.
+  - **A row's `uniqueIdentifier` _is_ its deep link**, so a tap goes back through the same `ReachyDeepLink` parsing
+    `onOpenURL` uses and there is no second table mapping identifiers to places. `RootLifecycle.follow(_:)` is the
+    one arrival path for both.
+  - **`expirationDate` is set, and the default is one month.** An item left to expire takes the app back out of
+    every search these words reach — silently, and long after anybody would connect it to this file.
+  - `indexIfNeeded` is `@MainActor` and `index(appName:)` is not, which is deliberate: `UserDefaults` is not
+    `Sendable` (`KnownRobots.defaults` needs `nonisolated(unsafe)`) and neither is `CSSearchableItem`, so the
+    stamp stays on the caller's actor and the items are built and spent inside one `nonisolated` function. Only a
+    `String` crosses.
+  - **Nothing here is under test cover on a device, and no reference image can be.** The index cannot be read back
+    through any API, so `SpotlightIndexTests` asserts the half that decides what gets written and where a tap
+    lands. What a query actually returns is a device check: install, search, and search again after a language
+    change, which is the other thing the stamp keys on.
 - **The running-app dock is a tab accessory, and it is not a `safeAreaInset` on the `TabView`. Do not put it back.**
   It was one for five releases, on the reasoning that growing the `TabView`'s safe area would push the bar up and
   leave the strip below it — the Telegram shape. A `safeAreaInset` does not shrink the frame it is applied to, and

@@ -187,6 +187,9 @@
     "Connect to this robot": {
       "extractionState": "manual"
     },
+    "Connect to your Reachy Mini, wake it and see what it is doing.": {
+      "extractionState": "manual"
+    },
     "Connected": {
       "extractionState": "manual"
     },
@@ -766,6 +769,9 @@
     "Robot account": {
       "extractionState": "manual"
     },
+    "Robot apps": {
+      "extractionState": "manual"
+    },
     "Robot backend": {
       "extractionState": "manual"
     },
@@ -917,6 +923,9 @@
       "extractionState": "manual"
     },
     "Start again": {
+      "extractionState": "manual"
+    },
+    "Start and stop the apps installed on your Reachy Mini.": {
       "extractionState": "manual"
     },
     "Start on wake-up": {
@@ -1256,6 +1265,9 @@
       "extractionState": "manual"
     },
     "no answer": {
+      "extractionState": "manual"
+    },
+    "robot, remote control, Reachy Mini, Pollen": {
       "extractionState": "manual"
     },
     "this robot runs an older one": {
