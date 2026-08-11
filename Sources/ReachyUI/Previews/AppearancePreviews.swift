@@ -9,6 +9,18 @@ import SwiftUI
     .formStyle(.grouped)
 }
 
+// The one state the picker can reach that nothing else captures: iOS refused the
+// icon while the theme was saved anyway. `.rose` rather than a seventh theme because
+// `Appearance — rose` already writes that value into the shared preview suite, so
+// the two cannot disagree about what is selected.
+#Preview("Appearance — icon refused") {
+    Form {
+        AppearanceSection.preview(.rose, iconChangeFailed: true)
+    }
+    .formStyle(.grouped)
+    .reachyTheme(.rose)
+}
+
 #Preview("Appearance — graphite") { themedSample(.graphite) }
 #Preview("Appearance — bronze") { themedSample(.bronze) }
 #Preview("Appearance — teal") { themedSample(.teal) }

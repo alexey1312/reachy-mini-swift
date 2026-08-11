@@ -943,6 +943,9 @@
     "The app's own page, served by the robot on this network.": {
       "extractionState": "manual"
     },
+    "The app icon didn't change.": {
+      "extractionState": "manual"
+    },
     "The hardware ID never changes.": {
       "extractionState": "manual"
     },

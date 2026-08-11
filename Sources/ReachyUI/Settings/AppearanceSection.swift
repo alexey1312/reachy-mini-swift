@@ -16,12 +16,18 @@ struct AppearanceSection: View {
     /// writes the store — so a gallery preview reading the real `KnownRobots.defaults`
     /// would always render the fallback selected underneath a differently-tinted
     /// screen. Same shape as `ThemeFromSettings.init(defaults:)` in `ThemeSettings.swift`.
-    init(defaults: UserDefaults = KnownRobots.defaults) {
+    /// Set when `setAlternateIconName` refuses. Injectable for the same reason the
+    /// defaults suite is: a preview cannot reach a refusal, and an uncovered failure
+    /// caption is one nobody looks at until a reader reports it.
+    @State private var iconChangeFailed: Bool
+
+    init(defaults: UserDefaults = KnownRobots.defaults, iconChangeFailed: Bool = false) {
         _rawTheme = AppStorage(
             wrappedValue: ReachyTheme.fallback.rawValue,
             ThemeStore.key,
             store: defaults
         )
+        _iconChangeFailed = State(initialValue: iconChangeFailed)
     }
 
     private var selection: ReachyTheme {
@@ -53,6 +59,11 @@ struct AppearanceSection: View {
             }
         } header: {
             Text(.reachy("Appearance"))
+        } footer: {
+            if iconChangeFailed {
+                Text(.reachy("The app icon didn't change."))
+                    .foregroundStyle(Tone.danger.style)
+            }
         }
     }
 
@@ -62,6 +73,9 @@ struct AppearanceSection: View {
             #if !os(macOS)
                 WidgetCenter.shared.reloadAllTimelines()
             #endif
+            // The theme is already saved; the icon is best effort. Awaiting it here
+            // would block the tile's highlight behind iOS's own alert.
+            Task { iconChangeFailed = await AppIconSwitcher.apply(theme) == false }
         } label: {
             VStack(spacing: Space.sm) {
                 Radius.rect(Radius.lg)
@@ -103,10 +117,10 @@ struct AppearanceSection: View {
         /// cannot prove. Same suite `KnownRobotsModel.preview` and
         /// `FloatingViewportPreferences.preview` already share, under a key neither
         /// of them touches.
-        static func preview(_ theme: ReachyTheme) -> AppearanceSection {
+        static func preview(_ theme: ReachyTheme, iconChangeFailed: Bool = false) -> AppearanceSection {
             let defaults = UserDefaults(suiteName: "ReachyUI.previews") ?? .standard
             ThemeStore(defaults: defaults).theme = theme
-            return AppearanceSection(defaults: defaults)
+            return AppearanceSection(defaults: defaults, iconChangeFailed: iconChangeFailed)
         }
     }
 #endif
