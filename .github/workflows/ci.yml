@@ -14,14 +14,22 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_GITHUB_ATTESTATIONS: false
-  # Read by Apps/Tuist.swift at generation. Off for every job by default — with the
-  # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
-  # waits out a CAS socket deadline. The app jobs flip it on once their service is up.
+  # Read by Apps/Tuist.swift at generation. Off by default — with the COMPILATION_CACHE_*
+  # settings baked in but no cache service, each compile task waits out a CAS socket
+  # deadline. Every job that compiles flips it on once its own service is up; the default
+  # is what covers forks, which have no session to start one with.
   TUIST_CACHE_ENABLED: "false"
   # Honoured by every xcodebuild task in mise.toml. Index-while-building writes an index
   # nothing on a runner ever opens; it stays on locally, where Xcode.app reads it out of
   # the same Apps/DerivedData.
-  REACHY_XCB_EXTRA: COMPILER_INDEX_STORE_ENABLE=NO
+  #
+  # SWIFT_ENABLE_EXPLICIT_MODULES is the precondition for the compilation cache Tuist wires
+  # up: without it the compiler caches no Swift at all and says so at every build ("swift
+  # compiler caching requires explicit module build"), which is why the CAS has never shown
+  # a benefit. It has to come through this seam rather than through Apps/Project.swift,
+  # because a project's build settings do not reach the SPM package targets Xcode builds as
+  # implicit projects — and ReachyKit, ReachyUI and ReachyMedia are exactly those.
+  REACHY_XCB_EXTRA: COMPILER_INDEX_STORE_ENABLE=NO SWIFT_ENABLE_EXPLICIT_MODULES=YES
   # The Xcode jobs generate the workspace once, in the composite action, so the build
   # tasks must not re-run their `depends = ["project"]`.
   MISE_TASK_SKIP_DEPENDS: "true"
@@ -195,6 +203,7 @@ jobs:
       - uses: ./.github/actions/xcode-workspace
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          compilation-cache: "true"
 
       - name: Compile previews and snapshot target
         run: mise run snapshots:build
@@ -217,6 +226,7 @@ jobs:
       - uses: ./.github/actions/xcode-workspace
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          compilation-cache: "true"
 
       - name: Smoke test
         run: mise run test:smoke
