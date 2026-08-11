@@ -28,11 +28,15 @@ public struct RobotAppsWidgetView: View {
             if content.tiles.isEmpty {
                 emptyState
             } else {
+                // The grid takes the height rather than hugging the top. A small
+                // widget holding one tile used to leave roughly two thirds of
+                // itself empty, which reads as a widget that failed to load.
                 LazyVGrid(columns: columns, spacing: Space.sm) {
                     ForEach(content.tiles) { tile in
                         RobotAppTileView(tile: tile)
                     }
                 }
+                .frame(maxHeight: .infinity)
                 if let message = content.notice.message {
                     noticeRow(message)
                 }
@@ -100,6 +104,9 @@ struct RobotAppTileView: View {
             badge
         }
         .padding(6)
+        // Fills the row the grid gives it, so two tiles on a small widget divide
+        // the height between them instead of stacking at the top over a void.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(background, in: Radius.rect(Radius.sm))
         .opacity(isDimmed ? 0.4 : 1)
         // WidgetKit dims this by itself while the button's intent is in flight,

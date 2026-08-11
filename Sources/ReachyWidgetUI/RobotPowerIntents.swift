@@ -78,23 +78,6 @@ public enum RobotIntentTarget {
         }
     }
 
-    public static func power() async throws -> RobotPower {
-        let target = try await connection(timeout: 10)
-        return RobotPower(client: target.client)
-    }
-
-    /// Sleeping is not `power()` plus nothing: it releases the app holding the
-    /// robot first, which needs the apps half of the connection as well.
-    public static func sleep() async throws -> RobotSleep {
-        let target = try await connection(timeout: 10)
-        return RobotSleep(client: target.client)
-    }
-
-    public static func shutdown() async throws -> RobotShutdown {
-        let target = try await connection(timeout: 10)
-        return RobotShutdown(client: target.client)
-    }
-
     static func validate(_ handshake: RobotConnection.Handshake, expected robot: KnownRobot) throws {
         guard handshake.identity.deduplicationKey == robot.key else {
             throw RobotIntentError.wrongRobot
@@ -150,12 +133,11 @@ public struct WakeRobotIntent: AppIntent {
     /// job takes tens of seconds, this process has seconds, and a spinner nobody
     /// can see is worth less than a sentence saying the robot is on its way.
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        let power = try await RobotIntentTarget.power()
-        switch try await power.resume() {
-        case .woke:
-            return .result(dialog: IntentDialog(.reachy("Reachy Mini is awake.")))
+        switch try await RobotPowerCommand(.wake).perform() {
         case .startingBackend:
             return .result(dialog: IntentDialog(.reachy("Reachy Mini was off. It's starting up and will wake itself.")))
+        case .woke, .none:
+            return .result(dialog: IntentDialog(.reachy("Reachy Mini is awake.")))
         }
     }
 }
@@ -171,8 +153,7 @@ public struct SleepRobotIntent: AppIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        let sleep = try await RobotIntentTarget.sleep()
-        try await sleep.perform()
+        try await RobotPowerCommand(.sleep).perform()
         return .result()
     }
 }
@@ -193,8 +174,7 @@ public struct PowerOffRobotIntent: AppIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        let shutdown = try await RobotIntentTarget.shutdown()
-        try await shutdown.perform()
+        try await RobotPowerCommand(.powerOff).perform()
         return .result()
     }
 }

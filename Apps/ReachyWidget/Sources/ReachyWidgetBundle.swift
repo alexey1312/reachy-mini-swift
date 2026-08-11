@@ -8,5 +8,6 @@ struct ReachyWidgetBundle: WidgetBundle {
         ReachyAppsWidget()
         WakeRobotControl()
         SleepRobotControl()
+        PowerOffRobotControl()
     }
 }

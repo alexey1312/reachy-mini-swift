@@ -294,4 +294,36 @@ struct RobotSnapshotTests {
         #expect(snapshot.runningAppName(at: now) == nil)
         #expect(snapshot.runningAppTitle(at: now) == nil)
     }
+
+    /// The whole reason `recordPower` exists rather than another `recordRunningApp`
+    /// call: waking stops nothing, so a writer that clears the app fields would have
+    /// the widget forget a running app every time the robot was woken.
+    @Test("recording the motors leaves the app reading alone")
+    func recordsPowerWithoutTouchingTheApp() throws {
+        let store = try store()
+        store.write(snapshot(isAwake: false, runningApp: "Dance Party", runningAppName: "reachy_mini_dance"))
+
+        store.recordPower(isAwake: true, robotID: "robot-a", robotName: "kitchen", at: now)
+
+        let current = try #require(store.current)
+        #expect(current.isAwake)
+        #expect(current.runningApp == "Dance Party")
+        #expect(current.runningAppName == "reachy_mini_dance")
+        #expect(current.takenAt == now)
+    }
+
+    /// A reading about a different robot carries nothing forward — the previous app
+    /// belonged to the previous robot.
+    @Test("recording the motors of another robot drops the previous app")
+    func recordsPowerForADifferentRobot() throws {
+        let store = try store()
+        store.write(snapshot(robotID: "robot-a", runningApp: "Dance Party", runningAppName: "reachy_mini_dance"))
+
+        store.recordPower(isAwake: true, robotID: "robot-b", robotName: "study", at: now)
+
+        let current = try #require(store.current)
+        #expect(current.robotID == "robot-b")
+        #expect(current.runningApp == nil)
+        #expect(current.runningAppName == nil)
+    }
 }
