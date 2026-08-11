@@ -39,6 +39,7 @@ extension RobotSession {
         }
         if let index, moveCache.isEmpty {
             moveCache = index.movesByDataset
+            moveIndexTakenAt = index.takenAt
         }
         Task { await catalogues.evict(keeping: robotID) }
     }
@@ -64,9 +65,22 @@ extension RobotSession {
     /// Writes every library listed so far, not the one just fetched: the record is
     /// one file, and a partial rewrite would drop the libraries the user has not
     /// visited this session.
+    ///
+    /// **The record keeps the date of its oldest library, it does not take a new
+    /// one.** Because it is one file, listing any single library rewrites all of
+    /// them — and stamping that write with `Date()` would re-date the libraries
+    /// this session only read off disk. Freshness is the *only* thing that ever
+    /// invalidates this slot (nothing here calls `remove(.moves)`), so a user who
+    /// opens a different library every few days would keep the first one alive for
+    /// ever. Ageing as one costs a full re-listing every `freshness` — which is
+    /// what happened on every launch before this cache existed.
     func persistMoveIndex() async {
         guard !moveCache.isEmpty, let catalogues, let robotID = connectedRobotID else { return }
-        await catalogues.write(RobotMoveIndexRecord(robotID: robotID, movesByDataset: moveCache))
+        let takenAt = moveIndexTakenAt ?? Date()
+        moveIndexTakenAt = takenAt
+        await catalogues.write(
+            RobotMoveIndexRecord(robotID: robotID, movesByDataset: moveCache, takenAt: takenAt)
+        )
     }
 
     /// Deletes the stored catalogue rather than letting it age out.

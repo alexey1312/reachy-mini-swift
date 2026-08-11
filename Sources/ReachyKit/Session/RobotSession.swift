@@ -240,6 +240,9 @@ public final class RobotSession {
     var movePollTask: Task<Void, Never>?
     var moveRestoreTask: Task<Void, Never>?
     var moveCache: [String: [String]] = [:]
+    /// When the oldest library in `moveCache` was read off the robot, carried
+    /// across every rewrite of the stored index. Lives in `RobotSession+Cache`.
+    var moveIndexTakenAt: Date?
     /// Both lists cost the robot a Hugging Face round trip, so they are held for
     /// the life of the connection — and only that long. Not `private`: the store
     /// lives in `RobotSession+Apps`, a sibling file.
@@ -298,6 +301,7 @@ public final class RobotSession {
         powerTransition = nil
         runningApp = nil
         moveCache = [:]
+        moveIndexTakenAt = nil
         appCatalogueCache = nil
         installedAppsCache = nil
         hfAccountCache = nil

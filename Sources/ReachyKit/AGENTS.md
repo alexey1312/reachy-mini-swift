@@ -136,6 +136,13 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     the moment it started changing" is not old, it is wrong: `source_kind` is what the job is moving. Disconnect
     keeps it for the reason written over `RobotAppsCacheStore.clear` — a cache that dies when a robot is let go
     never survives the cold start it exists for. The move index is invalidated by nothing here.
+  - **The move index keeps the date of its oldest library, and `persistMoveIndex` is where that happens.** It is one
+    file, so listing any single library rewrites all of them — and since freshness is the only thing that ever
+    invalidates this slot, stamping that rewrite with `Date()` re-dates every library the session merely read off
+    disk. Open a different library every few days and the first one never expires. `RobotSession.moveIndexTakenAt`
+    carries the warmed record's date across the write instead, so the record ages as one and costs a full re-listing
+    every `freshness` — which is what every launch cost before this cache existed. The apps slot needs none of this:
+    `persistCatalogue` is only ever handed a list that was just fetched whole.
   - **`catalogues` is the one `RobotSession` dependency defaulting to `nil` rather than to a real store.** The other
     three write into `UserDefaults`, which a test replaces with a suite; a file system has no suites, and a default
     of `.default` would have every `--parallel` suite sharing one `Caches` directory. The production convenience

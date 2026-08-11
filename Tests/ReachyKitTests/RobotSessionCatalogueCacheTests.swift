@@ -52,8 +52,7 @@ struct RobotSessionCatalogueCacheTests {
             _ = try await first.moves(in: dances)
             first.disconnect()
 
-            let second = RobotSession(catalogues: cache) { _ in client }
-            #expect(await second.connect(to: .init(host: "127.0.0.1")))
+            let second = try await session(client, cache)
 
             #expect(second.phase == .connected(.init(hardwareID: "hw", name: "testbot", daemonVersion: "1.9.0")))
             #expect(second.cachedAppCatalogue != nil)
@@ -84,6 +83,50 @@ struct RobotSessionCatalogueCacheTests {
             // as one never fetched — `MovesModel` reads exactly that difference.
             #expect(second.cachedMoves(in: music) == [])
             #expect(client.moveCalls.count == 3)
+        }
+    }
+
+    /// The index is one file, so it ages as one. Listing a library re-writes every
+    /// library beside it, and stamping that write with the current date would keep
+    /// a library warmed off disk alive for another whole window each time — which
+    /// removes the only thing that ever invalidates this slot.
+    @Test("listing a new library does not re-date the ones warmed off disk")
+    func keepsTheAgeOfTheWarmedMoveIndex() async throws {
+        try await withTemporaryCatalogueCache { cache in
+            let client = AppsRobotClient()
+            client.moveFixtures = [emotions: ["curious"]]
+            // Whole seconds, so the JSON round trip is exact rather than nearly so.
+            let takenAt = Date(timeIntervalSince1970: (Date().timeIntervalSince1970 - 3600).rounded())
+            await cache.write(RobotMoveIndexRecord(
+                robotID: "hw",
+                movesByDataset: [dances: ["happy_dance"]],
+                takenAt: takenAt
+            ))
+
+            let warmed = try await session(client, cache)
+            _ = try await warmed.moves(in: emotions)
+
+            let stored = try #require(await cache.record(RobotMoveIndexRecord.self, for: "hw"))
+            #expect(stored.movesByDataset[dances] == ["happy_dance"])
+            #expect(stored.movesByDataset[emotions] == ["curious"])
+            #expect(stored.takenAt == takenAt)
+        }
+    }
+
+    /// The other half of the same rule: with nothing warmed there is no age to
+    /// carry, so the first listing of a session dates the record.
+    @Test("a move index with nothing behind it is dated when it is written")
+    func datesAFreshMoveIndex() async throws {
+        try await withTemporaryCatalogueCache { cache in
+            let client = AppsRobotClient()
+            client.moveFixtures = [dances: ["happy_dance"]]
+            let before = Date()
+
+            let fresh = try await session(client, cache)
+            _ = try await fresh.moves(in: dances)
+
+            let stored = try #require(await cache.record(RobotMoveIndexRecord.self, for: "hw"))
+            #expect(stored.takenAt >= before)
         }
     }
 
