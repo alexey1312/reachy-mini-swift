@@ -38,6 +38,45 @@ reverse.
   timelines rather than relying on memory.
 - On iOS 18, widget and Control Centre intents cannot open the app with `openAppWhenRun`; use `widgetURL` where an
   app-opening fallback is needed.
+- **The status widget's button is one control chosen from the reading, and the rule is asymmetric on purpose.**
+  `RobotPowerControls` argues against a state-driven control because a `StaticControlConfiguration` has no data
+  behind it and cannot expire — that reasoning does **not** transfer to a widget, which corrects itself on a
+  schedule: `RobotStatusProvider.getTimeline` already files an entry at the freshness boundary. What decides it is
+  the snapshot asymmetry recorded below — awake may be believed, asleep may not. So `.sleep` is offered only off
+  `isAwake == true`, and `.wake` off everything else including a stale reading, because `RobotPower.resume()`
+  resolves both meanings of a false `isAwake` itself and because an imperative is not a claim about the present.
+  A transition in flight offers nothing at all; `.unknown` offers nothing and lets the tap fall through to
+  `widgetURL`. **`Widget — no robot` is the reference that proves the button is conditional**, and it came back
+  byte-identical when the button landed — which is also what made the other 76 movements readable.
+  - **`invalidatableContent()` here takes no condition, unlike the tile's.** A pending tile is still on screen, so
+    `RobotAppTileView` can key the flag off its state; this button is gone the moment a transition is pending, so a
+    condition off `isPending` would be false at every call site and switch the dimming off rather than drive it. The
+    tap it has to cover is the one that _starts_ the transition, when nothing is pending yet.
+- **`RobotPowerCommand` is the power half of `RobotAppCommand`, and it closed a gap older than the button.** No
+  power intent used to write a snapshot or reload a timeline, so waking from Control Centre left the widget saying
+  "Asleep" until the app next ran. Four callers now share it: Control Centre, Siri, Shortcuts and the widget.
+  - **`recordRunningApp` cannot record a wake.** It is one reading of one question and clears the app fields when
+    handed nils — right for sleeping and powering off, which release the app first, wrong for waking, which stops
+    nothing. `RobotSnapshotStore.recordPower` is the writer that moves the motors alone.
+  - **`.startingBackend` writes nothing about the motors and stays pending.** `resume()` waits for none of a 90 s
+    cold start, so `isAwake: true` there would be the widget's version of pretending the job is done.
+- **`RobotPowerTransitionState` is `RobotAppLaunchState` with one rule that one does not have.** A pending marker is
+  **superseded by a snapshot taken after it started**: the extension is not running to clear its own marker, so a
+  wake tapped on the widget and finished with the app open would otherwise say "Waking up…" for the rest of the
+  window. Its windows are per transition, because a cold start outlives a wake by minutes and one window would be
+  wrong for one of them. `failureWindow` deliberately _references_ the launcher's constant rather than restating it.
+- **Every moment `RobotWidgetContent.refreshDates` files lands a millisecond _past_ its boundary, the freshness one
+  included.** Each entry is rebuilt from the stores at its own date, and `RobotSnapshotStore.state(at:)` calls the
+  boundary itself fresh (`treatsTheBoundaryAsFresh` pins that) — so an entry filed at exactly `takenAt + freshness`
+  comes back saying "Awake" and the reading is never retired, leaving the hourly policy as the next thing that
+  could. A reading carrying an app hides the mistake, because that app's own expiry lands a millisecond later; an
+  idle one has no later entry at all. `schedulesTheStalenessFlipPastTheBoundary` therefore asserts on the state
+  rebuilt at that date rather than on the date itself, so it fails the way the widget does.
+- **The status widget's layout is handed in, never read from `\.widgetFamily`.** That environment key defaults to
+  `.systemMedium` outside a widget, so a view reading it would draw every small preview card wide.
+  `RobotStatusWidget` is the one place the family is read — the same division `ReachyAppsProvider.limit(for:)` draws.
+  `.systemMedium` had **no reference at all** before this and rendered the compact layout stretched over twice the
+  width; every widget preview was pinned to 158×158.
 - **An intent's metadata does not localize; everything else here does, its dialogs included.** `AppIntent.title`,
   `DisplayRepresentation` and the widgets' `configurationDisplayName` stay bare `LocalizedStringResource` against the
   main bundle, because that metadata is baked into `Metadata.appintents` at build time, where a runtime bundle URL has

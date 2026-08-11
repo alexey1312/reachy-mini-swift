@@ -6,13 +6,28 @@ import SwiftUI
 /// it from `Date()` would move the reference image on every run.
 let robotWidgetPreviewDate = Date(timeIntervalSince1970: 1_800_000_000)
 
-func robotWidgetPreviewCard(_ content: RobotWidgetContent) -> some View {
-    RobotWidgetView(content: content)
+/// Sizes come from `AppsPreviewSize` next door — the apps previews already reuse
+/// `robotWidgetPreviewDate` in the other direction, so one set of widget dimensions
+/// serves both files.
+func robotWidgetPreviewCard(
+    _ content: RobotWidgetContent,
+    layout: RobotWidgetView.Layout = .compact
+) -> some View {
+    RobotWidgetView(content: content, layout: layout)
         .padding()
-        // A small widget's own size, so the preview shows what the user gets
-        // rather than a view stretched over a device.
-        .frame(width: 158, height: 158)
+        // A widget's own size, so the preview shows what the user gets rather than
+        // a view stretched over a device.
+        .frame(
+            width: layout == .compact ? AppsPreviewSize.small.width : AppsPreviewSize.medium.width,
+            height: AppsPreviewSize.small.height
+        )
         .background(.background.secondary, in: .rect(cornerRadius: 22))
+}
+
+/// A robot mid-transition, which is the state the widget holds for up to ninety
+/// seconds after a tap and the one nothing used to be able to show.
+func robotWidgetPreviewTransition(_ transition: RobotSession.PowerTransition) -> RobotPowerTransitionState {
+    RobotPowerTransitionState(pending: .init(transition: transition, since: robotWidgetPreviewDate))
 }
 
 #Preview("Widget — no robot", traits: .sizeThatFitsLayout) {
@@ -90,6 +105,100 @@ func robotWidgetPreviewCard(_ content: RobotWidgetContent) -> some View {
 #Preview("Widget — unnamed robot", traits: .sizeThatFitsLayout) {
     robotWidgetPreviewCard(RobotWidgetContent(
         state: .fresh(RobotSnapshot(robotName: nil, isAwake: true, runningApp: nil, takenAt: robotWidgetPreviewDate)),
+        at: robotWidgetPreviewDate
+    ))
+}
+
+// The medium family, which until now rendered the compact layout stretched over
+// twice the width and had no reference at all.
+#Preview("Widget — awake, wide", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(
+        RobotWidgetContent(
+            state: .fresh(RobotSnapshot(
+                robotName: "kitchen",
+                isAwake: true,
+                runningApp: nil,
+                takenAt: robotWidgetPreviewDate
+            )),
+            at: robotWidgetPreviewDate
+        ),
+        layout: .wide
+    )
+}
+
+#Preview("Widget — asleep, wide", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(
+        RobotWidgetContent(
+            state: .fresh(RobotSnapshot(
+                robotName: "kitchen",
+                isAwake: false,
+                runningApp: nil,
+                takenAt: robotWidgetPreviewDate
+            )),
+            at: robotWidgetPreviewDate
+        ),
+        layout: .wide
+    )
+}
+
+// "Go to sleep" over a running app — the destructive tap, and the one state where
+// the wide layout has a second line the compact one drops.
+#Preview("Widget — running an app, wide", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(
+        RobotWidgetContent(
+            state: .fresh(RobotSnapshot(
+                robotName: "kitchen",
+                isAwake: true,
+                runningApp: "Hand Tracker",
+                takenAt: robotWidgetPreviewDate
+            )),
+            at: robotWidgetPreviewDate
+        ),
+        layout: .wide
+    )
+}
+
+// A cold backend start: ninety seconds during which `resume()` has already
+// returned and nothing else would say the robot is on its way.
+#Preview("Widget — starting up", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(RobotWidgetContent(
+        state: .fresh(RobotSnapshot(
+            robotName: "kitchen",
+            isAwake: false,
+            runningApp: nil,
+            takenAt: robotWidgetPreviewDate
+        )),
+        power: robotWidgetPreviewTransition(.startingBackend),
+        at: robotWidgetPreviewDate
+    ))
+}
+
+#Preview("Widget — going to sleep", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(RobotWidgetContent(
+        state: .fresh(RobotSnapshot(
+            robotName: "kitchen",
+            isAwake: true,
+            runningApp: nil,
+            takenAt: robotWidgetPreviewDate
+        )),
+        power: robotWidgetPreviewTransition(.goingToSleep),
+        at: robotWidgetPreviewDate
+    ))
+}
+
+// A refused command. The button stays, because the robot is still there to try
+// again on — unlike a transition, which is the one state with nothing to tap.
+#Preview("Widget — command failed", traits: .sizeThatFitsLayout) {
+    robotWidgetPreviewCard(RobotWidgetContent(
+        state: .fresh(RobotSnapshot(
+            robotName: "kitchen",
+            isAwake: true,
+            runningApp: nil,
+            takenAt: robotWidgetPreviewDate
+        )),
+        power: RobotPowerTransitionState(
+            failure: .init(message: "The robot took too long to answer.", at: robotWidgetPreviewDate)
+        ),
         at: robotWidgetPreviewDate
     ))
 }

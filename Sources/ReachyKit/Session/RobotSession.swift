@@ -70,7 +70,12 @@ public final class RobotSession {
 
     /// Wake and sleep are long enough — a cold backend start is budgeted at 90 s —
     /// that the UI has to show what the robot is doing meanwhile.
-    public enum PowerTransition: Equatable, Sendable {
+    ///
+    /// `Codable` because the widget persists one across a process boundary
+    /// (`RobotPowerTransitionState`): an intent runs in the extension and the next
+    /// render is a different process, so what is in flight has to be written down
+    /// rather than held. One vocabulary for both, so the two cannot drift.
+    public enum PowerTransition: String, Codable, Equatable, Sendable {
         case startingBackend
         case stoppingBackend
         case wakingUp

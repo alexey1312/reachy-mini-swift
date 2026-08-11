@@ -230,4 +230,36 @@ public struct RobotSnapshotStore {
             takenAt: date
         ))
     }
+
+    /// What a caller learned about the motors alone, leaving the app reading where
+    /// it was.
+    ///
+    /// `recordRunningApp` cannot stand in for this. It is one reading of one
+    /// question and therefore *clears* the app fields when handed nils — correct
+    /// for a caller that just stopped something, wrong for waking up, which stops
+    /// nothing. Sleeping and powering off do release the app first and so keep
+    /// using `recordRunningApp`; only the wake path needs this.
+    ///
+    /// A reading about a *different* robot carries nothing forward, for the same
+    /// reason `recordRunningApp` gates on `sameRobot`: the previous app belonged to
+    /// the previous robot.
+    public func recordPower(
+        isAwake: Bool,
+        robotID: String? = nil,
+        robotName: String? = nil,
+        at date: Date = Date()
+    ) {
+        let previous = current
+        let sameRobot = robotID == nil || previous?.robotID == robotID
+        write(RobotSnapshot(
+            robotID: robotID ?? previous?.robotID,
+            robotName: robotName ?? (sameRobot ? previous?.robotName : nil),
+            isAwake: isAwake,
+            runningApp: sameRobot ? previous?.runningApp : nil,
+            runningAppName: sameRobot ? previous?.runningAppName : nil,
+            failedApp: sameRobot ? previous?.failedApp : nil,
+            runningAppTakenAt: sameRobot ? previous?.runningAppTakenAt : nil,
+            takenAt: date
+        ))
+    }
 }

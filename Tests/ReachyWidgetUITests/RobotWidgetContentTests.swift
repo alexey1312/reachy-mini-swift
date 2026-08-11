@@ -106,4 +106,186 @@ struct RobotWidgetContentTests {
 
         #expect(content.detail.localizedCaseInsensitiveContains("awake"))
     }
+
+    // MARK: - The button
+
+    /// The asymmetry the whole design turns on: `.sleep` only off the half of the
+    /// reading a snapshot may be believed on.
+    @Test("an awake robot is offered sleep and an asleep one is offered wake")
+    func offersTheOppositeOfTheReading() {
+        #expect(RobotWidgetContent(state: .fresh(snapshot()), at: now).action == .sleep)
+        #expect(RobotWidgetContent(state: .fresh(snapshot(isAwake: false)), at: now).action == .wake)
+    }
+
+    /// A running app holds the robot, so the robot is awake and sleeping is still
+    /// what the button is for.
+    @Test("a running app does not take the sleep button away")
+    func offersSleepOverARunningApp() {
+        let content = RobotWidgetContent(state: .fresh(snapshot(runningApp: "Hand Tracker")), at: now)
+
+        #expect(content.action == .sleep)
+    }
+
+    /// Never `.sleep` on a memory. `resume()` handles both meanings of a false
+    /// `isAwake`; parking a robot that may already be parked is the direction where
+    /// being wrong costs something.
+    @Test("a stale reading offers only wake")
+    func offersOnlyWakeOnAMemory() {
+        #expect(RobotWidgetContent(state: .stale(snapshot(ageInMinutes: 120)), at: now).action == .wake)
+        #expect(RobotWidgetContent(state: .stale(snapshot(isAwake: false, ageInMinutes: 120)), at: now).action == .wake)
+    }
+
+    /// `RobotIntentTarget` would throw `noKnownRobot`; the tap is better spent on
+    /// the widget's own `widgetURL`.
+    @Test("with no robot there is nothing to command")
+    func offersNothingWithoutARobot() {
+        #expect(RobotWidgetContent(state: .unknown, at: now).action == nil)
+    }
+
+    // MARK: - Transitions
+
+    private func pending(
+        _ transition: RobotSession.PowerTransition,
+        secondsAgo: Double = 0
+    ) -> RobotPowerTransitionState {
+        RobotPowerTransitionState(pending: .init(transition: transition, since: now.addingTimeInterval(-secondsAgo)))
+    }
+
+    @Test("a transition in flight replaces the state and takes the button away")
+    func reportsATransition() {
+        let content = RobotWidgetContent(
+            state: .fresh(snapshot(isAwake: false)),
+            power: pending(.startingBackend),
+            at: now
+        )
+
+        #expect(content.isPending)
+        #expect(content.action == nil)
+        #expect(content.detail.localizedCaseInsensitiveContains("starting"))
+    }
+
+    /// The extension is not running to clear its own marker, so the window is the
+    /// only thing that retires a transition nothing came back from.
+    @Test("a transition past its own window is forgotten")
+    func forgetsAStuckTransition() {
+        let window = RobotPowerTransitionState.window(for: .wakingUp)
+
+        let content = RobotWidgetContent(
+            // Older than the transition, so the window is the only thing that can
+            // retire it — otherwise supersession would and this would pass for the
+            // wrong reason.
+            state: .fresh(snapshot(isAwake: false, ageInMinutes: 5)),
+            power: pending(.wakingUp, secondsAgo: window + 1),
+            at: now
+        )
+
+        #expect(content.isPending == false)
+        #expect(content.action == .wake)
+    }
+
+    /// Each transition carries its own budget: a cold start outlives a wake by
+    /// minutes, and one window would be wrong for one of them.
+    @Test("a cold start outlives a wake at the same age")
+    func windowsDifferPerTransition() {
+        let age = RobotPowerTransitionState.window(for: .wakingUp) + 1
+        // Older than the transition, or supersession retires both markers before
+        // either window is reached — which is what this test is not about.
+        let snapshot = snapshot(isAwake: false, ageInMinutes: 5)
+
+        #expect(RobotWidgetContent(state: .fresh(snapshot), power: pending(.wakingUp, secondsAgo: age), at: now)
+            .isPending == false)
+        #expect(RobotWidgetContent(state: .fresh(snapshot), power: pending(.startingBackend, secondsAgo: age), at: now)
+            .isPending)
+    }
+
+    /// The rule `RobotAppLaunchState` has no equivalent of. Whoever wrote the
+    /// snapshot spoke to the robot more recently than the marker did.
+    @Test("a reading taken after the transition started supersedes it")
+    func aNewerReadingSupersedesTheTransition() {
+        // Snapshot taken now; the transition began a minute ago.
+        let content = RobotWidgetContent(
+            state: .fresh(snapshot()),
+            power: pending(.wakingUp, secondsAgo: 60),
+            at: now
+        )
+
+        #expect(content.isPending == false)
+        #expect(content.detail.localizedCaseInsensitiveContains("awake"))
+    }
+
+    @Test("a failure is reported in place of the state but keeps the button")
+    func reportsAFailure() {
+        let content = RobotWidgetContent(
+            state: .fresh(snapshot()),
+            power: RobotPowerTransitionState(failure: .init(message: "Took too long.", at: now)),
+            at: now
+        )
+
+        #expect(content.detail == "Took too long.")
+        #expect(content.action == .sleep)
+    }
+
+    @Test("an old failure is not still being apologised for")
+    func forgetsAnOldFailure() {
+        let at = now.addingTimeInterval(-RobotPowerTransitionState.failureWindow - 1)
+
+        let content = RobotWidgetContent(
+            state: .fresh(snapshot()),
+            power: RobotPowerTransitionState(failure: .init(message: "Took too long.", at: at)),
+            at: now
+        )
+
+        #expect(content.detail.localizedCaseInsensitiveContains("awake"))
+    }
+
+    // MARK: - The second line
+
+    /// The wide layout's whole reason to exist: `detail` gives a running app the
+    /// line, and what it displaced is handed over rather than lost.
+    @Test("the displaced state is offered separately, and only when something displaced it")
+    func handsBackTheDisplacedState() {
+        let running = RobotWidgetContent(state: .fresh(snapshot(runningApp: "Hand Tracker")), at: now)
+        let idle = RobotWidgetContent(state: .fresh(snapshot()), at: now)
+
+        #expect(running.secondaryDetail?.localizedCaseInsensitiveContains("awake") == true)
+        #expect(idle.secondaryDetail == nil)
+    }
+
+    // MARK: - Timeline
+
+    /// Without this the widget would sit on "Waking up…" until something else
+    /// happened to reload it.
+    @Test("the timeline is told when a transition expires")
+    func schedulesTheTransitionExpiry() {
+        let dates = RobotWidgetContent.refreshDates(
+            snapshot: .fresh(snapshot()),
+            power: pending(.startingBackend),
+            after: now
+        )
+
+        let expiry = now.addingTimeInterval(RobotPowerTransitionState.window(for: .startingBackend))
+        #expect(dates.contains { abs($0.timeIntervalSince(expiry)) < 1 })
+        #expect(dates.allSatisfy { $0 > now })
+        #expect(dates == dates.sorted())
+    }
+
+    /// The entry that retires a reading is rebuilt from the store at its own date,
+    /// so it has to land *past* the boundary rather than on it — `state(at:)` calls
+    /// the boundary itself fresh, and an entry filed there would come back saying
+    /// "Awake" again. An idle reading is where this shows: with an app there is a
+    /// second moment a millisecond later that covers the mistake, and with none
+    /// there is no later entry at all.
+    @Test("the entry that retires a reading is rebuilt as stale, not fresh")
+    func schedulesTheStalenessFlipPastTheBoundary() throws {
+        let reading = snapshot()
+        let defaults = try #require(UserDefaults(suiteName: "RobotWidgetContentTests.\(UUID().uuidString)"))
+        let store = RobotSnapshotStore(defaults: defaults)
+        store.write(reading)
+
+        let moment = try #require(
+            RobotWidgetContent.refreshDates(snapshot: .fresh(reading), power: nil, after: now).first
+        )
+
+        #expect(store.state(at: moment) == .stale(reading))
+    }
 }

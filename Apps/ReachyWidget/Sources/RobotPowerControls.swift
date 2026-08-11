@@ -35,3 +35,21 @@ struct SleepRobotControl: ControlWidget {
         .description("Stops the running app, plays the sleep animation, then parks the motors.")
     }
 }
+
+/// Powering off has no confirmation and cannot have one — `PowerOffRobotIntent`
+/// says why. So the description carries the way back instead: the daemon's own
+/// HTTP server survives the teardown, and Wake up is what undoes this.
+///
+/// The widget deliberately does not offer this. A Home Screen tap is too cheap for
+/// something irreversible from where it is tapped; reaching Control Centre is not.
+struct PowerOffRobotControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "PowerOffRobot") {
+            ControlWidgetButton(action: PowerOffRobotIntent()) {
+                Label(.reachy("Power off"), systemImage: "power")
+            }
+        }
+        .displayName("Power Reachy Mini off")
+        .description("Stops the running app, sleeps the robot and shuts its backend down. Waking up brings it back.")
+    }
+}
