@@ -99,6 +99,34 @@ import SwiftUI
     )
 }
 
+// The three power states Start now depends on, and they are three separate
+// pictures rather than one: the sleeping robot still offers Start (it wakes the
+// robot itself, and only the footer says so), the stopped backend does not and
+// carries the banner instead, and the wake in flight is the seconds in between.
+#Preview("App detail — robot asleep") {
+    PreviewScene.appDetail(
+        .preview(status: .preview(motorMode: .disabled)),
+        app: RobotApp.previewConversation,
+        model: .preview(section: .installed)
+    )
+}
+
+#Preview("App detail — robot backend stopped") {
+    PreviewScene.appDetail(
+        .preview(status: .preview(state: .stopped)),
+        app: RobotApp.previewConversation,
+        model: .preview(section: .installed)
+    )
+}
+
+#Preview("App detail — waking up to start") {
+    PreviewScene.appDetail(
+        .preview(status: .preview(motorMode: .disabled), powerTransition: .wakingUp),
+        app: RobotApp.previewConversation,
+        model: .preview(section: .installed)
+    )
+}
+
 // Neither success nor failure: the job register died with the daemon, so the
 // installed list is the only thing that knows how it ended.
 #Preview("App detail — robot restarted") {

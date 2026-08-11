@@ -79,6 +79,33 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   non-blocking — one of the two silently does nothing. Bounded by `appStopTimeout` and never fatal: a refusal is
   reported and a timeout is ignored, because a head held up for the daemon's one-way `stopping` wedge is the worse
   outcome. The intent-side twin is `RobotAppRelease` in `ReachyWidgetUI`, on a much shorter budget.
+- **An app start is the mirror image of that hand-back, and the daemon does neither end.**
+  `apps/start-app/{name}` is **not** behind the `get_backend` dependency, so it answers 200 at a robot with no
+  backend at all — the app then dies seconds later on `WSClient.wait_for_connection` — and at a _sleeping_ robot it
+  starts the app over disabled motors, where every command is accepted, swallowed, and reported as `running`. There
+  is no error anywhere. `RobotSession+AppLifecycle` is the client's half: `claimRobotForApp()` frees the move slot,
+  wakes a parked robot and **refuses a stopped backend** rather than spending the 90 s start budget inside somebody's
+  Start button; `parkAfterApp()` gives the robot back. The widget's `RobotAppLauncher` reads the same readiness and
+  answers a stopped backend differently on purpose — it has seconds, so it kicks `daemon/start?wake_up=true` and says
+  so. Neither may lose its half without the other gaining it, the same pact `wake()` and `RobotPower.resume()` have.
+  - **`runWake(client:startingBackend:)` exists so the failure can be thrown instead of filed.** `wake()` is that
+    plus `report(_:)`, which is right for a Wake up button — power has no screen. A Start that failed belongs to
+    `AppStoreModel.lastError`, because `robotError` is connection and power and is not a fallback for anything. It
+    also re-reads the status after the animation: `lastStatus` was fetched _before_ the motors were enabled, so
+    without it `isAwake` reports a sleeping robot for up to a poll interval, and both the parking guard and the
+    widget snapshot believe it.
+  - **`recordRunning` is where an app is seen to let go, and the transition is what fires — never the reading.**
+    Every successful status read passes through it, so the explicit Stop, a crash, a self-exit and an app that
+    vanished between two polls are one case; a read that threw never arrives, so a Wi-Fi blip concludes nothing. The
+    stop re-reads and the poll reads again a moment later, both legitimately seeing the same cleared slot — anything
+    keyed on "is idle" rather than "went idle" parks the robot twice, which is what `parksExactlyOnce` holds.
+    `resetConnectionState` writes `runningApp` directly and so fires nothing, which is correct: a disconnect is not
+    a release.
+  - **What the parking is depends on who woke the robot.** `AppLifecycleState.wakeOwner` is taken rather than read,
+    so it is spent once; `wake()`, `sleep()` and `powerOff()` clear it, because once a person has taken the power
+    decision the robot's state is theirs. A robot this session woke goes back to sleep, one the user woke gets the
+    zero pose, and a power transition already in flight gets neither — `releaseRunningApp` reaches the release from
+    inside a transition that is already parking, and a `goto` sent into that is the two-motions-one-slot bug again.
 - **The daemon has exactly one move slot, it refuses the second caller in silence, and everything in
   `RobotSession+Moves` follows from that.** `play_move` opens with `if not self._try_start_move(): return`
   (`backend/abstract.py`) — non-blocking, no error, and the route has _already_ filed a fresh UUID through

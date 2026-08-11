@@ -133,7 +133,10 @@ extension RobotSession {
     /// (`apps/manager.py`, "Returning robot to zero position"); a recorded move
     /// gets no such treatment and simply stops wherever its last frame left the
     /// head — which for a cancelled move is any pose at all.
-    private func recentre(client: any RobotAPIClient) async -> [String] {
+    /// Not `private`: an app releasing the robot parks it the same way
+    /// (`RobotSession+AppLifecycle`), and a second implementation of "go back to
+    /// base" is the one that would drift from the phase this claims on screen.
+    func recentre(client: any RobotAPIClient) async -> [String] {
         do {
             let uuid = try await client.gotoNeutral(duration: configuration.recentreDuration)
             // Anything that claimed the robot while the request was in flight owns

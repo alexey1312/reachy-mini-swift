@@ -14,6 +14,9 @@ public extension RobotSession {
     /// The branch is picked from a freshly fetched status rather than `lastStatus`,
     /// which may be a poll interval out of date — long enough to send motor
     /// commands at a backend that is already gone.
+    ///
+    /// A deliberate wake is also the user taking the robot back: whatever this
+    /// session woke it *for* no longer owns it (see ``RobotSession/appLifecycle``).
     func wake() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
@@ -21,17 +24,9 @@ public extension RobotSession {
         // every `await`, so a later latch would let a double tap through.
         powerTransition = .wakingUp
         defer { powerTransition = nil }
+        appLifecycle.releaseWakeOwnership()
         do {
-            try assertSupportedDaemon()
-            let status = try await client.daemonStatus()
-            lastStatus = status
-            guard status.state == .running else {
-                // `wake_up=true` has the daemon enable the motors and play the
-                // animation itself once the backend is up.
-                _ = await runBackendStart(wakeUp: true, client: client)
-                return
-            }
-            try await RobotPower(client: client, configuration: configuration).wake()
+            try await runWake(client: client, startingBackend: true)
         } catch {
             report(error)
         }
@@ -55,6 +50,7 @@ public extension RobotSession {
         // start a second sleep.
         powerTransition = .goingToSleep
         defer { powerTransition = nil }
+        appLifecycle.releaseWakeOwnership()
         do {
             try assertSupportedDaemon()
             await releaseMove()
@@ -93,6 +89,7 @@ public extension RobotSession {
         // Claimed before the first suspension point, like `wake()`.
         powerTransition = .stoppingBackend
         defer { powerTransition = nil }
+        appLifecycle.releaseWakeOwnership()
         do {
             try assertSupportedDaemon()
             await releaseMove()
@@ -109,6 +106,46 @@ public extension RobotSession {
 }
 
 extension RobotSession {
+    /// The wake protocol itself, thrown to the caller instead of reported onto
+    /// `robotError`.
+    ///
+    /// It exists because starting an app has to wake the robot too, and an Apps
+    /// failure belongs in the model behind the screen that asked — `robotError`
+    /// holds the robot's connection and power and is not a fallback for anything
+    /// (`ReachyUI/AGENTS.md`). Splitting the body rather than writing a second
+    /// sequence is the point: `wake()` and `RobotPower.resume()` are already two
+    /// answers to one question, and a third would be the one that drifts.
+    ///
+    /// **The caller owns `powerTransition`**, claiming it before its own first
+    /// suspension point — the same latch `wake()` describes.
+    ///
+    /// `startingBackend: false` refuses a torn-down backend outright rather than
+    /// spending the 90 s start budget inside somebody's Start button. The app page
+    /// offers that as a decision of its own.
+    func runWake(client: any RobotAPIClient, startingBackend: Bool) async throws {
+        try assertSupportedDaemon()
+        let status = try await client.daemonStatus()
+        lastStatus = status
+        guard status.state == .running else {
+            guard startingBackend else { throw ReachyKitError.backendNotRunning }
+            // `wake_up=true` has the daemon enable the motors and play the
+            // animation itself once the backend is up.
+            _ = await runBackendStart(wakeUp: true, client: client)
+            return
+        }
+        try await RobotPower(client: client, configuration: configuration).wake()
+        // One extra request, and it buys an honest `isAwake` immediately rather
+        // than up to a poll interval later: the status above was read *before* the
+        // motors were enabled, so everything derived from `lastStatus` — the
+        // parking guard, the widget snapshot's `isAwake` — would otherwise still
+        // report a sleeping robot for seconds after it stood up.
+        // A failed re-read is not a failed wake: the robot is awake either way and
+        // the poll corrects this within one interval.
+        if let settled = try? await client.daemonStatus() {
+            lastStatus = settled
+        }
+    }
+
     /// Hands the robot back before either transition parks it.
     ///
     /// **Neither half of this is the daemon's.** `Daemon.stop` drops the media

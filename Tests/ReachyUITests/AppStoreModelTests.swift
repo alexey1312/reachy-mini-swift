@@ -18,15 +18,34 @@ final class StoreRobotClient: RobotAPIClient, RobotAppsClient, @unchecked Sendab
     var startup: String?
     var failsCatalogue = false
     var catalogueResponse = StoreRobotClient.catalogue
+    /// Settable because starting an app now depends on both: a stopped backend is
+    /// refused, and disabled motors are woken first.
+    var state: Components.Schemas.DaemonState = .running
+    var motorMode: Components.Schemas.MotorControlMode = .enabled
+    private(set) var motorWrites: [Components.Schemas.MotorControlMode] = []
 
     private var daemonState: Components.Schemas.DaemonStatus {
+        let backend = state == .running
+            ? #"{"motor_control_mode":"\#(motorMode.rawValue)","error":null}"#
+            : "null"
         let json = """
-        {"robot_name":"testbot","state":"running","wireless_version":true,
+        {"robot_name":"testbot","state":"\(state.rawValue)","wireless_version":true,
          "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,
-         "backend_status":{"motor_control_mode":"enabled","error":null}}
+         "backend_status":\(backend)}
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
+    }
+
+    func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws {
+        lock.withLock {
+            motorWrites.append(mode)
+            motorMode = mode
+        }
+    }
+
+    func runningMoveUUIDs() async throws -> Set<String> {
+        []
     }
 
     func handshake() async throws -> RobotConnection.Handshake {
@@ -297,6 +316,47 @@ struct AppStoreModelTests {
         await model.start(model.visibleApps[0], session: session)
 
         #expect(client.started == ["reachy_mini_dance"])
+    }
+
+    /// The daemon starts an app at a sleeping robot without a word — `start-app`
+    /// is not behind the `get_backend` dependency — and every motion the app then
+    /// sends is swallowed by disabled motors.
+    @Test("starting an app wakes a sleeping robot first")
+    func startingWakesASleepingRobot() async {
+        let client = StoreRobotClient()
+        client.motorMode = .disabled
+        let (model, session) = await loaded(client)
+        model.section = .discover
+
+        await model.start(model.visibleApps[0], session: session)
+
+        #expect(client.motorWrites == [.enabled])
+        #expect(client.started == ["reachy_mini_dance"])
+        #expect(model.lastError == nil)
+    }
+
+    /// The way back from a stopped backend is a 90 s job, which is a decision
+    /// rather than something to discover inside a tap. The screen offers it as a
+    /// button; this refuses and says why — **on the store's own model**, because
+    /// `robotError` holds connection and power and is not a fallback for anything.
+    ///
+    /// The robot is parked first and the backend torn down after, which is what
+    /// makes the refusal reachable: a cached status saying "awake" is believed and
+    /// skips the read (`RobotAppLauncher.assumeAwake`), so only a robot the session
+    /// already knows is not awake asks the daemon again.
+    @Test("a stopped backend refuses the start and reports it on the store")
+    func refusesToStartWithTheBackendDown() async {
+        let client = StoreRobotClient()
+        client.motorMode = .disabled
+        let (model, session) = await loaded(client)
+        client.state = .stopped
+        model.section = .discover
+
+        await model.start(model.visibleApps[0], session: session)
+
+        #expect(client.started.isEmpty)
+        #expect(model.lastError?.isEmpty == false)
+        #expect(session.robotError == nil)
     }
 
     @Test("a daemon that will not answer leaves the reason on the model")

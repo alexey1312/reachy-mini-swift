@@ -114,11 +114,7 @@ struct RobotScreen: View {
             }
             .disabled(!powerOff.canPowerOff(session))
             if let transition = session.powerTransition {
-                HStack {
-                    ProgressView()
-                    Text(transition.statusText)
-                        .foregroundStyle(.secondary)
-                }
+                PowerTransitionRow(transition: transition)
             }
         } header: {
             Text(.reachy("Control"))

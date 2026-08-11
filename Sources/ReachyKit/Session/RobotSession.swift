@@ -248,6 +248,9 @@ public final class RobotSession {
     /// lives in `RobotSession+Apps`, a sibling file.
     var appCatalogueCache: [RobotApp]?
     var installedAppsCache: [RobotApp]?
+    /// Whether this session woke the robot for the app now running, and whether a
+    /// restart is in flight. Lives in `RobotSession+AppLifecycle`.
+    var appLifecycle = AppLifecycleState()
     /// The daemon answers `hf-auth/status` by running `whoami` against the Hub, so
     /// this is held for the connection too. Lives in `RobotSession+HFAuth`.
     var hfAccountCache: HFAuthStatus?
@@ -299,7 +302,12 @@ public final class RobotSession {
         supportsRename = true
         moveActivity = nil
         powerTransition = nil
+        // Assigned rather than passed through `recordRunning`, which is what keeps
+        // a disconnect from reading as an app letting go: nothing is parked here.
         runningApp = nil
+        // A wake performed for an app names *this* robot, and the next connection
+        // may be a different one. Nothing is owed across that boundary.
+        appLifecycle = AppLifecycleState()
         moveCache = [:]
         moveIndexTakenAt = nil
         appCatalogueCache = nil

@@ -249,6 +249,17 @@ public actor RobotConnection {
         return Set(moves.map(\.uuid))
     }
 
+    /// The daemon's own definition of the zero pose, in the units the `goto` route
+    /// takes.
+    ///
+    /// **The antennas are not vertical, and that is deliberate upstream.**
+    /// `reachy_mini.INIT_ANTENNAS_JOINT_POSITIONS` is `[-0.1745, 0.1745]` — ~±10°,
+    /// carrying the comment "to reduce shaking at vertical" — and it is what the
+    /// daemon sends itself when an app releases the robot. This used to be
+    /// `[0.0, 0.0]`, which is a second definition of "base" that no reader could
+    /// tell from the first except by watching the antennas twitch.
+    static let zeroAntennas: [Double] = [-0.1745, 0.1745]
+
     /// The zero pose, sent as one `goto` rather than as a teleop target: the daemon
     /// ignores `set_target` while a move is running, and this is what runs right
     /// after one. Every axis is named explicitly — an omitted field means "leave
@@ -261,7 +272,7 @@ public actor RobotConnection {
         try await client.gotoApiMoveGotoPost(
             body: .json(.init(
                 headPose: .init(value1: .init(x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0)),
-                antennas: OpenAPIRuntime.OpenAPIArrayContainer(unvalidatedValue: [0.0, 0.0]),
+                antennas: OpenAPIRuntime.OpenAPIArrayContainer(unvalidatedValue: Self.zeroAntennas),
                 bodyYaw: 0,
                 duration: duration
             ))

@@ -76,6 +76,7 @@ public struct RobotAppLauncher: Sendable {
     private let apps: any RobotAppsClient
     private let power: RobotPower
     private let readiness: @Sendable () async throws -> Readiness
+    private let park: @Sendable () async -> Void
 
     /// `assumeAwake` skips the readiness round trip when the caller already holds a
     /// reading worth trusting — but **only when it says awake**. A snapshot cannot
@@ -95,17 +96,20 @@ public struct RobotAppLauncher: Sendable {
             }
             return try await Readiness(client.daemonStatus())
         }
+        park = { _ = try? await client.gotoNeutral(duration: configuration.recentreDuration) }
     }
 
-    /// Test seam: the three things this needs, with no client to build them from.
+    /// Test seam: the four things this needs, with no client to build them from.
     init(
         apps: any RobotAppsClient,
         power: RobotPower,
-        readiness: @escaping @Sendable () async throws -> Readiness
+        readiness: @escaping @Sendable () async throws -> Readiness,
+        park: @escaping @Sendable () async -> Void = {}
     ) {
         self.apps = apps
         self.power = power
         self.readiness = readiness
+        self.park = park
     }
 
     /// Starts `name`, or stops it if it is what the robot is already running.
@@ -115,6 +119,7 @@ public struct RobotAppLauncher: Sendable {
         if let running = try await runningApp() {
             guard running.app.name == name else { throw Failure.busy(title: running.app.title) }
             try await apps.stopCurrentApp()
+            await park()
             return .stopped(name: name)
         }
         return try await startFreeRobot(named: name)
@@ -143,9 +148,25 @@ public struct RobotAppLauncher: Sendable {
     /// automation ending by clearing the robot should not report one because the
     /// robot was already clear. Nothing here wakes it — stopping a process needs no
     /// motors.
+    ///
+    /// **It parks the robot at zero, and never puts it to sleep.** An app leaves the
+    /// head wherever its last frame put it: `AppManager.stop_current_app` carries a
+    /// return-to-zero that hardware does not perform, and the crash path has none.
+    /// The session restores what the robot *was* — asleep if it woke it for the app
+    /// — but that memory belongs to a process an extension is not: a launch state
+    /// shared across the App Group would have two writers, no arbitration, and would
+    /// authorise a motion on the strength of a record written by something that has
+    /// since died. So this offers the one restoration it can defend, and the app's
+    /// own poll performs the fuller one whenever it is running.
+    ///
+    /// The `goto` is one request, not one second: the daemon answers with a task id
+    /// and plays the move afterwards, so nothing here waits it out. A failure is
+    /// swallowed — a widget's sentence is about the app it stopped, and a robot left
+    /// where it stood is not news anybody can act on.
     public func stop() async throws -> Outcome? {
         guard let running = try await runningApp() else { return nil }
         try await apps.stopCurrentApp()
+        await park()
         return .stopped(name: running.app.name)
     }
 
