@@ -32,6 +32,58 @@ struct ThemeIconNameTests {
         let wanted = Set(ReachyTheme.allCases.compactMap(\.alternateIconName))
         #expect(declared == wanted)
     }
+
+    @Test("every theme has a committed icon bundle", arguments: ReachyTheme.allCases)
+    func everyThemeHasAnIconBundle(_ theme: ReachyTheme) {
+        let bundle = iconBundle(for: theme)
+        #expect(FileManager.default.fileExists(atPath: bundle.appendingPathComponent("icon.json").path))
+        #expect(FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Assets/robot.png").path))
+    }
+
+    @Test("every icon's gradient matches its theme's palette", arguments: ReachyTheme.allCases)
+    func iconGradientMatchesPalette(_ theme: ReachyTheme) throws {
+        let (top, bottom) = try iconGradient(of: theme)
+        #expect(top == theme.palette.gradientTop)
+        #expect(bottom == theme.palette.gradientBottom)
+    }
+
+    @Test("the glyph is shared byte for byte across the six bundles")
+    func glyphIsShared() throws {
+        let glyphs = try ReachyTheme.allCases.map {
+            try Data(contentsOf: iconBundle(for: $0).appendingPathComponent("Assets/robot.png"))
+        }
+        #expect(glyphs.map { $0 == glyphs[0] }.contains(false) == false)
+    }
+}
+
+private func iconBundle(for theme: ReachyTheme) -> URL {
+    repoRoot
+        .appendingPathComponent("Apps/ReachyMini/Resources")
+        .appendingPathComponent("\(theme.alternateIconName ?? "AppIcon").icon")
+}
+
+/// `icon.json` stores a fill stop as `"srgb:0.60392,0.65098,0.72157,1.00000"`.
+/// Reading it back and rounding to 8 bits is what makes the generated document
+/// comparable with the `UInt32` constants it was written from.
+private func iconGradient(of theme: ReachyTheme) throws -> (top: UInt32, bottom: UInt32) {
+    let data = try Data(contentsOf: iconBundle(for: theme).appendingPathComponent("icon.json"))
+    let document = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    let fill = document?["fill"] as? [String: Any]
+    guard let stops = fill?["linear-gradient"] as? [String], stops.count == 2 else {
+        Issue.record("\(theme) has no two-stop linear gradient")
+        return (0, 0)
+    }
+    return (hex(fromFillStop: stops[0]), hex(fromFillStop: stops[1]))
+}
+
+private func hex(fromFillStop stop: String) -> UInt32 {
+    let components = stop.replacingOccurrences(of: "srgb:", with: "").split(separator: ",")
+    guard components.count == 4 else {
+        Issue.record("malformed fill stop \(stop)")
+        return 0
+    }
+    let channels = components.prefix(3).map { UInt32((Double($0) ?? 0) * 255 + 0.5) }
+    return channels[0] << 16 | channels[1] << 8 | channels[2]
 }
 
 private let repoRoot = URL(fileURLWithPath: #filePath)
