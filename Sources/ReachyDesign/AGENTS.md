@@ -7,25 +7,139 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## What is here
 
-| File                       | Holds                                                                               |
-| -------------------------- | ----------------------------------------------------------------------------------- |
-| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                        |
-| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out |
-| `Tone.swift`               | Semantic colour roles over system styles — no palette, no `.xcassets`               |
-| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork              |
-| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture       |
-| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                        |
-| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in        |
-| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                      |
-| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                        |
-| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                   |
-| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                |
-| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                             |
-| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none |
-| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback           |
+| File                       | Holds                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
+| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
+| `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
+| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, and the `Color(hex:)` the picker draws its tiles with |
+| `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
+| `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
+| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
+| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture                                                        |
+| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                                                                         |
+| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
+| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
+| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
+| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
+| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                                                 |
+| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
+| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
+| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 
 ## Rules
 
+- **A theme is applied at a scene's entry point, never inside a root view.** Environment resolves nearest-to-leaf,
+  so a root reading `ThemeStore` itself would override whatever an ancestor injected — a preview, `ReachyMiniApp`,
+  or `ReachyStorybook`. `ReachyMiniApp` and `ReachyStorybook` apply it; `ReachyRootView` does not. **Neither entry
+  point reaches the snapshot suite, though** — `#Preview` bodies are instantiated directly by Prefire and never
+  pass through either scene. What themes every capture is the forked
+  `Apps/ReachyUISnapshotTests/PreviewTests.stencil`, which wraps each inlined preview body in
+  `Group { … }.reachyTheme(.fallback)`; `ReachyTheme.accent` resolves against this module's own bundled colour
+  catalogue (`Color(colorSetName, bundle: .module)`), which is why that theme reaches a test bundle depending on
+  neither app target.
+- **Theme colours are Swift constants; `Theme*.colorset` is generated — from a second, hand-kept copy of them.**
+  `Scripts/render-theme-colors.swift` cannot link `ReachyDesign`, so it carries its own duplicate of
+  `ReachyTheme.palette` and writes the catalogue — including the catalogue's own root `Contents.json` — from that
+  copy. A new or changed theme means editing both files by hand before re-running `./bin/mise run theme:colors`;
+  `ReachyThemeTests` only catches the two drifting apart, it does not keep them together. Never hand-edit the
+  generated JSON, and never invoke the script bare — the mise task is what pins the toolchain.
+- **A new theme must pass the separation rule**, enforced by `Tests/ReachyDesignTests/ReachyThemeTests.swift` and
+  checked in **both** appearances — `palette.light` against the light-appearance system tones, `palette.dark`
+  against the dark ones. `Tone.danger`/`.warning`/`.success` are adaptive, so a rule that only ever read
+  `palette.light` was only ever checking half of what a dark-mode screen renders; `ConnectRail.swift` draws
+  `Tone.warning` and `Tone.brand` on the same node stack, which is exactly where that gap would show. Three limbs,
+  all defined once as `separates(_:from:)` in the test file so `accentSeparation` and the coral canary share the
+  same numbers rather than the canary checking its own private copy:
+  1. **3:1 against its background** — white in light, `#1C1C1E` in dark.
+  2. **≥30° of hue or a ≥1.8 luminance-contrast ratio away from `danger`, `warning` and `success`.** Coral failed
+     both limbs against `danger` in light appearance, which is why the app's first accent is not among the themes.
+     Bronze is the rule's other limb in practice, in **both** appearances: ~1.5° from `warning` and separating by
+     lightness instead — 1.97 at the light accent, 2.10 at the dark one.
+  3. **≥1.8 against `.label`** (black in light, white in dark) — what makes a tinted row read as tappable next to
+     the body text beside it. Graphite clears it in both appearances but only just in dark — 2.24 light / 2.05 dark,
+     measured — which is accepted as this theme's floor rather than a reason to repaint the default fallback.
+     **Teal's dark accent does not clear it** (≈1.75), found only once this limb existed to check for it, and left
+     as a `withKnownIssue` in `accentAgainstLabel` rather than silently repainted: changing a shipped theme's dark
+     accent to fix a test is a palette decision, not something a test file gets to decide on its own.
+     This limb's 1.8 is the weakest-founded number in the rule, and worth knowing before leaning on it. Limb 1 cites
+     WCAG's large-text floor; limb 2's 1.8 was chosen to separate two _saturated_ colours from each other. Limb 3
+     reuses that same 1.8 for a different question — is a tint legible beside body text — with no standard behind
+     it. It was not reverse-engineered to admit graphite and exclude teal (it predates both measurements), but a
+     seventh theme landing near it deserves a look at the number rather than deference to it.
+- **Bronze's dark accent is `#A86D16`, deliberately darker than a dark-appearance accent usually is.** It shipped as
+  `#E3A24A`, chosen against the light-appearance system tones only, before the separation rule above checked
+  `palette.dark` against the dark ones. Measured against dark `warning` (`#FF9F0A`), `#E3A24A` scored 2.0° of hue and
+  a 1.07 contrast ratio — failing both limbs, and less distinguishable from `warning` than the coral this feature
+  exists to remove. `#A86D16` keeps the same hue (36°, the tone bronze is built on) and separates by lightness
+  instead — 2.10 against dark `warning`, comfortably past the 1.8 floor, and 3.94 against the `#1C1C1E` background,
+  above the 3:1 floor. Escaping the system orange's hue upward runs into near-white before it clears 30°, so the
+  only room to move is downward in lightness — hence a dark-appearance accent that is deliberately darker than the
+  rest of this palette's dark accents tend to be.
+- **A theme's icon is generated, and the `.icon` is the only pipeline.** `Scripts/render-app-icon.swift` writes six
+  `Apps/ReachyMini/Resources/AppIcon*.icon` bundles from its own copy of the gradient stops — the same hand-kept
+  duplicate `render-theme-colors.swift` carries, and for the same reason (a script run by `swift` cannot link this
+  module). All six share a byte-identical `Assets/robot.png`; only `icon.json`'s `fill` differs, which is why adding
+  a theme's icon is two constants rather than an artwork task. `JSONSerialization` is called with `.sortedKeys` so a
+  re-run is byte-identical; without it the key order is the hash order and every run dirties the diff. Never
+  hand-edit a generated bundle, and never open one in Icon Composer.app to "just tweak it" — it rewrites the document
+  in its own shape and the next `./bin/mise run theme:icons` reverts it. Three names must agree —
+  `ReachyTheme.alternateIconName`, the `.icon` directory, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in
+  `Apps/Project.swift` — and `ThemeIconNameTests` is the only thing that checks, because a mismatch surfaces as a
+  failed `setAlternateIconName` on a device and nowhere earlier.
+- **There is no `AppIcon.appiconset`, and adding one back does nothing.** A `.icon` shadows a same-named catalogue:
+  measured under Xcode 26.4.1, the catalogue contributed **zero** renditions while the `.icon` contributed 18, and
+  renaming it to `AppIconLegacy` brought it back as an ordinary asset. iOS 18–25 is served by the back-deployment
+  rasters `actool` derives — verified on a fresh iOS 18.5 simulator, which renders the icon correctly under the
+  classic squircle mask — and macOS by the ladder it generates, with better geometry than the Big Sur rounded
+  rectangle the script used to draw by hand.
+- **The three appearances are free to author and cost 624 KiB each.** `actool` derives light, dark and tinted from
+  the one source, so no artwork is authored for them — but a `.icon` compiles to 24 renditions where an
+  `.appiconset` produced a handful. Measured by building the same tree twice: `Assets.car` is 1.66 MiB with one icon
+  and 4.71 MiB with six. A seventh theme is 624 KiB of binary, not a rounding error; the _source_ tree is the half
+  that got smaller (539 KB of deleted PNG against 349 KB of bundles).
+- **A theme swatch is `ReachyTheme.iconSwatch`, and it deliberately does not copy the icon.** The picker cannot show
+  the real thing — a `.icon` exposes no thumbnail — so it paints a swatch, and a swatch of the two declared stops
+  reads flatter than the icon it stands for. Three things were measured off the shipping `AppIcon.icns` at 256 pt
+  and are what the swatch reproduces: the gradient is **vertical** (leading and trailing edges within 5/255 of each
+  other through the body of the icon, so it is not diagonal), `icon.json`'s stops land at roughly **17 % and 83 %**
+  of the height rather than at the edges, and past them the material runs lighter at the top and darker at the
+  bottom. **Fitting the material itself was tried and abandoned**: graphite's extremes move +20/+20/+20 and rose's
+  +0/+24/+14, so neither an additive nor a multiplicative model holds across two themes, and a formula from two
+  samples of an undocumented private render would be false precision that the next Xcode invalidates. The two
+  magnitudes in `iconSwatch` are a judgement in the measured direction, and the blend is toward white/black rather
+  than an addition so that orchid's blue and rose's red — already at full — lighten without dragging their hue.
+- **A theme tile takes `Radius.tile(side:)`, not a layout radius.** It stands for the app icon, so it takes the
+  icon's corner proportion (`side / 4.5` ≈ 22 %, the iOS squircle) and reads as the same object as the store and
+  dock artwork, which use the same token. It shipped as `Radius.lg` — 16 pt on a 56 pt tile, 29 % — which is
+  visibly rounder than an icon. **A selection ring around it is concentric or it is wrong**: a ring pushed out by
+  `Space.xs` needs its radius grown by the same `Space.xs`, or the gap is narrower at the corners than along the
+  sides and the corner reads pinched. Equal radii at different insets is the mistake to look for.
+- **SwiftUI has an API for concentric corners and it does not fit this call site — measured, not assumed.**
+  `ContainerRelativeShape` (iOS 14+) inside `containerShape(_:)`, and `ConcentricRectangle` /
+  `.rect(corner: .containerConcentric)` (**iOS 26+**, above this app's floor), all derive the **inner** shape of a
+  nested pair from its container. The theme tile is the inner one and its radius is the thing that must stay pinned
+  — it carries the icon's squircle through `Radius.tile(side:)`, shared with `AppArtwork` — so deriving it would
+  hang the token on the ring, which is decoration. The direction actually needed here, outer from inner, is not
+  offered at any deployment target.
+  What the framework would compute in the direction it does cover is exactly `radius ± inset`: rendered at 8× with
+  `ImageRenderer`, a `ContainerRelativeShape` inset 4 pt inside a `RoundedRectangle(cornerRadius: 16.444, style:
+  .continuous)` came back **byte-identical** to `RoundedRectangle(cornerRadius: 12.444, style: .continuous)` — 0
+  differing pixels of 262 144. So the arithmetic at the call site is the framework's own rule and not an
+  approximation of it. Reach for `ContainerRelativeShape` when the container's radius is one we do **not** own — a
+  widget, a window, the screen — which is the case these APIs exist for.
+- **No reference image can cover an app icon.** The snapshot suite renders views, never a Home Screen. Icons are a
+  device check plus one iOS 18 simulator install, and that is the whole of their cover — a green suite says nothing
+  about them. `AppIconSwitcher`'s unit tests cover the decision around the call (which name, and the no-op guard that
+  keeps iOS's unsuppressable alert from firing when the chosen theme is already applied), never the call itself.
+- **`setAlternateIconName` fails with `NSCocoaErrorDomain` 3072 before the scene is active.** Measured: called from a
+  launch `.task` it throws `NSUserCancelledError` and the icon does not change. Every caller must be a button tap, so
+  the app is foreground-active by construction.
+- **`AccentColor.colorset` in the app target still matters, and a test now reads it.** It paints the first frame and
+  every surface drawn outside our hierarchy — system alerts, the share sheet. It must equal `ReachyTheme.fallback`
+  or launch flashes another colour; `ReachyThemeTests.accentColorMatchesFallback` parses the hand-edited JSON the
+  same way `catalogueMatchesConstants` parses the generated one, so a drift between the two is now a test failure
+  rather than a launch flash nobody notices until a device shows it.
 - **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
   not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
 - **A backdrop under a bar is not automatically a `.scrim`, and the difference is whether anything passes under it.**
@@ -157,7 +271,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   `quiet` (`.borderless`), and that one is not a glass question: it exists because three bordered capsules in a row
   broke their labels across two lines on an iPhone, and stacking them gave a ragged column of three different widths.
   Both were recorded as references before being read. `.borderless` rather than `.plain` — plain drops the tint, and a
-  tintless label beside a blue one reads as disabled.
+  tintless label beside a tinted one reads as disabled.
 - **`glassEffectID` morphing between screens.** Worth having only once a layout is built around it, and there is no
   equivalent below the floor.
 - **A gesture-carrying spring beyond `absorb(velocity:)`.** It is the module's only `Animation` that is a function

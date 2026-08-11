@@ -12,6 +12,8 @@ public enum Metrics {
     /// A store row's artwork, and the smaller tile the dock and the widget draw.
     public static let artwork: CGFloat = 52
     public static let artworkCompact: CGFloat = 30
+    /// The Appearance picker's tile — a theme's icon gradient, not a rendered icon.
+    public static let themeTile: CGFloat = 56
     /// A node on the connection rail. Fixed by the glyph it has to hold — a
     /// checkmark, a cross, a turning arc — and not by anything around it.
     ///
