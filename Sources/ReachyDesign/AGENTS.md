@@ -7,25 +7,25 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## What is here
 
-| File                       | Holds                                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                    |
-| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                             |
-| `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`             |
-| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, and the `Color(hex:)` the picker draws its tiles with |
-| `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                  |
-| `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                            |
-| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                          |
-| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture                                   |
-| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                                                    |
-| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                    |
-| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                  |
-| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                    |
-| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                               |
-| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                            |
-| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                         |
-| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                             |
-| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                       |
+| File                       | Holds                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
+| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
+| `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
+| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, and the `Color(hex:)` the picker draws its tiles with |
+| `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
+| `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
+| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
+| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture                                                        |
+| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                                                                         |
+| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
+| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
+| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
+| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
+| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                                                 |
+| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
+| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
+| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 
 ## Rules
 
@@ -76,6 +76,35 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   above the 3:1 floor. Escaping the system orange's hue upward runs into near-white before it clears 30°, so the
   only room to move is downward in lightness — hence a dark-appearance accent that is deliberately darker than the
   rest of this palette's dark accents tend to be.
+- **A theme's icon is generated, and the `.icon` is the only pipeline.** `Scripts/render-app-icon.swift` writes six
+  `Apps/ReachyMini/Resources/AppIcon*.icon` bundles from its own copy of the gradient stops — the same hand-kept
+  duplicate `render-theme-colors.swift` carries, and for the same reason (a script run by `swift` cannot link this
+  module). All six share a byte-identical `Assets/robot.png`; only `icon.json`'s `fill` differs, which is why adding
+  a theme's icon is two constants rather than an artwork task. `JSONSerialization` is called with `.sortedKeys` so a
+  re-run is byte-identical; without it the key order is the hash order and every run dirties the diff. Never
+  hand-edit a generated bundle, and never open one in Icon Composer.app to "just tweak it" — it rewrites the document
+  in its own shape and the next `./bin/mise run theme:icons` reverts it. Three names must agree —
+  `ReachyTheme.alternateIconName`, the `.icon` directory, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in
+  `Apps/Project.swift` — and `ThemeIconNameTests` is the only thing that checks, because a mismatch surfaces as a
+  failed `setAlternateIconName` on a device and nowhere earlier.
+- **There is no `AppIcon.appiconset`, and adding one back does nothing.** A `.icon` shadows a same-named catalogue:
+  measured under Xcode 26.4.1, the catalogue contributed **zero** renditions while the `.icon` contributed 18, and
+  renaming it to `AppIconLegacy` brought it back as an ordinary asset. iOS 18–25 is served by the back-deployment
+  rasters `actool` derives — verified on a fresh iOS 18.5 simulator, which renders the icon correctly under the
+  classic squircle mask — and macOS by the ladder it generates, with better geometry than the Big Sur rounded
+  rectangle the script used to draw by hand.
+- **The three appearances are free to author and cost 624 KiB each.** `actool` derives light, dark and tinted from
+  the one source, so no artwork is authored for them — but a `.icon` compiles to 24 renditions where an
+  `.appiconset` produced a handful. Measured by building the same tree twice: `Assets.car` is 1.66 MiB with one icon
+  and 4.71 MiB with six. A seventh theme is 624 KiB of binary, not a rounding error; the _source_ tree is the half
+  that got smaller (539 KB of deleted PNG against 349 KB of bundles).
+- **No reference image can cover an app icon.** The snapshot suite renders views, never a Home Screen. Icons are a
+  device check plus one iOS 18 simulator install, and that is the whole of their cover — a green suite says nothing
+  about them. `AppIconSwitcher`'s unit tests cover the decision around the call (which name, and the no-op guard that
+  keeps iOS's unsuppressable alert from firing when the chosen theme is already applied), never the call itself.
+- **`setAlternateIconName` fails with `NSCocoaErrorDomain` 3072 before the scene is active.** Measured: called from a
+  launch `.task` it throws `NSUserCancelledError` and the icon does not change. Every caller must be a button tap, so
+  the app is foreground-active by construction.
 - **`AccentColor.colorset` in the app target still matters, and a test now reads it.** It paints the first frame and
   every surface drawn outside our hierarchy — system alerts, the share sheet. It must equal `ReachyTheme.fallback`
   or launch flashes another colour; `ReachyThemeTests.accentColorMatchesFallback` parses the hand-edited JSON the

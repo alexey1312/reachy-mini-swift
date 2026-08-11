@@ -231,6 +231,27 @@ icons under Xcode 26: the developer forums report the `supportsAlternateIcons ==
 beta 3, while Use Your Loaf reports it working only in Xcode 27. The toolchain here is 26.4.1. Step 1 of delivery is
 a two-icon prototype on hardware, before any of the rest is built.
 
+**Correction, measured on Xcode 26.4.1 (build 17E202) with Icon Composer 1.4.** Four claims above did not survive the
+prototype, and the risk the delivery order was built around is retired: `supportsAlternateIcons` is `true` and the
+switch was observed changing a Home Screen icon.
+
+1. **"The asset catalogue stays for iOS 18–25" is not implementable.** A `.icon` shadows a same-named `.appiconset`
+   entirely — with both present, `Assets.car` carried 18 renditions from the `.icon` and **zero** from the catalogue;
+   renamed to `AppIconLegacy` it reappeared as an ordinary 2-rendition asset. Two catalogues cannot both be primary
+   either, since `CFBundleIconName` names one. What actually serves iOS 18–25 is the back-deployment rasters `actool`
+   derives from the `.icon`, verified rendering correctly on a fresh iOS 18.5 simulator. So `AppIcon.appiconset` is
+   deleted and there is **one** pipeline, not two.
+2. **"Writing `icon.json` from scratch is explicitly not the plan" is reversed.** A hand-written document compiles
+   into the full Icon Composer form — `IconGroup`, `Named Gradient` ×2, three `IconImageStack`s. The schema was read
+   off four shipping `.icon` bundles rather than guessed, and generating it is what keeps six themes cheap to author.
+3. **The macOS ladder is generated too**, with better geometry than the hand-written Big Sur rounded rectangle it
+   replaces, so that maths leaves the script along with the asset catalogue.
+4. **The dark and tinted appearances are free to _author_ and not free in _bytes_.** `actool` derives all three from
+   the single source with no extra work — but each `.icon` compiles to 24 renditions where an `.appiconset` produced
+   a handful. Measured by building the same tree twice: `Assets.car` is 1.66 MiB with one icon and 4.71 MiB with six,
+   so the five alternates cost **3.05 MiB, or 624 KiB each** — against this document's estimate of ~1.25 MB for all
+   five. The source tree moves the other way: the deleted catalogue was 539 KB of PNG and the six bundles are 349 KB.
+
 ### `AppearanceSection` (ReachyUI)
 
 A new `Sources/ReachyUI/Settings/AppearanceSection.swift`, following `AudioSettingsSection`,

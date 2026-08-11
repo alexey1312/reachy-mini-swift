@@ -196,6 +196,18 @@ created, and an exported `REACHY_DEVELOPMENT_TEAM` overrides it. Flags: `--build
 succeeds anyway — check for `App installed:`, not for a clean stderr. A **locked** phone accepts the install and
 refuses the launch; the script says so and exits 3 rather than reprinting the CoreDevice error wall.
 
+**App icons are six Icon Composer bundles, generated — `./bin/mise run theme:icons`.** They live at
+`Apps/ReachyMini/Resources/AppIcon*.icon` and are ordinary opaque resources: Tuist references each as one file, so
+the existing `resources: ["ReachyMini/Resources/**"]` glob needed no change and nothing decomposes them into
+`icon.json` plus `Assets/`. A second run must leave the tree clean — `JSONSerialization` is called with `.sortedKeys`
+precisely so it does. There is **no asset catalogue for the app icon**: a `.icon` shadows a same-named `.appiconset`
+completely (measured — the catalogue contributed zero renditions), so re-adding one is a silent no-op, and iOS 18–25
+is served by the back-deployment rasters `actool` derives. Alternate icons are declared twice — in
+`ReachyTheme.alternateIconName` and in `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]` — and only
+`ThemeIconNameTests` keeps them in step; a mismatch fails inside `setAlternateIconName` on a device and nowhere
+earlier. **No reference image covers any of this** — the suite renders views, never a Home Screen, so an icon change
+is a device check plus one iOS 18 simulator install. Each extra icon is ~624 KiB in `Assets.car`.
+
 **An App Group is not a wildcard capability.** `iOS Team Provisioning Profile: *` cannot carry one, so every target
 that declares it — the app and each extension separately, each with its own App ID — needs it added once through
 Xcode's Signing & Capabilities. `xcodebuild -allowProvisioningUpdates` reports `No Accounts` and cannot create it.
