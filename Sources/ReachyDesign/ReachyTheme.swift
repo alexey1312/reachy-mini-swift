@@ -68,6 +68,27 @@ public extension ReachyTheme {
 }
 
 public extension ReachyTheme {
+    /// The alternate app icon this theme selects, or `nil` for the primary one.
+    ///
+    /// iOS only — macOS has no alternate icons, which is why this is a name rather
+    /// than an image and why `AppIconSwitcher` is the only caller. Each name must
+    /// also appear in `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in
+    /// `Apps/Project.swift` and name a committed `<name>.icon` bundle;
+    /// `ThemeIconNameTests` is what keeps the three in step, because a mismatch
+    /// surfaces only as a failed `setAlternateIconName` on a device.
+    var alternateIconName: String? {
+        switch self {
+        case .graphite: nil
+        case .bronze: "AppIcon-Bronze"
+        case .teal: "AppIcon-Teal"
+        case .indigo: "AppIcon-Indigo"
+        case .orchid: "AppIcon-Orchid"
+        case .rose: "AppIcon-Rose"
+        }
+    }
+}
+
+public extension ReachyTheme {
     /// Colour names, not robot vocabulary — a translator gets the same six words a
     /// paint chart would use.
     var title: LocalizedStringResource {
