@@ -3,8 +3,13 @@ name: Runner probe
 # Throwaway. Answers two questions this repository has been guessing at: how many
 # cores the standard macOS runner actually has, and whether a larger one is available
 # to a personal account at all. Delete once both are written down.
+#
+# Triggered by a push to its own branch rather than by workflow_dispatch, which GitHub
+# only offers for workflows already on the default branch. That branch runs no CI, so
+# the probe never competes with a measurement run for the five macOS slots.
 on:
-  workflow_dispatch:
+  push:
+    branches: ["probe/**"]
 
 jobs:
   probe:
