@@ -24,9 +24,22 @@ enum PreviewScene {
         HFSignInModel.preview(state: state).account
     }
 
-    static func robotScreen(_ session: RobotSession) -> some View {
+    /// `health` defaults to nil so every preview written before the state screen
+    /// existed still parks this one where it did — `RobotScreen` then builds its own,
+    /// which decides only whether the State row is offered.
+    static func robotScreen(_ session: RobotSession, health: RobotHealthModel? = nil) -> some View {
         NavigationHost {
-            RobotScreen(session: session)
+            RobotScreen(session: session, health: health)
+        }
+        .preview()
+    }
+
+    /// The state screen on its own. It is a pushed destination, so capturing it
+    /// through the Robot tab would photograph the tab — and the four states worth
+    /// covering are all inside it.
+    static func robotHealth(_ model: RobotHealthModel) -> some View {
+        NavigationHost {
+            RobotHealthScreen(model: model)
         }
         .preview()
     }

@@ -166,6 +166,9 @@
     "Confirm the robot": {
       "extractionState": "manual"
     },
+    "Confirm the robot's identity key": {
+      "extractionState": "manual"
+    },
     "Connect": {
       "extractionState": "manual"
     },
@@ -202,6 +205,9 @@
     "Control": {
       "extractionState": "manual"
     },
+    "Control loop": {
+      "extractionState": "manual"
+    },
     "Controller": {
       "extractionState": "manual"
     },
@@ -218,6 +224,12 @@
       "extractionState": "manual"
     },
     "Could not reach Hugging Face": {
+      "extractionState": "manual"
+    },
+    "Could not reach the robot over SSH.": {
+      "extractionState": "manual"
+    },
+    "Could not store the robot's key.": {
       "extractionState": "manual"
     },
     "Daemon": {
@@ -454,6 +466,9 @@
     "Live view, hidden": {
       "extractionState": "manual"
     },
+    "Load average": {
+      "extractionState": "manual"
+    },
     "Loading settings…": {
       "extractionState": "manual"
     },
@@ -466,6 +481,12 @@
     "Log stream failed": {
       "extractionState": "manual"
     },
+    "Longest gap": {
+      "extractionState": "manual"
+    },
+    "Lost the connection to the robot.": {
+      "extractionState": "manual"
+    },
     "Maintenance": {
       "extractionState": "manual"
     },
@@ -473,6 +494,12 @@
       "extractionState": "manual"
     },
     "Manual address": {
+      "extractionState": "manual"
+    },
+    "Measured by the daemon once a second. The rate is what the robot's motors are actually driven at.": {
+      "extractionState": "manual"
+    },
+    "Memory": {
       "extractionState": "manual"
     },
     "Microphone": {
@@ -655,6 +682,12 @@
     "Private": {
       "extractionState": "manual"
     },
+    "Processor": {
+      "extractionState": "manual"
+    },
+    "Processor, memory and temperature need a connection on this network.": {
+      "extractionState": "manual"
+    },
     "Progress": {
       "extractionState": "manual"
     },
@@ -677,6 +710,9 @@
       "extractionState": "manual"
     },
     "Reachy Mini was off. It's starting up — try again in a moment.": {
+      "extractionState": "manual"
+    },
+    "Read from the robot every few seconds, while this screen is open.": {
       "extractionState": "manual"
     },
     "Reading the robot's description…": {
@@ -722,6 +758,9 @@
       "extractionState": "manual"
     },
     "Robot": {
+      "extractionState": "manual"
+    },
+    "Robot access": {
       "extractionState": "manual"
     },
     "Robot account": {
@@ -811,6 +850,9 @@
     "Show installer log": {
       "extractionState": "manual"
     },
+    "Show processor, memory and temperature": {
+      "extractionState": "manual"
+    },
     "Show the live view": {
       "extractionState": "manual"
     },
@@ -842,6 +884,9 @@
       "extractionState": "manual"
     },
     "Signed in": {
+      "extractionState": "manual"
+    },
+    "Signing in over SSH…": {
       "extractionState": "manual"
     },
     "Signing in to Hugging Face": {
@@ -928,6 +973,9 @@
     "Store unavailable": {
       "extractionState": "manual"
     },
+    "System": {
+      "extractionState": "manual"
+    },
     "System update": {
       "extractionState": "manual"
     },
@@ -937,7 +985,13 @@
     "Teal": {
       "extractionState": "manual"
     },
+    "Temperature": {
+      "extractionState": "manual"
+    },
     "Test sound": {
+      "extractionState": "manual"
+    },
+    "That password was refused by the robot.": {
       "extractionState": "manual"
     },
     "The app and its Python environment are deleted from the robot.": {
@@ -947,6 +1001,9 @@
       "extractionState": "manual"
     },
     "The app icon didn't change.": {
+      "extractionState": "manual"
+    },
+    "The daemon reports none of this. It is read from the robot's own system over SSH.": {
       "extractionState": "manual"
     },
     "The hardware ID never changes.": {
@@ -1072,6 +1129,9 @@
     "This robot reports no recovery scripts.": {
       "extractionState": "manual"
     },
+    "This robot's backend reports no control loop.": {
+      "extractionState": "manual"
+    },
     "This takes about five minutes. Leave the robot powered on.": {
       "extractionState": "manual"
     },
@@ -1121,6 +1181,9 @@
       "extractionState": "manual"
     },
     "Update now": {
+      "extractionState": "manual"
+    },
+    "Uptime": {
       "extractionState": "manual"
     },
     "Use an access token": {

@@ -50,6 +50,10 @@ public enum Metrics {
     /// larger leaves the window slightly high in the other placement, which is the
     /// same trade `tabBarAllowance` makes and the safe way to be wrong.
     public static let tabAccessoryAllowance: CGFloat = 68
+    /// The line under a reading in the robot's state section. Tall enough for a
+    /// shape to be a shape and short enough that four of them still read as rows
+    /// rather than as a dashboard.
+    public static let sparklineHeight: CGFloat = 28
     /// A `Form` left to itself fills a 1024 pt iPad and reads as broken.
     public static let readableForm: CGFloat = 560
     /// What the app's window asks to open at on macOS, where nothing else says.

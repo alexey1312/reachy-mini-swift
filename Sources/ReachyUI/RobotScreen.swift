@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachySSH
 import SwiftUI
 
 /// Connected-robot controls: identity, live daemon status, wake/sleep, audio.
@@ -10,6 +11,15 @@ struct RobotScreen: View {
     let session: RobotSession
 
     @State private var powerOff = RobotPowerOffModel()
+    /// Built once the robot has an identity to key its Keychain items by, not in
+    /// `init`: this screen is rebuilt on every status poll, and each rebuild would
+    /// otherwise construct an `SSHFileSystem` for `@State` to throw away.
+    @State private var health: RobotHealthModel?
+
+    init(session: RobotSession, health: RobotHealthModel? = nil) {
+        self.session = session
+        _health = State(initialValue: health)
+    }
 
     var body: some View {
         Form {
@@ -36,6 +46,51 @@ struct RobotScreen: View {
         }
         .formStyle(.grouped)
         .navigationTitle(identity?.name ?? "Robot")
+        .task { prepareHealth() }
+        // Kept warm from here rather than from the screen, and it costs nothing:
+        // the status is polled whether or not anyone is looking at the loop. So the
+        // sparkline is already a line when the screen opens, instead of taking
+        // three minutes to become one.
+        .onChange(of: session.lastStatus?.controlLoop, initial: true) { _, loop in
+            health?.record(loop: loop)
+        }
+    }
+
+    /// Absent when there is nothing at all to show: a relayed session to a robot
+    /// whose backend reports no loop either. Both halves gone is the one case where
+    /// the screen would open on nothing.
+    @ViewBuilder
+    private var healthLink: some View {
+        if let health, health.phase != .unavailable || session.lastStatus?.controlLoop != nil {
+            NavigationLink {
+                RobotHealthScreen(model: health)
+            } label: {
+                LabeledContent(.reachy("State"), value: healthSummary)
+            }
+        }
+    }
+
+    /// The one number that is free to know. Processor and temperature would each
+    /// cost an SSH session held open for a row nobody has asked to see.
+    private var healthSummary: String {
+        session.lastStatus?.controlLoop?.frequencyHz.map(HealthFormat.hertz) ?? "—"
+    }
+
+    /// One model for the life of this screen.
+    ///
+    /// Nil `files` is what a relayed session gets, and it is the same gate
+    /// `filesLink` uses: SSH needs a TCP route to port 22 and the Hugging Face relay
+    /// carries WebRTC, not a tunnel (ADR 0003). The model then reports
+    /// `.unavailable` and the section says so instead of offering a sign-in that
+    /// could not connect.
+    private func prepareHealth() {
+        guard health == nil else { return }
+        guard let robot = identity?.deduplicationKey else { return }
+        health = RobotHealthModel(
+            files: session.address.map { _ in SSHFileSystem(robot: robot) },
+            robot: robot,
+            host: session.address?.host ?? ""
+        )
     }
 
     private var identity: RobotIdentity? {
@@ -82,6 +137,7 @@ struct RobotScreen: View {
                     .foregroundStyle(.orange)
                     .font(.callout)
             }
+            healthLink
         }
     }
 

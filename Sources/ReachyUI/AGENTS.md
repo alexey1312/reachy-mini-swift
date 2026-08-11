@@ -469,6 +469,50 @@ It appears only above one saved network — `Wi-Fi — own hotspot` (one) captur
 included, so a robot with one real network saved offers the button as well; that matches the rows, which list every
 entry the same way and let the robot answer 400 for its own hotspot.
 
+## The robot's state screen
+
+`Health/` — a screen pushed from the Robot tab, fed by two sources that fail independently and are never presented
+as one. The **two sections are named after their sources** (`Control loop`, `System`) rather than merged, because
+where a number comes from decides whether to trust it when the other half is missing.
+
+- **A screen and not a section on the tab, and the lifecycle is what earns that.** As a section it held an SSH
+  connection open for as long as the app was connected to the robot, and carried a password sheet and a failure row
+  inline on the tab the app opens on. The reading now starts on `.task` and stops on `.onDisappear`.
+- **The daemon's half is free and works everywhere.** `control_loop_stats` rides the status `RobotSession` already
+  polls every three seconds. `RobotScreen` — not the screen — records it through `.onChange(of:initial:)`, so the
+  series is already a line when the screen opens instead of taking three minutes to become one, and a second timer
+  over a three-second poll would sample the same value twice as often as it changes.
+- **The operating system's half is SSH, and it is LAN-only by construction.** `session.address == nil` builds the
+  model with no file system at all, which settles it in `.unavailable` — the same gate `filesLink` uses, and the
+  reason is the same (ADR 0003: the relay carries WebRTC, not a tunnel). The footer says so instead of offering a
+  sign-in that could not connect. The **link** on the Robot tab is hidden only when _both_ halves are gone.
+- **It never prompts.** An absent credential settles in `.needsPassword` and waits for a row to be tapped. A health
+  panel that raises a password field on open has turned a passive reading into a demand.
+- **Sampling is gated on `scenePhase == .active`** as well, the same gate `RunningAppDock` puts on its poll.
+  `stop()` keeps `phase` at `.sampling` on purpose, so the readings stay on screen through the gap and `start()`
+  reconnects on the way back; a panel that blanks itself whenever the app is put away is a panel nobody trusts.
+- **`HealthFormat` exists because two screens spell the same number.** The Robot tab shows the loop rate beside the
+  link and the screen shows it again at the top; two formatters is two answers to "how fast is the loop" that can
+  disagree by a decimal place.
+- **`SSHPasswordForm` takes bindings, not a model**, because two screens now sign in to the same robot. Typing it to
+  either model would mean a second copy of the field, the footer and the shipping-default password warning — and the
+  warning is the part that must not be allowed to drift. `HostKeyConfirmation` was already model-free.
+  - **Its `error` slot is not optional decoration, and both models owe it a `lastError`.** A refused password is the
+    one failure that does not land in a phase anybody can read: it goes back to `.needsPassword`, which is a row
+    offering the sheet again, while the sheet stays up over it with the field cleared underneath. Passing `nil`
+    there — as this screen did first — makes the entire answer to a mistyped password a text field emptying itself.
+    The key is shared with `RobotFilesModel`, so the two paths say the same sentence.
+- **The sparklines are Swift Charts**, which ships with the OS well below this app's floor. Their y-domains are
+  **fixed** (`HealthMetric`), never fitted to the data: a sparkline that scales to its own extremes turns a 0.3%
+  wobble in memory into a mountain range and a processor pinned at 100% into a flat line. Each is
+  `accessibilityHidden` — the row above states the value in words, and voicing sixty points is that fact sixty times.
+- **The thresholds are hardware facts and live in `HealthLevel`, tested.** 80 °C is where the Raspberry Pi 5 begins
+  soft-throttling, so `elevated` arrives before it rather than after. No reference image can tell a wrong threshold
+  from a right one, which is why they are not inline in the view.
+- **A preview injects fixed series.** Live samples would redraw differently on every capture. `RobotHealthModel.preview`
+  fills the daemon's series always and the other three only while `.sampling`, which is exactly what the screen shows
+  when SSH drops: the loop keeps drawing and the operating system's rows go.
+
 ## Strings
 
 Project rule 9 in the root `AGENTS.md` is the whole of it: `.reachy("…")` where SwiftUI takes a

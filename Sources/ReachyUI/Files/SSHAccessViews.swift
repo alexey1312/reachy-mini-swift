@@ -4,23 +4,27 @@ import SwiftUI
 
 /// Asks for the robot's SSH password.
 ///
-/// Inline rather than a sheet: the screen has nothing to show behind it, and a
-/// model built inside a `.sheet` content closure is silently replaced every time
-/// the parent updates — the trap `RootSheets` documents.
+/// Bindings rather than a model, because two screens sign in to the same robot:
+/// the file browser, which is nothing but this session, and the state section on
+/// the Robot tab, which reads `/proc` over it. Typing this to either model would
+/// mean a second copy of the field, the footer and the shipping-default warning —
+/// and the warning is the part that must not be allowed to drift.
 struct SSHPasswordForm: View {
-    @Bindable var model: RobotFilesModel
+    @Binding var username: String
+    @Binding var password: String
+    let error: String?
     let onConnect: () -> Void
 
     var body: some View {
         Form {
             Section {
-                TextField(.reachy("User"), text: $model.username)
+                TextField(.reachy("User"), text: $username)
                     .textContentType(.username)
                     .autocorrectionDisabled()
                 #if os(iOS)
                     .textInputAutocapitalization(.never)
                 #endif
-                SecureField(.reachy("Password"), text: $model.password)
+                SecureField(.reachy("Password"), text: $password)
                     .textContentType(.password)
                     .onSubmit(onConnect)
             } header: {
@@ -35,7 +39,7 @@ struct SSHPasswordForm: View {
                 ))
             }
 
-            if let error = model.lastError {
+            if let error {
                 Section {
                     Text(error)
                         .font(Typography.detail)
@@ -45,7 +49,7 @@ struct SSHPasswordForm: View {
 
             Section {
                 Button(.reachy("Connect"), action: onConnect)
-                    .disabled(model.password.isEmpty || model.username.isEmpty)
+                    .disabled(password.isEmpty || username.isEmpty)
             }
         }
         .formStyle(.grouped)

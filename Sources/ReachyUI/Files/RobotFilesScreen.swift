@@ -48,7 +48,11 @@ struct RobotFilesScreen: View {
             Color.clear
                 .contentLoading(isPresented: true, title: .reachy("Connecting over SSH…"))
         case .needsPassword:
-            SSHPasswordForm(model: model) { Task { await model.connect() } }
+            SSHPasswordForm(
+                username: $model.username,
+                password: $model.password,
+                error: model.lastError
+            ) { Task { await model.connect() } }
         case let .confirmHostKey(fingerprint):
             HostKeyConfirmation(situation: .firstContact(fingerprint)) {
                 Task { await model.trustOfferedKey() }

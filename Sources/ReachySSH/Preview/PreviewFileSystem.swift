@@ -75,6 +75,24 @@
             return data
         }
 
+        /// Answers out of the same `contents` map as ``read(_:limit:)``, so a
+        /// fixture spells a `/proc` entry exactly the way it spells any other file.
+        /// A path with nothing behind it throws rather than returning an empty
+        /// string: that is what a robot without the file does, and the reader's
+        /// tolerance of a missing thermal zone has to be exercised somehow.
+        public func readPseudoFile(_ path: String) async throws -> String {
+            try record("readPseudoFile(\(path))")
+            guard let data = state.withLock({ $0.contents[path] }) else {
+                throw ReachySSHError.pathNotFound(path)
+            }
+            // Failable rather than `String(decoding:as:)`, which would turn a binary
+            // fixture into replacement characters and let a test assert on them.
+            guard let text = String(bytes: data, encoding: .utf8) else {
+                throw ReachySSHError.transport("\(path) is not text")
+            }
+            return text
+        }
+
         public func write(_ data: Data, to path: String) async throws {
             try record("write(\(path))")
             state.withLock { $0.contents[path] = data }

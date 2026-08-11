@@ -245,12 +245,13 @@
             motorMode: Components.Schemas.MotorControlMode = .enabled,
             error: String? = nil,
             wirelessVersion: Bool = true,
-            simulationEnabled: Bool = false
+            simulationEnabled: Bool = false,
+            controlLoop: ControlLoopStats? = nil
         ) -> Components.Schemas.DaemonStatus {
             let backend = state == .running
                 ? """
                 {"ready": true, "motor_control_mode": "\(motorMode.rawValue)",
-                 "last_alive": null, "control_loop_stats": {}}
+                 "last_alive": null, "control_loop_stats": \(Self.previewLoopJSON(controlLoop))}
                 """
                 : "null"
             let errorField = error.map { "\"error\": \"\($0)\"," } ?? ""
@@ -263,6 +264,20 @@
             """
             // swiftlint:disable:next force_try
             return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
+        }
+
+        /// Written back out as the daemon writes it — one key per measurement,
+        /// absent rather than null when it has none — so a fixture cannot describe a
+        /// payload the robot could not send.
+        private static func previewLoopJSON(_ stats: ControlLoopStats?) -> String {
+            guard let stats else { return "{}" }
+            let fields: [String?] = [
+                stats.frequencyHz.map { "\"mean_control_loop_frequency\": \($0)" },
+                stats.maxIntervalSeconds.map { "\"max_control_loop_interval\": \($0)" },
+                stats.errorCount.map { "\"nb_error\": \($0)" },
+                stats.motorController.map { "\"motor_controller\": \"\($0)\"" },
+            ]
+            return "{\(fields.compactMap(\.self).joined(separator: ", "))}"
         }
     }
 
