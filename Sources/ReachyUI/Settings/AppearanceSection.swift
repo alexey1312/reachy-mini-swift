@@ -78,11 +78,14 @@ struct AppearanceSection: View {
             Task { iconChangeFailed = await AppIconSwitcher.apply(theme) == false }
         } label: {
             VStack(spacing: Space.sm) {
-                Radius.rect(Radius.lg)
-                    .fill(gradient(theme))
+                Radius.rect(Self.tileRadius)
+                    .fill(theme.iconSwatch)
                     .frame(width: Metrics.themeTile, height: Metrics.themeTile)
                     .overlay {
-                        Radius.rect(Radius.lg)
+                        // Concentric: a ring pushed out by `Space.xs` needs its radius
+                        // grown by the same amount, or the gap it leaves is narrower at
+                        // the corners than along the sides and the corner reads pinched.
+                        Radius.rect(Self.tileRadius + Space.xs)
                             .strokeBorder(theme.accent, lineWidth: theme == selection ? 3 : 0)
                             .padding(-Space.xs)
                     }
@@ -97,16 +100,11 @@ struct AppearanceSection: View {
         .id(theme.id)
     }
 
-    private func gradient(_ theme: ReachyTheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(hex: theme.palette.gradientTop),
-                Color(hex: theme.palette.gradientBottom),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
+    /// A tile stands for the app icon, so it takes the icon's corner proportion rather
+    /// than a layout radius — the same `Radius.tile` the store and dock artwork use, so
+    /// all three read as one object at three sizes. `Radius.lg` was 16 pt on a 56 pt
+    /// tile, which is 29 % where an iOS icon's squircle is 22 %.
+    private static let tileRadius = Radius.tile(side: Metrics.themeTile)
 }
 
 #if DEBUG

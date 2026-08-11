@@ -89,6 +89,60 @@ public extension ReachyTheme {
 }
 
 public extension ReachyTheme {
+    /// The theme's app icon as a swatch — what the picker draws instead of the icon,
+    /// which exposes no thumbnail.
+    ///
+    /// **Not a copy of the icon.** Icon Composer's material is undocumented and is
+    /// deliberately not modelled here: fitting it was tried against two themes'
+    /// shipping renders and the channels disagree (graphite moves +20/+20/+20 at the
+    /// top, rose +0/+24/+14), so a formula would be false precision that the next
+    /// Xcode would invalidate anyway. What the same measurement _does_ establish, and
+    /// what this reproduces, is the shape of the difference:
+    ///
+    /// - the gradient is **vertical** — leading and trailing edges sit within 5/255 of
+    ///   each other through the whole body of the icon, so it is not diagonal;
+    /// - `icon.json`'s two stops land at roughly **17 % and 83 %** of the icon's
+    ///   height, not at its edges;
+    /// - past those the material carries on **lighter at the top and darker at the
+    ///   bottom**, which is why a swatch painted with the declared stops alone reads
+    ///   flatter than the icon it stands for.
+    ///
+    /// The two magnitudes are a judgement in that measured direction, not a fit.
+    var iconSwatch: LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(color: Self.blend(palette.gradientTop, toward: Self.swatchHighlight), location: 0),
+                .init(color: Color(hex: palette.gradientTop), location: Self.swatchStopInset),
+                .init(color: Color(hex: palette.gradientBottom), location: 1 - Self.swatchStopInset),
+                .init(color: Self.blend(palette.gradientBottom, toward: Self.swatchShade), location: 1),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// Where the declared stops render, measured off `AppIcon.icns` at 256 pt.
+    private static let swatchStopInset = 0.17
+    private static let swatchHighlight = 0.25
+    private static let swatchShade = -0.15
+
+    /// Blends a palette constant toward white (positive) or black (negative).
+    ///
+    /// A blend rather than an addition, so a channel already at full — orchid's blue,
+    /// rose's red — lightens without dragging the hue after it, which is exactly what
+    /// clamping an addition would do.
+    private static func blend(_ hex: UInt32, toward amount: Double) -> Color {
+        let target: Double = amount > 0 ? 1 : 0
+        let weight = abs(amount)
+        func channel(_ shift: UInt32) -> Double {
+            let value = Double((hex >> shift) & 0xFF) / 255
+            return value + (target - value) * weight
+        }
+        return Color(.sRGB, red: channel(16), green: channel(8), blue: channel(0), opacity: 1)
+    }
+}
+
+public extension ReachyTheme {
     /// Colour names, not robot vocabulary — a translator gets the same six words a
     /// paint chart would use.
     var title: LocalizedStringResource {
