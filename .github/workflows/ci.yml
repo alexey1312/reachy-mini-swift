@@ -114,7 +114,17 @@ jobs:
   # not have, and would resolve the package graph four times over.
   app-build-macos:
     name: App Build (macOS)
-    runs-on: macos-15
+    # The two app-build jobs are the ones on macos-26, and only because of the app
+    # icon: `actool` on the Xcode 26.2 that macos-15 tops out at fails
+    # `CompileAssetCatalogVariant` for the macOS variant of an Icon Composer `.icon`,
+    # while the iOS variant of the same tree compiles (Smoke builds and runs it).
+    # 26.4.1 is where the macOS icon compiles, and it exists only on this image —
+    # macos-15 offers 26.3 at most. The simulator-bound jobs stay on macos-15
+    # deliberately: their runtime and device identifiers are pinned to what that image
+    # carries. The iOS app build follows this one rather than macos-15 because that is
+    # where it ran when the two were a single job, and a merge is the wrong place to
+    # discover otherwise.
+    runs-on: macos-26
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     # `id-token` is what lets the composite action authenticate over OIDC instead of a
@@ -124,11 +134,13 @@ jobs:
       id-token: write
       contents: read
     env:
-      # Deliberately Xcode's own Swift, with no swift.org toolchain overlaid:
-      # xcodebuild cannot load the local package's manifest under one (its clang
-      # fails to spawn the linker). These jobs exist to compile the app shell and the
-      # Tuist manifest; lint-test is what holds the code to Swift 6.3.
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      # 17E202 — the same build the project is developed against, so a macOS app build
+      # that passes here is one that passes locally. Deliberately Xcode's own Swift,
+      # with no swift.org toolchain overlaid: xcodebuild cannot load the local
+      # package's manifest under one (its clang fails to spawn the linker). These jobs
+      # exist to compile the app shell and the Tuist manifest; lint-test is what holds
+      # the code to Swift 6.3.
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -145,20 +157,38 @@ jobs:
       - name: Build ReachyMini (Release)
         run: mise run build:app:release
 
+      # xcsift parses compiler diagnostics and nothing else, so a failure in the
+      # asset or resource phase reaches the log as `errors: 0` next to exit 65 —
+      # which says a build failed and not a word about why. Every task above writes
+      # a result bundle (for the tuist post-action); this reads the issues back out
+      # of it so a CI-only failure is legible without reproducing it by hand.
+      - name: Report build failures
+        if: failure()
+        run: |
+          for bundle in Apps/DerivedData/ResultBundles/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            echo "::group::$bundle"
+            xcrun xcresulttool get build-results --path "$bundle" --format json \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("errors", []), indent=2)[:20000] or "no errors recorded")' \
+              || echo "could not read $bundle"
+            echo "::endgroup::"
+          done
+
   # The macOS jobs leave ReachyWidget out entirely (iOS-only extension, embedded under
   # `condition: .when([.ios])`), so without this job the widget's sources are compiled
   # by nothing at all — which is how a `missing return` in ReachyAppsWidget.swift
   # reached main in #7.
   app-build-ios:
     name: App Build (iOS + widget)
-    runs-on: macos-15
+    # Same image and Xcode as the macOS app build above, for the reason given there.
+    runs-on: macos-26
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -172,6 +202,20 @@ jobs:
 
       - name: Build ReachyMini + widget (Release)
         run: mise run build:app:ios:release
+
+      # Same reason as the macOS job: xcsift reads compiler diagnostics only, so an
+      # asset-phase failure arrives as `errors: 0` beside exit 65.
+      - name: Report build failures
+        if: failure()
+        run: |
+          for bundle in Apps/DerivedData/ResultBundles/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            echo "::group::$bundle"
+            xcrun xcresulttool get build-results --path "$bundle" --format json \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("errors", []), indent=2)[:20000] or "no errors recorded")' \
+              || echo "could not read $bundle"
+            echo "::endgroup::"
+          done
 
   # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
   # so lint-test can never see them, and a preview that does not compile otherwise

@@ -113,7 +113,21 @@ let project = Project(
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],
-            resources: ["ReachyMini/Resources/**"],
+            // The five themed icons are iOS-only inputs. macOS has no alternate
+            // icons at all, so its `actool` compiles them and then drops them —
+            // measured: the macOS `Assets.car` carries `AppIcon` and nothing else.
+            // Scoping them saves that work. It is **not** what fixed the macOS asset
+            // compilation on CI — that needed a newer Xcode, and `ci.yml` says which.
+            resources: [
+                .glob(
+                    pattern: "ReachyMini/Resources/**",
+                    excluding: ["ReachyMini/Resources/AppIcon-*.icon"]
+                ),
+                .glob(
+                    pattern: "ReachyMini/Resources/AppIcon-*.icon",
+                    inclusionCondition: .when([.ios])
+                ),
+            ],
             dependencies: [
                 .package(product: "ReachyKit"),
                 .package(product: "ReachyUI"),
@@ -137,6 +151,14 @@ let project = Project(
                 // signs with flags=0x0 and the notary answers "does not have the
                 // hardened runtime enabled" per architecture.
                 "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
+                // SDK-scoped because macOS has no alternate icons: an unscoped
+                // setting names five bundles the macOS build has no use for.
+                // Every name here must equal a `ReachyTheme.alternateIconName`
+                // and a committed `.icon` directory — `ThemeIconNameTests` reads
+                // this literal back and fails when the three drift.
+                "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]":
+                    "AppIcon-Bronze AppIcon-Teal AppIcon-Indigo AppIcon-Orchid AppIcon-Rose",
+                "ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS[sdk=iphone*]": "YES",
             ])
         ),
         // Deliberately thin: a timeline provider over the shared snapshot and a

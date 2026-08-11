@@ -43,6 +43,9 @@ import SnapshotTesting
 
     // MARK: - PreviewProvider
 
+    // Not wrapped in `.reachyTheme`, unlike the Macros section below — deliberately:
+    // this repo has no `PreviewProvider`-conforming type, so the loop below generates
+    // zero tests. Wrap it the same way if one is ever added here.
     {% for type in types.types where type.implements.PrefireProvider or type.based.PrefireProvider or type|annotated:"PrefireProvider" %}
     func test_{{ type.name|lowerFirstLetter|replace:"_Previews", "" }}() {
         for preview in {{ type.name }}._allPreviews {
@@ -66,7 +69,10 @@ import SnapshotTesting
 
             let prefireSnapshot = PrefireSnapshot(
                 {
-                    {{ macroModel.body|indent:20 }}
+                    Group {
+                        {{ macroModel.body|indent:24 }}
+                    }
+                    .reachyTheme(.fallback)
                 },
                 name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
                 isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
@@ -82,7 +88,10 @@ import SnapshotTesting
         struct PreviewWrapper{{ macroModel.componentTestName }}: SwiftUI.View {
             {{ macroModel.properties }}
             var body: some View {
-                {{ macroModel.body|indent:12 }}
+                Group {
+                    {{ macroModel.body|indent:16 }}
+                }
+                .reachyTheme(.fallback)
             }
         }
         {% endif %}
@@ -91,7 +100,10 @@ import SnapshotTesting
                 {% if macroModel.properties %}
                 PreviewWrapper{{ macroModel.componentTestName }}()
                 {% else %}
-                {{ macroModel.body|indent:12 }}
+                Group {
+                    {{ macroModel.body|indent:16 }}
+                }
+                .reachyTheme(.fallback)
                 {% endif %}
             },
             name: "{{ macroModel.displayName }}",
