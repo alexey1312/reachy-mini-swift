@@ -51,9 +51,20 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   per-user LaunchAgent that `tuist setup cache` creates once (bootstrap.sh runs it best-effort; it needs a tuist.dev
   session). A missing daemon is **not** the cliff it used to be: the plugin fails fast on an absent socket and the
   local CAS inside DerivedData keeps serving hits — an incremental rebuild measured 23 s with the daemon and 22 s
-  without. CI still defaults `TUIST_CACHE_ENABLED=false` at the workflow level; `app-build` flips it on only after its
-  own `tuist setup cache` step sees a live socket, because a fork has no session to start one and because a `.sock`
-  file outlives a dead daemon — existence is not liveness. **Cache keys embed absolute paths**, so hits only come from
+  without. CI still defaults `TUIST_CACHE_ENABLED=false` at the workflow level; only the two app-build jobs ask
+  `.github/actions/xcode-workspace` for `compilation-cache: "true"`, and even they flip the variable only once the
+  `tuist setup cache` step sees a live socket — a fork has no session to start one with, and a `.sock` file outlives a
+  dead daemon, so existence is not liveness. **On CI it has been measured and it does not pay** — do not switch it on
+  for the other jobs without new evidence. Two things were wrong with the obvious theory, and both were corrected
+  before measuring: the generated project carries `COMPILATION_CACHE_*` but no `SWIFT_ENABLE_EXPLICIT_MODULES`,
+  without which the Swift compiler caches nothing and says so at every build ("swift compiler caching requires
+  explicit module build"); and that setting cannot come from `Apps/Project.swift`, because a project's build settings
+  do not reach the SPM package targets Xcode builds as implicit projects — which is all of ReachyKit, ReachyUI and
+  ReachyMedia. Passing it through `REACHY_XCB_EXTRA` does reach them. With both fixed and the cache service up in all
+  four Xcode jobs, a populate-then-read pair on one commit (run 31462908387, attempts 1 and 2) came out at **13.1 min
+  against 13.2 without any of it** — one job faster, two slower. Reverted. A runner's DerivedData is empty every time,
+  so only the remote CAS can help, and it does not help enough to see.
+  **Cache keys embed absolute paths**, so hits only come from
   a stable DerivedData path: a clean rebuild in the same DD replays from cache (119 s → 39 s measured), while the same
   build in a different DD misses every key and re-uploads everything. `Apps/DerivedData` and CI's fixed workspace path
   both qualify; a first build with an empty cache pays a population surcharge. Everything is named after the project
@@ -77,7 +88,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   the server refuses the exchange with "No projects linked to the repository". The readable indicator is
   `repository_url`, which `tuist project show` prints only into the session log, not to the terminal; while it is
   `null`, OIDC has nothing to authorize against and PR comments cannot arrive either. The step warns rather than
-  fails on that, deliberately: `app-build` is what compiles the widget, and telemetry must not be what reddens it. Fallback if the connection is not wanted: an account token with the `ci`
+  fails on that, deliberately: `app-build-ios` is what compiles the widget, and telemetry must not be what reddens it. Fallback if the connection is not wanted: an account token with the `ci`
   scope group (`tuist account tokens create alexey1312 --scopes ci --name github-ci`) in a `TUIST_TOKEN` secret —
   `tuist project tokens` is deprecated, and a user session is interactive.
   `Apps/Tuist.swift` sets `optionalAuthentication: true` so a fork can still generate, which is exactly what makes a
@@ -124,13 +135,61 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
 ```
 
-`build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it as a
-separate job, so app-target breakage no longer reaches `main` unnoticed.
+`build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it in a
+job of its own, so app-target breakage no longer reaches `main` unnoticed.
 **`build:app` builds for macOS, where `ReachyWidget` does not exist** — the extension is `destinations: [.iPhone,
 .iPad]` and `Project.swift` embeds it behind `condition: .when([.ios])`, so a macOS destination compiles none of its
 sources and reports success over a widget that does not build. That is how `missing return` in
 `ReachyAppsWidget.swift` reached `main` in #7. `build:app:ios` (`-destination 'generic/platform=iOS'`, unsigned) is
-what covers it, and CI runs both.
+what covers it, and CI runs both — in two jobs split by platform, `App Build (macOS)` and `App Build (iOS + widget)`,
+each doing its Debug and Release configuration back to back.
+**The standard macOS runner is three M1 cores**, measured rather than assumed: `macos-15` reports 3 cores / 7 GiB /
+`Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
+resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is
+that larger runners are billed — including on public repositories, where the standard ones are free. Three cores is
+why compilation dominates every number in this file. **Two images are in play, and not for performance**: the two
+app-build jobs run on `macos-26` with Xcode 26.4.1 because `actool` on 26.2 fails `CompileAssetCatalogVariant` for the
+macOS variant of an Icon Composer `.icon`, and 26.4.1 exists only on that image. Everything else stays on `macos-15`
+with 26.2 — the simulator-bound jobs because their runtime and device identifiers are pinned to what that image
+carries. `macos-26`'s own core count has not been measured, so every timing quoted here is a `macos-15` number.
+**The previews job and the smoke job compile the same packages twice, on purpose.** Both build Debug for the iOS
+Simulator into the same `Debug-iphonesimulator` products directory, so one job running them in sequence really does
+reuse: the smoke step measured 9.9–10.7 min as its own job against **7.4** after the preview build in the same job.
+It is still the wrong trade — one job costs 2.2 + 5.2 + 7.4 against two costing max(8.2, 13.1), and the merged run
+came out at 15.6 min against 13.2. Serialising five minutes of previews to save three of smoke loses. Revisit only if
+the goal becomes runner minutes rather than wall clock, or if a fifth slot is worth more than two minutes.
+**CI's shape is dictated by five macOS slots.** A personal GitHub account gets five concurrent macOS jobs, and
+`ci.yml` spends exactly five, so splitting a job further only buys a queue — that is why the four app builds are two
+jobs and not a four-way matrix. It is also why the four heavy jobs carry `if: github.event_name == 'pull_request'`:
+merging used to run them a second time over the tree the PR had already proved, and two runs of five jobs against
+five slots is what turned a 22-minute CI into 30 (4.7 min of queueing for the app build, 8.1 for the smoke test,
+measured on run 31425771024). A push to `main` is `Lint & Test` plus `Warm the SPM cache`, which is what a squashed
+commit can still get wrong plus the one thing only a main run can do. Nothing gates on `lint` any more either;
+`needs: lint` cost every other job a serial 40 s.
+**A cache belongs to the ref that wrote it**, and that is what `warm-cache` exists for. GitHub scopes a cache created
+on `refs/pull/N/merge` to that PR alone; `refs/heads/main` is the one ref every PR can read. Making the Xcode jobs
+`pull_request`-only therefore left nothing to write the `SourcePackages` cache on main, and every PR restored an
+empty one — 101 s of package resolution per job, measured on run 31460604091, with the 691 MB entry sitting
+uselessly on `refs/pull/47/merge`. Anything cached for the Xcode jobs needs a producer that runs on a push.
+**The Release tasks compile, they do not ship, and their settings say so.** `build:app:release` passes
+`ONLY_ACTIVE_ARCH=YES` because Xcode's Release default is `NO`: the macOS build was compiling arm64 _and_ x86_64 in
+sequence, 8.5 minutes against Debug's 3.0, for a second target triple that catches nothing the first does not
+(WebRTC's macOS slice is `macos-x86_64_arm64`, so even the link is covered). Both Release tasks also pass
+`DEBUG_INFORMATION_FORMAT=dwarf` to drop the dsymutil pass. `Scripts/release-macos.sh` / `release-ios.sh` archive
+with the defaults, so what ships is still universal and still carries dSYMs — check there, not here, before
+concluding a slice is missing.
+`REACHY_XCB_EXTRA` is the seam for settings that belong to CI and not to a laptop: every xcodebuild task in
+`mise.toml` interpolates it, and `ci.yml` sets it to `COMPILER_INDEX_STORE_ENABLE=NO`. Index-while-building stays on
+locally because Xcode.app reads that index out of the same `Apps/DerivedData` these tasks write to.
+The four Xcode jobs share `.github/actions/xcode-workspace`: mise, an `Apps/DerivedData/SourcePackages` cache (the
+package graph was being resolved from scratch in every job — 82 s, 97 s, 108 s), the OIDC session, an optional
+`tuist setup cache`, and **one** `tuist generate`. The build steps then run under `MISE_TASK_SKIP_DEPENDS: "true"`,
+because every `mise run build:app*` otherwise re-runs its `depends = ["project"]` — that cost the old single
+app-build job four generations for one workspace. The variable takes `true`/`false`, not `1`, and rejects anything
+else outright. **The step order inside that action is load-bearing**: `Apps/Tuist.swift` reads `TUIST_CACHE_ENABLED`
+_at generation_, so a cache service started after `tuist generate` is a service the project was never told about —
+the socket comes up, the step reports success, and nothing is cached. Generation stays last for the same reason the
+SourcePackages restore comes first.
 `test:filter` matches type names (`RobotSessionAudioTests`), not `@Suite` display names.
 `Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
 queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
