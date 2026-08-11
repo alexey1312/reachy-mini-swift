@@ -1,0 +1,26 @@
+name: Runner probe
+
+# Throwaway. Answers two questions this repository has been guessing at: how many
+# cores the standard macOS runner actually has, and whether a larger one is available
+# to a personal account at all. Delete once both are written down.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 5
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-xlarge, macos-latest-xlarge]
+    steps:
+      - name: Describe the machine
+        run: |
+          echo "runner=${{ matrix.runner }}"
+          echo "cores=$(sysctl -n hw.ncpu)  perf=$(sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || echo '?')"
+          echo "memory=$(( $(sysctl -n hw.memsize) / 1073741824 )) GiB"
+          echo "cpu=$(sysctl -n machdep.cpu.brand_string)"
+          echo "arch=$(uname -m)"

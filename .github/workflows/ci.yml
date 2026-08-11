@@ -26,8 +26,8 @@ env:
   # tasks must not re-run their `depends = ["project"]`.
   MISE_TASK_SKIP_DEPENDS: "true"
 
-# A personal account gets five concurrent macOS jobs, so five is the budget this file
-# spends and splitting further only buys a queue. The four heavy jobs are `pull_request`
+# A personal account gets five concurrent macOS jobs, so five is the ceiling this file
+# works under and splitting further only buys a queue. The heavy jobs are `pull_request`
 # only: merging runs them a second time over the tree the PR already proved, and two
 # runs of five jobs against five slots is what turned a 22-minute CI into 30 (measured:
 # 4.7 min of queueing for the app build, 8.1 for the smoke test). A push to main is
@@ -173,14 +173,25 @@ jobs:
       - name: Build ReachyMini + widget (Release)
         run: mise run build:app:ios:release
 
-  # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
-  # so lint-test can never see them, and a preview that does not compile otherwise
-  # first surfaces minutes into a local snapshot run, or after `record` has already
-  # deleted every reference. build-for-testing compiles the previews, the generated
-  # Prefire tests and the snapshot target; no simulator runtime and no references
-  # are involved, which is what makes it runnable on CI's Xcode at all.
-  preview-build:
-    name: Preview Build (ReachyUISnapshotTests)
+  # Both halves of this job build Debug for the iOS Simulator into the same
+  # Debug-iphonesimulator products directory — `generic/platform=iOS Simulator` and
+  # `platform=iOS Simulator,name=…` differ in destination, not in SDK or arch — so the
+  # second should link the package objects the first already compiled, and the graphs
+  # overlap heavily (both reach ReachyUI, and through it ReachyMedia and ReachyScene).
+  # Run as two jobs they cost max(8.2, 13.0); the bet is that sharing beats that, and
+  # it frees a slot either way. If the two steps come out near the sum instead, there is
+  # no reuse and this goes back to two jobs.
+  #
+  # First half: previews compile only in the Xcode targets — Package.swift excludes
+  # Previews/**, so lint-test can never see them, and a preview that does not compile
+  # otherwise first surfaces minutes into a local snapshot run, or after `record` has
+  # already deleted every reference. `build-for-testing` compiles the previews, the
+  # generated Prefire tests and the snapshot target without a simulator runtime and
+  # without comparing a reference, which is what makes it runnable on CI's Xcode at all.
+  # Second half: the one thing that launches the app binary, an XCUITest walking the
+  # connect gate. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  ios-simulator:
+    name: Previews & Smoke (iOS Simulator)
     runs-on: macos-15
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
@@ -196,27 +207,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Previews first: it is the cheaper of the two, so a broken preview fails the PR
+      # sooner, and whatever it compiles is what the smoke build then does not have to.
       - name: Compile previews and snapshot target
         run: mise run snapshots:build
-
-  # The one job that launches the app binary: XCUITest walks the connect gate on
-  # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
-  smoke:
-    name: Smoke (iOS Simulator)
-    runs-on: macos-15
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 60
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: ./.github/actions/xcode-workspace
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Smoke test
         run: mise run test:smoke
