@@ -154,6 +154,23 @@ jobs:
       - name: Build ReachyMini + widget (iOS, Release)
         run: mise run build:app:ios:release
 
+      # xcsift parses compiler diagnostics and nothing else, so a failure in the
+      # asset or resource phase reaches the log as `errors: 0` next to exit 65 —
+      # which says a build failed and not a word about why. Every task above writes
+      # a result bundle (for the tuist post-action); this reads the issues back out
+      # of it so a CI-only failure is legible without reproducing it by hand.
+      - name: Report build failures
+        if: failure()
+        run: |
+          for bundle in Apps/DerivedData/ResultBundles/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            echo "::group::$bundle"
+            xcrun xcresulttool get build-results --path "$bundle" --format json \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("errors", []), indent=2)[:20000] or "no errors recorded")' \
+              || echo "could not read $bundle"
+            echo "::endgroup::"
+          done
+
   # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
   # so build-test can never see them, and a preview that does not compile otherwise
   # first surfaces minutes into a local snapshot run, or after `record` has already
