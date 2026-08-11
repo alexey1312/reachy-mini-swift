@@ -15,6 +15,12 @@ Hugging Face token reaches `ReachyKit` from `HuggingFaceAuth`.
   restarts itself and its apps (`POST /api/daemon/restart`, `/api/apps/restart-current-app`). Adding a command
   runner here would duplicate a supported surface and put robot control on a path that bypasses project rule 2.
   It also settles the question of whether `pollen` has passwordless `sudo`: it does not matter, nothing needs it.
+  - **`SystemMetricsReader` is not a hole in that rule, and it is what keeps one from being needed.** Processor,
+    memory and temperature exist in no daemon route at all — `psutil` is installed on the robot and used only to
+    manage processes and list interfaces — so the obvious next request is `top`, `free`, `vcgencmd`. Reading
+    `/proc` and `/sys` answers all three as **file reads**, which is what this layer already does. What that
+    cannot reach stays unreachable rather than becoming a reason to add `exec`: **free disk space**, which needs
+    the `statvfs@openssh.com` extension, and Citadel's `SFTPMessage` has no outbound `extended` case at all.
 - **No text editor.** Editing is download → change on the device → upload over the same path, so `write` truncates
   and creates. That is why the upload flow has to offer "replace this file" and not only "add a file here".
 - **No recursion.** `remove` picks `remove` or `rmdir` from the entry's kind, and `rmdir` refuses a non-empty
@@ -78,6 +84,44 @@ warnings-as-errors policy. Do not go hunting for them in this target — there i
   `.transport` rather than lying.
 - `accessModificationTime.modificationTime` is already a `Date`, not the `UInt32` the wire format carries.
 - `.` and `..` come back in every listing and are filtered here, once, rather than in each screen.
+- **`readAll()` cannot read `/proc`, and it fails by returning nothing rather than by throwing.** Citadel drives its
+  read loop from `attributes.size` (`SFTPFile.swift:99`) — `while readableBytes > 0` — and every entry under `/proc`
+  and `/sys` reports a size of **0**, because the kernel generates the contents at read time and does not know the
+  length in advance. The size is _present_ and zero, not absent, so the `else` branch that reads until EOF is never
+  taken: the loop body runs zero times and the caller gets an empty buffer for a file that has plenty in it.
+  `readPseudoFile(_:)` is the size-independent form — `file.read(from:length:)` forward until the server answers
+  short, which is the only end-of-file SFTP offers (Citadel turns an EOF status into an empty buffer rather than
+  throwing). It is bounded at 256 KiB because nothing can check a size first, and `/proc/kcore` is the machine's
+  entire address space while also claiming to be empty.
+  - **Confirmed against a real Reachy Mini Wireless.** `stat` on the robot reports `/proc/meminfo size=0`,
+    `/proc/stat size=0`, `/proc/uptime size=0` — while `sftp pollen@robot:/proc/meminfo` retrieves **1149 bytes**.
+    So the server does serve the contents on a sized `READ`, and OpenSSH's own client reaches them by reading
+    forward rather than by trusting the size, which is exactly the strategy here. Anything driving `readAll()` at
+    those paths gets an empty buffer and no error.
+  - **`/sys` is not `/proc` in this respect**: `/sys/class/thermal/thermal_zone0/temp` reports `size=4096`, so it
+    would survive `readAll()`. Only procfs reports zero. Both go through `readPseudoFile` regardless — one path
+    for "the kernel made this up at read time" is simpler than remembering which half lies.
+
+## Reading the robot's own vitals
+
+`LinuxSystemSnapshot` + `LinuxProc` (parsers) + `SystemMetricsReader` (the five reads and the state between them).
+Four facts about Linux that the parsers encode and that a reviewer should not "simplify" away:
+
+- **`iowait` is idle time.** It sits beside `idle` in `/proc/stat` and means the core had nothing to run. Folding it
+  into the busy side is the classic way to report 90% CPU on a machine that is only waiting on a disk.
+- **`guest` and `guest_nice` are already inside `user` and `nice`.** Summing the whole `cpu` line double-counts them.
+  Only the first eight counters are added, which is why the code says `.prefix(8)` rather than summing everything.
+- **`MemFree` is not free memory.** Linux spends every spare page on cache and hands it back on demand, so free is
+  alarmingly small on a healthy machine. `MemAvailable` is the one that means anything; reading the other reports a
+  robot at 77% memory pressure while it idles.
+- **A percentage needs two samples**, so the first reading of a session carries none. A reboot between two samples
+  resets the counters, and subtracting `UInt64`s the wrong way round **traps** rather than going negative — hence the
+  explicit backwards check rather than a `max(0,)`.
+
+The thermal zone is found by reading each zone's `type` and matching `cpu`, not by assuming zone 0: the index follows
+device tree order, and a board with a PMIC or disk sensor ahead of the processor would report that sensor's
+temperature as the CPU's. The answer is cached, including the "this machine has none" answer, so the scan's ten round
+trips are paid once per session rather than every five seconds.
 
 ## Credentials and keys
 

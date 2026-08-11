@@ -245,6 +245,25 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 
 ## Facts
 
+- **`control_loop_stats` is the only live health telemetry the daemon publishes, and two fields beside it are dead.**
+  `backend/robot/backend.py` refreshes the dictionary once a second with `mean_control_loop_frequency` (~100 Hz on
+  healthy hardware), `max_control_loop_interval`, `nb_error` (cumulative since the backend started) and
+  `motor_controller`. It fills them only after averaging more than one interval, so the first second of a backend
+  carries a controller name and nothing else, and **only the real robot backend fills it at all** —
+  `MujocoBackendStatus` and `MockupSimBackendStatus` carry a motor mode and an error and no loop, and
+  `RemoteRobotConnection` synthesises a relayed status from the motor mode alone. An empty dictionary is therefore
+  the normal answer for three ordinary situations, not a fault. Read through `DaemonStatus.controlLoop`.
+  - **`last_alive` and `ready` are in the schema and daemon 1.9.0 never writes either.** `RobotBackendStatus` is
+    built once at backend start-up with `last_alive=None, ready=False`; the control loop then updates
+    `self.last_alive` — the backend's own attribute, not the status object's field — and `get_status()` refreshes
+    only `error` and `motor_control_mode` before handing the same instance back. So the wire carries
+    `"last_alive": null, "ready": false` for the entire life of a perfectly healthy robot, and a "last seen 3 s ago"
+    row built on it reads as a robot that has never answered. Readiness is `state == .running`, which is what
+    `DaemonStatus.isBackendRunning` uses.
+  - **There is no CPU, memory, temperature or disk anywhere in the API.** `psutil` is a daemon dependency and is
+    used only to manage processes (`apps/manager.py`) and to list network interfaces (`daemon/utils.py`); no route
+    reports any of it. Those come from `/proc` and `/sys` over SSH — `ReachySSH/SystemMetricsReader` — which is
+    LAN-only by construction. Do not go looking for an endpoint.
 - Daemon process ≠ robot backend. `/api/daemon/status` answers 200 with `backend_status: null` while the backend is
   torn down (`daemon.stop()` sets `self.backend = None`); every route behind the `get_backend` dependency
   (`move/*`, `state/*` incl. `ws/full`, `motors/*`, `kinematics/*`, `volume/*`) answers **503 "Backend not running"**.

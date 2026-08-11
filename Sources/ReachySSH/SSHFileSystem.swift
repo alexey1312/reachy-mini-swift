@@ -157,6 +157,43 @@ public actor SSHFileSystem: RobotFileSystem {
         }
     }
 
+    /// Bounded rather than checked up front: this method exists precisely for the
+    /// paths that misreport their size, so asking first — which is what
+    /// ``read(_:limit:)`` does — cannot protect it. `/proc/kcore` is the machine's
+    /// entire address space and also claims to be empty.
+    private static let pseudoFileLimit = 256 * 1024
+    private static let pseudoFileChunk: UInt32 = 32 * 1024
+
+    public func readPseudoFile(_ path: String) async throws -> String {
+        let sftp = try session()
+        let bytes = try await perform {
+            try await sftp.withFile(filePath: path, flags: .read) { file in
+                var buffer = Data()
+                while buffer.count <= Self.pseudoFileLimit {
+                    let chunk = try await file.read(
+                        from: UInt64(buffer.count),
+                        length: Self.pseudoFileChunk
+                    )
+                    // Citadel turns an EOF status into an empty buffer rather than
+                    // throwing, so a short answer is the only end-of-file there is.
+                    guard chunk.readableBytes > 0 else { break }
+                    buffer.append(contentsOf: chunk.readableBytesView)
+                }
+                return buffer
+            }
+        }
+        guard bytes.count <= Self.pseudoFileLimit else {
+            throw ReachySSHError.fileTooLarge(bytes: UInt64(bytes.count), limit: Self.pseudoFileLimit)
+        }
+        // Every path this reads is kernel-generated ASCII. A failure here means the
+        // path was not what the caller thought it was, which is worth saying rather
+        // than papering over with a lossy conversion.
+        guard let text = String(data: bytes, encoding: .utf8) else {
+            throw ReachySSHError.transport("\(path) is not text")
+        }
+        return text
+    }
+
     public func write(_ data: Data, to path: String) async throws {
         let sftp = try session()
         try await perform {

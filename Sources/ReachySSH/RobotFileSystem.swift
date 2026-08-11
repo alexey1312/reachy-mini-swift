@@ -16,6 +16,14 @@ public protocol RobotFileSystem: Sendable {
     /// Reads a whole file, refusing anything over `limit` rather than growing to
     /// fit it.
     func read(_ path: String, limit: Int) async throws -> Data
+    /// Reads a file the server reports no size for — which is every entry under
+    /// `/proc` and `/sys`.
+    ///
+    /// Separate from ``read(_:limit:)`` because Citadel drives `readAll()` from the
+    /// size in the file's attributes, and procfs answers `0`: the loop never runs
+    /// and the caller is handed an empty buffer instead of the file. This one reads
+    /// forward until a short answer, which is the only end-of-file SFTP gives.
+    func readPseudoFile(_ path: String) async throws -> String
     /// Creates or truncates. This is also how an edit lands: the file goes to the
     /// device, an editor there changes it, and it comes back over the same path.
     func write(_ data: Data, to path: String) async throws
