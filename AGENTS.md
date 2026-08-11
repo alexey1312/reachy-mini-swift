@@ -139,8 +139,14 @@ each doing its Debug and Release configuration back to back.
 jobs and not a four-way matrix. It is also why the four heavy jobs carry `if: github.event_name == 'pull_request'`:
 merging used to run them a second time over the tree the PR had already proved, and two runs of five jobs against
 five slots is what turned a 22-minute CI into 30 (4.7 min of queueing for the app build, 8.1 for the smoke test,
-measured on run 31425771024). A push to `main` is one job — `Lint & Test`, which is what a squashed commit can still
-get wrong. Nothing gates on `lint` any more either; `needs: lint` cost every other job a serial 40 s.
+measured on run 31425771024). A push to `main` is `Lint & Test` plus `Warm the SPM cache`, which is what a squashed
+commit can still get wrong plus the one thing only a main run can do. Nothing gates on `lint` any more either;
+`needs: lint` cost every other job a serial 40 s.
+**A cache belongs to the ref that wrote it**, and that is what `warm-cache` exists for. GitHub scopes a cache created
+on `refs/pull/N/merge` to that PR alone; `refs/heads/main` is the one ref every PR can read. Making the Xcode jobs
+`pull_request`-only therefore left nothing to write the `SourcePackages` cache on main, and every PR restored an
+empty one — 101 s of package resolution per job, measured on run 31460604091, with the 691 MB entry sitting
+uselessly on `refs/pull/47/merge`. Anything cached for the Xcode jobs needs a producer that runs on a push.
 **The Release tasks compile, they do not ship, and their settings say so.** `build:app:release` passes
 `ONLY_ACTIVE_ARCH=YES` because Xcode's Release default is `NO`: the macOS build was compiling arm64 _and_ x86_64 in
 sequence, 8.5 minutes against Debug's 3.0, for a second target triple that catches nothing the first does not

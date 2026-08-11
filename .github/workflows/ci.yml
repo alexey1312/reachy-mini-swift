@@ -84,6 +84,29 @@ jobs:
       - name: Build & test
         run: mise run test
 
+  # A cache is scoped to the ref that wrote it: one created on refs/pull/N/merge is
+  # readable by that PR and nothing else, while refs/heads/main is readable by every PR.
+  # The four Xcode jobs are pull_request-only, so without this job nothing would ever
+  # write the SourcePackages cache on main and every PR would restore an empty one —
+  # measured as 101 s of package resolution per job on the run that introduced it. All
+  # this job does is the shared setup, which ends by populating the cache.
+  warm-cache:
+    name: Warm the SPM cache
+    runs-on: macos-15
+    if: github.event_name == 'push'
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/xcode-workspace
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
   # `swift build` never reaches Apps/ReachyMini — it is an Xcode target, not an SPM one,
   # so nothing but SwiftLint ever looked at it. These two jobs are the only thing that
   # compiles the app shell and the Tuist manifest that generates it. They are split by
