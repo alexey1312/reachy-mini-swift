@@ -5,10 +5,13 @@ import Testing
 
 /// A daemon with a small store: one official Space, one community Space, and one
 /// of them installed under a different name.
-private final class StoreRobotClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+///
+/// Internal rather than private: `AppStoreCacheTests` needs the same robot.
+final class StoreRobotClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var started: [String] = []
     private(set) var stopCalls = 0
+    private(set) var catalogueCalls = 0
     private(set) var startupWrites: [String?] = []
     var runningApp: RobotAppStatus?
     var lockStatus = RobotAppLockStatus(state: .free)
@@ -43,6 +46,7 @@ private final class StoreRobotClient: RobotAPIClient, RobotAppsClient, @unchecke
     }
 
     func availableApps() async throws -> [RobotApp] {
+        lock.withLock { catalogueCalls += 1 }
         if failsCatalogue {
             throw ReachyKitError.daemonRejected(statusCode: 503)
         }

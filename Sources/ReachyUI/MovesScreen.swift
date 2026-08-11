@@ -9,9 +9,11 @@ struct MovesScreen: View {
     @State private var model: MovesModel
     @Environment(\.reachyPreviewMode) private var previewMode
 
-    init(session: RobotSession, model: MovesModel = MovesModel()) {
+    init(session: RobotSession, model: MovesModel? = nil) {
         self.session = session
-        _model = State(initialValue: model)
+        // Not a default argument: it has to be built *from* `session` so the
+        // libraries the disk cache warmed are on the first frame.
+        _model = State(initialValue: model ?? MovesModel(session: session))
     }
 
     var body: some View {
