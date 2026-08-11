@@ -98,6 +98,23 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   `.appiconset` produced a handful. Measured by building the same tree twice: `Assets.car` is 1.66 MiB with one icon
   and 4.71 MiB with six. A seventh theme is 624 KiB of binary, not a rounding error; the _source_ tree is the half
   that got smaller (539 KB of deleted PNG against 349 KB of bundles).
+- **A theme swatch is `ReachyTheme.iconSwatch`, and it deliberately does not copy the icon.** The picker cannot show
+  the real thing — a `.icon` exposes no thumbnail — so it paints a swatch, and a swatch of the two declared stops
+  reads flatter than the icon it stands for. Three things were measured off the shipping `AppIcon.icns` at 256 pt
+  and are what the swatch reproduces: the gradient is **vertical** (leading and trailing edges within 5/255 of each
+  other through the body of the icon, so it is not diagonal), `icon.json`'s stops land at roughly **17 % and 83 %**
+  of the height rather than at the edges, and past them the material runs lighter at the top and darker at the
+  bottom. **Fitting the material itself was tried and abandoned**: graphite's extremes move +20/+20/+20 and rose's
+  +0/+24/+14, so neither an additive nor a multiplicative model holds across two themes, and a formula from two
+  samples of an undocumented private render would be false precision that the next Xcode invalidates. The two
+  magnitudes in `iconSwatch` are a judgement in the measured direction, and the blend is toward white/black rather
+  than an addition so that orchid's blue and rose's red — already at full — lighten without dragging their hue.
+- **A theme tile takes `Radius.tile(side:)`, not a layout radius.** It stands for the app icon, so it takes the
+  icon's corner proportion (`side / 4.5` ≈ 22 %, the iOS squircle) and reads as the same object as the store and
+  dock artwork, which use the same token. It shipped as `Radius.lg` — 16 pt on a 56 pt tile, 29 % — which is
+  visibly rounder than an icon. **A selection ring around it is concentric or it is wrong**: a ring pushed out by
+  `Space.xs` needs its radius grown by the same `Space.xs`, or the gap is narrower at the corners than along the
+  sides and the corner reads pinched. Equal radii at different insets is the mistake to look for.
 - **No reference image can cover an app icon.** The snapshot suite renders views, never a Home Screen. Icons are a
   device check plus one iOS 18 simulator install, and that is the whole of their cover — a green suite says nothing
   about them. `AppIconSwitcher`'s unit tests cover the decision around the call (which name, and the no-op guard that
