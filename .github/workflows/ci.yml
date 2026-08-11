@@ -83,7 +83,14 @@ jobs:
   # compiles the app shell and the Tuist manifest that generates it.
   app-build:
     name: App Build (ReachyMini, macOS + iOS)
-    runs-on: macos-15
+    # The one job on macos-26, and only because of the app icon: `actool` on the
+    # Xcode 26.2 that macos-15 tops out at fails `CompileAssetCatalogVariant` for
+    # the macOS variant of an Icon Composer `.icon`, while the iOS variant of the
+    # same tree compiles (Smoke builds and runs it). 26.4.1 is where the macOS
+    # icon compiles, and it exists only on this image — macos-15 offers 26.3 at
+    # most. The simulator-bound jobs stay on macos-15 deliberately: their runtime
+    # and device identifiers are pinned to what that image carries.
+    runs-on: macos-26
     needs: lint
     timeout-minutes: 60
     # `id-token` is what lets the step below authenticate over OIDC instead of a stored token.
@@ -93,7 +100,9 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      # 17E202 — the same build the project is developed against, so a macOS app
+      # build that passes here is one that passes locally.
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 

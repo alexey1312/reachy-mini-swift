@@ -116,9 +116,8 @@ let project = Project(
             // The five themed icons are iOS-only inputs. macOS has no alternate
             // icons at all, so its `actool` compiles them and then drops them —
             // measured: the macOS `Assets.car` carries `AppIcon` and nothing else.
-            // Handing them to it is pure work in the one build phase that has known
-            // `.icon` regressions, and it is where CI's older Xcode fails while the
-            // iOS build of the same tree passes.
+            // Scoping them saves that work. It is **not** what fixed the macOS asset
+            // compilation on CI — that needed a newer Xcode, and `ci.yml` says which.
             resources: [
                 .glob(
                     pattern: "ReachyMini/Resources/**",
