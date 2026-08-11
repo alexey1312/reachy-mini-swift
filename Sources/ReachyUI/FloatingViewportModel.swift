@@ -203,6 +203,9 @@ final class FloatingViewportModel {
     /// is nearest where it was hiding, and the stream comes back once it has arrived.
     func beginUndocking(in bounds: CGRect) {
         guard case let .docked(edge, y) = rest, settling == nil else { return }
+        // No bleed: this point is only ever handed to `nearestCorner`, and a tab
+        // pushed further out past the edge it is already clamped against cannot cross
+        // the midline it is being tested for.
         let centre = Self.tabCentre(edge: edge, y: y, in: bounds)
         // A degenerate rectangle has no nearest anything; the edge it was hiding at
         // is still the side it should come back to.
@@ -233,8 +236,11 @@ final class FloatingViewportModel {
     /// `dragOffset(in:)`, and the view adds the two. Keeping them apart is what lets
     /// the finger drive a render-time `.offset` while `.position` carries only the
     /// resting point, so no layout pass runs over the renderer per touch event.
-    func centre(in bounds: CGRect) -> CGPoint {
-        Self.centre(of: drawn, in: bounds)
+    ///
+    /// `bleed` is the view's to supply because it is measured off the screen the view
+    /// is being drawn on, and it reaches only the docked case.
+    func centre(in bounds: CGRect, bleed: EdgeBleed = .none) -> CGPoint {
+        Self.centre(of: drawn, in: bounds, bleed: bleed)
     }
 
     /// What the finger is adding to the resting centre, resisted past the margin so
@@ -297,12 +303,16 @@ final class FloatingViewportModel {
     /// initial velocity is a fraction of the *journey* per second, so it means nothing
     /// until the journey is known — and the journey is only known once the release has
     /// been resolved, which is what this shares with `dragEnded`.
-    func releaseDistance(for release: DragRelease, in bounds: CGRect) -> CGFloat {
+    func releaseDistance(
+        for release: DragRelease,
+        in bounds: CGRect,
+        bleed: EdgeBleed = .none
+    ) -> CGFloat {
         guard let target = resolved(release, in: bounds) else { return 0 }
-        let resting = centre(in: bounds)
+        let resting = centre(in: bounds, bleed: bleed)
         let offset = dragOffset(in: bounds)
         let from = CGPoint(x: resting.x + offset.width, y: resting.y + offset.height)
-        let to = Self.centre(of: target, in: bounds)
+        let to = Self.centre(of: target, in: bounds, bleed: bleed)
         return hypot(to.x - from.x, to.y - from.y)
     }
 
