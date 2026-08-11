@@ -115,6 +115,19 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   visibly rounder than an icon. **A selection ring around it is concentric or it is wrong**: a ring pushed out by
   `Space.xs` needs its radius grown by the same `Space.xs`, or the gap is narrower at the corners than along the
   sides and the corner reads pinched. Equal radii at different insets is the mistake to look for.
+- **SwiftUI has an API for concentric corners and it does not fit this call site — measured, not assumed.**
+  `ContainerRelativeShape` (iOS 14+) inside `containerShape(_:)`, and `ConcentricRectangle` /
+  `.rect(corner: .containerConcentric)` (**iOS 26+**, above this app's floor), all derive the **inner** shape of a
+  nested pair from its container. The theme tile is the inner one and its radius is the thing that must stay pinned
+  — it carries the icon's squircle through `Radius.tile(side:)`, shared with `AppArtwork` — so deriving it would
+  hang the token on the ring, which is decoration. The direction actually needed here, outer from inner, is not
+  offered at any deployment target.
+  What the framework would compute in the direction it does cover is exactly `radius ± inset`: rendered at 8× with
+  `ImageRenderer`, a `ContainerRelativeShape` inset 4 pt inside a `RoundedRectangle(cornerRadius: 16.444, style:
+  .continuous)` came back **byte-identical** to `RoundedRectangle(cornerRadius: 12.444, style: .continuous)` — 0
+  differing pixels of 262 144. So the arithmetic at the call site is the framework's own rule and not an
+  approximation of it. Reach for `ContainerRelativeShape` when the container's radius is one we do **not** own — a
+  widget, a window, the screen — which is the case these APIs exist for.
 - **No reference image can cover an app icon.** The snapshot suite renders views, never a Home Screen. Icons are a
   device check plus one iOS 18 simulator install, and that is the whole of their cover — a green suite says nothing
   about them. `AppIconSwitcher`'s unit tests cover the decision around the call (which name, and the no-op guard that
