@@ -62,6 +62,11 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
      **Teal's dark accent does not clear it** (≈1.75), found only once this limb existed to check for it, and left
      as a `withKnownIssue` in `accentAgainstLabel` rather than silently repainted: changing a shipped theme's dark
      accent to fix a test is a palette decision, not something a test file gets to decide on its own.
+     This limb's 1.8 is the weakest-founded number in the rule, and worth knowing before leaning on it. Limb 1 cites
+     WCAG's large-text floor; limb 2's 1.8 was chosen to separate two _saturated_ colours from each other. Limb 3
+     reuses that same 1.8 for a different question — is a tint legible beside body text — with no standard behind
+     it. It was not reverse-engineered to admit graphite and exclude teal (it predates both measurements), but a
+     seventh theme landing near it deserves a look at the number rather than deference to it.
 - **Bronze's dark accent is `#A86D16`, deliberately darker than a dark-appearance accent usually is.** It shipped as
   `#E3A24A`, chosen against the light-appearance system tones only, before the separation rule above checked
   `palette.dark` against the dark ones. Measured against dark `warning` (`#FF9F0A`), `#E3A24A` scored 2.0° of hue and
