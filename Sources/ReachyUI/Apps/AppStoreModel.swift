@@ -43,6 +43,10 @@ final class AppStoreModel {
     /// the catalogue. That distinction keeps empty and loading states honest.
     private var hasCatalogueResult = false
     private var attemptedCatalogueLoad = false
+    /// These rows came off disk and the robot has not been asked yet. Two things
+    /// follow: the next `load` must go to the network even though the session
+    /// already holds the list, and it must do so without saying anything.
+    private var catalogueIsWarmed = false
 
     /// Coalesces overlapping loads: a slow catalogue must not overwrite the result
     /// of a refresh the user asked for afterwards (`MovesModel`'s pattern).
@@ -50,6 +54,19 @@ final class AppStoreModel {
 
     init(session: RobotSession) {
         self.session = session
+        // Seeded here rather than in `.task`, which runs after the first frame:
+        // the whole point of the disk cache is that the frame is not a spinner.
+        // `RobotSession.warmCatalogues` has already put this in memory, before the
+        // connect gate came down and before this model existed.
+        guard let cached = session.cachedAppCatalogue else { return }
+        catalogue = cached.filter { !$0.isInstalled }
+        installed = cached.filter(\.isInstalled)
+        // Not a lie about either flag: a warmed record *is* a successful answer —
+        // from this robot, checked against its identity, inside its freshness
+        // window. What it is not is a *current* one, which `catalogueIsWarmed` says.
+        hasCatalogueResult = true
+        attemptedCatalogueLoad = true
+        catalogueIsWarmed = true
     }
 
     /// Read through rather than stored: the session is the single writer, and the
@@ -114,7 +131,16 @@ final class AppStoreModel {
         lock?.holderName
     }
 
+    /// Fetches the catalogue, and over warmed rows does it silently.
+    ///
+    /// A revalidation nobody asked for reports nothing either way. It may not
+    /// write into `lastError` — a red line under a perfectly usable menu is noise
+    /// with nothing to act on — and it may not clear it either, or a background
+    /// read would wipe the refusal from a Start or a Stop somebody is still
+    /// reading. The user's own Refresh is the opposite: they asked, so the answer
+    /// is theirs.
     func load(session: RobotSession, refresh: Bool = false) async {
+        let silent = catalogueIsWarmed && !refresh
         let requestID = UUID()
         loadID = requestID
         loading = true
@@ -128,17 +154,28 @@ final class AppStoreModel {
             // One `list-available` carries the catalogue and the installed list
             // together (`list_all_available_apps`), so the two sections cost one
             // round trip rather than two.
-            let apps = try await session.appCatalogue(refresh: refresh)
+            //
+            // `refresh` is forced over warmed rows: the session holds the same list
+            // in memory, so without it this call answers from the cache it was
+            // warmed from and the robot is never asked at all.
+            let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed)
             guard loadID == requestID, !Task.isCancelled else { return }
             catalogue = apps.filter { !$0.isInstalled }
             installed = apps.filter(\.isInstalled)
             hasCatalogueResult = true
             attemptedCatalogueLoad = true
-            lastError = nil
+            catalogueIsWarmed = false
+            if !silent {
+                lastError = nil
+            }
         } catch {
             guard loadID == requestID, !Task.isCancelled else { return }
             attemptedCatalogueLoad = true
-            lastError.recordDaemonFailure(error)
+            // The warmed rows stay on screen and `catalogueIsWarmed` stays true —
+            // the debt to the robot is not paid, so the next visit tries again.
+            if !silent {
+                lastError.recordDaemonFailure(error)
+            }
             return
         }
 
@@ -245,6 +282,8 @@ private extension RobotApp {
             model.section = section
             model.catalogue = catalogue
             model.installed = installed
+            // A preview is the state it was handed, never a debt to a robot.
+            model.catalogueIsWarmed = false
             model.startupApp = startupApp
             model.lock = lock
             model.loading = loading

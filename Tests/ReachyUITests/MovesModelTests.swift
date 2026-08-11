@@ -3,7 +3,8 @@ import ReachyKit
 @testable import ReachyUI
 import Testing
 
-private final class MovesUIClient: RobotAPIClient, @unchecked Sendable {
+/// Internal rather than private: `MovesCacheTests` needs the same robot.
+final class MovesUIClient: RobotAPIClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var listCalls = 0
     private(set) var played: [(String, String)] = []

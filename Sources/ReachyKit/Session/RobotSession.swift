@@ -229,12 +229,20 @@ public final class RobotSession {
     /// What this session last asked the robot to play, kept across launches so a
     /// move found still running can be named rather than merely noticed.
     let playbacks: MovePlaybackStore
+    /// The app catalogue and the move index, on disk, so a cold start does not
+    /// spend a Hugging Face round trip re-learning what it was already told.
+    /// `nil` means this session does not persist them. Lives in
+    /// `RobotSession+Cache`.
+    let catalogues: RobotCatalogueCache?
     private var pollTask: Task<Void, Never>?
     private var pathMonitor: NWPathMonitor?
     /// Not `private`: recorded moves live in `RobotSession+Moves`, a sibling file.
     var movePollTask: Task<Void, Never>?
     var moveRestoreTask: Task<Void, Never>?
     var moveCache: [String: [String]] = [:]
+    /// When the oldest library in `moveCache` was read off the robot, carried
+    /// across every rewrite of the stored index. Lives in `RobotSession+Cache`.
+    var moveIndexTakenAt: Date?
     /// Both lists cost the robot a Hugging Face round trip, so they are held for
     /// the life of the connection — and only that long. Not `private`: the store
     /// lives in `RobotSession+Apps`, a sibling file.
@@ -246,7 +254,7 @@ public final class RobotSession {
 
     /// Production session talking to a real daemon.
     public convenience init(configuration: Configuration = .init()) {
-        self.init(configuration: configuration) { try RobotConnection(address: $0) }
+        self.init(configuration: configuration, catalogues: .default) { try RobotConnection(address: $0) }
     }
 
     /// Injectable client factory for tests.
@@ -254,17 +262,24 @@ public final class RobotSession {
     /// `snapshots` and `appsCache` are injectable for the same reason the client
     /// is: they write into `UserDefaults`, and `--parallel` runs suites
     /// concurrently against one table.
+    ///
+    /// `catalogues` is the one that defaults to *nothing* rather than to a real
+    /// store, because the file system is a table with no suites in it: a default
+    /// of `.default` would have every suite reading and writing one `Caches`
+    /// directory, and the production path names it explicitly instead.
     public init(
         configuration: Configuration = .init(),
         snapshots: RobotSnapshotStore = RobotSnapshotStore(),
         appsCache: RobotAppsCacheStore = RobotAppsCacheStore(),
         playbacks: MovePlaybackStore = MovePlaybackStore(),
+        catalogues: RobotCatalogueCache? = nil,
         makeClient: @escaping @Sendable (RobotAddress) throws -> any RobotAPIClient
     ) {
         self.configuration = configuration
         self.snapshots = snapshots
         self.appsCache = appsCache
         self.playbacks = playbacks
+        self.catalogues = catalogues
         self.makeClient = makeClient
     }
 
@@ -286,6 +301,7 @@ public final class RobotSession {
         powerTransition = nil
         runningApp = nil
         moveCache = [:]
+        moveIndexTakenAt = nil
         appCatalogueCache = nil
         installedAppsCache = nil
         hfAccountCache = nil

@@ -58,7 +58,27 @@ final class MovesModel {
     /// An absent result starts as loading, but after a failed request it must become
     /// an actionable error instead of an infinite spinner. A later visit still retries.
     private var attemptedDatasets: Set<String> = []
+    /// Libraries that came off disk and the robot has not confirmed yet. The
+    /// per-dataset twin of `AppStoreModel.catalogueIsWarmed`, and it has to be per
+    /// dataset because the user may open one library and never the others.
+    private var warmedDatasets: Set<String> = []
     private var loadID: UUID?
+
+    /// Seeded from what `RobotSession.warmCatalogues` read off disk during the
+    /// handshake — before the connect gate lifted and before this model existed.
+    /// `.task` runs after the first frame, so a model that read the cache itself
+    /// would still draw one spinner.
+    ///
+    /// `nil` is the session-less form every test and preview builds.
+    init(session: RobotSession? = nil) {
+        guard let session else { return }
+        for library in Self.libraries {
+            guard let cached = session.cachedMoves(in: library.dataset) else { continue }
+            movesByDataset[library.dataset] = cached
+            attemptedDatasets.insert(library.dataset)
+            warmedDatasets.insert(library.dataset)
+        }
+    }
 
     var selectedLibrary: Library {
         Self.libraries[selection]
@@ -95,11 +115,15 @@ final class MovesModel {
         !startingMove && !session.isStoppingMove && !session.isRecentring && session.isAwake
     }
 
+    /// Fetches the selected library, and over warmed rows does it silently — the
+    /// reasoning is `AppStoreModel.load`'s, down to which slot may be written.
     func load(session: RobotSession, refresh: Bool = false) async {
         let dataset = selectedLibrary.dataset
+        let silent = warmedDatasets.contains(dataset) && !refresh
         // A library fetched earlier this session is already on screen; entering the loading
         // state for it would only replace those rows with a spinner and put them back.
-        if !refresh, movesByDataset[dataset] != nil {
+        // A warmed one is the exception: it is on screen and still owed a fetch.
+        if !refresh, !silent, movesByDataset[dataset] != nil {
             return
         }
         let requestID = UUID()
@@ -111,11 +135,16 @@ final class MovesModel {
             }
         }
         do {
-            let loaded = try await session.moves(in: dataset, refresh: refresh)
+            // Forced over a warmed library for `AppStoreModel.load`'s reason: the
+            // session holds the same index, so without it the robot is never asked.
+            let loaded = try await session.moves(in: dataset, refresh: refresh || silent)
             guard !Task.isCancelled, loadID == requestID else { return }
             movesByDataset[dataset] = loaded
             attemptedDatasets.insert(dataset)
-            lastError = nil
+            warmedDatasets.remove(dataset)
+            if !silent {
+                lastError = nil
+            }
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
             attemptedDatasets.insert(dataset)
@@ -123,8 +152,12 @@ final class MovesModel {
             // fetched", so the next visit to the tab retries, and a failed refresh leaves
             // the rows already on screen in place rather than clearing them over one bad
             // round trip. A stored `[]` is then a library the daemon really answered as
-            // empty, which is not worth retrying. Only the reason is recorded.
-            report(error)
+            // empty, which is not worth retrying. Only the reason is recorded — and a
+            // silent revalidation records nothing at all, keeping `warmedDatasets` so
+            // the next visit tries again.
+            if !silent {
+                report(error)
+            }
         }
     }
 
@@ -183,6 +216,8 @@ final class MovesModel {
             }
             model.startingMove = startingMove
             model.lastError = error
+            // A preview is the state it was handed, never a debt to a robot.
+            model.warmedDatasets = []
             return model
         }
 

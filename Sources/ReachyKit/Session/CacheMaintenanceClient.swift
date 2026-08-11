@@ -62,6 +62,7 @@ public extension RobotSession {
         try await withMaintenanceClient { try await $0.resetApps() }
         appCatalogueCache = nil
         installedAppsCache = nil
+        await forgetPersistedCatalogue()
     }
 }
 

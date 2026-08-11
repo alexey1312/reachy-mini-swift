@@ -106,6 +106,47 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
 - **`RobotSession.swift` is at SwiftLint's file and type limits.** Recorded moves moved out to
   `RobotSession+Moves.swift` when adding parking crossed both at once. New session behaviour belongs in a
   `RobotSession+<Feature>.swift`, not in the class body.
+- **The app catalogue and the move index outlive the process, in `Caches/ReachyMini/catalogue`.** `Cache/` holds one
+  `RobotCatalogueCache` actor with two slots, not two stores: both need the same atomic write, the same
+  identity-keyed layout and the same eviction, and all they differ in is payload and freshness — which is exactly
+  what `RobotCatalogueRecord` carries (apps 24 h, the same window and the same "menu, not reading" argument as
+  `RobotAppsCache`; moves 7 days, because only Pollen publishing a dance changes a dataset index). It differs from
+  `GeometryCache` in three deliberate places, each written up beside the code: no manifest marker (one file, so
+  `.atomic` makes completeness free), softer eviction (four robots, not one — these are kilobytes), and a refused
+  oversized write that leaves the previous record standing rather than erroring.
+  - **The catalogue is stored whole, as `[RobotApp]`, not as `RobotAppSummary`.** The widget's `RobotAppsCache` keeps
+    five fields because a widget installs nothing; a screen has to draw a card from this and `installApp` hands the
+    object back to the daemon unchanged, so a field lost here is a field the robot would never receive.
+  - **The directory name is `SHA256(deduplicationKey)` and the raw key is _also_ inside the record.** A robot's name
+    is free text somebody typed, so a `/` or a `..` in it would leave the cache directory on write —
+    `GeometryCache.isSafeMeshName` refuses such a name and hashing is cheaper. The copy inside the file is what makes
+    a tampered directory unable to hand over another robot's menu, and `RobotCatalogueCacheTests` puts a file at the
+    wrong path to prove it.
+  - **`warmCatalogues` runs inside `settle`, before `phase = .connected`, and that placement is the feature.** The
+    gate lifts on `.connected` and `ReachyTabShell` builds `AppStoreModel`/`MovesModel` immediately after, so the
+    models seed synchronously in their initialisers. A screen `.task` runs _after_ the first frame, so a model
+    reading disk itself would still draw one spinner — which is the whole thing this was built to remove. It costs
+    one file read against `readinessTimeout`'s eight seconds; `finishConnected` was not an option because it is
+    synchronous.
+  - **Every store call is `await`ed, never `Task { … }`.** Two detached tasks against one actor have no order
+    between them, so a revalidation still in flight could land its pre-install list _after_ the `remove` an install
+    fired to delete it. Awaiting inside calls that are already async puts them in the order the session made them,
+    and costs a suspension rather than a block — the encode happens on the actor.
+  - **Install, remove, update and `reset-apps` delete the record; disconnect does not.** "The robot's app list as of
+    the moment it started changing" is not old, it is wrong: `source_kind` is what the job is moving. Disconnect
+    keeps it for the reason written over `RobotAppsCacheStore.clear` — a cache that dies when a robot is let go
+    never survives the cold start it exists for. The move index is invalidated by nothing here.
+  - **The move index keeps the date of its oldest library, and `persistMoveIndex` is where that happens.** It is one
+    file, so listing any single library rewrites all of them — and since freshness is the only thing that ever
+    invalidates this slot, stamping that rewrite with `Date()` re-dates every library the session merely read off
+    disk. Open a different library every few days and the first one never expires. `RobotSession.moveIndexTakenAt`
+    carries the warmed record's date across the write instead, so the record ages as one and costs a full re-listing
+    every `freshness` — which is what every launch cost before this cache existed. The apps slot needs none of this:
+    `persistCatalogue` is only ever handed a list that was just fetched whole.
+  - **`catalogues` is the one `RobotSession` dependency defaulting to `nil` rather than to a real store.** The other
+    three write into `UserDefaults`, which a test replaces with a suite; a file system has no suites, and a default
+    of `.default` would have every `--parallel` suite sharing one `Caches` directory. The production convenience
+    `init` names `.default` explicitly, and `withTemporaryCatalogueCache` is how a test gets a real one.
 - **`robotError` is the robot's connection and power, and nothing else.** It was `lastError`, every funnel in the
   session wrote to it, and that is the second half of the same bug: a genuine Apps failure surfaced on the Robot tab
   too. Now `withClient`, `withAppsClient`, `withWiFiClient`, `withHFAuthClient` and `withUpdateClient` only throw —

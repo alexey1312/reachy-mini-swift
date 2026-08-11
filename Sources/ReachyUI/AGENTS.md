@@ -347,6 +347,23 @@ on the Robot tab.
   nothing on screen for a stale refusal to be stale on. It must not be shortened to "clear on the next tick" —
   the tick can land milliseconds after the tap, which is the original bug (a refusal shown nowhere) wearing a
   stopwatch.
+- **A revalidation nobody asked for may write to neither slot, and that is two rules, not one.** `AppStoreModel` and
+  `MovesModel` are seeded in their initialisers from the catalogues `RobotSession.warmCatalogues` read off disk
+  during the handshake, so the first frame after a cold start is rows rather than a spinner. Those rows are still
+  owed a reading, and the fetch that pays the debt is `silent`: it may not **write** `lastError` — a red line under a
+  perfectly usable menu is noise with nothing to act on, and it is the same category as a cancelled call — and it may
+  not **clear** it either, or a background read would wipe the refusal from a Start or a Stop somebody is still
+  reading. Only `refresh: true` reports, in both directions, because the user asked. A failed silent fetch leaves
+  `catalogueIsWarmed` / `warmedDatasets` set, so the next visit tries again rather than settling for the cached list.
+  - **Forcing `refresh` on that fetch is load-bearing, not defensive.** The session holds the same list in memory —
+    it is what the model was seeded from — so `session.appCatalogue(refresh: false)` answers out of it and the robot
+    is never asked at all. `MovesModel` needed a second edit for the same reason: its "already on screen, do not
+    re-enter loading" early return swallows the warmed case unless `silent` is excluded from it.
+  - **No reference covers any of this, and none can.** A warmed first frame renders pixel for pixel as the rows-on-
+    screen state already captured; a silent revalidation draws neither a spinner nor an error; a failed one draws
+    the rows without the error section, which is that same frame again. What is new is _when_ the frame appears,
+    which is a temporal property. There is deliberately no "showing saved data" footnote of the kind the widget
+    carries — the data is replaced within a second, and a badge that lives 800 ms is a flicker.
 - **A verdict may only be reached from a reading that arrived.** `refresh` swallows its own failure with `try?`, so
   after an unreachable poll `session.runningApp` still holds the previous status — and timing _that_ as if it were
   fresh is what let a Wi-Fi blip during a stop be reported as a wedged daemon, with `WedgedAppNotice` sending the

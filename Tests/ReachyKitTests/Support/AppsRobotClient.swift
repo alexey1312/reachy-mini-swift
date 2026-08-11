@@ -13,6 +13,11 @@ final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceCl
     private(set) var catalogueCalls = 0
     private(set) var installedCalls = 0
     private(set) var resetAppsCalls = 0
+    private(set) var moveCalls: [String] = []
+    /// Recorded-move libraries this robot serves, keyed by dataset. Here rather
+    /// than in a second client because the catalogue cache holds both indexes and
+    /// a test about it needs a robot that answers both.
+    var moveFixtures: [String: [String]] = [:]
     private(set) var removed: [String] = []
     private(set) var running: RobotAppStatus?
     var failsCatalogue = false
@@ -20,6 +25,9 @@ final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceCl
     /// Replaces the one-app installed list, for the tests that need an entry
     /// carrying the metadata the daemon leaves off a running-app status.
     var installedFixtures: [RobotApp]?
+    /// What the handshake reports. Settable so a test can prove a cached catalogue
+    /// belongs to one robot and is invisible to another (project rule 4).
+    var hardwareID = "hw"
 
     private var status: Components.Schemas.DaemonStatus {
         let json = """
@@ -32,7 +40,11 @@ final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceCl
     }
 
     func handshake() async throws -> RobotConnection.Handshake {
-        .init(identity: .init(hardwareID: "hw", name: "testbot", daemonVersion: "1.9.0"), status: status)
+        let hardwareID = lock.withLock { self.hardwareID }
+        return .init(
+            identity: .init(hardwareID: hardwareID, name: "testbot", daemonVersion: "1.9.0"),
+            status: status
+        )
     }
 
     func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
@@ -45,6 +57,11 @@ final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceCl
 
     func gotoSleep() async throws -> String {
         "sleep"
+    }
+
+    func listMoves(dataset: String) async throws -> [String] {
+        lock.withLock { moveCalls.append(dataset) }
+        return lock.withLock { moveFixtures[dataset] ?? [] }
     }
 
     func availableApps() async throws -> [RobotApp] {
@@ -147,12 +164,19 @@ struct AppSessionStores {
     }
 }
 
+/// `catalogues` defaults to nothing, the way `RobotSession` itself does: a suite
+/// that has not asked for a disk cache must not acquire one.
 @MainActor
 func connectedAppSession(
     _ client: any RobotAPIClient,
-    stores: AppSessionStores
+    stores: AppSessionStores,
+    catalogues: RobotCatalogueCache? = nil
 ) async throws -> RobotSession {
-    let session = RobotSession(snapshots: stores.snapshots, appsCache: stores.apps) { _ in client }
+    let session = RobotSession(
+        snapshots: stores.snapshots,
+        appsCache: stores.apps,
+        catalogues: catalogues
+    ) { _ in client }
     #expect(await session.connect(to: .init(host: "127.0.0.1")))
     return session
 }
