@@ -141,6 +141,17 @@ sources and reports success over a widget that does not build. That is how `miss
 `ReachyAppsWidget.swift` reached `main` in #7. `build:app:ios` (`-destination 'generic/platform=iOS'`, unsigned) is
 what covers it, and CI runs both — in two jobs split by platform, `App Build (macOS)` and `App Build (iOS + widget)`,
 each doing its Debug and Release configuration back to back.
+**The standard macOS runner is three M1 cores**, measured rather than assumed: `macos-15` reports 3 cores / 7 GiB /
+`Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
+resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is
+that larger runners are billed — including on public repositories, where the standard ones are free. Three cores is
+why compilation dominates every number in this file.
+**The previews job and the smoke job compile the same packages twice, on purpose.** Both build Debug for the iOS
+Simulator into the same `Debug-iphonesimulator` products directory, so one job running them in sequence really does
+reuse: the smoke step measured 9.9–10.7 min as its own job against **7.4** after the preview build in the same job.
+It is still the wrong trade — one job costs 2.2 + 5.2 + 7.4 against two costing max(8.2, 13.1), and the merged run
+came out at 15.6 min against 13.2. Serialising five minutes of previews to save three of smoke loses. Revisit only if
+the goal becomes runner minutes rather than wall clock, or if a fifth slot is worth more than two minutes.
 **CI's shape is dictated by five macOS slots.** A personal GitHub account gets five concurrent macOS jobs, and
 `ci.yml` spends exactly five, so splitting a job further only buys a queue — that is why the four app builds are two
 jobs and not a four-way matrix. It is also why the four heavy jobs carry `if: github.event_name == 'pull_request'`:
