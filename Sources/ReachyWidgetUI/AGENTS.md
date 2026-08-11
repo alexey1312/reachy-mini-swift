@@ -61,6 +61,14 @@ the next pair.
   from `stop-current-app` is not the app letting go, so the reading is what says the robot is free. `.widgetIntent`
   cuts that budget to six seconds against the session's thirty, which is a real trade — the session waits for a slow
   stop, an intent gives up and parks anyway rather than being killed with nothing written down.
+- **`RobotAppLauncher.stop()` parks the robot at zero and must never sleep it.** An app leaves the head wherever its
+  last frame put it, and the daemon does not pick it up (`.claude/rules/daemon-api.md`). The session restores what
+  the robot _was_ — asleep, if it woke it for the app — but that memory is in-process, and it must not become a
+  shared App Group record: it would be the first one with two writers and no arbitration, and unlike
+  `MovePlaybackRecord` it would _authorise a motion_ on the strength of something written by a process that has since
+  died. So an intent offers the one restoration it can defend, and the app's own poll performs the fuller one
+  whenever it is running. The `goto` is one request and no wait — the daemon answers with a task id and plays the
+  move afterwards — so it fits the 15 s budget where a `goto_sleep` plus its animation would not.
 - **`RobotAppCommand` is the bookkeeping half and there are four callers**: the widget tile and Shortcuts' start,
   stop and toggle. Pending state, the snapshot write and both timeline reloads live there once. A caller with no tile
   behind it (`StopRobotAppIntent`) passes no `appID` and files no pending caption — `RobotAppLaunchState` is keyed by

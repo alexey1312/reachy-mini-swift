@@ -59,15 +59,40 @@ public extension RobotSession {
     }
 
     /// Refused with a 400 while another app holds the robot — stop that one first.
+    ///
+    /// **The robot is woken first, because nothing else will.** The daemon does not
+    /// check: `start-app` is not behind the `get_backend` dependency, so a sleeping
+    /// robot starts the app over disabled motors and swallows every command it
+    /// sends, silently and with a status reading `running`. `claimRobotForApp()`
+    /// throws for a stopped backend rather than spending 90 s on it — the screen
+    /// offers that as its own button.
+    ///
+    /// Ownership is claimed only once the daemon has accepted the start: a 400 for
+    /// an app slot already taken leaves the robot awake, which is the right place
+    /// for it to be when the reader is about to stop something and try again.
     func startApp(named name: String) async throws -> RobotAppStatus {
+        let woke = try await claimRobotForApp()
         let status = try await withAppsClient { try await $0.startApp(named: name) }
+        if woke {
+            appLifecycle.claimWakeOwnership(of: name)
+        }
         let described = await describedFromInstalled(status) ?? status
         recordRunning(described)
         return described
     }
 
+    /// Restarting a crashed app on a robot that fell asleep meanwhile needs the
+    /// same wake as starting one, and the same care not to be mistaken for the app
+    /// letting go: the daemon's restart is stop-then-start behind a single request,
+    /// so a poll landing between the halves reads an idle robot.
     func restartCurrentApp() async throws -> RobotAppStatus {
+        let woke = try await claimRobotForApp()
+        appLifecycle.isRestarting = true
+        defer { appLifecycle.isRestarting = false }
         let status = try await withAppsClient { try await $0.restartCurrentApp() }
+        if woke {
+            appLifecycle.claimWakeOwnership(of: status.app.name)
+        }
         let described = await describedFromInstalled(status) ?? status
         recordRunning(described)
         return described
@@ -245,7 +270,13 @@ private extension RobotSession {
     }
 
     func recordRunning(_ status: RobotAppStatus?) {
+        // Read before the write, because the transition is the whole signal: this
+        // is the one bottleneck every successful status read passes through, so
+        // "was busy, is not" is noticed here whether the app was stopped, exited
+        // or crashed — and is noticed exactly once.
+        let previous = runningApp
         runningApp = status
+        noteAppReleased(was: previous, is: status)
         // The snapshot keeps the two apart: a widget offering "Stop" for an app that
         // already died would be worse than one showing nothing, so only a live app
         // is named as running — and a dead one still travels, on its own field and

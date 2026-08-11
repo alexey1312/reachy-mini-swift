@@ -47,6 +47,12 @@ struct AppDetailSheet: View {
         return status
     }
 
+    /// Whether Start is on screen: the asleep footer is a sentence about it, and
+    /// must not appear over an Install.
+    private var offersStart: Bool {
+        installedApp != nil && runningStatus?.isBusy != true
+    }
+
     private var isReachable: Bool {
         runningApp.isReachable(session)
     }
@@ -100,6 +106,11 @@ struct AppDetailSheet: View {
                     }
                 }
             } else {
+                // Only the stopped-backend half of the banner reaches this screen:
+                // Start wakes a sleeping robot itself. A stopped backend is a 90 s job.
+                if !session.isBackendRunning {
+                    Section { AsleepBanner(session: session) }
+                }
                 actions
             }
 
@@ -262,8 +273,16 @@ struct AppDetailSheet: View {
                     }
                     // Starting evicts whatever holds the robot; the daemon refuses
                     // with a 400 rather than taking it, and a remote session is not
-                    // ours to take at all.
-                    .disabled(model.busy || model.isHeldRemotely || model.runningApp?.isBusy == true)
+                    // ours to take at all. Both power conditions have their reason
+                    // attached elsewhere: the banner above, and the row below.
+                    .disabled(
+                        model.busy || model.isHeldRemotely || model.runningApp?.isBusy == true
+                            || !session.isBackendRunning || session.powerTransition != nil
+                    )
+                }
+
+                if let transition = session.powerTransition {
+                    PowerTransitionRow(transition: transition)
                 }
 
                 if model.hasUpdate(app) {
@@ -293,6 +312,8 @@ struct AppDetailSheet: View {
                 )
             } else if model.isHeldRemotely {
                 Text(.reachy("Someone is driving this robot over Hugging Face right now."))
+            } else if session.isBackendRunning, !session.isAwake, offersStart {
+                Text(.reachy("Reachy Mini is asleep. Starting an app wakes it up first."))
             }
         }
     }

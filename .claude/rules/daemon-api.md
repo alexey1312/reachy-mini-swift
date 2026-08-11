@@ -257,11 +257,30 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     but **only to listeners already attached** — nothing is sent on connect. Same shape as `conversation.turn`: a
     client joining mid-move learns nothing until the next transition, so a `GET /running` is needed regardless and
     the socket buys only latency. `RobotSession` polls and does not open it.
-  - `POST /api/move/goto` with zeros is the "return to neutral" the daemon performs for itself after an app releases
-    the robot. **The generated Swift is not the shape the spec suggests**: `head_pose`'s `anyOf` becomes
+  - `POST /api/move/goto` is the "return to neutral" the daemon performs for itself after an app releases the robot,
+    and **it is not all zeros** — the antennas are not, see the app-release entry below.
+    **The generated Swift is not the shape the spec suggests**: `head_pose`'s `anyOf` becomes
     `HeadPosePayload` with one optional per branch (`value1` = `XYZRPYPose`), not an enum, and `antennas`
     (a `prefixItems` tuple) has no generated type at all — it arrives as `OpenAPIRuntime.OpenAPIArrayContainer`.
     An omitted field means "leave that axis alone", so all three are sent explicitly.
+- **`apps/start-app/{name}` checks nothing at all, and is outside the `get_backend` gate.** It depends on
+  `get_app_manager`, so it answers **200 with a torn-down backend** — the subprocess then dies a few seconds later
+  when `WSClient.wait_for_connection` never sees a joint frame, and the daemon files `AppState.ERROR` long after the
+  POST returned. At a *sleeping* robot it is worse, because nothing fails: the app runs, reports `running`, and every
+  motion it sends is swallowed by disabled motors. `wake_up()` is called from exactly four places in the package and
+  none of them is an app start. The daemon does know the sequence — `startup_app.wake_or_start_startup_app_if_idle`
+  enables the motors, awaits the animation and only then starts — but it is reachable only by touching an antenna,
+  never over REST. The client owns it: `RobotSession.claimRobotForApp` and `RobotAppLauncher.startFreeRobot`.
+- **The daemon's return-to-zero after an app is not observed on hardware, and the crash path has none.**
+  `AppManager.stop_current_app` ends with `goto_target(INIT_HEAD_POSE, antennas=[-0.1745, 0.1745], duration=1.0)`
+  unless the head is within `SLEEP_POSE_MAGIC_DISTANCE` (10 magic-mm) of the sleep pose — present in 1.9.0 and in
+  `1.10.0.dev0` alike, and reported as not happening on a real unit. `monitor_process` releases the robot-app lock in
+  its `finally` and does nothing else, so an app that **exits or crashes** leaves the head wherever its last frame
+  put it in every version. So the client parks it, and `[-0.1745, 0.1745]` is the pose to send: ~±10°, "to reduce
+  shaking at vertical", and `RobotConnection.zeroAntennas` is the one copy of it. A `goto` issued after
+  `stop-current-app` has answered is safe — that route is synchronous, so its 200 lands past the daemon's own
+  attempt — and upstream `de6902d8b` adds a debounced `goto_sleep` 1.5 s after the app lock frees, which a robot on
+  a newer daemon would run *alongside* the client's parking. Re-check this the next time the robot is updated.
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.

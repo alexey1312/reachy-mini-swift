@@ -1,5 +1,24 @@
 import ReachyDesign
 import ReachyKit
+import SwiftUI
+
+/// A power transition in flight, wherever one can be started.
+///
+/// Two screens can start one now — the Robot tab's ladder, and Start on an app's
+/// page, which wakes a sleeping robot before it launches anything. Both owe the
+/// reader the same sentence, because seconds of nothing read as a button that did
+/// not work.
+struct PowerTransitionRow: View {
+    let transition: RobotSession.PowerTransition
+
+    var body: some View {
+        HStack {
+            ProgressView()
+            Text(transition.statusText)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
 
 extension RobotSession.PowerTransition {
     /// Starting a cold backend can take up to 90 s — silence would read as a hang.

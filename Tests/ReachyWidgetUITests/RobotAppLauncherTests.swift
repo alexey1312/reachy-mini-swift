@@ -20,7 +20,7 @@ struct RobotAppLauncherTests {
         let outcome = try await launcher(client).toggle(name: "dance_party")
 
         #expect(outcome == .stopped(name: "dance_party"))
-        #expect(client.calls == [.currentAppStatus, .stopCurrentApp])
+        #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .gotoNeutral])
     }
 
     /// The daemon would evict it without asking, and `start-app/{app}/no-evict` is
@@ -172,7 +172,7 @@ struct RobotAppLauncherTests {
         let outcome = try await launcher(client).stop()
 
         #expect(outcome == .stopped(name: "dance_party"))
-        #expect(client.calls == [.currentAppStatus, .stopCurrentApp])
+        #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .gotoNeutral])
     }
 
     /// An automation ending by clearing the robot must not go red because the robot
@@ -198,6 +198,34 @@ struct RobotAppLauncherTests {
 
         #expect(client.calls.contains(.wakeUp) == false)
         #expect(client.calls.contains(.daemonStatus) == false)
+    }
+
+    /// An app leaves the head wherever its last frame put it, and the daemon does
+    /// not pick it up: `monitor_process` releases the robot-app lock and nothing
+    /// else, and the return-to-zero in `stop_current_app` is not performed on
+    /// hardware. Zero and never sleep — an extension has no memory of what the
+    /// robot was before the app took it, and the session that does performs the
+    /// fuller restoration whenever it is running.
+    @Test("stopping parks the robot at zero, and never sleeps it")
+    func stopParksTheRobot() async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+
+        _ = try await launcher(client, assumeAwake: nil).stop()
+
+        #expect(client.calls.last == .gotoNeutral)
+        #expect(client.calls.contains(.gotoSleep) == false)
+        #expect(client.calls.contains(.setMotorMode(.disabled)) == false)
+    }
+
+    /// Nothing was running, so nothing was displaced and there is nothing to undo.
+    @Test("stopping nothing parks nothing")
+    func stopWithNoAppParksNothing() async throws {
+        let client = StubAppsClient()
+
+        _ = try await launcher(client, assumeAwake: nil).stop()
+
+        #expect(client.calls == [.currentAppStatus])
     }
 
     /// The whole budget is a few seconds, so no path may ask the daemon what is

@@ -48,6 +48,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// Both carry the same status code. ``statusCode`` reads it off either, and
     /// that — not a pattern match on a case — is what control flow belongs on.
     case daemonRefused(statusCode: Int, detail: String)
+    /// This session is already waking the robot, putting it to sleep or tearing the
+    /// backend down, and the request needs the robot to be somewhere settled.
+    ///
+    /// Appended for the reason ``daemonLogsUnavailable`` was. Nothing was sent: it
+    /// is the client refusing itself, which is why it is not a `daemonRejected`.
+    case powerTransitionInFlight
 
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
@@ -85,7 +91,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
         case .invalidAddress, .notConnected, .unsupportedDaemonVersion,
              .backendNotRunning, .daemonBusy, .wirelessFeaturesUnavailable,
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
-             .daemonLogsUnavailable, .teleopUnavailable:
+             .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight:
             nil
         }
     }
@@ -136,6 +142,8 @@ extension ReachyKitError: LocalizedError {
             "The daemon's logs cannot be read over this connection"
         case .teleopUnavailable:
             "The robot cannot be driven over this connection"
+        case .powerTransitionInFlight:
+            "The robot is waking up or going to sleep; try again in a moment"
         }
     }
 }

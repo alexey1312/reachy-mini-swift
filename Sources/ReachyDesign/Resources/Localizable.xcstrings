@@ -667,6 +667,9 @@
     "Reachy Mini": {
       "extractionState": "manual"
     },
+    "Reachy Mini is asleep. Starting an app wakes it up first.": {
+      "extractionState": "manual"
+    },
     "Reachy Mini is awake.": {
       "extractionState": "manual"
     },

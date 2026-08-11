@@ -392,6 +392,18 @@ Start.
   readable; hiding Start for it is what left the merged page with no way to try again, and the reference caught it.
 - The toolbar button reads "Minimize" while the app holds the robot and "Done" otherwise. Closing the page never
   stops anything — only Stop does.
+- **Start depends on the robot's power now, and the two power conditions are shown differently on purpose.** A
+  sleeping robot keeps its Start — `RobotSession.startApp` wakes it — and only the footer says so, because a Wake up
+  button beside a button that wakes is a step the reader does not have to take. A _stopped backend_ gets
+  `AsleepBanner` instead and Start goes out, because the way back is a 90 s job and that is a decision, not something
+  to meet inside a tap. Both follow `MaintenanceCard`'s rule: a disabled control with no reason attached tells the
+  reader nothing to act on. `PowerTransitionRow` covers the seconds in between; it is shared with `RobotScreen`
+  rather than copied, and it is what keeps Start from reading as a button that did nothing.
+  **The three states are captured** (`App detail — robot asleep`, `— robot backend stopped`, `— waking up to
+  start`), and they had to be pointed at `RobotApp.previewConversation`: `previewCatalogue[0]` and
+  `previewInstalled[0]` carry different `spaceID`s, so `matches(installed:)` never joins them and every existing
+  `App detail — installed` reference is in fact a picture of the _not_ installed state, Start included. Fixing that
+  fixture would move references belonging to other screens; use an app that is installed in its own right instead.
 
 ## An app's own settings
 

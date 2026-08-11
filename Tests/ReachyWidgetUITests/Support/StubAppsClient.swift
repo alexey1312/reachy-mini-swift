@@ -17,6 +17,7 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         case startApp(String)
         case startDaemon(wakeUp: Bool)
         case stopDaemon(gotoSleep: Bool)
+        case gotoNeutral
     }
 
     /// A daemon that refuses, so a caller's handling of the refusal is what the
@@ -120,6 +121,13 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable
         let status = Self.status(name: name, title: name.replacingOccurrences(of: "_", with: " "))
         lock.withLock { running = status }
         return status
+    }
+
+    /// The zero pose. Recorded rather than left to the protocol's throwing default
+    /// so that "the robot was parked" is an assertion and not an absence.
+    func gotoNeutral(duration _: TimeInterval) async throws -> String {
+        record(.gotoNeutral)
+        return "neutral-uuid"
     }
 
     func stopCurrentApp() async throws {
