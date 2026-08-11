@@ -113,7 +113,22 @@ let project = Project(
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],
-            resources: ["ReachyMini/Resources/**"],
+            // The five themed icons are iOS-only inputs. macOS has no alternate
+            // icons at all, so its `actool` compiles them and then drops them —
+            // measured: the macOS `Assets.car` carries `AppIcon` and nothing else.
+            // Handing them to it is pure work in the one build phase that has known
+            // `.icon` regressions, and it is where CI's older Xcode fails while the
+            // iOS build of the same tree passes.
+            resources: [
+                .glob(
+                    pattern: "ReachyMini/Resources/**",
+                    excluding: ["ReachyMini/Resources/AppIcon-*.icon"]
+                ),
+                .glob(
+                    pattern: "ReachyMini/Resources/AppIcon-*.icon",
+                    inclusionCondition: .when([.ios])
+                ),
+            ],
             dependencies: [
                 .package(product: "ReachyKit"),
                 .package(product: "ReachyUI"),
