@@ -77,6 +77,12 @@ depends = ["project"]
 # writes one unconditionally, which is why local Xcode builds were the only ones ever
 # recorded. Without the flag the post-action fails with "couldn't find the most recent
 # activity log" and, being a post-action, leaves the build green.
+#
+# `REACHY_XCB_EXTRA` carries settings that belong to CI and not to a developer's machine;
+# ci.yml sets it and every xcodebuild task here honours it. It exists for
+# COMPILER_INDEX_STORE_ENABLE=NO: these tasks write into the same Apps/DerivedData that
+# Xcode.app indexes from, so turning the index store off unconditionally would degrade
+# local code completion to buy CI a few percent.
 run = '''
 set -o pipefail
 RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyMini-macOS.xcresult
@@ -87,6 +93,7 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   build 2>&1 | xcsift
 '''
 
@@ -107,6 +114,7 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   build 2>&1 | xcsift
 '''
 
@@ -115,6 +123,15 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
 # Each ends by asserting the built app carries its App Intents metadata —
 # extraction failing is a warning, never a build error, and an app that ships
 # without it shows no actions in the Shortcuts app (TestFlight 0.1.1 did).
+#
+# Both override Release defaults, because these tasks compile rather than ship.
+# `ONLY_ACTIVE_ARCH=NO` is Xcode's Release default and made the macOS build compile
+# arm64 and x86_64 in sequence — 8.5 minutes on CI against Debug's 3.0, for a second
+# target triple that has never caught anything the first did not (WebRTC's macOS
+# slice is `macos-x86_64_arm64`, so even the link is covered). It is macOS-only:
+# a generic iOS destination is arm64 either way. `dwarf` drops the dsymutil pass from
+# both. The shipped artifact is unaffected — Scripts/release-macos.sh and
+# release-ios.sh archive with the defaults and stay universal, with dSYMs.
 [tasks."build:app:release"]
 description = "Build the ReachyMini app target (macOS, Release, unsigned)"
 depends = ["project"]
@@ -127,7 +144,9 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -derivedDataPath Apps/DerivedData \
   -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
+  ONLY_ACTIVE_ARCH=YES DEBUG_INFORMATION_FORMAT=dwarf \
   -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   build 2>&1 | xcsift
 Scripts/check-appintents-metadata.sh Apps/DerivedData/Build/Products/Release/ReachyMini.app
 '''
@@ -144,7 +163,9 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -derivedDataPath Apps/DerivedData \
   -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
+  DEBUG_INFORMATION_FORMAT=dwarf \
   -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   build 2>&1 | xcsift
 Scripts/check-appintents-metadata.sh Apps/DerivedData/Build/Products/Release-iphoneos/ReachyMini.app
 '''
@@ -201,6 +222,7 @@ xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -testLanguage en -testRegion US \
   CODE_SIGNING_ALLOWED=NO \
   -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   2>&1 | xcsift
 '''
 
@@ -269,6 +291,7 @@ xcodebuild build-for-testing -workspace Apps/ReachyMiniApps.xcworkspace -scheme 
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath Apps/DerivedData \
   CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
   2>&1 | xcsift
 """
 

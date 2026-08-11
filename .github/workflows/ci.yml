@@ -16,13 +16,29 @@ env:
   MISE_GITHUB_GITHUB_ATTESTATIONS: false
   # Read by Apps/Tuist.swift at generation. Off for every job by default — with the
   # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
-  # waits out a CAS socket deadline. app-build flips it on once its service is up.
+  # waits out a CAS socket deadline. The app jobs flip it on once their service is up.
   TUIST_CACHE_ENABLED: "false"
+  # Honoured by every xcodebuild task in mise.toml. Index-while-building writes an index
+  # nothing on a runner ever opens; it stays on locally, where Xcode.app reads it out of
+  # the same Apps/DerivedData.
+  REACHY_XCB_EXTRA: COMPILER_INDEX_STORE_ENABLE=NO
+  # The Xcode jobs generate the workspace once, in the composite action, so the build
+  # tasks must not re-run their `depends = ["project"]`.
+  MISE_TASK_SKIP_DEPENDS: "true"
 
+# A personal account gets five concurrent macOS jobs, so five is the budget this file
+# spends and splitting further only buys a queue. The four heavy jobs are `pull_request`
+# only: merging runs them a second time over the tree the PR already proved, and two
+# runs of five jobs against five slots is what turned a 22-minute CI into 30 (measured:
+# 4.7 min of queueing for the app build, 8.1 for the smoke test). A push to main is
+# therefore one job — lint and the SwiftPM suite, which is what a squashed commit can
+# still get wrong.
 jobs:
-  lint:
-    name: Lint
+  lint-test:
+    name: Lint & Test (macOS)
     runs-on: macos-15
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -31,20 +47,15 @@ jobs:
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Lint runs before the toolchain install, not after: it is the fastest signal in
+      # the workflow and nothing it checks needs Swift 6.3. It no longer gates the other
+      # jobs — `needs: lint` cost every one of them a serial 40 s, against a formatting
+      # slip that a PR author sees within the minute anyway.
       - name: Check formatting (Swift + Markdown)
         run: mise run format-check
 
       - name: Lint (SwiftLint + actionlint)
         run: mise run lint
-
-  build-test:
-    name: Build & Test (macOS)
-    runs-on: macos-15
-    needs: lint
-    env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
-    steps:
-      - uses: actions/checkout@v7
 
       - name: Install Swift 6.3 toolchain
         run: |
@@ -64,11 +75,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-swift-6.3-spm-${{ github.workspace }}-
 
-      - uses: jdx/mise-action@v4
-        with:
-          experimental: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Show Swift version
         run: swift --version
 
@@ -78,17 +84,53 @@ jobs:
       - name: Build & test
         run: mise run test
 
-  # `swift build` never reaches Apps/ReachyMini — it is an Xcode target, not an SPM
-  # one, so nothing but SwiftLint ever looked at it. This job is the only thing that
-  # compiles the app shell and the Tuist manifest that generates it.
-  app-build:
-    name: App Build (ReachyMini, macOS + iOS)
+  # `swift build` never reaches Apps/ReachyMini — it is an Xcode target, not an SPM one,
+  # so nothing but SwiftLint ever looked at it. These two jobs are the only thing that
+  # compiles the app shell and the Tuist manifest that generates it. They are split by
+  # platform rather than by configuration: four jobs would need slots this account does
+  # not have, and would resolve the package graph four times over.
+  app-build-macos:
+    name: App Build (macOS)
     runs-on: macos-15
-    needs: lint
+    if: github.event_name == 'pull_request'
     timeout-minutes: 60
-    # `id-token` is what lets the step below authenticate over OIDC instead of a stored token.
-    # Job-level permissions replace the defaults wholesale, hence the explicit `contents: read`
-    # for checkout.
+    # `id-token` is what lets the composite action authenticate over OIDC instead of a
+    # stored token. Job-level permissions replace the defaults wholesale, hence the
+    # explicit `contents: read` for checkout.
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      # Deliberately Xcode's own Swift, with no swift.org toolchain overlaid:
+      # xcodebuild cannot load the local package's manifest under one (its clang
+      # fails to spawn the linker). These jobs exist to compile the app shell and the
+      # Tuist manifest; lint-test is what holds the code to Swift 6.3.
+      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/xcode-workspace
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          compilation-cache: "true"
+
+      - name: Build ReachyMini (Debug)
+        run: mise run build:app
+
+      # Release guards archive-ability: nothing else compiles this configuration,
+      # so without this step a broken Release first surfaces at archive time.
+      - name: Build ReachyMini (Release)
+        run: mise run build:app:release
+
+  # The macOS jobs leave ReachyWidget out entirely (iOS-only extension, embedded under
+  # `condition: .when([.ios])`), so without this job the widget's sources are compiled
+  # by nothing at all — which is how a `missing return` in ReachyAppsWidget.swift
+  # reached main in #7.
+  app-build-ios:
+    name: App Build (iOS + widget)
+    runs-on: macos-15
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
@@ -97,65 +139,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Deliberately Xcode's own Swift, with no swift.org toolchain overlaid:
-      # xcodebuild cannot load the local package's manifest under one (its clang
-      # fails to spawn the linker). This job exists to compile the app shell and the
-      # Tuist manifest; build-test is what holds the code to Swift 6.3.
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/xcode-workspace
         with:
-          experimental: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          compilation-cache: "true"
 
-      # Build insights reach tuist.dev through the `tuist inspect build` post-action Tuist
-      # writes into every generated scheme, and that post-action needs a session. OIDC mints a
-      # short-lived one with no stored secret, but only for a branch of this repository: a
-      # fork's workflow gets no id-token, so the step is skipped there. It also needs the
-      # repository connected to the server project, without which the server answers "No
-      # projects linked to the repository" — a warning rather than a red build, since this job
-      # exists to compile the app shell and the widget, not to carry telemetry. Generation
-      # itself needs none of it: Apps/Tuist.swift sets optionalAuthentication.
-      - name: Authenticate with tuist.dev (OIDC)
-        if: ${{ !github.event.pull_request.head.repo.fork }}
-        working-directory: Apps
-        run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
-
-      # The compilation cache answers only through the service `tuist setup cache`
-      # starts, so the env flips to true strictly after its socket is live — settings
-      # baked in with no service behind them stall every compile task instead (the
-      # workflow-level default covers forks, which have no session to set it up with).
-      - name: Set up Tuist cache
-        if: ${{ !github.event.pull_request.head.repo.fork }}
-        working-directory: Apps
-        run: |
-          mise x -- tuist setup cache || true
-          SOCK="$HOME/.local/state/tuist/alexey1312_reachy-mini-swift.sock"
-          for _ in $(seq 1 10); do [ -S "$SOCK" ] && break; sleep 1; done
-          if [ -S "$SOCK" ]; then
-            echo "TUIST_CACHE_ENABLED=true" >> "$GITHUB_ENV"
-          else
-            echo "::warning::Tuist cache service did not start — building uncached."
-          fi
-
-      # `build:app` generates the project first (depends = ["project"]).
-      - name: Build ReachyMini
-        run: mise run build:app
-
-      # The macOS destination leaves ReachyWidget out entirely (iOS-only extension,
-      # embedded under `condition: .when([.ios])`), so until this step the widget's
-      # sources were compiled by nothing at all.
-      - name: Build ReachyMini + widget (iOS)
+      - name: Build ReachyMini + widget (Debug)
         run: mise run build:app:ios
 
-      # Release guards archive-ability: nothing else compiles this configuration,
-      # so without these steps a broken Release first surfaces at archive time.
-      - name: Build ReachyMini (macOS, Release)
-        run: mise run build:app:release
-
-      - name: Build ReachyMini + widget (iOS, Release)
+      - name: Build ReachyMini + widget (Release)
         run: mise run build:app:ios:release
 
   # Previews compile only in the Xcode targets — Package.swift excludes Previews/**,
-  # so build-test can never see them, and a preview that does not compile otherwise
+  # so lint-test can never see them, and a preview that does not compile otherwise
   # first surfaces minutes into a local snapshot run, or after `record` has already
   # deleted every reference. build-for-testing compiles the previews, the generated
   # Prefire tests and the snapshot target; no simulator runtime and no references
@@ -163,17 +159,19 @@ jobs:
   preview-build:
     name: Preview Build (ReachyUISnapshotTests)
     runs-on: macos-15
-    needs: lint
+    if: github.event_name == 'pull_request'
     timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
     env:
       DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/xcode-workspace
         with:
-          experimental: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compile previews and snapshot target
         run: mise run snapshots:build
@@ -183,17 +181,19 @@ jobs:
   smoke:
     name: Smoke (iOS Simulator)
     runs-on: macos-15
-    needs: lint
+    if: github.event_name == 'pull_request'
     timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
     env:
       DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
+      - uses: ./.github/actions/xcode-workspace
         with:
-          experimental: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Smoke test
         run: mise run test:smoke
