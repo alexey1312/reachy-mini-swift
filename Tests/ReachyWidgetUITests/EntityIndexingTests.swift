@@ -43,9 +43,17 @@ struct EntityIndexingTests {
     /// `dance_party` is one token to a search index. Splitting it is what puts
     /// `dance` in as a term of its own, which no amount of prefix matching on the
     /// whole string would reach.
+    ///
+    /// **Compared case-insensitively, because the dedup is.** Both the title and the
+    /// entry point contribute the same two words in different casings, and
+    /// `ReachyEntityKeywords.list` keeps whichever it saw first — so this app yields
+    /// "Dance" and "Party" from the title, and the lowercase pair from
+    /// `dance_party` is dropped as already present. Asserting the exact spelling
+    /// would be asserting which of the two arguments came first, which is not the
+    /// property that matters: Spotlight matches without regard to case.
     @Test("an underscored entry point contributes its words separately")
     func splitsAnEntryPointIntoWords() {
-        let keywords = app().attributeSet.keywords ?? []
+        let keywords = app().attributeSet.keywords?.map { $0.lowercased() } ?? []
 
         #expect(keywords.contains("dance"))
         #expect(keywords.contains("party"))
