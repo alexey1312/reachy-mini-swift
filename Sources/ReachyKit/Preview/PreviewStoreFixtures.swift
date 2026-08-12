@@ -57,7 +57,7 @@ import ReachyJSON
              "extra": {\(extra.joined(separator: ", "))}}
             """
             // swiftlint:disable:next force_try
-            return try! JSONCodec.stored.decode(RobotApp.self, from: Data(json.utf8))
+            return try! JSONCodec.daemon.decode(RobotApp.self, from: Data(json.utf8))
         }
 
         static let previewCatalogue: [RobotApp] = [

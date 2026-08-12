@@ -260,6 +260,13 @@ public actor CentralRelayClient {
 
     /// One SSE line. Anything but `data:` is framing, and a `data:` line that is
     /// not JSON is central's keepalive.
+    ///
+    /// The same `SignalingMessage` is decoded under `.daemon` in `CameraSignalingClient`
+    /// for the LAN path and under `.web` here for the relay — one wire protocol, two
+    /// counterparties, so the profile follows whoever sent this particular frame.
+    /// Inert today, because the type carries no `Date`, but if the daemon ever puts a
+    /// timestamp on a signaling frame the LAN path would parse it and this one would
+    /// silently stop.
     static func message(in line: String) -> SignalingMessage? {
         guard line.hasPrefix("data:") else { return nil }
         let payload = line.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)

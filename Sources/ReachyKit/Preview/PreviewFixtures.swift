@@ -209,7 +209,7 @@
             """
             // A fixture that cannot decode is a broken fixture, not a runtime path.
             // swiftlint:disable:next force_try
-            return try! JSONCodec.stored.decode(CentralRobot.self, from: Data(json.utf8))
+            return try! JSONCodec.daemon.decode(CentralRobot.self, from: Data(json.utf8))
         }
     }
 
@@ -264,7 +264,7 @@
              "backend_status": \(backend)}
             """
             // swiftlint:disable:next force_try
-            return try! JSONCodec.stored.decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
+            return try! JSONCodec.daemon.decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
         }
 
         /// Written back out as the daemon writes it — one key per measurement,

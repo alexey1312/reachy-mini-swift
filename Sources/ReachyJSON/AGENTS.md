@@ -10,9 +10,11 @@ Every hand-written JSON call in this repository. Foundation and nothing else —
 - **The engine is Foundation, and that was measured rather than assumed** — `docs/adr/0004-one-json-codec.md` carries
   the numbers for swift-yyjson and the reason it was refused. `JSONCodecFreeFormTests` in `ReachyKitTests` is the gate
   any replacement engine passes first: it is where a decoder that turns `1.5` into `1` gets caught.
-- **This is the only file allowed to name `JSONDecoder`/`JSONEncoder`**, enforced by a `custom_rules` entry in
-  `.swiftlint.yml`. Two sanctioned exceptions live elsewhere with their reasons beside them: `SetTargetClient`
-  (`JSONSerialization` over the teleop `anyOf` the generator cannot express) and `ReachyKitError` (loose parsing of a
-  daemon error body).
+- **This is the only file under `Sources/` allowed to name `JSONDecoder`/`JSONEncoder`**, enforced by a
+  `custom_rules` entry in `.swiftlint.yml` scoped to `Sources/`. `Tests/` lints green with a bare coder by design —
+  fixtures are deliberately not covered — but that means a test decoding a daemon payload through `JSONDecoder()`
+  never exercises the date rule and proves nothing about the production path. Two sanctioned exceptions live
+  elsewhere with their reasons beside them: `SetTargetClient` (`JSONSerialization` over the teleop `anyOf` the
+  generator cannot express) and `ReachyKitError` (loose parsing of a daemon error body).
 - **The generated OpenAPI client is out of reach.** `OpenAPIRuntime.Converter` builds its own `JSONDecoder` in its
   `init` with no injection point — do not go looking for one.

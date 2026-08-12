@@ -9,9 +9,14 @@ import Foundation
 /// records written by shipped builds are on disk right now. `docs/adr/0004-one-json-codec.md`
 /// carries the reasoning, including why the engine is Foundation.
 ///
-/// A value that builds its coder per call: `JSONDecoder` is a class and is not
-/// documented as safe to share, so one configured instance would have to be
-/// `nonisolated(unsafe)` to cross a concurrency domain.
+/// A value that builds its coder per call. Not because sharing one would be unsafe —
+/// under this toolchain (Apple Swift 6.3, `-strict-concurrency=complete`)
+/// `JSONDecoder`/`JSONEncoder` satisfy `Sendable` and `static let decoder =
+/// JSONDecoder()` compiles clean — but because building one was measured and found
+/// free: configuring `.daemon`'s decoder (its custom date closure) costs 0.098 µs
+/// against 12.1 µs to decode a 240-byte state frame, a `-O` benchmark, under 1% at
+/// the hot call site. Per-call construction keeps these profiles immutable values
+/// at no measurable cost.
 public struct JSONCodec: Sendable {
     /// The robot said it — REST, the four WebSockets, BLE replies, the WebRTC data
     /// channel. FastAPI emits ISO 8601 with fractional seconds and other routes
@@ -72,6 +77,14 @@ public struct JSONCodec: Sendable {
         // No branch yet: nothing in this app sends a `Date` to the robot or to
         // Hugging Face, and `.stored` is frozen on the defaults. The first payload
         // that needs one adds its case here rather than at the call site.
+        //
+        // That leaves `.daemon` asymmetric: its decoder reads ISO 8601 and this
+        // encoder writes Foundation's numeric default. Two sites round-trip a
+        // `.daemon` value through both in one process — `RobotApps.Card.init(extra:)`
+        // and `RobotConnection.kinematicsInfo()` — so the first `Date` to appear in
+        // `AppInfo.extra` or `KinematicsInfo` would fail that decode rather than
+        // silently reformat it: the encoder writes a number and the decoder demands
+        // a string.
         JSONEncoder()
     }
 }

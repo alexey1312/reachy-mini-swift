@@ -49,6 +49,6 @@ custom_rules:
       - identifier
       - typeidentifier
     included: ".*/Sources/.*\\.swift"
-    excluded: ".*/(ReachyJSON/JSONCodec\\.swift|ReachyJSONTests/.*)"
+    excluded: ".*/ReachyJSON/JSONCodec\\.swift"
     message: "Use JSONCodec.daemon / .web / .stored — see docs/adr/0004-one-json-codec.md"
     severity: error

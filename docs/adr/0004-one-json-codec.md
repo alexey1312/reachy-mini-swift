@@ -11,7 +11,7 @@ reads. Fifty-two call sites across thirty-one files, in five of the eight target
 
 Thirty of those files call a bare `JSONDecoder()` or `JSONEncoder()`. **Exactly one place configures anything**:
 `JSONDecoder.reachyDaemon`, which teaches the decoder that FastAPI emits ISO 8601 with fractional seconds and that the
-same field sometimes arrives without them. Five sites use it — `StateStreamClient`, `JobLogStreamClient`,
+same field sometimes arrives without them. Four sites use it — `StateStreamClient`, `JobLogStreamClient`,
 `RobotConnection+Apps` and `RobotConnection+Wireless` — and every other site takes the defaults, whether it is reading
 a robot's answer or its own file.
 
@@ -37,6 +37,7 @@ codec that lived in `ReachyKit` would be shared by everything except the two tar
 ```swift
 public struct JSONCodec: Sendable {
     public static let daemon = JSONCodec(.daemon)
+    public static let web = JSONCodec(.web)
     public static let stored = JSONCodec(.stored)
 
     public func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T
@@ -44,9 +45,13 @@ public struct JSONCodec: Sendable {
 }
 ```
 
-A value type that builds its coder per call, which is what all fifty-two sites already do — `JSONDecoder` is a class
-and is not documented as safe to share, so one configured instance would have to be `nonisolated(unsafe)` to cross a
-concurrency domain, and that is a promise this cannot make.
+A value type that builds its coder per call, which is what all fifty-two sites already do. Not because a shared
+instance would be unsafe — under this toolchain (Apple Swift 6.3, `-strict-concurrency=complete`) `JSONDecoder` and
+`JSONEncoder` satisfy `Sendable` and a `static let decoder = JSONDecoder()` compiles clean — but because a per-call
+coder was measured and found free: configuring the `.daemon` decoder (building it with its custom date closure)
+costs 0.098 µs against 12.1 µs to decode a 240-byte state frame, a `-O` benchmark, under 1% at the hot call site.
+Per-call construction keeps the profiles immutable values at no measurable cost, so there was nothing here worth
+trading away.
 
 **There is no default profile.** Every call site names `.daemon` or `.stored`, because a default is how the rule
 became invisible the first time: thirty files took the defaults without ever deciding to.
@@ -124,8 +129,10 @@ The generated client, for the reason above. Two hand-written exceptions stay as 
 it: `SetTargetClient` writes teleop targets through `JSONSerialization` because the `anyOf` shape has no generated
 type, and `ReachyKitError` reads a daemon error body loosely because it is parsing somebody's failure, not a model.
 
-A SwiftLint `custom_rules` entry refuses `JSONDecoder(` and `JSONEncoder(` outside `ReachyJSON`, so the next site
-cannot quietly become the thirty-first that takes the defaults.
+A SwiftLint `custom_rules` entry refuses `JSONDecoder(` and `JSONEncoder(` under `Sources/` outside `ReachyJSON`, so
+the next site cannot quietly become the thirty-first that takes the defaults. It is scoped to `Sources/` on purpose,
+and deliberately does not reach `Tests/` — a fixture there may still call a bare coder, and a test that decodes a
+daemon payload that way never exercises the date rule and proves nothing about the production path.
 
 ## Consequences
 

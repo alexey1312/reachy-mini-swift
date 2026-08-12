@@ -306,7 +306,7 @@ private extension RobotApp {
              "apps_checked": 2, "apps_skipped": 0}
             """
             // swiftlint:disable:next force_try
-            return try! AppUpdatesSummary(JSONCodec.stored.decode(
+            return try! AppUpdatesSummary(JSONCodec.daemon.decode(
                 Components.Schemas.AppUpdatesResponse.self,
                 from: Data(json.utf8)
             ))

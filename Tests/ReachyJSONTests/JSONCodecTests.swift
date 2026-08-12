@@ -51,11 +51,13 @@ struct JSONCodecTests {
         #expect(try JSONCodec.stored.decode(Stamped.self, from: data) == value)
     }
 
-    /// `.web` is `.stored`'s settings with none of its obligations, and the test
-    /// exists to say so: if someone gives Hugging Face a date rule tomorrow, this
-    /// is what tells them they have not touched the Keychain's format.
-    @Test("the web profile is separate from the stored one")
-    func webIsItsOwnProfile() throws {
+    /// This pins today's coincidence, not the contract: `.web` and `.stored` produce
+    /// the same bytes only because both carry Foundation's defaults right now, not
+    /// because they are the same profile. The day `.web` gets a date rule of its own
+    /// (ADR 0004 permits it — Hugging Face may start sending one), this assertion is
+    /// what changes; `.stored`'s own tests do not, because `.stored` may not move.
+    @Test("the web profile carries Foundation's defaults today")
+    func webCarriesFoundationDefaultsToday() throws {
         let value = Stamped(takenAt: Date(timeIntervalSinceReferenceDate: 1000))
 
         #expect(try JSONCodec.web.encode(value) == JSONCodec.stored.encode(value))
