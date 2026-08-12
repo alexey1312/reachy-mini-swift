@@ -20,28 +20,111 @@ struct TeleopDriverTests {
         #expect(driver.target.bodyYaw == 0)
     }
 
-    @Test("past the zone the head holds and the body starts turning")
+    @Test("past the zone the head comes onto the body's axis and the body turns")
     func rotationStarts() {
         let driver = TeleopDriver()
         driver.apply(.init(x: 1.0))
-        #expect(abs(driver.target.yaw + driver.mapping.headAngle) < 1e-9)
         #expect(driver.bodyYawRate != 0)
+        // Integrated first on purpose: with the body still at zero the world-frame yaw
+        // and the joystick's own angle are the same number, so an uncomposed head
+        // would pass too.
+        driver.integrateRotation(seconds: 0.02)
+        #expect(driver.target.bodyYaw != 0)
+        #expect(driver.target.yaw == driver.target.bodyYaw)
         driver.stop()
     }
 
-    @Test("integration accumulates and clamps at half a turn")
+    /// The one invariant this type exists to hold. The daemon measures the head from
+    /// the base, so what goes on the wire is the body's angle plus the joystick's.
+    @Test("the head yaw sent is the body's plus the joystick's")
+    func headYawIsComposed() {
+        let driver = TeleopDriver()
+        let deflection = JoystickDeflection(x: 0.8, y: -0.3)
+        driver.apply(deflection)
+        for _ in 0 ..< 10 {
+            driver.integrateRotation(seconds: 0.02)
+        }
+        #expect(driver.target.bodyYaw != 0)
+        #expect(abs(driver.target.yaw - driver.target.bodyYaw - driver.mapping.headYaw(deflection)) < 1e-12)
+        driver.stop()
+    }
+
+    /// The request itself, as an equality of increments: whatever the body turns by,
+    /// the head turns by too. This is the assertion that was false before the head was
+    /// composed with the body — the difference used to be the body's whole step.
+    @Test("turning the body carries the head with it")
+    func turningCarriesTheHead() {
+        let driver = TeleopDriver()
+        driver.apply(.init(x: 0.75))
+        let yaw = driver.target.yaw
+        let bodyYaw = driver.target.bodyYaw
+        driver.integrateRotation(seconds: 0.02)
+        #expect(driver.target.bodyYaw != bodyYaw)
+        #expect(abs((driver.target.yaw - yaw) - (driver.target.bodyYaw - bodyYaw)) < 1e-12)
+        driver.stop()
+    }
+
+    /// `ControllerScreen` binds its slider to `bodyYaw` rather than into the target,
+    /// so that a body moved by hand carries the head exactly as the ticker's does.
+    @Test("the body-yaw slider carries the head too")
+    func sliderCarriesTheHead() {
+        let driver = TeleopDriver()
+        let deflection = JoystickDeflection(x: driver.mapping.rotationThreshold / 2)
+        driver.apply(deflection)
+        driver.bodyYaw = 1.0
+        #expect(driver.target.bodyYaw == 1.0)
+        #expect(abs(driver.target.yaw - (1.0 + driver.mapping.headYaw(deflection))) < 1e-12)
+    }
+
+    /// A driver handed a world-frame pose keeps it: the head's own angle is the
+    /// difference between the two fields, so the first write does not snap the head by
+    /// the body's whole angle.
+    @Test("a seeded pose keeps the head where it was put")
+    func seedsTheRelativeAngle() {
+        let driver = TeleopDriver(target: .init(yaw: 0.3, bodyYaw: 1.2))
+        driver.bodyYaw = 1.4
+        #expect(abs(driver.target.yaw - 0.5) < 1e-12)
+    }
+
+    /// What keeps the daemon's own `max_relative_yaw` (65°) inert — and with it the
+    /// whole of `bodyYawLimit` reachable. Sending a head pinned 40° off a body the
+    /// daemon then truncates to stay within 65° is the bug composition removed; a
+    /// `headAngle` raised past 65° would silently bring it back.
+    @Test("the head never asks for more than the daemon allows relative to the body")
+    func staysInsideTheRelativeLimit() {
+        for step in -10 ... 10 {
+            let driver = TeleopDriver()
+            driver.apply(.init(x: Double(step) / 10))
+            for _ in 0 ..< 200 {
+                driver.integrateRotation(seconds: 0.02)
+            }
+            #expect(abs(driver.target.yaw - driver.target.bodyYaw) <= driver.mapping.headAngle + 1e-12)
+            driver.stop()
+        }
+    }
+
+    /// The same number `URDFParserTests` reads out of `yaw_body`, which is what the
+    /// daemon clamps to. Mirrored rather than trusted because the head's world yaw is
+    /// computed from it: a body yaw truncated on the robot leaves the head cocked by
+    /// exactly the truncation.
+    @Test("the body stops at the URDF's own limit")
     func integrationClamps() {
         let driver = TeleopDriver()
+        #expect(abs(TeleopDriver.bodyYawLimit - 2.79253) < 1e-5)
+
         driver.apply(.init(x: -1.0))
         for _ in 0 ..< 400 {
             driver.integrateRotation(seconds: 0.02)
         }
-        #expect(abs(driver.target.bodyYaw - .pi) < 1e-9)
+        #expect(abs(driver.target.bodyYaw - TeleopDriver.bodyYawLimit) < 1e-9)
+        #expect(driver.target.yaw == driver.target.bodyYaw)
         driver.stop()
     }
 
-    /// The whole point of turning: letting go must not undo it.
-    @Test("releasing returns the head and leaves the body where it turned to")
+    /// The whole point of turning: letting go must not undo it. And the head comes back
+    /// into line with the **body**, not with the room — a released head at world zero
+    /// would be a robot facing sideways and looking back over its shoulder.
+    @Test("releasing lines the head up with the body and leaves the turn standing")
     func releaseKeepsBodyYaw() {
         let driver = TeleopDriver()
         driver.apply(.init(x: -1.0))
@@ -52,7 +135,7 @@ struct TeleopDriverTests {
         #expect(turned > 0)
 
         driver.apply(.zero)
-        #expect(driver.target.yaw == 0)
+        #expect(driver.target.yaw == turned)
         #expect(driver.bodyYawRate == 0)
         #expect(driver.target.bodyYaw == turned)
 

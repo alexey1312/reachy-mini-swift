@@ -37,7 +37,9 @@ import SwiftUI
         CameraViewport(
             session: .preview(.streaming),
             makeTeleop: PreviewScene.teleopFactory,
-            driver: TeleopDriver(target: .init(bodyYaw: 1.2))
+            // `yaw` follows `bodyYaw`: head yaw is world-frame, so a turned body with
+            // `yaw: 0` is a head left staring at the room rather than down its own torso.
+            driver: TeleopDriver(target: .init(yaw: 1.2, bodyYaw: 1.2))
         )
     }
 }

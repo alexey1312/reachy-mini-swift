@@ -7,13 +7,28 @@ import Testing
 struct JoystickMappingTests {
     private let mapping = JoystickMapping()
 
-    @Test("head yaw is linear inside the head zone and saturates past it")
+    /// The head leads out to its full angle by the boundary and gives that lead back
+    /// across the zone, so a held turn leaves the camera looking straight down the
+    /// torso rather than 40° off it.
+    @Test("head yaw leads to the boundary and returns to the body's axis past it")
     func headYaw() {
         let boundary = mapping.rotationThreshold
         #expect(mapping.headYaw(.zero) == 0)
         #expect(abs(mapping.headYaw(.init(x: boundary / 2)) + mapping.headAngle / 2) < 1e-9)
         #expect(abs(mapping.headYaw(.init(x: boundary)) + mapping.headAngle) < 1e-9)
-        #expect(abs(mapping.headYaw(.init(x: 1.0)) + mapping.headAngle) < 1e-9)
+        #expect(abs(mapping.headYaw(.init(x: 1.0))) < 1e-9)
+    }
+
+    /// The two halves of the handover are driven by one ramp, so the head cannot still
+    /// be giving its lead back after the body has reached full speed, or arrive on the
+    /// torso's axis before the body has started at all.
+    @Test("the head gives its lead back on the same ramp the body accelerates on")
+    func recentringTracksTheRamp() {
+        let halfway = mapping.rotationThreshold + (1 - mapping.rotationThreshold) / 2
+        #expect(mapping.rotationRamp(.init(x: mapping.rotationThreshold)) == 0)
+        #expect(abs(mapping.rotationRamp(.init(x: halfway)) - 0.5) < 1e-9)
+        #expect(mapping.rotationRamp(.init(x: 1.0)) == 1)
+        #expect(abs(mapping.headYaw(.init(x: halfway)) + mapping.headAngle / 2) < 1e-9)
     }
 
     /// Zero at the boundary is the point: entering the rotation zone cannot itself
@@ -47,9 +62,12 @@ struct JoystickMappingTests {
         let corner = JoystickDeflection(x: -diagonal, y: -diagonal)
         #expect(mapping.bodyYawRate(corner) > 0)
         #expect(mapping.rotationSide(corner) == .left)
-        // The head is already at its limit there, which is what makes the handover
-        // from head to body continuous whichever direction the push came from.
-        #expect(abs(mapping.headYaw(corner) - mapping.headAngle) < 1e-9)
+        // Part way through the handover, and by exactly as much as the body has taken
+        // over: the corner is a fraction `rotationRamp` into the zone, so the head has
+        // given back that fraction of its lead and kept the rest.
+        let handedOver = mapping.rotationRamp(corner)
+        #expect(handedOver > 0 && handedOver < 1)
+        #expect(abs(mapping.headYaw(corner) - mapping.headAngle * (1 - handedOver)) < 1e-9)
     }
 
     /// The pad shades the side this names, so a lit slice that did not correspond to a

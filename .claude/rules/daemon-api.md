@@ -282,6 +282,25 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     `HeadPosePayload` with one optional per branch (`value1` = `XYZRPYPose`), not an enum, and `antennas`
     (a `prefixItems` tuple) has no generated type at all — it arrives as `OpenAPIRuntime.OpenAPIArrayContainer`.
     An omitted field means "leave that axis alone", so all three are sent explicitly.
+- **`target_head_pose` is measured from the base, not from the body, and `target_body_yaw` does not carry the head
+  with it.** `AnalyticalKinematics.ik` hands the Stewart platform `head_yaw − body_yaw` (`inverse_kinematics_safe`,
+  whose own comment speaks of "the relative yaw between the body and the head"; the Placo engine spells it
+  `T_world_frame` and files body yaw as a separate *joint* task). Measured against the shipped
+  `reachy_mini_rust_kinematics`, not read off the docs: `(head 30°, body 30°)` returns the six joints of neutral
+  bit-for-bit, and `(head 0°, body 30°)` those of `(head −30°, body 0°)`. Nothing in `openapi.json` says so — the
+  schema is a bare `number` with no description — and the same convention governs `FullState.head_pose` on the way
+  back, which is why `PassiveJointSolver` subtracts body yaw before solving. A client that turns the body without
+  adding the same angle into the head pose gets a head that holds its absolute direction and unwinds from the torso.
+  - **Two limits follow, and the first one bites silently.** `inverse_kinematics_safe` clamps `body_yaw` so that
+    `|head_yaw − body_yaw| ≤ 65°` (`max_relative_yaw`) — so commanding `body_yaw = 180°` with the head left at world
+    zero turns the body **65°** and reports nothing. It works the other way too: a large head yaw makes the daemon
+    raise body yaw on its own. The second is `max_body_yaw = 160°`, matching the URDF's `yaw_body` limit of
+    ±2.79253 rad; past it the body simply stops. Angles must arrive pre-wrapped to `[-π, π]` — `body_yaw = 200°`
+    comes out as −95°.
+  - `automatic_body_yaw` is what enables all of that, it defaults to **true**, and `set_automatic_body_yaw` exists
+    only on the ZMQ/WS command protocol — there is no HTTP route for it, so anything going through REST or
+    `ws/set_target` gets the default. Every backend (robot, mujoco, mockup) shares it, so `sim-daemon` reproduces
+    both the frame and the clamps.
 - **`apps/start-app/{name}` checks nothing at all, and is outside the `get_backend` gate.** It depends on
   `get_app_manager`, so it answers **200 with a torn-down backend** — the subprocess then dies a few seconds later
   when `WSClient.wait_for_connection` never sees a joint frame, and the daemon files `AppState.ERROR` long after the
