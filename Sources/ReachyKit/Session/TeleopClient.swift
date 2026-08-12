@@ -26,6 +26,13 @@ public protocol TeleopChannel: Sendable {
 /// them in the daemon's `[right, left]` wire order. The daemon clamps every safety
 /// limit server-side and ignores targets while a recorded move is running.
 ///
+/// **The head pose is measured from the base, not from the body.** `bodyYaw` is a
+/// joint of its own and does not carry the head with it — the daemon hands the
+/// Stewart platform `yaw − bodyYaw`, so a head that should keep facing the way the
+/// body points has to have `bodyYaw` added into `yaw` by whoever composes the two
+/// (`TeleopDriver`). `RobotStateFrame.headPose` reports the same frame, and
+/// `PassiveJointSolver` subtracts `bodyYaw` for exactly this reason.
+///
 /// Named here rather than inside `SetTargetClient` because two transports carry
 /// it now; the alias on that type keeps every existing call site compiling.
 public struct TeleopTarget: Sendable, Equatable {

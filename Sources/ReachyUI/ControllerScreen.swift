@@ -22,9 +22,10 @@ struct ControllerScreen: View {
         _setupError = State(initialValue: setupError)
     }
 
-    // Comfortable UI ranges; hardware limits (clamped by the daemon anyway):
-    // head pitch/roll ±40°, yaw ±180°, body yaw ±180°
-    private let fullTurn = 180.0 * .pi / 180
+    /// Comfortable UI ranges; hardware limits (clamped by the daemon anyway):
+    /// head pitch/roll ±40°, yaw ±180°. Body yaw is `TeleopDriver.bodyYawLimit`, which
+    /// is the URDF's own ±160° rather than a comfortable range — past it the daemon
+    /// truncates, and the head's world yaw is computed from the number this slider set.
     private let antennaRange = 150.0 * .pi / 180
 
     var body: some View {
@@ -45,30 +46,30 @@ struct ControllerScreen: View {
                 Section(.reachy("Head")) {
                     slider(
                         "Roll",
-                        value: $driver.target.roll,
+                        value: $driver.roll,
                         range: -driver.mapping.headAngle ... driver.mapping.headAngle,
                         format: .degrees
                     )
-                    slider("Height", value: $driver.target.z, range: -0.03 ... 0.03, format: .millimeters)
+                    slider("Height", value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
                 }
                 Section(.reachy("Body")) {
                     slider(
                         String(localized: .reachy("Body yaw")),
-                        value: $driver.target.bodyYaw,
-                        range: -fullTurn ... fullTurn,
+                        value: $driver.bodyYaw,
+                        range: -TeleopDriver.bodyYawLimit ... TeleopDriver.bodyYawLimit,
                         format: .degrees
                     )
                 }
                 Section(.reachy("Antennas")) {
                     slider(
                         "Left",
-                        value: $driver.target.antennaLeft,
+                        value: $driver.antennaLeft,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
                     )
                     slider(
                         "Right",
-                        value: $driver.target.antennaRight,
+                        value: $driver.antennaRight,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
                     )

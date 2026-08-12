@@ -316,11 +316,34 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
 ## The joystick's rotation zone
 
 `JoystickMapping` splits the pad with a **vertical line** at `±rotationThreshold`, not with a radius and not with a
-sector, and the reason is the handover: that same line is where head yaw saturates, so the head stops moving exactly
-as the body starts. A radial zone parts the two — a push into the corner is far from the centre while its sideways
-component is not, so the body would begin turning under a head still halfway through its own travel. A sector rule
-(`|x| > |y|`) has the opposite problem: crossing its 45° edge at full deflection would drop the rate from most to
-nothing, so the taper it would need to be jolt-free leaves a boundary too fuzzy to draw or to tick a haptic on.
+sector, and the reason is the handover: that same line is where head yaw reaches its full lead, so the head stops
+moving out exactly as the body starts. A radial zone parts the two — a push into the corner is far from the centre
+while its sideways component is not, so the body would begin turning under a head still halfway through its own
+travel. A sector rule (`|x| > |y|`) has the opposite problem: crossing its 45° edge at full deflection would drop the
+rate from most to nothing, so the taper it would need to be jolt-free leaves a boundary too fuzzy to draw or to tick a
+haptic on.
+
+- **The daemon measures the head from the base, not from the torso, and `TeleopDriver` is the one place the two are
+  composed.** The Stewart platform is handed `yaw − body_yaw` — proven by running the shipped IK rather than read off
+  a doc: `(head 30°, body 30°)` comes out bit-identical to neutral, and `(head 0°, body 30°)` identical to
+  `(head −30°, body 0°)`. So a head sent at a fixed angle while the body turns holds its **absolute** direction and
+  visually unwinds from the torso: the camera stopped panning at the exact moment the robot started turning, which is
+  what this shipped for five releases. Every angle in `JoystickMapping` is therefore body-relative — the only frame a
+  pad centred on the torso can mean — and `TeleopDriver.target.yaw` is that plus `target.bodyYaw`, written in one
+  place (`worldYaw`). `target` is `private(set)` to keep it one place: `@Bindable` would otherwise hand
+  `$driver.target.bodyYaw` to the next slider, which is the same bug in a second place. The composition is exact
+  (`rpy` is `Rz·Ry·Rx`, so the body's yaw factors out on the left) and stays exact only while `x` and `y` are zero —
+  they are world-frame too, and driving them needs `Rz(bodyYaw)` applied to the pair.
+- **The second half of that bug was invisible, and it was a limit.** The daemon also clamps body yaw so
+  `|head − body| ≤ 65°` (`max_relative_yaw`), so a head pinned at −40° forever meant the body stopped near ±105°
+  rather than the ±180° the client was integrating toward. Composed, that difference never exceeds `headAngle`, the
+  clamp goes inert, and the whole of `TeleopDriver.bodyYawLimit` — the URDF's own ±160°, mirrored here because the
+  head's world yaw is computed from it — becomes reachable. `staysInsideTheRelativeLimit` is what holds it.
+- **`headRecentring` decides where the head sits during the turn, and it is a feel constant.** At 1 the head gives its
+  whole lead back across the zone, so a held deflection leaves the camera looking straight down the torso; at 0 it
+  keeps the lead for the whole turn. The cost of 1 is that world head yaw is a tent in thumb travel — crossing the
+  boundary hands 40° back before the body has moved, so the camera swings against the push and the body needs
+  `headAngle / maxBodyYawRate` to repay it. Only the robot settles that; the knob is one number.
 
 - **The threshold was 0.7 and is 0.5, because on a round pad 0.7 sits outside the diagonal.** The rim only reaches
   `|x| = 0.7` within 45.6° of level, so a thumb pushed hard left and slightly up was against the edge of the pad with
