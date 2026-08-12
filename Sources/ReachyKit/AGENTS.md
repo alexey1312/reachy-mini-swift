@@ -13,6 +13,12 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   consumer stays parked until the robot's next frame and the socket leaks. All four stream clients carry the
   pattern — keep the next one in step, and close the socket on every exit path, not only the throwing one.
 - Unknown JSON fields must never break decoding (daemon updates independently of this app).
+- **Every hand-written JSON call goes through `JSONCodec`** (`ReachyJSON`), naming `.daemon`, `.web` or `.stored`.
+  There is no default profile on purpose: a default is how thirty files ended up taking Foundation's settings without
+  deciding to. `.stored` is frozen — records from shipped builds are on disk, and a changed strategy makes them
+  undecodable, which every store here reports as an empty cache rather than as an error. The generated OpenAPI client
+  is outside all of this: `Converter` builds its own `JSONDecoder` with no injection point. Reasoning and the
+  swift-yyjson measurements: `docs/adr/0004-one-json-codec.md`.
 - `RobotAPIClient` supplies throwing defaults for everything except `handshake`, `daemonStatus`, `wakeUp` and
   `gotoSleep` — every test double must implement those four. `/wifi/*` and `/update/*` live on separate protocols so
   doubles for the connection surface stay small.

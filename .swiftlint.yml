@@ -40,3 +40,15 @@ nesting:
 identifier_name:
   min_length:
     warning: 1
+
+custom_rules:
+  json_codec_only:
+    name: "JSON coder outside ReachyJSON"
+    regex: '\bJSON(Decoder|Encoder)\('
+    match_kinds:
+      - identifier
+      - typeidentifier
+    included: ".*/Sources/.*\\.swift"
+    excluded: ".*/(ReachyJSON/JSONCodec\\.swift|ReachyJSONTests/.*)"
+    message: "Use JSONCodec.daemon / .web / .stored — see docs/adr/0004-one-json-codec.md"
+    severity: error
