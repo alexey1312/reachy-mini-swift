@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// One message from a daemon job socket.
 public enum JobLogEvent: Sendable, Equatable {
@@ -118,10 +119,10 @@ public struct JobLogStreamClient: Sendable {
         guard let data = frame.data(using: .utf8) else {
             return [.line(frame)]
         }
-        if let rejection = try? JSONDecoder().decode(Rejection.self, from: data) {
+        if let rejection = try? JSONCodec.daemon.decode(Rejection.self, from: data) {
             return [.rejected(rejection.error)]
         }
-        if let job = try? JSONDecoder.reachyDaemon.decode(DaemonJob.self, from: data) {
+        if let job = try? JSONCodec.daemon.decode(DaemonJob.self, from: data) {
             // `job.logs` repeats lines already delivered as their own frames.
             return [.status(job.status)]
         }

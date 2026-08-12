@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// `/api/apps/*`, plus the one lock route that lives under `/api/daemon/`.
 ///
@@ -46,7 +47,7 @@ extension RobotConnection: RobotAppsClient {
         // The idle answer. Decoding it as a status would throw, and "nothing is
         // running" is not an error.
         guard !Self.isJSONNull(data) else { return nil }
-        return try JSONDecoder().decode(RobotAppStatus.self, from: data)
+        return try JSONCodec.daemon.decode(RobotAppStatus.self, from: data)
     }
 
     /// 400 when an app already holds the robot — the caller has to stop that one
@@ -181,7 +182,7 @@ extension RobotConnection: RobotAppsClient {
 
 extension RobotConnection {
     func hubJSON<T: Decodable>(method: String = "GET", path: String) async throws -> T {
-        try await JSONDecoder.reachyDaemon.decode(T.self, from: hubData(method: method, path: path))
+        try await JSONCodec.daemon.decode(T.self, from: hubData(method: method, path: path))
     }
 
     /// Unlike `wirelessData`, a 404 here is the resource's absence — a forgotten

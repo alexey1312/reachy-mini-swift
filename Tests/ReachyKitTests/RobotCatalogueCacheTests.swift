@@ -127,6 +127,27 @@ struct RobotCatalogueCacheTests {
         #expect(RobotAppCatalogueRecord.freshness == RobotAppsCache.freshness)
     }
 
+    /// The catalogue as the Hub really serves it. Not in the preview fixtures,
+    /// because nothing draws any of this: `extra.siblings` is the Space's file
+    /// listing, 3.2 MiB of the 3.84 MB measured, and the store's ceiling is the only
+    /// thing in this app that has ever had an opinion about it.
+    private func hubCatalogue(count: Int = 406) throws -> [RobotApp] {
+        try (0 ..< count).map { index in
+            let files = (0 ..< 220)
+                .map { "{\"rfilename\":\"src/hub_app_\(index)/module_\(String(format: "%04d", $0)).py\"}" }
+                .joined(separator: ",")
+            let json = """
+            {"name": "hub_app_\(index)", "source_kind": "hf_space",
+             "extra": {"id": "someone/hub_app_\(index)", "author": "someone", "likes": 3,
+                       "cardData": {"title": "Hub App \(index)", "emoji": "🤖",
+                                    "colorFrom": "pink", "colorTo": "indigo",
+                                    "short_description": "One of many."},
+                       "siblings": [\(files)]}}
+            """
+            return try JSONDecoder().decode(RobotApp.self, from: Data(json.utf8))
+        }
+    }
+
     /// A clock that went backwards is not a record from the future gone old.
     @Test("a record dated in the future is not stale")
     func toleratesAClockGoingBackwards() async {
@@ -134,6 +155,28 @@ struct RobotCatalogueCacheTests {
             await cache.write(appsRecord())
 
             #expect(await cache.record(RobotAppCatalogueRecord.self, for: robotID, at: now - 3600) != nil)
+        }
+    }
+
+    /// `maxRecordBytes` was the one number in this store that was imagined rather
+    /// than measured, and the catalogue had outgrown it before the cache shipped: a
+    /// Wireless robot answered `list-available` with 406 apps and a 3.84 MB record
+    /// on 2026-08-12, against a 2 MB ceiling. So every write was refused, the cache
+    /// stored a catalogue not once, and the only trace was one `warning` line.
+    @Test("a catalogue the size a real robot answers is stored rather than refused")
+    func storesACatalogueTheSizeARealRobotAnswers() async throws {
+        try await withTemporaryCatalogueCache { cache in
+            let record = try appsRecord(apps: hubCatalogue())
+            let bytes = try JSONEncoder().encode(record).count
+            // The fixture is only worth having while it is the size of the thing it
+            // stands for — an assertion that fails loudly rather than a test that
+            // quietly stops exercising the ceiling.
+            #expect(bytes > 3 * 1024 * 1024)
+
+            await cache.write(record)
+
+            let read = await cache.record(RobotAppCatalogueRecord.self, for: robotID, at: now)
+            #expect(read?.apps.count == record.apps.count)
         }
     }
 

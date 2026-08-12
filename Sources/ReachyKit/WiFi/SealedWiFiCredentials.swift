@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The robot's ephemeral key for sealing a Wi-Fi password, from `WIFI_KEYEX` over BLE
 /// or `GET /wifi/prov_key` over HTTP.
@@ -34,7 +35,7 @@ public struct SealedWiFiCredentials: Equatable, Sendable, Encodable {
     public let ct: String
 
     public func jsonString() throws -> String {
-        let data = try JSONEncoder().encode(self)
+        let data = try JSONCodec.daemon.encode(self)
         guard let json = String(bytes: data, encoding: .utf8) else {
             throw ReachyKitError.daemonRejected(statusCode: -1)
         }

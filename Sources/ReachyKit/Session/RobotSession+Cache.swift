@@ -24,7 +24,14 @@ extension RobotSession {
     /// Here rather than in `finishConnected` because that one is synchronous — and
     /// here rather than in the screens because a `.task` runs *after* the first
     /// frame, so a model reading disk itself would still show a spinner for one
-    /// pass. One file read against `readinessTimeout`'s eight seconds.
+    /// pass.
+    ///
+    /// Two file reads against `readinessTimeout`'s eight seconds, and the apps one
+    /// is not cheap: the record a real robot produces is megabytes (see
+    /// `maxRecordBytes`), and reading plus decoding 3.84 MB of it measured 1.3 s of
+    /// a 1.9 s connect — Debug, on a Mac, 2026-08-12. That is the trade this
+    /// placement makes and it is worth restating: a slower connect buys an Apps tab
+    /// that is never a spinner. Move the cost, not the placement, if it has to go.
     func warmCatalogues(for identity: RobotIdentity, attemptID: UUID) async {
         guard let catalogues else { return }
         let robotID = identity.deduplicationKey

@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Handing the robot a Wi-Fi password, over whichever channel can currently reach it.
 ///
@@ -100,7 +101,7 @@ public enum WiFiScanResult {
     /// not, and the missing ones are why manual SSID entry is a required part of the
     /// flow rather than a fallback.
     public static func networks(in raw: String) -> [String] {
-        let decoded = try? JSONDecoder().decode([String].self, from: Data(raw.utf8))
+        let decoded = try? JSONCodec.daemon.decode([String].self, from: Data(raw.utf8))
         var seen = Set<String>()
         // A hidden network scans as an empty name, which is not something to offer.
         return (decoded ?? salvage(raw)).filter { !$0.isEmpty && seen.insert($0).inserted }
