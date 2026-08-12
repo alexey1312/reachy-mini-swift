@@ -21,8 +21,10 @@ enum JoystickRotationSide: Equatable, Sendable {
 /// A vertical line at `±rotationThreshold` cuts the pad into three bands: inside it
 /// sideways travel is head yaw, and the whole slice beyond it — its top and bottom
 /// corners as much as its middle — turns the body, at a speed that grows from zero at
-/// the boundary. `maxBodyYawRate` must stay below `TargetSlewLimiter.bodyYawRate` or
-/// the limiter would cap the turn rather than merely smooth it.
+/// the boundary. `maxBodyYawRate` must stay below `TargetSlewLimiter.headAngularRate`
+/// or the limiter would cap the turn rather than merely smooth it. The *head*'s ceiling
+/// and not the body's, because `TeleopDriver` composes body yaw into the head pose: the
+/// emitted `yaw` travels at the turn's own speed too, and 90°/s is the lower of the two.
 ///
 /// **The boundary is a straight line and not a radius**, because it is also where head
 /// yaw reaches its full lead: the head stops moving out exactly as the body starts,

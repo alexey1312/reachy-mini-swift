@@ -84,9 +84,16 @@ struct JoystickMappingTests {
     /// If the joystick could outrun the limiter, the emitted pose would fall
     /// permanently behind the goal and the body would turn at the limiter's speed
     /// rather than the one the finger asked for.
+    ///
+    /// Against the head's ceiling as well, and that is the one that binds:
+    /// `TeleopDriver` composes body yaw into `target.yaw`, so a held turn walks the
+    /// head-yaw goal at `maxBodyYawRate` too — paced by `headAngularRate` (90°/s)
+    /// rather than by `bodyYawRate` (120°/s).
     @Test("the joystick cannot outrun the slew limiter")
     func staysUnderTheCeiling() {
-        #expect(mapping.maxBodyYawRate < TargetSlewLimiter().bodyYawRate)
+        let limiter = TargetSlewLimiter()
+        #expect(mapping.maxBodyYawRate < limiter.bodyYawRate)
+        #expect(mapping.maxBodyYawRate < limiter.headAngularRate)
     }
 
     @Test("pitch keeps its existing meaning")
