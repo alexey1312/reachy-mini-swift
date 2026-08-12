@@ -251,4 +251,19 @@ struct RobotCatalogueCacheTests {
             #expect(await cache.record(RobotAppCatalogueRecord.self, for: robotID, at: now) != nil)
         }
     }
+
+    /// A test bundle names no app group, which is the same shape as a fork without
+    /// the entitlement — and the store has to keep working there rather than lose
+    /// its root. The group arm cannot be exercised from here: `containerURL` is
+    /// answered by the sandbox, not by anything injectable.
+    @Test("with no app group named, the root stays in this process's own caches")
+    func fallsBackToItsOwnCachesDirectory() {
+        #expect(KnownRobots.appGroupIdentifier == nil)
+
+        let root = RobotCatalogueCache.defaultRoot
+        #expect(root.pathComponents.suffix(2) == ["ReachyMini", "catalogue"])
+
+        let ownCaches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        #expect(root.deletingLastPathComponent().deletingLastPathComponent() == ownCaches)
+    }
 }

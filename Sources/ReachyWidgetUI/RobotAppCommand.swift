@@ -26,10 +26,13 @@ public struct RobotAppCommand: Sendable {
     /// no pending caption is filed: `RobotAppLaunchState` is keyed by app, and
     /// "stop whatever is running" names none.
     private let appID: String?
+    /// `RobotEntity.id` where the caller named a robot. See `RobotPowerCommand`.
+    private let robot: String?
 
-    public init(_ operation: Operation, appID: String? = nil) {
+    public init(_ operation: Operation, appID: String? = nil, robot: String? = nil) {
         self.operation = operation
         self.appID = appID
+        self.robot = robot
     }
 
     /// `nil` means there was nothing to stop, which is not a failure — see
@@ -49,16 +52,14 @@ public struct RobotAppCommand: Sendable {
         }
 
         do {
-            // A reading inside its window is worth a round trip saved; past it,
-            // ask. `RobotAppLauncher` treats nil as "find out".
-            let assumeAwake: Bool? = if case let .fresh(reading) = snapshots.state() {
-                reading.isAwake
-            } else {
-                nil
-            }
+            // A reading inside its window and about *this* robot is worth a round
+            // trip saved; anything else, ask. `RobotAppLauncher` treats nil as
+            // "find out".
+            let assumeAwake = snapshots.freshReading(for: robot)?.isAwake
             let operation = operation
+            let robot = robot
             let result = try await RobotIntentTarget.withTimeout(Self.executionTimeout) {
-                let target = try await RobotIntentTarget.connection(timeout: 6)
+                let target = try await RobotIntentTarget.connection(to: robot, timeout: 6)
                 let launcher = RobotAppLauncher(client: target.client, assumeAwake: assumeAwake)
                 let outcome = try await operation.run(on: launcher)
                 return (target.robot, outcome)
@@ -82,8 +83,8 @@ public struct RobotAppCommand: Sendable {
     }
 
     /// Which caption the pending tile should carry. A toggle's guess is wrong only
-    /// when the reading is stale, and then the launcher corrects the outcome a
-    /// second later.
+    /// when there is no reading about this robot to make it from, and then the
+    /// launcher corrects the outcome a second later.
     private func looksLikeAStop(snapshots: RobotSnapshotStore) -> Bool {
         switch operation {
         case .start:
@@ -91,11 +92,7 @@ public struct RobotAppCommand: Sendable {
         case .stop:
             true
         case let .toggle(name):
-            if case let .fresh(reading) = snapshots.state() {
-                reading.runningAppName(at: Date()) == name
-            } else {
-                false
-            }
+            snapshots.freshReading(for: robot)?.runningAppName(at: Date()) == name
         }
     }
 

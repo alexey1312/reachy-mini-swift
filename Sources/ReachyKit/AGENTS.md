@@ -139,7 +139,8 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
 - **`RobotSession.swift` is at SwiftLint's file and type limits.** Recorded moves moved out to
   `RobotSession+Moves.swift` when adding parking crossed both at once. New session behaviour belongs in a
   `RobotSession+<Feature>.swift`, not in the class body.
-- **The app catalogue and the move index outlive the process, in `Caches/ReachyMini/catalogue`.** `Cache/` holds one
+- **The app catalogue and the move index outlive the process, in the app group's
+  `Library/Caches/ReachyMini/catalogue`.** `Cache/` holds one
   `RobotCatalogueCache` actor with two slots, not two stores: both need the same atomic write, the same
   identity-keyed layout and the same eviction, and all they differ in is payload and freshness — which is exactly
   what `RobotCatalogueRecord` carries (apps 24 h, the same window and the same "menu, not reading" argument as
@@ -147,6 +148,12 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   `GeometryCache` in three deliberate places, each written up beside the code: no manifest marker (one file, so
   `.atomic` makes completeness free), softer eviction (four robots, not one) and a refused
   oversized write that leaves the previous record standing rather than erroring.
+  - **The group container is what makes an App Intent able to read it**, and it used to be the process's own
+    `Caches`. An extension has a caches directory of its own, so `MoveEntityQuery` — which answers out of the moves
+    slot — found an empty directory there and offered Shortcuts a picker with nothing in it. The apps slot never
+    showed the bug because the widget reads `RobotAppsCacheStore`, which was in the group suite already. A bundle
+    naming no group falls back to its own `Caches`, the same degradation `KnownRobots.defaults` makes, and nothing
+    is migrated across the move: every record here is recoverable from the robot.
   - **The catalogue is stored whole, as `[RobotApp]`, not as `RobotAppSummary`.** The widget's `RobotAppsCache` keeps
     five fields because a widget installs nothing; a screen has to draw a card from this and `installApp` hands the
     object back to the daemon unchanged, so a field lost here is a field the robot would never receive.

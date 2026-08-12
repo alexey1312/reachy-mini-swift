@@ -17,8 +17,22 @@ struct RobotStatusEntry: TimelineEntry {
 struct RobotStatusProvider: TimelineProvider {
     /// The one place the family is read. Everything below it takes a `Layout`, so
     /// the view stays renderable outside a widget.
+    ///
+    /// **Exhaustive rather than a ternary, and that is the whole point of this
+    /// edit.** It used to read `family == .systemSmall ? .compact : .wide`, so
+    /// every family this widget did not support fell through to the wide layout —
+    /// which meant adding one silently rendered a 338 pt row inside a 76 pt ring.
+    /// `default` is still needed (`WidgetFamily` grows on its own schedule) and
+    /// answers `.wide`, which is the safe end of that mistake rather than the
+    /// silent one: a family nobody declared cannot be installed.
     private func layout(for family: WidgetFamily) -> RobotWidgetView.Layout {
-        family == .systemSmall ? .compact : .wide
+        switch family {
+        case .systemSmall: .compact
+        case .accessoryCircular: .circular
+        case .accessoryRectangular: .rectangular
+        case .accessoryInline: .inline
+        default: .wide
+        }
     }
 
     func placeholder(in context: Context) -> RobotStatusEntry {
@@ -88,6 +102,17 @@ struct RobotStatusWidget: Widget {
         // reason: on a phone carrying both, this row named the other one.
         .configurationDisplayName("Hey Reachy Status")
         .description("Your robot's last known state.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        // The three accessory families put the robot on the Lock Screen and in
+        // StandBy, which is where a reading nobody has to unlock for belongs.
+        // Nothing here is under snapshot cover: previews render `RobotWidgetView`
+        // directly, so this list is exercised by installing the widget and by
+        // nothing else.
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            .accessoryCircular,
+            .accessoryRectangular,
+            .accessoryInline,
+        ])
     }
 }

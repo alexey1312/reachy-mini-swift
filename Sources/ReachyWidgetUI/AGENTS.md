@@ -25,6 +25,19 @@ reverse.
   quietly.
 - `RobotAppQuery.entities(for:)` restores saved configuration: never access the network or omit requested identifiers,
   because WidgetKit prunes missing selections. Live refresh belongs in `suggestedEntities()`.
+- **`RobotEntity` contributes an identity and never an address.** A shortcut is written once and persists whatever
+  entity it captured, while the same robot answers at a different address tomorrow (rule 4) — so
+  `RobotIntentTarget.knownRobot(id:)` looks the robot up in `KnownRobots` when the intent _runs_, and the entity's
+  `host` exists only to tell two robots apart in the picker. A named robot the app has since forgotten throws
+  `.noKnownRobot` rather than falling through to the first in the list: a shortcut that silently retargets is worse
+  than one that says it cannot run.
+  - **The parameter is optional on all six existing intents, and that is what kept their phrases working.** An
+    unfilled optional is not requested, so "Wake up Hey Reachy" still means the last robot connected to; naming one
+    is the addition, not the requirement. Adding it is still a change to `Metadata.appintents` — read the built
+    file rather than trusting a green build.
+  - **`RobotEntityQuery` touches no network, unlike `RobotAppQuery`.** There is nothing to ask: the list _is_
+    `KnownRobots`, and a robot is not less known for being switched off. Reachability is the intent's problem —
+    hiding an unreachable robot here would mean a shortcut that cannot be written while the robot naps.
 - **An integer literal in `@Parameter(size:)` means _exactly_ that many, and it is a requirement the widget cannot
   render without.** `IntentCollectionSize` is `ExpressibleByIntegerLiteral` onto `init(exactly:)`, so
   `size: [.systemSmall: 2]` compiles to `min: 2, max: 2`. A robot with one installed app can then never satisfy the
@@ -77,6 +90,29 @@ reverse.
   `RobotStatusWidget` is the one place the family is read — the same division `ReachyAppsProvider.limit(for:)` draws.
   `.systemMedium` had **no reference at all** before this and rendered the compact layout stretched over twice the
   width; every widget preview was pinned to 158×158.
+  - **`layout(for:)` was a ternary, and that made adding a family a silent bug.** `family == .systemSmall ?
+    .compact : .wide` sent every family nobody had thought about to the 338 pt row — so declaring
+    `.accessoryCircular` would have rendered that row inside a 76 pt ring with nothing to say it had. It is an
+    exhaustive `switch` now, and `default` still answers `.wide` because `WidgetFamily` grows on its own schedule;
+    that is the safe end of the mistake rather than the silent one, since a family nobody declared cannot be
+    installed.
+  - **The three accessory families carry no wake/sleep button**, and only one of them could not. `.accessoryInline`
+    is a single line the system builds itself out of a `Text` and an `Image`, and a `Button` in it is discarded; the
+    other two are a decision — a 76 pt ring holding a capsule has nothing left to say what the robot is doing. The
+    whole surface falls through to `widgetURL`, so a tap opens the Robot tab, where the button is.
+  - **Each family shows a different half of the reading, and the first recording is what decided which.**
+    `.accessoryRectangular` is the only one with room for both, so it draws the robot's name over its state.
+    `.accessoryCircular` draws the glyph and **nothing else**: it carried `content.title` at first and the reference
+    came back with "kitchen" clipped to "kitcher" — 76 pt less padding is 68, and `minimumScaleFactor` gave up
+    before the name did. The symbol already encodes the state, which is what `symbolName` is chosen for, so the
+    words are spoken to VoiceOver instead of drawn. `.accessoryInline` shows `detail` rather than `title`, because
+    that line sits beside the clock and the robot's name is the one thing its owner already knows.
+  - **What the accessory references prove is the layout and the wording, not the rendering.**
+    `AccessoryWidgetBackground` is a system material and a material does not render headless — the same rule the
+    rest of `ReachyDesign/AGENTS.md` records for glass. The vibrant treatment the Lock Screen applies, and whether
+    each family is legible under it, is a device check. `supportedFamilies` is not covered at all: previews render
+    `RobotWidgetView` directly, never through WidgetKit, which is the same blind spot that once hid
+    `@Parameter(size:)`.
 - **An intent's metadata does not localize; everything else here does, its dialogs included.** `AppIntent.title`,
   `DisplayRepresentation` and the widgets' `configurationDisplayName` stay bare `LocalizedStringResource` against the
   main bundle, because that metadata is baked into `Metadata.appintents` at build time, where a runtime bundle URL has
@@ -86,11 +122,40 @@ reverse.
 
 ## The intents, and who each one is for
 
-Five protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
-`RobotSleep` and `RobotShutdown` — and one piece of bookkeeping, `RobotAppCommand`. Each has a twin in `RobotSession`,
+Six protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
+`RobotSleep`, `RobotShutdown` and `RobotMovePlayer` — and three pieces of bookkeeping, `RobotAppCommand`,
+`RobotPowerCommand` and `RobotMoveCommand`. Each has a twin in `RobotSession`,
 and the twins are not shared code on purpose: a session reads its own cached state and reports each failure onto a
 screen, while an intent has seconds, one client, and one sentence. Say which is which in the doc comment when adding
 the next pair.
+
+- **`RobotMovePlayer` exists because both of the daemon's move traps are silent.** A play route never touches the
+  motor mode, so an asleep robot accepts it, plays the sound and does not move; and `play_move` takes its guard
+  non-blocking, so a play issued over a running move is accepted, answered with a plausible UUID, and moves nothing.
+  Waking and clearing the slot are therefore not politeness — without either, the intent reports success over a robot
+  that did nothing. Both are pinned by mutation: delete the wake and `wakesBeforePlaying` goes red, delete
+  `clearTheFloor` and three tests do.
+  - **The wake-up animation is a move task, so it is cleared like any other.** `RobotPower.wake()` waits for it, but
+    that wait is bounded and returns normally when the budget passes; someone who asked for a dance asked for the
+    dance, not for the stretch in front of it.
+  - **Parking is skipped between two moves and performed after a stop**, which is the one flag `clearTheFloor` takes.
+    A `goto` is a move task of its own, so parking between them would occupy the slot the next play needs — the same
+    rule `RobotSession.clearTheFloor` follows.
+  - **`RobotMoveCommand` keeps less bookkeeping than its two siblings, deliberately.** A move is not a state
+    `RobotWidgetContent` draws, so there is no pending marker and no timeline reload for the move itself. What it
+    does write is `MovePlaybackRecord` — the app's only way to name a move that is already playing, since
+    `GET /api/move/running` answers with task ids alone — and a snapshot **only when the call woke the robot**.
+- **`MoveEntity`'s identifier is the whole move, and it is the only entity here that resolves with no cache.**
+  `dataset#move`, because the daemon gives a move no id at all and a dataset name is itself `owner/name` (so a slash
+  would have to be read from the right as a convention). `RobotAppEntity` cannot do this — its id is a Space slug
+  that means nothing until it is joined against an installed list — which is why a year-old move shortcut still runs
+  against a sleeping robot and an app one does not.
+  - **`MoveEntityQuery` reads the cache and never writes it.** Listing costs a Hugging Face round trip _per dataset_
+    and there are three, so a live top-up would make the picker wait on the robot. Writing is worse than slow:
+    `RobotSession.persistMoveIndex` carries `moveIndexTakenAt` across each write so the record ages as one unit, and
+    a second writer stamping `Date()` would re-date every library the app had merely read off disk — the index would
+    then never expire. The cost of reading only is that a library nobody has opened in the app is absent from the
+    picker.
 
 - **`RobotAppRelease` is the step both parking intents take first, and `RobotSleep` exists because of it.** Neither
   `move/play/goto_sleep` nor `daemon/stop` says anything to the app manager, so an app left running has the motors
@@ -121,10 +186,12 @@ the next pair.
   `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
-  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the six Shortcuts-facing
+  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the eight
+  Shortcuts-facing
   actions, a non-empty `autoShortcuts` and the appex's configuration intent, from every Release build task and from
   both release archives before upload. It exists because extraction failing is a warning, never a build error —
-  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all.
+  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all. **A new discoverable
+  intent owes that list an entry**, or its extraction can fail in a release and nothing goes red.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private
   `runningApp()` and none may add a second `currentAppStatus` — the whole budget is a few seconds.
   `RobotAppLauncherTests.readsTheStatusOnce` holds that line.
@@ -141,6 +208,12 @@ the next pair.
   parked robot _and_ for a torn-down backend, and those take opposite sequences — so `RobotAppLauncher` skips the
   status read only on `assumeAwake == true`, and asks the daemon for anything else. The round trip that saves is
   still at most one either way, which is the invariant `asksTheDaemonWhenUnsure` measures.
+  - **And it may only be believed about the robot the command is aimed at.** There is one snapshot, it describes
+    whichever robot the app last talked to, and an intent now names its own — so every `assumeAwake` goes through
+    `RobotSnapshotStore.freshReading(for:)` rather than reading `.fresh` directly. Without that check "Play the
+    happy dance on _the other robot_" took the connected robot's `isAwake`, skipped the wake, and the daemon
+    accepted a play over disabled motors: the sound, no motion, and a dialog saying it was playing. Passing `nil`
+    is what the widget's own buttons mean and is unaffected.
 - **A running app has no title, so nothing may speak the daemon's word for one.** `AppManager.start_app` files the
   status as `AppInfo(name=…, source_kind=INSTALLED)` with an empty `extra`, so `RobotApp.title` off a
   `current-app-status` or a `start-app` reply _is_ the Python entry point — Siri saying `dance_party` where the store
