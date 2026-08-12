@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import ReachyJSON
 
 /// On-disk store for one robot's URDF and meshes.
 ///
@@ -95,7 +96,7 @@ public struct GeometryCache: Sendable {
     }
 
     public func finalize(digest: String, meshes: [String]) throws {
-        try write(JSONEncoder().encode(meshes.sorted()), to: manifestURL(for: digest))
+        try write(JSONCodec.stored.encode(meshes.sorted()), to: manifestURL(for: digest))
     }
 
     /// Replaces atomically: a partial file left by a cancelled download would

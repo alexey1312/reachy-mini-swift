@@ -1,6 +1,7 @@
 import Foundation
 import OpenAPIRuntime
 import OpenAPIURLSession
+import ReachyJSON
 
 /// Owns the HTTP client for one robot daemon and performs the connection handshake.
 ///
@@ -363,8 +364,8 @@ public actor RobotConnection {
     /// whether `passive_joints` ever arrives populated.
     public func kinematicsInfo() async throws -> KinematicsInfo {
         let container = try await client.getKinematicsInfoApiKinematicsInfoGet().ok.body.json
-        let data = try JSONEncoder().encode(container)
-        return try JSONDecoder().decode(KinematicsInfo.self, from: data)
+        let data = try JSONCodec.daemon.encode(container)
+        return try JSONCodec.daemon.decode(KinematicsInfo.self, from: data)
     }
 
     /// Re-acquires camera/audio hardware for the daemon's WebRTC producer.

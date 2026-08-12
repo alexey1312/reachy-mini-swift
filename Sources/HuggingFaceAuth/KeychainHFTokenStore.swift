@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 import Security
 
 /// Keeps this app's Hugging Face token in the Keychain.
@@ -40,7 +41,7 @@ public struct KeychainHFTokenStore: HFTokenStoring {
             // A token this app can no longer parse is not an error worth
             // propagating — it reads as signed out, and the next sign-in
             // overwrites it.
-            return try? JSONDecoder().decode(HFToken.self, from: data)
+            return try? JSONCodec.stored.decode(HFToken.self, from: data)
         case errSecItemNotFound:
             return nil
         default:
@@ -49,7 +50,7 @@ public struct KeychainHFTokenStore: HFTokenStoring {
     }
 
     public func save(_ token: HFToken) throws {
-        let data = try JSONEncoder().encode(token)
+        let data = try JSONCodec.stored.encode(token)
 
         // Signing in again must replace what is there; `SecItemAdd` alone answers
         // `errSecDuplicateItem` the second time.

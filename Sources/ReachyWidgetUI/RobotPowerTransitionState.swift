@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 import ReachyKit
 
 /// What a power tap is doing, for a widget that will be redrawn by a different
@@ -97,7 +98,7 @@ public struct RobotPowerTransitionStore {
 
     public var current: RobotPowerTransitionState? {
         guard let data = defaults.data(forKey: Self.key) else { return nil }
-        return try? JSONDecoder().decode(RobotPowerTransitionState.self, from: data)
+        return try? JSONCodec.stored.decode(RobotPowerTransitionState.self, from: data)
     }
 
     /// Clears any earlier failure, for the reason `RobotAppLaunchStateStore.begin`
@@ -116,7 +117,7 @@ public struct RobotPowerTransitionStore {
     }
 
     private func write(_ state: RobotPowerTransitionState) {
-        guard let data = try? JSONEncoder().encode(state) else { return }
+        guard let data = try? JSONCodec.stored.encode(state) else { return }
         defaults.set(data, forKey: Self.key)
     }
 }

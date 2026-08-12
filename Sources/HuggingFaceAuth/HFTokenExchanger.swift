@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The network half of the sign-in: swapping a code for a token, renewing one,
 /// and asking the Hub who a token belongs to.
@@ -63,7 +64,7 @@ public struct HFTokenExchanger: HFTokenExchanging {
         struct Whoami: Decodable {
             let name: String
         }
-        guard let whoami = try? JSONDecoder().decode(Whoami.self, from: data), !whoami.name.isEmpty else {
+        guard let whoami = try? JSONCodec.web.decode(Whoami.self, from: data), !whoami.name.isEmpty else {
             throw HFOAuthError.invalidToken
         }
         return whoami.name
@@ -124,7 +125,7 @@ public struct HFTokenExchanger: HFTokenExchanging {
             }
         }
 
-        guard let payload = try? JSONDecoder().decode(Payload.self, from: data),
+        guard let payload = try? JSONCodec.web.decode(Payload.self, from: data),
               let accessToken = payload.accessTokenSnake ?? payload.accessToken,
               !accessToken.isEmpty
         else {

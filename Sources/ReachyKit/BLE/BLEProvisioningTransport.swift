@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Provisioning over Bluetooth, which is the only channel that works before the robot
 /// is on any network at all.
@@ -13,7 +14,7 @@ public struct BLEProvisioningTransport: WiFiProvisioningTransport {
 
     public func provisioningKey() async throws -> WiFiProvisioningKey {
         let json = try await pump.send(.wifiKeyExchange).value()
-        return try JSONDecoder().decode(WiFiProvisioningKey.self, from: Data(json.utf8))
+        return try JSONCodec.daemon.decode(WiFiProvisioningKey.self, from: Data(json.utf8))
     }
 
     public func scanNetworks() async throws -> [String] {

@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// What the app last saw of a robot, for a process that cannot look for itself.
 ///
@@ -157,11 +158,11 @@ public struct RobotSnapshotStore {
 
     public var current: RobotSnapshot? {
         guard let data = defaults.data(forKey: Self.key) else { return nil }
-        return try? JSONDecoder().decode(RobotSnapshot.self, from: data)
+        return try? JSONCodec.stored.decode(RobotSnapshot.self, from: data)
     }
 
     public func write(_ snapshot: RobotSnapshot) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        guard let data = try? JSONCodec.stored.encode(snapshot) else { return }
         defaults.set(data, forKey: Self.key)
     }
 

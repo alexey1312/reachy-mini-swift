@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import os
+import ReachyJSON
 
 /// On-disk store for the catalogues a robot answers slowly.
 ///
@@ -38,8 +39,14 @@ public actor RobotCatalogueCache {
     /// is something decoding already survives (project rule 3).
     public static let schema = 1
     /// `AppInfo.extra` is whatever the daemon read out of the Hub, so a catalogue
-    /// has no shape-imposed ceiling. A realistic one is tens of kilobytes.
-    static let maxRecordBytes = 2 * 1024 * 1024
+    /// has no shape-imposed ceiling — and the realistic figure is megabytes, not the
+    /// tens of kilobytes guessed here first. Measured against a Wireless robot on
+    /// 2026-08-12: 406 apps, a 3.84 MB record, of which 3.2 MiB is `extra.siblings`,
+    /// the Hub's file listing per Space. At the 2 MB this started at, every write was
+    /// refused and the cache stored a catalogue not once. What the headroom buys is
+    /// the Hub roughly doubling; past that a cold start goes back to a spinner, which
+    /// is the one failure this store is allowed to have.
+    static let maxRecordBytes = 8 * 1024 * 1024
     /// The connected robot plus three. Enough that moving between two robots is
     /// free, small enough that the directory cannot grow without bound.
     static let keptRobots = 4
@@ -98,7 +105,7 @@ public actor RobotCatalogueCache {
         at date: Date = Date()
     ) -> Record? {
         guard let data = try? Data(contentsOf: url(Record.slot, for: robotID)),
-              let record = try? JSONDecoder().decode(Record.self, from: data),
+              let record = try? JSONCodec.stored.decode(Record.self, from: data),
               record.isUsable(for: robotID, at: date)
         else { return nil }
         return record
@@ -108,7 +115,7 @@ public actor RobotCatalogueCache {
 
     public func write(_ record: some RobotCatalogueRecord) {
         let destination = url(type(of: record).slot, for: record.robotID)
-        guard let data = try? JSONEncoder().encode(record) else { return }
+        guard let data = try? JSONCodec.stored.encode(record) else { return }
         guard data.count <= Self.maxRecordBytes else {
             Self.log.warning("Catalogue record too large to cache: \(data.count, privacy: .public) bytes")
             return
