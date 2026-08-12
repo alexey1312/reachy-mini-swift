@@ -47,7 +47,7 @@ enum ReachyEntityIndex {
     static func indexIfNeeded(robotID: String?, defaults: UserDefaults = .standard) async {
         guard let robotID else { return }
         let apps = installedApps(for: robotID)
-        let moves = (try? await MoveEntityQuery().suggestedEntities()) ?? []
+        let moves = await (try? MoveEntityQuery().suggestedEntities()) ?? []
         // Nothing to say is not the same as "index an empty list": a cold launch
         // before the catalogues have been warmed would otherwise delete every row
         // and stamp itself as done.

@@ -173,9 +173,15 @@ struct RobotStatusReport: Equatable, Sendable {
 /// a Local Network prompt from.
 public struct RobotAwakeIntent: AppIntent {
     public static let title: LocalizedStringResource = "Check whether Reachy Mini is awake"
+    /// One literal rather than two joined with `+`: `IntentDescription` takes a
+    /// `LocalizedStringResource`, and concatenating two literals collapses the pair
+    /// into a `String`, which matches none of its initialisers. Same shape every
+    /// long sentence in this repo uses — the disable sits on the literal's own line,
+    /// because swiftformat wraps the call and would otherwise leave it pointing at
+    /// the declaration.
     public static let description = IntentDescription(
-        "Answers out of the last reading this app took. It never contacts the robot, so it reports what was last "
-            + "seen rather than what is true right now."
+        // swiftlint:disable:next line_length
+        "Answers out of the last reading this app took. It never contacts the robot, so it reports what was last seen rather than what is true right now."
     )
 
     /// Optional like every other robot parameter here, so an unfilled slot means
@@ -194,8 +200,8 @@ public struct RobotAwakeIntent: AppIntent {
 public struct RunningAppIntent: AppIntent {
     public static let title: LocalizedStringResource = "Check what Reachy Mini is running"
     public static let description = IntentDescription(
-        "Names the app the robot was last seen running, or the one that stopped. Answers from the last reading this "
-            + "app took rather than by contacting the robot."
+        // swiftlint:disable:next line_length
+        "Names the app the robot was last seen running, or the one that stopped. Answers from the last reading this app took rather than by contacting the robot."
     )
 
     @Parameter(title: "Robot")
