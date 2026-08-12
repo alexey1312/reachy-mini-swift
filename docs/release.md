@@ -128,6 +128,30 @@ mise run asc -- publish testflight --app 6799644194 --platform IOS \
 A macOS `.pkg` is not a zip, so `asc` cannot read the version out of it: that one
 also needs `--version` and `--build-number` (the commit count) spelled out.
 
+## The store listing
+
+The App Store copy lives in this repository, at `metadata/` — `app-info/en-US.json`
+for the fields that belong to the app (name, subtitle, privacy policy URL) and
+`version/<ver>/en-US.json` for the ones that belong to a version (description,
+keywords, promotional text, support and marketing URLs). Edit those, then:
+
+```bash
+mise run asc -- metadata validate --dir ./metadata
+mise run asc -- metadata push --app 6799644194 --version 0.2.0 --platform IOS --dir ./metadata --dry-run
+mise run asc -- metadata push --app 6799644194 --version 0.2.0 --platform IOS --dir ./metadata
+```
+
+Push once per platform — `IOS` and `MAC_OS` carry separate version localizations
+off the same files. `whatsNew` is deliberately absent: Apple refuses it on an
+app's **first** App Store version (`Attribute 'whatsNew' cannot be edited at this
+time`), so release notes start with the second one.
+
+Everything that is not a localization is set once and stays: category, content
+rights, age rating, availability, price, and the reviewer contact and notes. They
+are listed by `asc validate --app 6799644194 --version-id <id> --platform <p>`,
+which is the one command worth running before every submission — it prints an
+ordered remediation plan and exits non-zero while anything is missing.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,

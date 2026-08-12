@@ -33,3 +33,6 @@ CLAUDE.local.md
 
 # Brainstorming companion scratch
 .superpowers/
+
+# App Store Connect CLI run artifacts
+.asc/
