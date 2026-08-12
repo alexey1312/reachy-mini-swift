@@ -31,6 +31,9 @@ public struct StartRobotAppIntent: AppIntent {
     @Parameter(title: "App")
     public var app: RobotAppEntity
 
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     public init(app: RobotAppEntity) {
@@ -38,7 +41,7 @@ public struct StartRobotAppIntent: AppIntent {
     }
 
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        try await RobotAppCommand(.start(name: app.name), appID: app.id).perform()
+        try await RobotAppCommand(.start(name: app.name), appID: app.id, robot: robot?.id).perform()
         return .result(dialog: IntentDialog(.reachy("Started \(app.title).")))
     }
 }
@@ -52,13 +55,16 @@ public struct StopRobotAppIntent: AppIntent {
         "Stops whichever app is running on your robot. Does nothing if none is."
     )
 
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard case let .stopped(name) = try await RobotAppCommand(.stop).perform() else {
+        guard case let .stopped(name) = try await RobotAppCommand(.stop, robot: robot?.id).perform() else {
             return .result(dialog: IntentDialog(.reachy("No app was running.")))
         }
-        let title = RobotAppTitles().title(for: name)
+        let title = RobotAppTitles(robot: robot?.id).title(for: name)
         return .result(dialog: IntentDialog(.reachy("Stopped \(title).")))
     }
 }
@@ -72,6 +78,9 @@ public struct ToggleRobotAppIntent: AppIntent {
     @Parameter(title: "App")
     public var app: RobotAppEntity
 
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     public init(app: RobotAppEntity) {
@@ -79,7 +88,7 @@ public struct ToggleRobotAppIntent: AppIntent {
     }
 
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        let outcome = try await RobotAppCommand(.toggle(name: app.name), appID: app.id).perform()
+        let outcome = try await RobotAppCommand(.toggle(name: app.name), appID: app.id, robot: robot?.id).perform()
         guard case .started = outcome else {
             return .result(dialog: IntentDialog(.reachy("Stopped \(app.title).")))
         }

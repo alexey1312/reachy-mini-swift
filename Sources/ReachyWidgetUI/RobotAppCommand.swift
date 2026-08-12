@@ -26,10 +26,13 @@ public struct RobotAppCommand: Sendable {
     /// no pending caption is filed: `RobotAppLaunchState` is keyed by app, and
     /// "stop whatever is running" names none.
     private let appID: String?
+    /// `RobotEntity.id` where the caller named a robot. See `RobotPowerCommand`.
+    private let robot: String?
 
-    public init(_ operation: Operation, appID: String? = nil) {
+    public init(_ operation: Operation, appID: String? = nil, robot: String? = nil) {
         self.operation = operation
         self.appID = appID
+        self.robot = robot
     }
 
     /// `nil` means there was nothing to stop, which is not a failure — see
@@ -57,8 +60,9 @@ public struct RobotAppCommand: Sendable {
                 nil
             }
             let operation = operation
+            let robot = robot
             let result = try await RobotIntentTarget.withTimeout(Self.executionTimeout) {
-                let target = try await RobotIntentTarget.connection(timeout: 6)
+                let target = try await RobotIntentTarget.connection(to: robot, timeout: 6)
                 let launcher = RobotAppLauncher(client: target.client, assumeAwake: assumeAwake)
                 let outcome = try await operation.run(on: launcher)
                 return (target.robot, outcome)

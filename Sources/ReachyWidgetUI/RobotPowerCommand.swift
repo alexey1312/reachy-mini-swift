@@ -43,9 +43,14 @@ public struct RobotPowerCommand: Sendable {
     static let executionTimeout: Duration = .seconds(15)
 
     private let operation: Operation
+    /// `RobotEntity.id` where the caller named a robot, `nil` where it did not.
+    /// The id rather than the entity: this type is reached from the widget's own
+    /// button too, which holds no metadata-extracted value.
+    private let robot: String?
 
-    public init(_ operation: Operation) {
+    public init(_ operation: Operation, robot: String? = nil) {
         self.operation = operation
+        self.robot = robot
     }
 
     /// Non-nil only for `.wake`, whose caller has two different sentences to speak.
@@ -62,8 +67,9 @@ public struct RobotPowerCommand: Sendable {
 
         do {
             let operation = operation
+            let robot = robot
             let result = try await RobotIntentTarget.withTimeout(Self.executionTimeout) {
-                let target = try await RobotIntentTarget.connection(timeout: 10)
+                let target = try await RobotIntentTarget.connection(to: robot, timeout: 10)
                 let resumption = try await operation.run(on: target)
                 return (target.robot, resumption)
             }

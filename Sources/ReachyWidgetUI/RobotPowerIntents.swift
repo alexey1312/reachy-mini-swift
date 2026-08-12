@@ -29,8 +29,8 @@ public enum RobotIntentError: Error, LocalizedError, Equatable {
     }
 }
 
-/// The robot an intent acts on: the last one this app connected to, at the
-/// address it answered on.
+/// The robot an intent acts on: the one it named, or the last one this app
+/// connected to, at the address that robot answered on.
 ///
 /// **Local network only, deliberately.** A robot reached through the Hugging Face
 /// relay needs a WebRTC session negotiated over a signalling stream, and an intent
@@ -46,7 +46,25 @@ public enum RobotIntentTarget {
     /// The last completed handshake, including the stable identity an intent must
     /// verify before it sends a command to the remembered address.
     public static var knownRobot: KnownRobot? {
-        KnownRobots.all.first
+        knownRobot(id: nil)
+    }
+
+    /// The robot an intent named, looked up **now** rather than taken from the
+    /// entity that named it.
+    ///
+    /// A `RobotEntity` is persisted inside a shortcut and carries the address the
+    /// robot answered at when it was written; the same robot answers somewhere else
+    /// tomorrow (project rule 4). So the entity contributes an identity and the
+    /// store contributes an address, which is the split every other reader here
+    /// already makes.
+    ///
+    /// A robot the app has since forgotten falls through to `.noKnownRobot` rather
+    /// than to the first one in the list: a shortcut that silently retargets is
+    /// worse than one that says it cannot run.
+    public static func knownRobot(id: String?) -> KnownRobot? {
+        let known = KnownRobots.all
+        guard let id else { return known.first }
+        return known.first { $0.key == id }
     }
 
     /// One connection whose every sub-session is capped at `timeout`.
@@ -56,8 +74,8 @@ public enum RobotIntentTarget {
     /// point here rather than a side effect. That budget exists for a screen with
     /// a spinner; an intent that sat on it would be killed with nothing written
     /// down.
-    public static func connection(timeout: TimeInterval) async throws -> VerifiedConnection {
-        guard let robot = knownRobot else {
+    public static func connection(to id: String? = nil, timeout: TimeInterval) async throws -> VerifiedConnection {
+        guard let robot = knownRobot(id: id) else {
             throw RobotIntentError.noKnownRobot
         }
         let configuration = URLSessionConfiguration.ephemeral
@@ -127,13 +145,19 @@ public struct WakeRobotIntent: AppIntent {
     // silent. Safe only because the intent already requires a robot this app has
     // connected to before, and that connection is what obtained the permission.
 
+    /// Optional on every intent here, and that is what keeps the six existing Siri
+    /// phrases working: an unfilled optional is not asked for, so "Wake up Hey
+    /// Reachy" still means the last robot connected to. Naming one is the addition.
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     /// The dialog is the whole of what a starting backend can be reported as: the
     /// job takes tens of seconds, this process has seconds, and a spinner nobody
     /// can see is worth less than a sentence saying the robot is on its way.
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        switch try await RobotPowerCommand(.wake).perform() {
+        switch try await RobotPowerCommand(.wake, robot: robot?.id).perform() {
         case .startingBackend:
             return .result(dialog: IntentDialog(.reachy("Reachy Mini was off. It's starting up and will wake itself.")))
         case .woke, .none:
@@ -150,10 +174,13 @@ public struct SleepRobotIntent: AppIntent {
         "Stops the running app, plays the robot's sleep animation, then parks its motors."
     )
 
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        try await RobotPowerCommand(.sleep).perform()
+        try await RobotPowerCommand(.sleep, robot: robot?.id).perform()
         return .result()
     }
 }
@@ -171,10 +198,13 @@ public struct PowerOffRobotIntent: AppIntent {
         "Stops the running app, puts the robot to sleep and shuts its backend down. Waking up brings it back."
     )
 
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        try await RobotPowerCommand(.powerOff).perform()
+        try await RobotPowerCommand(.powerOff, robot: robot?.id).perform()
         return .result()
     }
 }

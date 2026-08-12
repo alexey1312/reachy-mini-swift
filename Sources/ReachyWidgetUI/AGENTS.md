@@ -25,6 +25,19 @@ reverse.
   quietly.
 - `RobotAppQuery.entities(for:)` restores saved configuration: never access the network or omit requested identifiers,
   because WidgetKit prunes missing selections. Live refresh belongs in `suggestedEntities()`.
+- **`RobotEntity` contributes an identity and never an address.** A shortcut is written once and persists whatever
+  entity it captured, while the same robot answers at a different address tomorrow (rule 4) — so
+  `RobotIntentTarget.knownRobot(id:)` looks the robot up in `KnownRobots` when the intent _runs_, and the entity's
+  `host` exists only to tell two robots apart in the picker. A named robot the app has since forgotten throws
+  `.noKnownRobot` rather than falling through to the first in the list: a shortcut that silently retargets is worse
+  than one that says it cannot run.
+  - **The parameter is optional on all six existing intents, and that is what kept their phrases working.** An
+    unfilled optional is not requested, so "Wake up Hey Reachy" still means the last robot connected to; naming one
+    is the addition, not the requirement. Adding it is still a change to `Metadata.appintents` — read the built
+    file rather than trusting a green build.
+  - **`RobotEntityQuery` touches no network, unlike `RobotAppQuery`.** There is nothing to ask: the list _is_
+    `KnownRobots`, and a robot is not less known for being switched off. Reachability is the intent's problem —
+    hiding an unreachable robot here would mean a shortcut that cannot be written while the robot naps.
 - **An integer literal in `@Parameter(size:)` means _exactly_ that many, and it is a requirement the widget cannot
   render without.** `IntentCollectionSize` is `ExpressibleByIntegerLiteral` onto `init(exactly:)`, so
   `size: [.systemSmall: 2]` compiles to `min: 2, max: 2`. A robot with one installed app can then never satisfy the
