@@ -40,6 +40,15 @@ struct RootLifecycle: ViewModifier {
                 // run and the storybook do not file rows for the simulator.
                 await ReachySpotlightIndex.indexIfNeeded()
             }
+            // The robot's own apps and moves, as entities rather than destinations —
+            // `ReachyEntityIndex` explains the difference. Keyed on both halves so
+            // one effect covers connecting, switching robots, and coming back to the
+            // app after something was installed: the list is content-stamped, so a
+            // run that finds nothing changed costs two small reads and stops.
+            .task(id: entityIndexTrigger) {
+                guard !previewMode, scenePhase == .active else { return }
+                await ReachyEntityIndex.indexIfNeeded(robotID: connectedRobotID)
+            }
             // `initial: true` because a cold launch fills the inbox in
             // `scene(_:willConnectTo:)`, before this body has ever run.
             .onChange(of: quickActions.pending, initial: true) { _, _ in
@@ -82,6 +91,31 @@ struct RootLifecycle: ViewModifier {
                 follow(link)
             }
             .widgetReload(session: session, isPreview: previewMode)
+    }
+
+    /// What makes the entity index re-check itself, in one `Equatable` value.
+    ///
+    /// The scene phase is in here rather than in a second modifier because
+    /// "something was installed while the app was in the background" is the case a
+    /// connect-only trigger misses, and it is the ordinary one — the widget and
+    /// Shortcuts both start apps without this process running.
+    private struct EntityIndexTrigger: Equatable {
+        let robotID: String?
+        let isActive: Bool
+    }
+
+    private var entityIndexTrigger: EntityIndexTrigger {
+        EntityIndexTrigger(robotID: connectedRobotID, isActive: scenePhase == .active)
+    }
+
+    /// The identity behind the current phase. `RobotSession` keeps its own copy of
+    /// this for its caches, and it is not `public` — a screen that needs the robot's
+    /// key derives it the same way `SettingsScreen` and `RobotScreen` do.
+    private var connectedRobotID: String? {
+        switch session.phase {
+        case let .connected(identity), let .unreachable(identity): identity.deduplicationKey
+        case .idle, .connecting: nil
+        }
     }
 
     /// Selecting the tab is `ReachyRouter`'s; whatever a link has to *do* on arrival

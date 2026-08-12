@@ -146,8 +146,10 @@ let package = Package(
             name: "ReachyUITests",
             // `ReachyMedia` for `CameraSession`: the viewport now borrows one from
             // a remote session instead of always building its own, and that
-            // ownership is what its tests have to assert on.
-            dependencies: ["ReachyUI", "ReachyKit", "ReachyMedia", "HuggingFaceAuth"]
+            // ownership is what its tests have to assert on. `ReachyWidgetUI` for
+            // the two entity types `ReachyEntityIndex` stamps — named explicitly
+            // rather than leaned on as a transitive import of `ReachyUI`.
+            dependencies: ["ReachyUI", "ReachyKit", "ReachyMedia", "ReachyWidgetUI", "HuggingFaceAuth"]
         ),
         .testTarget(
             name: "ReachyWidgetUITests",
