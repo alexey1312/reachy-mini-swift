@@ -69,7 +69,7 @@ struct RobotStatusReport: Equatable, Sendable {
         case .noRobot:
             Self.noRobotSentence
         case let .current(snapshot):
-            snapshot.isAwake ? Self.awake(Self.name(of: snapshot)) : Self.notAwake(Self.name(of: snapshot))
+            Self.power(of: snapshot)
         case let .remembered(snapshot):
             Self.unreachable(Self.name(of: snapshot), age: Self.age(of: snapshot, at: date))
         }
@@ -132,6 +132,18 @@ struct RobotStatusReport: Equatable, Sendable {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter.localizedString(for: snapshot.takenAt, relativeTo: date)
+    }
+
+    /// The motors alone, named once.
+    ///
+    /// A function rather than a ternary inside the `switch` expression:
+    /// `void_function_in_ternary` fires on a ternary whose result is discarded, and
+    /// a case of an implicit-return switch looks exactly like that to SwiftLint. In
+    /// `return` position it does not — which is why the twin in `appDialog` is
+    /// written inline and this one is not.
+    private static func power(of snapshot: RobotSnapshot) -> LocalizedStringResource {
+        let name = name(of: snapshot)
+        return snapshot.isAwake ? awake(name) : notAwake(name)
     }
 
     private static func awake(_ name: String) -> LocalizedStringResource {
