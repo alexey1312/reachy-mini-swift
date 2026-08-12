@@ -208,6 +208,12 @@ the next pair.
   parked robot _and_ for a torn-down backend, and those take opposite sequences — so `RobotAppLauncher` skips the
   status read only on `assumeAwake == true`, and asks the daemon for anything else. The round trip that saves is
   still at most one either way, which is the invariant `asksTheDaemonWhenUnsure` measures.
+  - **And it may only be believed about the robot the command is aimed at.** There is one snapshot, it describes
+    whichever robot the app last talked to, and an intent now names its own — so every `assumeAwake` goes through
+    `RobotSnapshotStore.freshReading(for:)` rather than reading `.fresh` directly. Without that check "Play the
+    happy dance on _the other robot_" took the connected robot's `isAwake`, skipped the wake, and the daemon
+    accepted a play over disabled motors: the sound, no motion, and a dialog saying it was playing. Passing `nil`
+    is what the widget's own buttons mean and is unaffected.
 - **A running app has no title, so nothing may speak the daemon's word for one.** `AppManager.start_app` files the
   status as `AppInfo(name=…, source_kind=INSTALLED)` with an empty `extra`, so `RobotApp.title` off a
   `current-app-status` or a `start-app` reply _is_ the Python entry point — Siri saying `dance_party` where the store

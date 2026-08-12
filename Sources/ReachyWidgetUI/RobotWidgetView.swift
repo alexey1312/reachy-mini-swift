@@ -29,23 +29,6 @@ public struct RobotWidgetView: View {
         /// `.accessoryInline`, which is one line beside the clock. The system draws
         /// it in its own font and colour and ignores almost everything asked of it.
         case inline
-
-        /// The three families the system renders vibrantly, in its own tint and at
-        /// a fraction of the size.
-        ///
-        /// **None of them carries the wake/sleep button, and one of them could not.**
-        /// `.accessoryInline` is a single line the system draws itself out of a
-        /// `Text` and an `Image` — a `Button` in it is discarded. The other two are
-        /// a design decision rather than an API limit: a 76 pt ring holding a
-        /// capsule has nothing left to say what the robot is doing, which is what
-        /// the reader came for. The whole surface falls through to `widgetURL`, so
-        /// a tap opens the app on the Robot tab — where the button is.
-        var isAccessory: Bool {
-            switch self {
-            case .compact, .wide: false
-            case .circular, .rectangular, .inline: true
-            }
-        }
     }
 
     private let content: RobotWidgetContent
@@ -78,6 +61,13 @@ public struct RobotWidgetView: View {
                         actionButton(action)
                     }
                 }
+            // None of the three accessory branches carries the wake/sleep button,
+            // and one of them could not: `.accessoryInline` is a single line the
+            // system builds itself out of a `Text` and an `Image`, and a `Button` in
+            // it is discarded. The other two are a decision — a 76 pt ring holding a
+            // capsule has nothing left to say what the robot is doing. All three
+            // fall through to `widgetURL`, so a tap opens the Robot tab, where the
+            // button is.
             case .circular:
                 circularBody
             case .rectangular:

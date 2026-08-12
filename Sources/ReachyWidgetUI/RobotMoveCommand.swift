@@ -44,18 +44,16 @@ public struct RobotMoveCommand: Sendable {
 
     @discardableResult
     public func perform() async throws -> Report {
-        // A reading inside its window is worth a round trip saved; past it, ask.
-        // `RobotMovePlayer` treats nil as "find out", and treats a reading that
-        // says asleep as nothing at all.
+        // A reading inside its window and about *this* robot is worth a round trip
+        // saved; anything else, ask. `freshReading(for:)` is where the second half
+        // lives — there is one snapshot and an intent may name a robot other than
+        // the one it describes. `RobotMovePlayer` treats nil as "find out", and
+        // treats a reading that says asleep as nothing at all.
         //
         // The store itself is not `Sendable`, so it is read here and rebuilt inside
         // `record` rather than carried into the closure — the same shape
         // `RobotPowerCommand` has.
-        let assumeAwake: Bool? = if case let .fresh(reading) = RobotSnapshotStore().state() {
-            reading.isAwake
-        } else {
-            nil
-        }
+        let assumeAwake = RobotSnapshotStore().freshReading(for: robot)?.isAwake
 
         let operation = operation
         let robot = robot
