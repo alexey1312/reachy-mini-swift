@@ -86,7 +86,7 @@ breaking first — see [Status](#status) for why. Privacy: [nothing is collected
 | `ReachyKit`       | Generated OpenAPI client, WebSocket state stream, discovery, BLE provisioning, URDF and kinematics. No UI framework. |
 | `ReachyMedia`     | WebRTC camera and two-way audio session, plus its video view.                                                        |
 | `ReachyScene`     | RealityKit scene built from the robot's own URDF and meshes.                                                         |
-| `ReachyUI`        | The screens: connect gate, five-tab shell, teleop, store, onboarding, settings.                                      |
+| `ReachyUI`        | The screens: connect gate, five-tab shell, teleop, state, store, files, onboarding, recovery, settings.              |
 | `ReachyDesign`    | Design tokens and the surface facade — SwiftUI and nothing else, linked by every UI layer.                           |
 | `ReachyWidgetUI`  | Widget views and the App Intents the app and the widget extension share. Depends on `ReachyKit` alone — no WebRTC.   |
 | `ReachySSH`       | SFTP via Citadel. Knows nothing about robots; host, port and credentials arrive as values.                           |
@@ -96,8 +96,9 @@ breaking first — see [Status](#status) for why. Privacy: [nothing is collected
 The dependency shape is deliberate: `ReachyKit` sits at the bottom with no UI; `ReachyMedia` and `ReachyScene` build
 on it; `ReachyUI` composes everything; `ReachyDesign` sits under all UI layers and depends on nothing at all.
 `ReachyWidgetUI` never links WebRTC — a widget process woken for a moment cannot afford it — and `ReachySSH` sits
-beside `ReachyKit` for the same reason. `ReachyTestSupport` holds stubs shared by the test targets and is
-deliberately not a product.
+beside `ReachyKit` for the same reason. Two targets are internal on purpose: `ReachyJSON` is the single JSON codec
+every other target encodes and decodes through, with one profile per counterparty
+([ADR 0004](docs/adr/0004-one-json-codec.md)), and `ReachyTestSupport` holds stubs shared by the test targets.
 
 ## Using the packages
 
@@ -141,7 +142,7 @@ refreshed with `./bin/mise run update-spec`.
 
 ## Testing
 
-- `./bin/mise run test` — the SwiftPM suites: transport, session, models, BLE protocol, SSH, auth.
+- `./bin/mise run test` — the SwiftPM suites: transport, session, models, JSON codec, BLE protocol, SSH, auth.
 - `./bin/mise run test:snapshots` — every SwiftUI preview rendered on a pinned simulator and compared against
   ~1400 reference images (light and dark), stored in Git LFS. The approach is
   [ADR 0002](docs/adr/0002-preview-driven-snapshot-testing.md).
