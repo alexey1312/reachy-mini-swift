@@ -9,13 +9,13 @@ import ReachyWidgetUI
 ///
 /// **These do not reach the Home Screen icon's menu.** That menu is UIKit's, holds
 /// its own items, and is built by `ReachyQuickAction` — the two systems are
-/// described side by side there. Six of the ten App Shortcuts an app may declare
+/// described side by side there. Eight of the ten App Shortcuts an app may declare
 /// are used here.
 ///
 /// `\(.applicationName)` is `CFBundleDisplayName`, so every phrase below reads
 /// "… Hey Reachy". `INAlternativeAppNames` in `Project.swift` adds "Reachy" beside
 /// it, which is the spoken form these were written for; changing the display name
-/// silently rewrites all six phrases.
+/// silently rewrites all eight phrases.
 struct ReachyShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -79,6 +79,33 @@ struct ReachyShortcuts: AppShortcutsProvider {
                     )
                 }
             )
+        )
+        // The move slot is filled from `MoveEntityQuery`, which reads the cached
+        // index and never the robot — so unlike the app phrases above, this one has
+        // something to match whether or not the robot is reachable. What it needs
+        // instead is the app to have listed that library at least once.
+        AppShortcut(
+            intent: PlayMoveIntent(),
+            phrases: ["Play \(\.$move) on \(.applicationName)"],
+            shortTitle: "Play move",
+            systemImageName: "figure.dance",
+            parameterPresentation: AppShortcutParameterPresentation(
+                for: \.$move,
+                summary: Summary("Play \(\.$move)"),
+                optionsCollections: {
+                    AppShortcutOptionsCollection(
+                        MoveEntityQuery(),
+                        title: "Moves",
+                        systemImageName: "music.note.list"
+                    )
+                }
+            )
+        )
+        AppShortcut(
+            intent: StopMoveIntent(),
+            phrases: ["Stop the move on \(.applicationName)"],
+            shortTitle: "Stop move",
+            systemImageName: "stop.circle"
         )
     }
 }

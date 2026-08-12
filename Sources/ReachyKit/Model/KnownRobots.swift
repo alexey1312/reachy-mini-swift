@@ -39,6 +39,16 @@ public enum KnownRobots {
     /// extension that shares its storage.
     static let appGroupInfoKey = "ReachyAppGroupIdentifier"
 
+    /// The group this process may share, or `nil` where none is entitled: a fork
+    /// without the entitlement, and every unit test.
+    ///
+    /// Read by `defaults` for the shared suite and by `RobotCatalogueCache` for the
+    /// shared container — two different kinds of storage behind one answer, so a
+    /// bundle that names no group degrades both the same way.
+    static var appGroupIdentifier: String? {
+        Bundle.main.object(forInfoDictionaryKey: appGroupInfoKey) as? String
+    }
+
     /// The defaults every part of this app shares — including the widget
     /// extension, which is its own process and cannot see the app's container.
     ///
@@ -53,7 +63,7 @@ public enum KnownRobots {
     /// `Sendable` — the annotation states what Apple documents, rather than
     /// waiving a real risk. The initialiser runs once, before any reader.
     public nonisolated(unsafe) static let defaults: UserDefaults = {
-        guard let group = Bundle.main.object(forInfoDictionaryKey: appGroupInfoKey) as? String,
+        guard let group = appGroupIdentifier,
               let shared = UserDefaults(suiteName: group)
         else { return .standard }
         migrate(from: .standard, to: shared)

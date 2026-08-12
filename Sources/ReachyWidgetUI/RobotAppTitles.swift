@@ -19,8 +19,11 @@ struct RobotAppTitles: Sendable {
     private let cache: RobotAppsCacheStore
     private let robotID: @Sendable () -> String?
 
-    init() {
-        self.init(cache: RobotAppsCacheStore(), robotID: { RobotIntentTarget.knownRobot?.key })
+    /// `robot` is a `RobotEntity.id`, so the title comes out of the cache belonging
+    /// to the robot the intent addressed rather than to whichever one was connected
+    /// to last.
+    init(robot: String? = nil) {
+        self.init(cache: RobotAppsCacheStore(), robotID: { RobotIntentTarget.knownRobot(id: robot)?.key })
     }
 
     init(cache: RobotAppsCacheStore, robotID: @escaping @Sendable () -> String?) {

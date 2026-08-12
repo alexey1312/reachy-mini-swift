@@ -180,6 +180,26 @@ public struct RobotSnapshotStore {
         return age <= Self.freshness ? .fresh(current) : .stale(current)
     }
 
+    /// The fresh reading, but only where it describes the robot the caller is about
+    /// to command.
+    ///
+    /// **There is one snapshot and it belongs to whichever robot the app last
+    /// talked to**, while an App Intent may name another one. `isAwake` is what
+    /// every caller reads to decide whether to wake, so believing another robot's
+    /// answer is how a command reaches a robot over disabled motors — accepted,
+    /// reported as success, and doing nothing.
+    ///
+    /// `nil` for `robotID` is "whichever robot this is", which is what the widget's
+    /// own buttons mean. A named robot against a snapshot written before identity
+    /// was persisted matches nothing, and asking the daemon is the safe way to be
+    /// wrong.
+    public func freshReading(for robotID: String?, at date: Date = Date()) -> RobotSnapshot? {
+        guard case let .fresh(reading) = state(at: date),
+              robotID == nil || reading.robotID == robotID
+        else { return nil }
+        return reading
+    }
+
     /// Folds what a caller just learned about the running app into the reading
     /// already there, inventing nothing else about it.
     ///

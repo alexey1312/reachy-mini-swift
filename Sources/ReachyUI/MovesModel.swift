@@ -2,33 +2,17 @@ import Foundation
 import Observation
 import ReachyDesign
 import ReachyKit
+import ReachyWidgetUI
 
 @MainActor
 @Observable
 final class MovesModel {
-    struct Library: Equatable {
-        let title: LocalizedStringResource
-        let dataset: String
-        let loadingTitle: LocalizedStringResource
-    }
+    /// The libraries live in `ReachyWidgetUI` because `MoveEntityQuery` needs them
+    /// too, and an extension cannot link this target. One declaration, two readers
+    /// — the move `AppArtwork` made before it.
+    typealias Library = MoveLibrary
 
-    static let libraries = [
-        Library(
-            title: .reachy("Dances"),
-            dataset: "pollen-robotics/reachy-mini-dances-library",
-            loadingTitle: .reachy("Teaching the servos new steps…")
-        ),
-        Library(
-            title: .reachy("Emotions"),
-            dataset: "pollen-robotics/reachy-mini-emotions-library",
-            loadingTitle: .reachy("Calibrating robot feelings…")
-        ),
-        Library(
-            title: .reachy("Music"),
-            dataset: "Anne-Charlotte/music",
-            loadingTitle: .reachy("Warming up the tiny speakers…")
-        ),
-    ]
+    static let libraries = MoveLibrary.all
 
     var selection = 0 {
         didSet {
@@ -187,7 +171,7 @@ final class MovesModel {
     }
 
     static func displayName(_ move: String) -> String {
-        move.replacingOccurrences(of: "_", with: " ")
+        MoveLibrary.displayName(move)
     }
 }
 

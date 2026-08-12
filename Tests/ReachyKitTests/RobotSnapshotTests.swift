@@ -326,4 +326,48 @@ struct RobotSnapshotTests {
         #expect(current.runningApp == nil)
         #expect(current.runningAppName == nil)
     }
+
+    // MARK: - The reading an intent is allowed to act on
+
+    /// There is one snapshot and an App Intent may name any robot, so `isAwake`
+    /// read without this check is somebody else's answer — and every caller reads
+    /// it to decide whether to wake.
+    @Test("a reading about another robot is not offered to a command aimed at this one")
+    func withholdsAnotherRobotsReading() throws {
+        let store = try store()
+        store.write(snapshot(robotID: "robot-a", isAwake: true))
+
+        #expect(store.freshReading(for: "robot-a", at: now)?.isAwake == true)
+        #expect(store.freshReading(for: "robot-b", at: now) == nil)
+    }
+
+    /// What the widget's own buttons mean: whichever robot this is.
+    @Test("naming no robot takes the reading whoever it is about")
+    func offersTheReadingWhenNoRobotIsNamed() throws {
+        let store = try store()
+        store.write(snapshot(robotID: "robot-a", isAwake: true))
+
+        #expect(store.freshReading(for: nil, at: now)?.robotID == "robot-a")
+    }
+
+    /// A snapshot written before identity was persisted matches no named robot.
+    /// Asking the daemon is the safe way to be wrong.
+    @Test("a reading with no identity answers nothing to a named robot")
+    func withholdsAnIdentitylessReading() throws {
+        let store = try store()
+        store.write(snapshot(robotID: nil, isAwake: true))
+
+        #expect(store.freshReading(for: "robot-a", at: now) == nil)
+        #expect(store.freshReading(for: nil, at: now) != nil)
+    }
+
+    /// The freshness rule is unchanged, not restated: a stale reading is no more
+    /// actionable for naming the right robot.
+    @Test("a stale reading is withheld even from the robot it describes")
+    func withholdsAStaleReading() throws {
+        let store = try store()
+        store.write(snapshot(robotID: "robot-a"))
+
+        #expect(store.freshReading(for: "robot-a", at: now.addingTimeInterval(RobotSnapshotStore.freshness + 1)) == nil)
+    }
 }
