@@ -90,6 +90,29 @@ reverse.
   `RobotStatusWidget` is the one place the family is read — the same division `ReachyAppsProvider.limit(for:)` draws.
   `.systemMedium` had **no reference at all** before this and rendered the compact layout stretched over twice the
   width; every widget preview was pinned to 158×158.
+  - **`layout(for:)` was a ternary, and that made adding a family a silent bug.** `family == .systemSmall ?
+    .compact : .wide` sent every family nobody had thought about to the 338 pt row — so declaring
+    `.accessoryCircular` would have rendered that row inside a 76 pt ring with nothing to say it had. It is an
+    exhaustive `switch` now, and `default` still answers `.wide` because `WidgetFamily` grows on its own schedule;
+    that is the safe end of the mistake rather than the silent one, since a family nobody declared cannot be
+    installed.
+  - **The three accessory families carry no wake/sleep button**, and only one of them could not. `.accessoryInline`
+    is a single line the system builds itself out of a `Text` and an `Image`, and a `Button` in it is discarded; the
+    other two are a decision — a 76 pt ring holding a capsule has nothing left to say what the robot is doing. The
+    whole surface falls through to `widgetURL`, so a tap opens the Robot tab, where the button is.
+  - **Each family shows a different half of the reading, and the first recording is what decided which.**
+    `.accessoryRectangular` is the only one with room for both, so it draws the robot's name over its state.
+    `.accessoryCircular` draws the glyph and **nothing else**: it carried `content.title` at first and the reference
+    came back with "kitchen" clipped to "kitcher" — 76 pt less padding is 68, and `minimumScaleFactor` gave up
+    before the name did. The symbol already encodes the state, which is what `symbolName` is chosen for, so the
+    words are spoken to VoiceOver instead of drawn. `.accessoryInline` shows `detail` rather than `title`, because
+    that line sits beside the clock and the robot's name is the one thing its owner already knows.
+  - **What the accessory references prove is the layout and the wording, not the rendering.**
+    `AccessoryWidgetBackground` is a system material and a material does not render headless — the same rule the
+    rest of `ReachyDesign/AGENTS.md` records for glass. The vibrant treatment the Lock Screen applies, and whether
+    each family is legible under it, is a device check. `supportedFamilies` is not covered at all: previews render
+    `RobotWidgetView` directly, never through WidgetKit, which is the same blind spot that once hid
+    `@Parameter(size:)`.
 - **An intent's metadata does not localize; everything else here does, its dialogs included.** `AppIntent.title`,
   `DisplayRepresentation` and the widgets' `configurationDisplayName` stay bare `LocalizedStringResource` against the
   main bundle, because that metadata is baked into `Metadata.appintents` at build time, where a runtime bundle URL has
