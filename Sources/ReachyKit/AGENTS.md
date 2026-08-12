@@ -139,11 +139,19 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   what `RobotCatalogueRecord` carries (apps 24 h, the same window and the same "menu, not reading" argument as
   `RobotAppsCache`; moves 7 days, because only Pollen publishing a dance changes a dataset index). It differs from
   `GeometryCache` in three deliberate places, each written up beside the code: no manifest marker (one file, so
-  `.atomic` makes completeness free), softer eviction (four robots, not one — these are kilobytes), and a refused
+  `.atomic` makes completeness free), softer eviction (four robots, not one) and a refused
   oversized write that leaves the previous record standing rather than erroring.
   - **The catalogue is stored whole, as `[RobotApp]`, not as `RobotAppSummary`.** The widget's `RobotAppsCache` keeps
     five fields because a widget installs nothing; a screen has to draw a card from this and `installApp` hands the
     object back to the daemon unchanged, so a field lost here is a field the robot would never receive.
+  - **Whole means megabytes, and the first ceiling was set from a guess.** Measured against a Wireless robot on
+    2026-08-12: `list-available` answers 406 apps in 3.74 MB and the record encodes to **3.84 MB**, of which 3.2 MiB
+    is `extra.siblings` — the Hub's file listing per Space, which nothing in this app reads and the daemon uses only
+    as Check 2 of `_find_metadata_for_entry_point`. `maxRecordBytes` was 2 MB, so **every** write was refused and the
+    cache stored a catalogue not once between shipping and 2026-08-12; the only trace was a `warning` nobody was
+    reading, which is why it looked like a cache that did nothing rather than a cache that was told no. It is 8 MB
+    now, and four robots of it is what the eviction window costs. The guard against the next round of this is a test
+    fixture built to the measured size (`storesACatalogueTheSizeARealRobotAnswers`), not the log line.
   - **The directory name is `SHA256(deduplicationKey)` and the raw key is _also_ inside the record.** A robot's name
     is free text somebody typed, so a `/` or a `..` in it would leave the cache directory on write —
     `GeometryCache.isSafeMeshName` refuses such a name and hashing is cheaper. The copy inside the file is what makes
