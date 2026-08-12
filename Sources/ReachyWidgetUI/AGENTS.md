@@ -234,14 +234,14 @@ at all: the answer is already in the App Group snapshot, written by whichever pr
 also what makes them safe in the extension's own process, the one with no screen to raise a Local Network prompt
 from.
 
-- **A snapshot may be believed when it says awake and never when it says asleep**, and a *spoken* answer is where
+- **A snapshot may be believed when it says awake and never when it says asleep**, and a _spoken_ answer is where
   that finally bites. The widget's tile glosses a false `isAwake` as "Asleep" and gets away with it, because the one
   word sits beside a wake button that resolves both meanings by itself (`RobotPower.resume()`). A sentence is the
   whole answer somebody gets, so `RobotStatusReport` says **not awake** and names both readings — parked motors are
   a motor mode, a stopped backend is a ninety-second job, and sending someone to the wrong one is the failure.
   `refusesToChooseBetweenAsleepAndOffline` is the test; delete the second half of that sentence and it goes red.
 - **`freshReading(for:)` is deliberately not what these call.** It collapses stale and wrong-robot into one `nil`,
-  which is right for a caller about to *command* a robot and wrong for one about to *describe* it — "I have no
+  which is right for a caller about to _command_ a robot and wrong for one about to _describe_ it — "I have no
   reading" and "my reading is old" are different answers. `RobotStatusDialog` uses `state(at:)` and makes the robot
   check itself, so a stale reading survives as stale.
 - **Every sentence stays a `LocalizedStringResource` until `IntentDialog` takes it.** Flattening to `String` first
@@ -256,7 +256,7 @@ from.
 `EntityIndexing.swift` conforms `RobotAppEntity` and `MoveEntity` to `IndexedEntity` (iOS 18 / macOS 15, this app's
 floor exactly). That is a **fourth** system beside the three `ReachyUI/AGENTS.md` names, and the distinction is the
 point: App Shortcuts put commands in Spotlight, the icon's menu is UIKit's, `ReachySpotlightIndex` files two
-destinations that open two tabs — and an indexed `AppEntity` carries its *type*, so Spotlight can pair the row with
+destinations that open two tabs — and an indexed `AppEntity` carries its _type_, so Spotlight can pair the row with
 the intents that take it. Searching for a dance offers to play it. A destination row never could.
 
 - **The `attributeSet` is overridden for the keywords alone.** The default derives title and subtitle from

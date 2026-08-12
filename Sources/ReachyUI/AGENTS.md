@@ -661,14 +661,14 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
 ## Entities in Spotlight, beside the three systems above
 
 `Navigation/EntityIndex.swift` is the **fourth** system next to App Shortcuts, `ReachyQuickAction` and
-`ReachySpotlightIndex`. Its neighbour files *destinations* — two rows that open two tabs, because Spotlight matches
+`ReachySpotlightIndex`. Its neighbour files _destinations_ — two rows that open two tabs, because Spotlight matches
 an installed app on its display name alone. This files the robot's own apps and moves as **entities**, and an
 indexed `AppEntity` carries its type with it, so Spotlight can pair the row with the intents that take that type:
 searching for a dance offers to play it. The conformances live in `ReachyWidgetUI` beside the entities themselves.
 
 - **Never the network.** Both lists come out of the caches the entity queries already read — `RobotAppsCacheStore`
   and `MoveEntityQuery`, the latter documented as reading only. `RobotAppQuery.suggestedEntities()` is deliberately
-  *not* used: it carries a 2 s live refresh this has no use for, and it **writes** the cache.
+  _not_ used: it carries a 2 s live refresh this has no use for, and it **writes** the cache.
 - **Never `deleteAllSearchableItems()`.** `ReachySpotlightIndex` files its two destination rows into the same default
   index, and a blanket delete takes them with it — silently, and long after anybody would connect the two files.
   Deletion is `deleteAppEntities(ofType:)`, which is also what retires an app removed from the robot.
@@ -679,7 +679,7 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   content; nothing in one process can catch the `hashValue` version.
 - The trigger is one `.task(id:)` in `RootLifecycle`, keyed on the robot **and** the scene phase. Connect-only would
   miss the ordinary case: the widget and Shortcuts both start and install apps with this process not running.
-- Only *installed* apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
+- Only _installed_ apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
   those cannot do what it promises — the same reason `ReachySpotlightIndex` leaves `.runningApp` out.
 
 ## Where the robot heard you
@@ -692,7 +692,7 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   would go dead the moment somebody switched to the camera. That is exactly the view where "somebody spoke, off to
   your left" is worth having, because the robot's own picture cannot show them. `StateStreamOptions.hearing` keeps
   the second socket cheap, and **its three `false`s are the whole point**: the daemon defaults `with_head_pose`,
-  `with_body_yaw` and `with_antenna_positions` to *true*, so a preset that merely added `with_doa` would carry a full
+  `with_body_yaw` and `with_antenna_positions` to _true_, so a preset that merely added `with_doa` would carry a full
   pose five times a second for a two-field reading.
 - **An axis, never a compass.** The daemon reports one angle along the robot's left–right line — 0 = left,
   π/2 = front/back, π = right (`.claude/rules/daemon-api.md`) — so **π/2 is a genuine degeneracy**: a two-microphone
@@ -701,7 +701,7 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   case, and it has a preview of its own so the wording cannot quietly be "improved" into a claim.
 - **The directions are the robot's, so they are `left`/`right` and the symbols do not mirror.** Same exception
   `JoystickPad` takes, and the same reason: a right-to-left language flipping these would reverse a fact about the
-  world. The caption says *its* left out loud, because looking through the camera and looking at the 3D model put the
+  world. The caption says _its_ left out loud, because looking through the camera and looking at the 3D model put the
   robot's left on opposite sides of the screen — the only unambiguous thing to draw is a word.
 - **`isSupported` is what keeps the badge off a robot that cannot answer.** `doa` is nullable and `sim-daemon` sends
   `null` for ever, as does any unit with no array; a badge mounted on hope would sit blank on every simulator run and
