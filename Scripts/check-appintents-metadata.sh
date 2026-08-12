@@ -12,7 +12,7 @@
 # Sources/ReachyWidgetUI/AGENTS.md describes doing by hand against Debug
 # products, run against whatever bundle it is handed.
 #
-# Checked: the six Shortcuts-facing intents and a non-empty `autoShortcuts`
+# Checked: the eight Shortcuts-facing intents and a non-empty `autoShortcuts`
 # (the extracted ReachyShortcuts provider) in the app's own metadata, the
 # widget configuration intent in the appex's (iOS only — that metadata is what
 # the widget's Edit sheet is built from), and that no `extract.packagedata`
@@ -47,6 +47,8 @@ REQUIRED_APP_ACTIONS = [
     "StartRobotAppIntent",
     "StopRobotAppIntent",
     "ToggleRobotAppIntent",
+    "PlayMoveIntent",
+    "StopMoveIntent",
 ]
 REQUIRED_APPEX_ACTIONS = ["RobotAppsConfigurationIntent"]
 

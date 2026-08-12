@@ -99,11 +99,40 @@ reverse.
 
 ## The intents, and who each one is for
 
-Five protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
-`RobotSleep` and `RobotShutdown` — and one piece of bookkeeping, `RobotAppCommand`. Each has a twin in `RobotSession`,
+Six protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
+`RobotSleep`, `RobotShutdown` and `RobotMovePlayer` — and three pieces of bookkeeping, `RobotAppCommand`,
+`RobotPowerCommand` and `RobotMoveCommand`. Each has a twin in `RobotSession`,
 and the twins are not shared code on purpose: a session reads its own cached state and reports each failure onto a
 screen, while an intent has seconds, one client, and one sentence. Say which is which in the doc comment when adding
 the next pair.
+
+- **`RobotMovePlayer` exists because both of the daemon's move traps are silent.** A play route never touches the
+  motor mode, so an asleep robot accepts it, plays the sound and does not move; and `play_move` takes its guard
+  non-blocking, so a play issued over a running move is accepted, answered with a plausible UUID, and moves nothing.
+  Waking and clearing the slot are therefore not politeness — without either, the intent reports success over a robot
+  that did nothing. Both are pinned by mutation: delete the wake and `wakesBeforePlaying` goes red, delete
+  `clearTheFloor` and three tests do.
+  - **The wake-up animation is a move task, so it is cleared like any other.** `RobotPower.wake()` waits for it, but
+    that wait is bounded and returns normally when the budget passes; someone who asked for a dance asked for the
+    dance, not for the stretch in front of it.
+  - **Parking is skipped between two moves and performed after a stop**, which is the one flag `clearTheFloor` takes.
+    A `goto` is a move task of its own, so parking between them would occupy the slot the next play needs — the same
+    rule `RobotSession.clearTheFloor` follows.
+  - **`RobotMoveCommand` keeps less bookkeeping than its two siblings, deliberately.** A move is not a state
+    `RobotWidgetContent` draws, so there is no pending marker and no timeline reload for the move itself. What it
+    does write is `MovePlaybackRecord` — the app's only way to name a move that is already playing, since
+    `GET /api/move/running` answers with task ids alone — and a snapshot **only when the call woke the robot**.
+- **`MoveEntity`'s identifier is the whole move, and it is the only entity here that resolves with no cache.**
+  `dataset#move`, because the daemon gives a move no id at all and a dataset name is itself `owner/name` (so a slash
+  would have to be read from the right as a convention). `RobotAppEntity` cannot do this — its id is a Space slug
+  that means nothing until it is joined against an installed list — which is why a year-old move shortcut still runs
+  against a sleeping robot and an app one does not.
+  - **`MoveEntityQuery` reads the cache and never writes it.** Listing costs a Hugging Face round trip _per dataset_
+    and there are three, so a live top-up would make the picker wait on the robot. Writing is worse than slow:
+    `RobotSession.persistMoveIndex` carries `moveIndexTakenAt` across each write so the record ages as one unit, and
+    a second writer stamping `Date()` would re-date every library the app had merely read off disk — the index would
+    then never expire. The cost of reading only is that a library nobody has opened in the app is absent from the
+    picker.
 
 - **`RobotAppRelease` is the step both parking intents take first, and `RobotSleep` exists because of it.** Neither
   `move/play/goto_sleep` nor `daemon/stop` says anything to the app manager, so an app left running has the motors
@@ -134,10 +163,12 @@ the next pair.
   `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
-  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the six Shortcuts-facing
+  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the eight
+  Shortcuts-facing
   actions, a non-empty `autoShortcuts` and the appex's configuration intent, from every Release build task and from
   both release archives before upload. It exists because extraction failing is a warning, never a build error —
-  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all.
+  TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all. **A new discoverable
+  intent owes that list an entry**, or its extraction can fail in a release and nothing goes red.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private
   `runningApp()` and none may add a second `currentAppStatus` — the whole budget is a few seconds.
   `RobotAppLauncherTests.readsTheStatusOnce` holds that line.
