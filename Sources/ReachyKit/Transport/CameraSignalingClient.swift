@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Drives the gst `webrtcsink` signaling handshake on `ws://<host>:8443` and
 /// surfaces only what a peer connection needs: the robot's SDP offer, remote
@@ -102,7 +103,7 @@ public actor CameraSignalingClient {
                     }
                     // Unknown message types are dropped: the daemon may add new ones.
                     guard let data,
-                          let decoded = try? JSONDecoder().decode(SignalingMessage.self, from: data)
+                          let decoded = try? JSONCodec.daemon.decode(SignalingMessage.self, from: data)
                     else { continue }
                     await handle(decoded, continuation)
                 }
@@ -188,7 +189,7 @@ public actor CameraSignalingClient {
 
     private func send(_ message: SignalingMessage) async {
         guard let socket,
-              let data = try? JSONEncoder().encode(message),
+              let data = try? JSONCodec.daemon.encode(message),
               let text = String(data: data, encoding: .utf8)
         else { return }
         try? await socket.send(.string(text))

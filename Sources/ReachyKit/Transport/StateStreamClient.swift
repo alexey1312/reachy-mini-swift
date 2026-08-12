@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Cumulative, privacy-safe health information for one state-stream subscription.
 public struct StateStreamDiagnostics: Equatable, Sendable {
@@ -66,7 +67,7 @@ public struct StateStreamClient: Sendable {
             bufferingPolicy: .bufferingNewest(1)
         )
         let task = Task { [url, configuration, session] in
-            let decoder = JSONDecoder.reachyDaemon
+            let decoder = JSONCodec.daemon
             var backoff = configuration.initialBackoff
             var diagnostics = StateStreamDiagnostics()
             while !Task.isCancelled {
