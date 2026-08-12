@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -14,7 +15,7 @@ struct ControlLoopStatsTests {
          "simulation_enabled": false, "mockup_sim_enabled": false,
          "version": "1.9.0", "backend_status": \(backend)}
         """
-        return try JSONDecoder.reachyDaemon.decode(
+        return try JSONCodec.daemon.decode(
             Components.Schemas.DaemonStatus.self,
             from: Data(json.utf8)
         )

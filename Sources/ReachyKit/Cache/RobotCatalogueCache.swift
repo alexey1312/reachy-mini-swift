@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import os
+import ReachyJSON
 
 /// On-disk store for the catalogues a robot answers slowly.
 ///
@@ -104,7 +105,7 @@ public actor RobotCatalogueCache {
         at date: Date = Date()
     ) -> Record? {
         guard let data = try? Data(contentsOf: url(Record.slot, for: robotID)),
-              let record = try? JSONDecoder().decode(Record.self, from: data),
+              let record = try? JSONCodec.stored.decode(Record.self, from: data),
               record.isUsable(for: robotID, at: date)
         else { return nil }
         return record
@@ -114,7 +115,7 @@ public actor RobotCatalogueCache {
 
     public func write(_ record: some RobotCatalogueRecord) {
         let destination = url(type(of: record).slot, for: record.robotID)
-        guard let data = try? JSONEncoder().encode(record) else { return }
+        guard let data = try? JSONCodec.stored.encode(record) else { return }
         guard data.count <= Self.maxRecordBytes else {
             Self.log.warning("Catalogue record too large to cache: \(data.count, privacy: .public) bytes")
             return

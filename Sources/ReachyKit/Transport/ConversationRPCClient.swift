@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Observes Conversation App 1.0 over its JSON-RPC 2.0 WebSocket.
 ///
@@ -115,7 +116,7 @@ public struct ConversationRPCClient: Sendable {
         }
 
         guard let data = frame.data(using: .utf8),
-              let notification = try? JSONDecoder().decode(Notification.self, from: data),
+              let notification = try? JSONCodec.daemon.decode(Notification.self, from: data),
               notification.method == "conversation.turn"
         else { return nil }
         return notification.params?.state

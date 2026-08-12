@@ -427,6 +427,12 @@ environment keys are written out by hand — swiftformat's `environmentEntry` ru
     colour collapses to black, blanks the entire capture under `.buttonStyle(.glass)`, and stays light in a dark
     reference. Each was found by re-recording and is written up with its measurement in
     `Sources/ReachyDesign/AGENTS.md`; add the next one the same way.
+11. **JSON goes through `JSONCodec`.** `.daemon` for what the robot said, `.web` for Hugging Face, `.stored` for what
+    this app wrote — and `.stored` may not change without a schema bump, because records from shipped builds are on
+    disk. A `JSONDecoder()` under `Sources/` outside `ReachyJSON` is a SwiftLint error; the rule does not reach
+    `Tests/`, so a fixture there may still name one — and a test that decodes a daemon payload through a bare
+    `JSONDecoder()` never exercises the date rule and proves nothing about the production path. Two sanctioned
+    exceptions carry their reason in the code: `SetTargetClient` and `ReachyKitError`.
 
 ## Detailed Rules
 

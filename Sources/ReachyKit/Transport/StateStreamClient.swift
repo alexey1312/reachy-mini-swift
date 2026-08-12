@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Cumulative, privacy-safe health information for one state-stream subscription.
 public struct StateStreamDiagnostics: Equatable, Sendable {
@@ -66,7 +67,6 @@ public struct StateStreamClient: Sendable {
             bufferingPolicy: .bufferingNewest(1)
         )
         let task = Task { [url, configuration, session] in
-            let decoder = JSONDecoder.reachyDaemon
             var backoff = configuration.initialBackoff
             var diagnostics = StateStreamDiagnostics()
             while !Task.isCancelled {
@@ -102,9 +102,9 @@ public struct StateStreamClient: Sendable {
                         // Decoded separately and never folded into diagnostics: the
                         // generated schema stays the health signal, so a viewer-only
                         // decode problem cannot masquerade as a broken stream.
-                        let frame = try? decoder.decode(RobotStateFrame.self, from: data)
+                        let frame = try? JSONCodec.daemon.decode(RobotStateFrame.self, from: data)
                         do {
-                            let state = try decoder.decode(Components.Schemas.FullState.self, from: data)
+                            let state = try JSONCodec.daemon.decode(Components.Schemas.FullState.self, from: data)
                             diagnostics.decodedFrames += 1
                             continuation.yield(.init(state: state, frame: frame, diagnostics: diagnostics))
                             backoff = configuration.initialBackoff

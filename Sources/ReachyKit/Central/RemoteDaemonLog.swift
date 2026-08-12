@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The daemon's journal over the data channel.
 ///
@@ -36,13 +37,15 @@ struct RemoteDaemonLog: Sendable {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     for await data in lines {
-                        guard let line = try? JSONDecoder().decode(LineMessage.self, from: data) else { continue }
+                        guard let line = try? JSONCodec.daemon.decode(LineMessage.self, from: data) else { continue }
                         continuation.yield(line.text)
                     }
                 }
                 group.addTask {
                     for await data in errors {
-                        guard let failure = try? JSONDecoder().decode(ErrorMessage.self, from: data) else { continue }
+                        guard let failure = try? JSONCodec.daemon.decode(ErrorMessage.self, from: data) else {
+                            continue
+                        }
                         // Rendered as a journal line rather than swallowed: the
                         // subscription is over after this, and "journalctl not
                         // found" is the answer to why the console stopped.
