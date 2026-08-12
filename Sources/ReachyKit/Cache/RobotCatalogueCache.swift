@@ -61,9 +61,35 @@ public actor RobotCatalogueCache {
     }
 
     public static var `default`: RobotCatalogueCache {
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        RobotCatalogueCache(root: defaultRoot)
+    }
+
+    /// The app group's container where there is one, and the process's own
+    /// `Caches` where there is not.
+    ///
+    /// **An extension has its own caches directory, so the old root made this
+    /// store invisible to every App Intent.** `MoveEntityQuery` answers out of the
+    /// moves slot; running in the widget's process it read an empty directory and
+    /// offered Shortcuts a picker with nothing in it. The apps slot never showed
+    /// the bug because the widget reads `RobotAppsCacheStore`, which was in the
+    /// group suite all along.
+    ///
+    /// Degrading to `.cachesDirectory` rather than failing is the same trade
+    /// `KnownRobots.defaults` makes, for the same reason: a fork without the
+    /// entitlement keeps a working cache instead of none.
+    ///
+    /// Nothing is migrated across the move. Every record here is recoverable from
+    /// the robot, so the whole cost is one Hugging Face round trip on the first
+    /// connection after the update — which is what a cold start cost before this
+    /// cache existed. The `Library/Caches` sub-path is kept so the directory still
+    /// reads as purgeable rather than as user data.
+    static var defaultRoot: URL {
+        let ownCaches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return RobotCatalogueCache(root: caches.appendingPathComponent("ReachyMini/catalogue", isDirectory: true))
+        guard let group = KnownRobots.appGroupIdentifier,
+              let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
+        else { return ownCaches.appendingPathComponent("ReachyMini/catalogue", isDirectory: true) }
+        return container.appendingPathComponent("Library/Caches/ReachyMini/catalogue", isDirectory: true)
     }
 
     // MARK: - Layout
