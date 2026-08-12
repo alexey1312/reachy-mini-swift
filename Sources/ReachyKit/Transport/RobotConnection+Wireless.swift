@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Routes that exist only on a Reachy Mini Wireless.
 ///
@@ -65,7 +66,7 @@ extension RobotConnection {
             body: body,
             canReport404: canReport404
         )
-        return try JSONDecoder.reachyDaemon.decode(T.self, from: data)
+        return try JSONCodec.daemon.decode(T.self, from: data)
     }
 
     /// - Parameter canReport404: whether this route can legitimately answer 404 for a

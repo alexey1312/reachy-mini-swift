@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -17,7 +18,7 @@ struct DaemonStatusDecodingTests {
          "backend_status": null, "error": null, "wlan_ip": "192.168.1.42",
          "version": "1.9.0", "hardware_id": "abc123"}
         """
-        let status = try JSONDecoder.reachyDaemon.decode(
+        let status = try JSONCodec.daemon.decode(
             Components.Schemas.DaemonStatus.self,
             from: Data(json.utf8)
         )
@@ -35,7 +36,7 @@ struct DaemonStatusDecodingTests {
          "simulation_enabled": null, "mockup_sim_enabled": null,
          "backend_status": null, "version": "1.9.0"}
         """
-        let status = try JSONDecoder.reachyDaemon.decode(
+        let status = try JSONCodec.daemon.decode(
             Components.Schemas.DaemonStatus.self,
             from: Data(json.utf8)
         )
@@ -55,7 +56,7 @@ struct DaemonStatusDecodingTests {
                             "last_alive": null, "control_loop_stats": {}},
          "version": "1.9.0"}
         """
-        let status = try JSONDecoder.reachyDaemon.decode(
+        let status = try JSONCodec.daemon.decode(
             Components.Schemas.DaemonStatus.self,
             from: Data(json.utf8)
         )

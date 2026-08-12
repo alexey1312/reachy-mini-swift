@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -16,7 +17,7 @@ struct FullStateDecodingTests {
     @Test("decodes a realistic state payload with unknown future fields")
     func decodesFixture() throws {
         let data = try fixtureData("full_state")
-        let state = try JSONDecoder.reachyDaemon.decode(Components.Schemas.FullState.self, from: data)
+        let state = try JSONCodec.daemon.decode(Components.Schemas.FullState.self, from: data)
 
         #expect(state.controlMode == .enabled)
         #expect(state.bodyYaw == 0.25)
@@ -31,7 +32,7 @@ struct FullStateDecodingTests {
     @Test("decodes a frame recorded from a real simulated daemon (v1.9.0)")
     func decodesRecordedFrame() throws {
         let data = try fixtureData("full_state_recorded")
-        let state = try JSONDecoder.reachyDaemon.decode(Components.Schemas.FullState.self, from: data)
+        let state = try JSONCodec.daemon.decode(Components.Schemas.FullState.self, from: data)
 
         #expect(state.controlMode == .enabled)
         #expect(state.headPose?.value1 != nil)
@@ -43,13 +44,13 @@ struct FullStateDecodingTests {
     func rejectsIncompatibleTypeChange() {
         let data = Data(#"{"body_yaw":"quarter turn"}"#.utf8)
         #expect(throws: DecodingError.self) {
-            _ = try JSONDecoder.reachyDaemon.decode(Components.Schemas.FullState.self, from: data)
+            _ = try JSONCodec.daemon.decode(Components.Schemas.FullState.self, from: data)
         }
     }
 
     @Test("all-null payload decodes to empty state (graceful degradation)")
     func decodesEmpty() throws {
-        let state = try JSONDecoder.reachyDaemon.decode(Components.Schemas.FullState.self, from: Data("{}".utf8))
+        let state = try JSONCodec.daemon.decode(Components.Schemas.FullState.self, from: Data("{}".utf8))
         #expect(state.controlMode == nil)
         #expect(state.headPose == nil)
     }

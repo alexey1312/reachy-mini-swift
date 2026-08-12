@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The daemon, reached over a WebRTC session instead of over HTTP.
 ///
@@ -144,7 +145,7 @@ public actor RemoteRobotConnection: RobotAPIClient {
          "version": \(Self.quoted(version)), "hardware_id": \(Self.quoted(hardwareID)),
          "backend_status": \(backend)}
         """
-        return try JSONDecoder().decode(
+        return try JSONCodec.daemon.decode(
             Components.Schemas.DaemonStatus.self,
             from: Data(json.utf8)
         )
@@ -153,7 +154,7 @@ public actor RemoteRobotConnection: RobotAPIClient {
     /// The robot's name comes from a central listing and is whatever its owner
     /// typed, so it reaches this JSON escaped rather than interpolated raw.
     private static func quoted(_ value: String) -> String {
-        guard let encoded = try? JSONEncoder().encode(value),
+        guard let encoded = try? JSONCodec.daemon.encode(value),
               let text = String(bytes: encoded, encoding: .utf8)
         else { return "\"\"" }
         return text

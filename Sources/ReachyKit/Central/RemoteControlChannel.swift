@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The WebRTC data channel, with the WebRTC left out.
 ///
@@ -229,7 +230,7 @@ public actor RemoteControlChannel {
     private static func encode(_ command: String, payload: [String: RemoteValue]) throws -> String {
         var body = payload
         body["type"] = .string(command)
-        let encoded = try JSONEncoder().encode(body)
+        let encoded = try JSONCodec.daemon.encode(body)
         guard let text = String(bytes: encoded, encoding: .utf8) else {
             throw EncodingError.invalidValue(body, .init(
                 codingPath: [],
@@ -247,7 +248,7 @@ public actor RemoteControlChannel {
         correlation: Correlation = .echoedCommand,
         expecting _: Reply.Type
     ) async throws -> Reply {
-        try await JSONDecoder().decode(
+        try await JSONCodec.daemon.decode(
             Reply.self,
             from: perform(command, payload: payload, correlation: correlation)
         )
@@ -298,7 +299,7 @@ public actor RemoteControlChannel {
     /// here.
     private func deliver(_ text: String) {
         let data = Data(text.utf8)
-        guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else { return }
+        guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else { return }
         // Every unsolicited broadcast names a `type` and no reply ever does, which
         // is the only thing separating `{"state": …}`, an answer, from
         // `{"type": "daemon_status", …, "state": …}`, which is not.
@@ -388,7 +389,7 @@ public actor RemoteControlChannel {
         struct Reply: Decodable {
             let error: String?
         }
-        if let error = try? JSONDecoder().decode(Reply.self, from: data).error, !error.isEmpty {
+        if let error = try? JSONCodec.daemon.decode(Reply.self, from: data).error, !error.isEmpty {
             throw Failure.robot(error)
         }
     }

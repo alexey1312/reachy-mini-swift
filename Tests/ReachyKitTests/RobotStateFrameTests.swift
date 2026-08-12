@@ -1,11 +1,12 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
 @Suite("Robot state frame decoding")
 struct RobotStateFrameTests {
     private func decode(_ json: String) throws -> RobotStateFrame {
-        try JSONDecoder.reachyDaemon.decode(RobotStateFrame.self, from: Data(json.utf8))
+        try JSONCodec.daemon.decode(RobotStateFrame.self, from: Data(json.utf8))
     }
 
     @Test("matrix pose survives the round trip to a transform")

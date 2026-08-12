@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// One app as the daemon describes it, with the Hugging Face Space card behind
 /// `extra` read out into something a screen can render.
@@ -158,8 +159,8 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
 
         init(extra: Components.Schemas.AppInfo.ExtraPayload?) {
             guard let extra,
-                  let data = try? JSONEncoder().encode(extra),
-                  let card = try? JSONDecoder().decode(Card.self, from: data)
+                  let data = try? JSONCodec.daemon.encode(extra),
+                  let card = try? JSONCodec.daemon.decode(Card.self, from: data)
             else {
                 self = .empty
                 return

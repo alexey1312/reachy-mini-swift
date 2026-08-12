@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// Provisioning over HTTP, for a phone standing on the robot's own access point.
 ///
@@ -21,7 +22,7 @@ extension RobotConnection: WiFiConfigClient {
             try await wirelessData(
                 method: "POST",
                 path: "/wifi/connect_sealed",
-                body: JSONEncoder().encode(payload)
+                body: JSONCodec.daemon.encode(payload)
             )
         } catch ReachyKitError.daemonRejected(statusCode: 400) {
             // `decrypt_failed` — a wrong PIN or a `kid` older than the robot's 600 s

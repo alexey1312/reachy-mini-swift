@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The last recorded move this app asked a robot to play.
 ///
@@ -40,11 +41,11 @@ public struct MovePlaybackStore {
 
     public var current: MovePlaybackRecord? {
         guard let data = defaults.data(forKey: Self.key) else { return nil }
-        return try? JSONDecoder().decode(MovePlaybackRecord.self, from: data)
+        return try? JSONCodec.stored.decode(MovePlaybackRecord.self, from: data)
     }
 
     public func write(_ record: MovePlaybackRecord) {
-        guard let data = try? JSONEncoder().encode(record) else { return }
+        guard let data = try? JSONCodec.stored.encode(record) else { return }
         defaults.set(data, forKey: Self.key)
     }
 
