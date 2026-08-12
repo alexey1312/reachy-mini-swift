@@ -56,6 +56,7 @@ let package = Package(
         .target(
             name: "ReachyKit",
             dependencies: [
+                "ReachyJSON",
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
             ],
