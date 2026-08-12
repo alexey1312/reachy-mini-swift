@@ -43,6 +43,29 @@ public struct StateStreamOptions: Sendable, Equatable {
         return options
     }
 
+    /// Direction of arrival and **nothing else**.
+    ///
+    /// Every geometry flag is named `false` rather than left `nil`, because the
+    /// daemon's own defaults are `true` for three of them (`with_head_pose`,
+    /// `with_body_yaw`, `with_antenna_positions`) — a query that only added
+    /// `with_doa` would carry a full pose forty times a minute for a two-field
+    /// reading.
+    ///
+    /// 5 Hz because this drives one indicator: a voice arrives, the indicator
+    /// lights, and nobody can read it faster than that. The visualization stream
+    /// asks for 20 because it is posing a linkage.
+    public static var hearing: Self {
+        var options = Self()
+        options.frequency = 5
+        options.headPose = false
+        options.headJoints = false
+        options.bodyYaw = false
+        options.antennaPositions = false
+        options.passiveJoints = false
+        options.directionOfArrival = true
+        return options
+    }
+
     /// Fixed order — the URL is asserted verbatim in tests.
     public var queryItems: [URLQueryItem] {
         var items: [URLQueryItem] = []

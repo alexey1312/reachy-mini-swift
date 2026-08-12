@@ -47,6 +47,12 @@ struct ViewportView: View {
         HStack(spacing: Space.md) {
             switcher
             contentControls
+            // Last in the row, and outside `contentControls`, because it belongs to
+            // neither engine: the reading is the same fact whichever view is up, and
+            // `ViewportModel.hearing` outlives the switch between them.
+            if let hearing = model.hearing {
+                DirectionOfArrivalIndicator(model: hearing)
+            }
         }
         .padding(Space.md)
     }

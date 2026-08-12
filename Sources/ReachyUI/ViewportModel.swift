@@ -50,6 +50,18 @@ final class ViewportModel {
     private(set) var content: Content = .scene
     private(set) var sceneModel: RobotSceneModel?
     private(set) var cameraSession: CameraSession?
+    /// Where the robot last heard a voice.
+    ///
+    /// **Owned here rather than by either engine, because it outlives the switch
+    /// between them.** It is the one reading that is worth the same in both views —
+    /// over the camera it names somebody the picture cannot show, and over the 3D
+    /// model it explains why the head is about to turn. Hanging it off
+    /// `RobotSceneModel`, which already receives the frames, would have made it a
+    /// property of the 3D tab.
+    ///
+    /// Nil over the relay: no HTTP API means no state stream, the same reason there
+    /// is no scene there.
+    private(set) var hearing: DirectionOfArrivalModel?
     /// Set when a transport could not even be constructed — a bad address, not a
     /// failure to reach the robot.
     private(set) var setupError: String?
@@ -109,6 +121,10 @@ final class ViewportModel {
         sceneModel?.stop()
         sceneModel = nil
         stopCamera()
+        // Dropped rather than merely stopped: `detach` is a different robot, and a
+        // held reading would be the previous one's.
+        stopHearing()
+        hearing = nil
         source = nil
         setupError = nil
     }
@@ -136,6 +152,12 @@ final class ViewportModel {
     private func activate() {
         guard isActive, let source else { return }
         setupError = nil
+        // Outside the switch on purpose: it is wanted under both contents, and the
+        // one thing that decides it is whether this connection has a state stream
+        // at all.
+        if case let .lan(address) = source {
+            startHearing(at: address)
+        }
         switch (content, source) {
         case let (.scene, .lan(address)):
             stopCamera()
@@ -160,6 +182,21 @@ final class ViewportModel {
     private func suspend() {
         sceneModel?.pauseStream()
         stopCamera()
+        stopHearing()
+    }
+
+    /// Idempotent, and it keeps the model across a suspend so a reading still inside
+    /// its window survives a glance at another tab. Only `detach()` throws it away,
+    /// because that is a different robot.
+    private func startHearing(at address: RobotAddress) {
+        if hearing == nil {
+            hearing = DirectionOfArrivalModel(address: address)
+        }
+        hearing?.start()
+    }
+
+    private func stopHearing() {
+        hearing?.stop()
     }
 
     private func startScene(at address: RobotAddress) {
@@ -224,7 +261,12 @@ extension ViewportModel.Source: Equatable {
             address: RobotAddress? = RobotAddress(host: "192.168.1.42"),
             // Overrides `address` where the transport is the point. Defaulted from
             // it so every preview written before the relay existed is unchanged.
-            source: Source? = nil
+            source: Source? = nil,
+            // Nil by default, so the direction-of-arrival badge is absent from every
+            // reference that predates it and none of them moved when it landed. A
+            // preview that wants the badge injects a settled model, which has no
+            // address and therefore no socket to open.
+            hearing: DirectionOfArrivalModel? = nil
         ) -> ViewportModel {
             let model = ViewportModel()
             model.content = content
@@ -232,6 +274,7 @@ extension ViewportModel.Source: Equatable {
             model.cameraSession = cameraSession
             model.setupError = setupError
             model.source = source ?? address.map(Source.lan)
+            model.hearing = hearing
             return model
         }
     }
