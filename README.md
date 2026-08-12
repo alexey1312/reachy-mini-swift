@@ -23,17 +23,24 @@
 - **Live control** — joystick teleop of the 6-DoF head, antennas and body rotation, with the WebRTC camera and
   two-way audio (talk through the robot's speaker).
 - **3D viewer** — a RealityKit scene built from the robot's own URDF and meshes, mirroring it in real time.
-- **Moves** — browse and play the daemon's recorded moves.
+- **State** — the control loop the daemon publishes (frequency, worst interval, error count) charted live, beside
+  CPU, memory, temperature and uptime read from `/proc` and `/sys` over SSH, because the API reports none of them.
+- **Moves** — browse and play the daemon's recorded moves, from the app or by asking Siri for one by name.
 - **App store** — install, update and remove robot apps from Hugging Face Spaces, following each job over the
-  daemon's job socket; a dock shows the running app everywhere in the client.
+  daemon's job socket; a dock shows the running app everywhere in the client. Starting an app wakes the robot first
+  and parks it when the app lets go, and the catalogue and the move index survive launches, so both tabs open filled
+  before the network answers.
 - **Bluetooth setup and recovery** — PIN-authenticated onboarding that sends Wi-Fi credentials over an encrypted BLE
   channel, plus a recovery console (raise the hotspot, restart the daemon, software reset) for a robot that fell off
   the network.
 - **Remote access** — reach your robots from outside their network through the Hugging Face relay; commands travel on
   a brokered WebRTC data channel, the daemon's port is never exposed.
 - **Files** — an SFTP browser for the robot's filesystem.
-- **At home on Apple platforms** — status and apps widgets, Control Center power controls, Siri / App Intents
-  (wake, sleep, power off, launch any installed app), Home Screen quick actions, full localization readiness.
+- **At home on Apple platforms** — status and apps widgets on the Home Screen, and the status one on the Lock Screen
+  and in StandBy as well; wake and sleep from the widget itself; Control Center power controls; Siri / App Intents
+  (wake, sleep, power off, launch any installed app, play a recorded move), each of which can name the robot it
+  addresses, so two Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick
+  actions; full localization readiness.
 - **Six themes** — an accent colour and a matching app icon chosen as one decision in Settings, carried into the
   widgets too. On iPhone and iPad the Home Screen icon changes with it; on a Mac the theme is colour only.
 
@@ -136,7 +143,7 @@ refreshed with `./bin/mise run update-spec`.
 
 - `./bin/mise run test` — the SwiftPM suites: transport, session, models, BLE protocol, SSH, auth.
 - `./bin/mise run test:snapshots` — every SwiftUI preview rendered on a pinned simulator and compared against
-  ~1250 reference images (light and dark), stored in Git LFS. The approach is
+  ~1400 reference images (light and dark), stored in Git LFS. The approach is
   [ADR 0002](docs/adr/0002-preview-driven-snapshot-testing.md).
 - `./bin/mise run storybook` — the same previews as a browsable catalogue on a simulator.
 - `./bin/mise run test:sim` — integration tests against a running `sim-daemon`; the plain `test` run skips them.
@@ -159,10 +166,10 @@ is never exposed, and commands travel on the session's data channel instead. See
 ## Status
 
 Working today: connection, discovery and network resilience; joystick teleop; recorded moves; the daemon log console;
-the WebRTC camera with two-way audio; the 3D viewer; the robot app store over the daemon's job socket; Hugging Face
-sign-in (public OAuth client with PKCE, token in the Keychain), private Spaces and remote access through the relay;
-the SFTP file browser; Bluetooth onboarding and recovery; widgets, Control Center controls, Siri shortcuts and quick
-actions.
+the WebRTC camera with two-way audio; the 3D viewer; the State screen; the robot app store over the daemon's job
+socket; Hugging Face sign-in (public OAuth client with PKCE, token in the Keychain), private Spaces and remote access
+through the relay; the SFTP file browser; Bluetooth onboarding and recovery; Home Screen, Lock Screen and StandBy
+widgets, Control Center controls, Siri shortcuts, Spotlight and quick actions.
 
 Open, and stated honestly:
 

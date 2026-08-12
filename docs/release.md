@@ -97,6 +97,37 @@ channel after the signed export, and `--no-upload` makes the App Store channel
 leave a `.pkg` in `Export/macOS/AppStore` instead of uploading it. Each flag
 belongs to one channel and is ignored by the other.
 
+### When `-exportArchive` fails
+
+Two failures land on the same step and have nothing to do with each other.
+
+`productbuild failed` with `CSSMERR_CSP_USER_CANCELED` in the distribution log is
+the keychain: the Mac Installer identity lives in `reachy-signing.keychain-db`,
+and macOS put up an access dialog that a non-interactive run cannot answer — it
+"cancels" itself after a few minutes. Authorize the key once and the keychain
+keeps it:
+
+```bash
+KC=~/Library/Keychains/reachy-signing.keychain-db
+PW="$(cat ~/.config/reachy-mini/signing/keychain.pw)"
+security unlock-keychain -p "$PW" "$KC"
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC"
+```
+
+`Failed to Use Accounts` is the Xcode account instead, and only the upload leg
+needs one. Export locally and hand the artifact to the API key, which does the
+upload, the group and the Beta App Review submission in one call:
+
+```bash
+mise run asc -- publish testflight --app 6799644194 --platform IOS \
+  --ipa "Apps/DerivedData/Export/iOS/Hey Reachy.ipa" \
+  --group c48f6abb-c178-40a2-8747-b6513add766e \
+  --wait --test-notes "…" --locale en-US --submit --confirm
+```
+
+A macOS `.pkg` is not a zip, so `asc` cannot read the version out of it: that one
+also needs `--version` and `--build-number` (the commit count) spelled out.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,
