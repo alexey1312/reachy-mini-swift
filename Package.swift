@@ -39,6 +39,11 @@ let package = Package(
         // stays in ReachyKit — which does not depend on this target either, so a
         // token reaches it as a value the UI passes in, never as a global.
         .target(name: "HuggingFaceAuth"),
+        // Every hand-written JSON call in this repository, and the rules each kind
+        // of payload is read under. A leaf on Foundation alone because `ReachySSH`
+        // and `HuggingFaceAuth` deliberately do not depend on `ReachyKit` — see
+        // docs/adr/0004-one-json-codec.md.
+        .target(name: "ReachyJSON", exclude: ["AGENTS.md", "CLAUDE.md"]),
         // Tokens and the `ReachySurface` facade. It depends on SwiftUI and
         // nothing else, which is what lets both `ReachyUI` and `ReachyWidgetUI`
         // link it: a dependency is linked into a *target*, not into the place it
@@ -112,6 +117,10 @@ let package = Package(
         .testTarget(
             name: "ReachyDesignTests",
             dependencies: ["ReachyDesign"]
+        ),
+        .testTarget(
+            name: "ReachyJSONTests",
+            dependencies: ["ReachyJSON"]
         ),
         .testTarget(
             name: "HuggingFaceAuthTests",
