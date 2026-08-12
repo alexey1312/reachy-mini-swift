@@ -225,3 +225,43 @@ the next pair.
   `RobotAppLauncher.Failure.busy` still names the app the daemon's way, and is the one sentence left to join.
 - **The Home Screen icon's menu is not here and cannot be.** It is UIKit's, not App Intents'; `ReachyQuickAction` in
   `ReachyUI` owns it and explains the split. Nothing declared in this target reaches it.
+
+## The two that answer instead of commanding
+
+`RobotAwakeIntent` and `RunningAppIntent` (`RobotStatusIntents.swift`) are the only intents here that reach no robot
+at all: the answer is already in the App Group snapshot, written by whichever process last spoke to one. No
+`RobotIntentTarget.connection`, no timeout budget, and no failure mode beyond having nothing to report — which is
+also what makes them safe in the extension's own process, the one with no screen to raise a Local Network prompt
+from.
+
+- **A snapshot may be believed when it says awake and never when it says asleep**, and a *spoken* answer is where
+  that finally bites. The widget's tile glosses a false `isAwake` as "Asleep" and gets away with it, because the one
+  word sits beside a wake button that resolves both meanings by itself (`RobotPower.resume()`). A sentence is the
+  whole answer somebody gets, so `RobotStatusReport` says **not awake** and names both readings — parked motors are
+  a motor mode, a stopped backend is a ninety-second job, and sending someone to the wrong one is the failure.
+  `refusesToChooseBetweenAsleepAndOffline` is the test; delete the second half of that sentence and it goes red.
+- **`freshReading(for:)` is deliberately not what these call.** It collapses stale and wrong-robot into one `nil`,
+  which is right for a caller about to *command* a robot and wrong for one about to *describe* it — "I have no
+  reading" and "my reading is old" are different answers. `RobotStatusDialog` uses `state(at:)` and makes the robot
+  check itself, so a stale reading survives as stale.
+- **Every sentence stays a `LocalizedStringResource` until `IntentDialog` takes it.** Flattening to `String` first
+  and handing that back would put the finished sentence through format substitution a second time — and a robot's
+  name is free text somebody typed, so a robot called "100% Reachy" is all it takes. Interpolating into the resource
+  keeps the name an argument rather than part of the key.
+- **`ReachyShortcuts` is now at ten of ten.** The next intent worth speaking has to displace one; the system takes
+  the first ten and drops the rest without saying so.
+
+## Entities in Spotlight
+
+`EntityIndexing.swift` conforms `RobotAppEntity` and `MoveEntity` to `IndexedEntity` (iOS 18 / macOS 15, this app's
+floor exactly). That is a **fourth** system beside the three `ReachyUI/AGENTS.md` names, and the distinction is the
+point: App Shortcuts put commands in Spotlight, the icon's menu is UIKit's, `ReachySpotlightIndex` files two
+destinations that open two tabs — and an indexed `AppEntity` carries its *type*, so Spotlight can pair the row with
+the intents that take it. Searching for a dance offers to play it. A destination row never could.
+
+- **The `attributeSet` is overridden for the keywords alone.** The default derives title and subtitle from
+  `displayRepresentation` and stops, which indexes "Dance Party" and not `dance_party` — and the entry point is what
+  the daemon's status, the robot's journal and every log line call that app. `ReachyEntityKeywords.list` also splits
+  on `_` and `-`, which is what puts `dance` in as a term of its own; a search index sees `dance_party` as one token.
+- The app-side half is `ReachyEntityIndex` in `ReachyUI`, which is where the delete-vs-`deleteAllSearchableItems`
+  trap is written up.

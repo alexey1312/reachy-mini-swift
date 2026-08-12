@@ -657,3 +657,61 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   and not worth contorting the screen for. Snapshots are unaffected — they capture the title _and_
   the toolbar items, so `RobotScreen`'s Settings gear and `MovesScreen`'s Refresh are covered.
   Only the storybook hoists.
+
+## Entities in Spotlight, beside the three systems above
+
+`Navigation/EntityIndex.swift` is the **fourth** system next to App Shortcuts, `ReachyQuickAction` and
+`ReachySpotlightIndex`. Its neighbour files *destinations* — two rows that open two tabs, because Spotlight matches
+an installed app on its display name alone. This files the robot's own apps and moves as **entities**, and an
+indexed `AppEntity` carries its type with it, so Spotlight can pair the row with the intents that take that type:
+searching for a dance offers to play it. The conformances live in `ReachyWidgetUI` beside the entities themselves.
+
+- **Never the network.** Both lists come out of the caches the entity queries already read — `RobotAppsCacheStore`
+  and `MoveEntityQuery`, the latter documented as reading only. `RobotAppQuery.suggestedEntities()` is deliberately
+  *not* used: it carries a 2 s live refresh this has no use for, and it **writes** the cache.
+- **Never `deleteAllSearchableItems()`.** `ReachySpotlightIndex` files its two destination rows into the same default
+  index, and a blanket delete takes them with it — silently, and long after anybody would connect the two files.
+  Deletion is `deleteAppEntities(ofType:)`, which is also what retires an app removed from the robot.
+- **The stamp is over the content and it is SHA-256, not `hashValue`.** Unlike the two destination rows, this list
+  changes while the app is installed: every install, removal and `reset-apps` moves it. And Swift seeds `Hasher` per
+  process, so a stored `hashValue` compares unequal on the very next launch — the index would be rewritten on every
+  cold start, and the only symptom would be battery. `EntityIndexTests` pins the digest as a pure function of the
+  content; nothing in one process can catch the `hashValue` version.
+- The trigger is one `.task(id:)` in `RootLifecycle`, keyed on the robot **and** the scene phase. Connect-only would
+  miss the ordinary case: the widget and Shortcuts both start and install apps with this process not running.
+- Only *installed* apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
+  those cannot do what it promises — the same reason `ReachySpotlightIndex` leaves `.runningApp` out.
+
+## Where the robot heard you
+
+`DirectionOfArrivalModel` + `DirectionOfArrivalIndicator`, mounted in `ViewportView`'s chrome row and owned by
+`ViewportModel`.
+
+- **It opens a socket of its own rather than reading `RobotSceneModel`'s.** That one already receives every field of
+  every frame and could publish this for a line — but it streams only while the 3D model is on screen, so the badge
+  would go dead the moment somebody switched to the camera. That is exactly the view where "somebody spoke, off to
+  your left" is worth having, because the robot's own picture cannot show them. `StateStreamOptions.hearing` keeps
+  the second socket cheap, and **its three `false`s are the whole point**: the daemon defaults `with_head_pose`,
+  `with_body_yaw` and `with_antenna_positions` to *true*, so a preset that merely added `with_doa` would carry a full
+  pose five times a second for a two-field reading.
+- **An axis, never a compass.** The daemon reports one angle along the robot's left–right line — 0 = left,
+  π/2 = front/back, π = right (`.claude/rules/daemon-api.md`) — so **π/2 is a genuine degeneracy**: a two-microphone
+  array measures a delay along one axis and cannot tell in front from behind. A dial would have to invent the missing
+  half and would be wrong about it half the time with nothing on screen admitting it. `Side.frontOrBehind` is that
+  case, and it has a preview of its own so the wording cannot quietly be "improved" into a claim.
+- **The directions are the robot's, so they are `left`/`right` and the symbols do not mirror.** Same exception
+  `JoystickPad` takes, and the same reason: a right-to-left language flipping these would reverse a fact about the
+  world. The caption says *its* left out loud, because looking through the camera and looking at the 3D model put the
+  robot's left on opposite sides of the screen — the only unambiguous thing to draw is a word.
+- **`isSupported` is what keeps the badge off a robot that cannot answer.** `doa` is nullable and `sim-daemon` sends
+  `null` for ever, as does any unit with no array; a badge mounted on hope would sit blank on every simulator run and
+  read as broken rather than absent. Quiet and unsupported render identically and are separate properties for exactly
+  that reason.
+- **The hold window is retired by the stream, not by a `Timer`.** Frames arrive at 5 Hz whether or not anybody is
+  talking, so the stream is a clock the model already owns — the same argument `RunningAppModel.expireActionFailure`
+  makes about its poll. `stop()` keeps the last reading, so a glance at another tab does not blank one still inside
+  its window; only `detach()` drops it, because that is a different robot.
+- **No existing reference moved.** `ViewportModel.preview` defaults `hearing` to nil, so the badge is absent from
+  every capture that predates it; `Viewport — heard a voice` is the one that shows it in the chrome row, and the
+  standalone `Direction of arrival —` set covers the badge itself. **None of it can be verified against
+  `sim-daemon`** — that sends `doa: null` — so the mapping is a hardware check.
