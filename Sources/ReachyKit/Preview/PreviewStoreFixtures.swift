@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 #if DEBUG
     public extension RobotApp {
@@ -56,7 +57,7 @@ import Foundation
              "extra": {\(extra.joined(separator: ", "))}}
             """
             // swiftlint:disable:next force_try
-            return try! JSONDecoder().decode(RobotApp.self, from: Data(json.utf8))
+            return try! JSONCodec.stored.decode(RobotApp.self, from: Data(json.utf8))
         }
 
         static let previewCatalogue: [RobotApp] = [

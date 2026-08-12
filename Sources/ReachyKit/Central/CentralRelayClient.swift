@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// The client half of the Hugging Face relay — how this app reaches a robot that
 /// is not on the same network.
@@ -153,13 +154,13 @@ public actor CentralRelayClient {
         var request = try await authorized(path: "/send")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(message)
+        request.httpBody = try JSONCodec.web.encode(message)
 
         let (data, response) = try await session.data(for: request)
         try Self.check(response)
         // An acknowledgement (`{"status":"ok"}`) is not a signaling message, and
         // not an error either.
-        return try? JSONDecoder().decode(SignalingMessage.self, from: data)
+        return try? JSONCodec.web.decode(SignalingMessage.self, from: data)
     }
 
     /// The robots central can see for this token. Presence in the list *is* the
@@ -170,7 +171,7 @@ public actor CentralRelayClient {
         }
         let (data, response) = try await session.data(for: authorized(path: "/api/robot-status"))
         try Self.check(response)
-        return try JSONDecoder().decode(Response.self, from: data).robots
+        return try JSONCodec.web.decode(Response.self, from: data).robots
     }
 
     /// The one route central serves without a token.
@@ -263,7 +264,7 @@ public actor CentralRelayClient {
         guard line.hasPrefix("data:") else { return nil }
         let payload = line.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
         guard !payload.isEmpty,
-              let message = try? JSONDecoder().decode(SignalingMessage.self, from: Data(payload.utf8))
+              let message = try? JSONCodec.web.decode(SignalingMessage.self, from: Data(payload.utf8))
         else { return nil }
         // An empty candidate is WebRTC's end-of-candidates marker, and
         // `RTCIceCandidate` throws on it — dropping it here keeps that out of the

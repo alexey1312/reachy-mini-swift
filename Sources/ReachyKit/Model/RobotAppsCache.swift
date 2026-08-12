@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// One installed app, cut down to what a widget can hold.
 ///
@@ -88,7 +89,7 @@ public struct RobotAppsCacheStore: @unchecked Sendable {
 
     private var stored: RobotAppsCache? {
         guard let data = defaults.data(forKey: Self.key) else { return nil }
-        return try? JSONDecoder().decode(RobotAppsCache.self, from: data)
+        return try? JSONCodec.stored.decode(RobotAppsCache.self, from: data)
     }
 
     public func current(for robotID: String) -> RobotAppsCache? {
@@ -98,7 +99,7 @@ public struct RobotAppsCacheStore: @unchecked Sendable {
 
     public func write(_ installed: [RobotAppSummary], robotID: String, at date: Date = Date()) {
         let cache = RobotAppsCache(robotID: robotID, installed: installed, takenAt: date)
-        guard let data = try? JSONEncoder().encode(cache) else { return }
+        guard let data = try? JSONCodec.stored.encode(cache) else { return }
         defaults.set(data, forKey: Self.key)
     }
 

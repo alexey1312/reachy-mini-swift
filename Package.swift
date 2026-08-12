@@ -38,7 +38,7 @@ let package = Package(
         // The robot's *own* account (`/api/hf-auth/*`) is a daemon surface and
         // stays in ReachyKit — which does not depend on this target either, so a
         // token reaches it as a value the UI passes in, never as a global.
-        .target(name: "HuggingFaceAuth"),
+        .target(name: "HuggingFaceAuth", dependencies: ["ReachyJSON"]),
         // Every hand-written JSON call in this repository, and the rules each kind
         // of payload is read under. A leaf on Foundation alone because `ReachySSH`
         // and `HuggingFaceAuth` deliberately do not depend on `ReachyKit` — see
@@ -85,7 +85,7 @@ let package = Package(
         // arrive as values, the way a Hugging Face token reaches ReachyKit.
         .target(
             name: "ReachySSH",
-            dependencies: [.product(name: "Citadel", package: "Citadel")],
+            dependencies: [.product(name: "Citadel", package: "Citadel"), "ReachyJSON"],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
         .target(
@@ -94,8 +94,8 @@ let package = Package(
             // rows and the widget's tiles draw. The arrow points this way round on
             // purpose: the widget target must stay clear of ReachyMedia.
             dependencies: [
-                "HuggingFaceAuth", "ReachyDesign", "ReachyKit", "ReachyMedia", "ReachyScene", "ReachySSH",
-                "ReachyWidgetUI",
+                "HuggingFaceAuth", "ReachyDesign", "ReachyJSON", "ReachyKit", "ReachyMedia", "ReachyScene",
+                "ReachySSH", "ReachyWidgetUI",
             ],
             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
@@ -109,7 +109,7 @@ let package = Package(
         // business loading a media stack to draw two lines of text.
         .target(
             name: "ReachyWidgetUI",
-            dependencies: ["ReachyDesign", "ReachyKit"],
+            dependencies: ["ReachyDesign", "ReachyJSON", "ReachyKit"],
             exclude: ["AGENTS.md", "CLAUDE.md", "Previews"]
         ),
         // Not a product: stubs for the test targets only, in a plain target because

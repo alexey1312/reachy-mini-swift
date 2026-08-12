@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ReachyDesign
+import ReachyJSON
 import ReachyKit
 
 /// Drives the robot's app store: what is installed, what could be, and what is
@@ -305,7 +306,7 @@ private extension RobotApp {
              "apps_checked": 2, "apps_skipped": 0}
             """
             // swiftlint:disable:next force_try
-            return try! AppUpdatesSummary(JSONDecoder().decode(
+            return try! AppUpdatesSummary(JSONCodec.stored.decode(
                 Components.Schemas.AppUpdatesResponse.self,
                 from: Data(json.utf8)
             ))

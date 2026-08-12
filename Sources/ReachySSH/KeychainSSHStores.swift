@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 import Security
 
 /// The Keychain shape both stores share.
@@ -95,7 +96,7 @@ public struct KeychainSSHCredentialStore: SSHCredentialStore {
 
     public func credentials(forRobot robot: String) throws -> SSHCredentials? {
         guard let data = try KeychainItem.load(service: service, account: robot),
-              let stored = try? JSONDecoder().decode(Stored.self, from: data)
+              let stored = try? JSONCodec.stored.decode(Stored.self, from: data)
         else { return nil }
         // Host and port are filled in by the caller, which is the only thing that
         // knows where this robot is right now.
@@ -104,7 +105,7 @@ public struct KeychainSSHCredentialStore: SSHCredentialStore {
 
     public func save(_ credentials: SSHCredentials, forRobot robot: String) throws {
         let stored = Stored(username: credentials.username, password: credentials.password)
-        try KeychainItem.save(JSONEncoder().encode(stored), service: service, account: robot)
+        try KeychainItem.save(JSONCodec.stored.encode(stored), service: service, account: robot)
     }
 
     public func clear(robot: String) throws {

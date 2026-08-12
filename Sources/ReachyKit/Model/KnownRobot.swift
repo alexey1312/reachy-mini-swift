@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 
 /// A robot this app has completed a handshake with.
 ///
@@ -40,7 +41,7 @@ public struct KnownRobotStore {
     /// Most recently connected first.
     public var all: [KnownRobot] {
         guard let data = defaults.data(forKey: Self.knownRobotsKey),
-              let robots = try? JSONDecoder().decode([KnownRobot].self, from: data)
+              let robots = try? JSONCodec.stored.decode([KnownRobot].self, from: data)
         else { return [] }
         return robots.sorted { $0.lastConnected > $1.lastConnected }
     }
@@ -48,10 +49,10 @@ public struct KnownRobotStore {
     public var lastAddress: RobotAddress? {
         get {
             guard let data = defaults.data(forKey: Self.lastAddressKey) else { return nil }
-            return try? JSONDecoder().decode(RobotAddress.self, from: data)
+            return try? JSONCodec.stored.decode(RobotAddress.self, from: data)
         }
         nonmutating set {
-            guard let newValue, let data = try? JSONEncoder().encode(newValue) else {
+            guard let newValue, let data = try? JSONCodec.stored.encode(newValue) else {
                 defaults.removeObject(forKey: Self.lastAddressKey)
                 return
             }
@@ -82,7 +83,7 @@ public struct KnownRobotStore {
     }
 
     private func write(_ robots: [KnownRobot]) {
-        guard let data = try? JSONEncoder().encode(robots) else { return }
+        guard let data = try? JSONCodec.stored.encode(robots) else { return }
         defaults.set(data, forKey: Self.knownRobotsKey)
     }
 }

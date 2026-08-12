@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 import ReachyKit
 
 /// What a tap did, for a widget that will be redrawn by a different process than
@@ -79,7 +80,7 @@ public struct RobotAppLaunchStateStore {
 
     public var current: RobotAppLaunchState? {
         guard let data = defaults.data(forKey: Self.key) else { return nil }
-        return try? JSONDecoder().decode(RobotAppLaunchState.self, from: data)
+        return try? JSONCodec.stored.decode(RobotAppLaunchState.self, from: data)
     }
 
     /// Clears any earlier failure: the user has just retried, and showing them why
@@ -105,7 +106,7 @@ public struct RobotAppLaunchStateStore {
     }
 
     private func write(_ state: RobotAppLaunchState) {
-        guard let data = try? JSONEncoder().encode(state) else { return }
+        guard let data = try? JSONCodec.stored.encode(state) else { return }
         defaults.set(data, forKey: Self.key)
     }
 }
