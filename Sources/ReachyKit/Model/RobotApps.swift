@@ -55,6 +55,20 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
         card.likes
     }
 
+    /// When the Space first appeared on the Hub, and when it last moved.
+    ///
+    /// Both reach `extra` through the daemon's own `_normalize_space_data`, which
+    /// folds `created_at`/`last_modified` from the `HfApi` path onto the camel-case
+    /// spelling the HTTP path returns — so the two catalogue sources agree here and
+    /// a client need not.
+    public var publishedAt: Date? {
+        card.createdAt
+    }
+
+    public var updatedAt: Date? {
+        card.lastModified
+    }
+
     public var isPrivate: Bool {
         card.isPrivate ?? false
     }
@@ -144,6 +158,8 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
         public var author: String?
         public var likes: Int?
         public var isPrivate: Bool?
+        public var createdAt: Date?
+        public var lastModified: Date?
         public var title: String?
         public var emoji: String?
         public var colorFrom: String?
@@ -169,7 +185,7 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
         }
 
         private enum CodingKeys: String, CodingKey {
-            case id, author, likes, cardData
+            case id, author, likes, cardData, createdAt, lastModified
             case isPrivate = "private"
             case customAppURL = "custom_app_url"
         }
@@ -185,6 +201,8 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
             author = container.value(String.self, .author)
             likes = container.value(Int.self, .likes)
             isPrivate = container.value(Bool.self, .isPrivate)
+            createdAt = container.value(Date.self, .createdAt)
+            lastModified = container.value(Date.self, .lastModified)
             customAppURL = container.value(String.self, .customAppURL)
 
             guard let card = try? container.nestedContainer(keyedBy: CardDataKeys.self, forKey: .cardData) else {

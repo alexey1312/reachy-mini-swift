@@ -17,6 +17,8 @@ struct RobotAppsTests {
         "author": "pollen-robotics",
         "likes": 42,
         "private": false,
+        "createdAt": "2025-10-16T16:06:57.000Z",
+        "lastModified": "2026-08-05T14:30:40.000Z",
         "tags": ["reachy_mini_python_app"],
         "cardData": {
           "title": "Dance Party",
@@ -55,6 +57,32 @@ struct RobotAppsTests {
         let sent = try JSONSerialization.jsonObject(with: JSONEncoder().encode(app.info)) as? NSDictionary
         let received = try JSONSerialization.jsonObject(with: Data(Self.catalogueEntry.utf8)) as? NSDictionary
         #expect(sent == received)
+    }
+
+    /// Both dates reach `extra` through the daemon's `_normalize_space_data`, which
+    /// folds the `HfApi` path's `created_at`/`last_modified` onto the camel case the
+    /// HTTP path returns — so a client sees one spelling whichever way the daemon
+    /// listed the Space. Verified against the live Hub API on 2026-08-13: both keys
+    /// are present in `GET /api/spaces/{id}` and in `GET /api/spaces?full=true`.
+    @Test("reads both Hub dates, in the one spelling the daemon normalises to")
+    func parsesHubDates() throws {
+        let app = try decode(Self.catalogueEntry)
+        #expect(app.publishedAt?.ISO8601Format() == "2025-10-16T16:06:57Z")
+        #expect(app.updatedAt?.ISO8601Format() == "2026-08-05T14:30:40Z")
+    }
+
+    /// Project rule 3: the Hub answers with whatever it answered that day, and a
+    /// date arriving as a number — or not arriving at all — costs that one field
+    /// rather than the whole app.
+    @Test("a missing or malformed date costs the field, not the app")
+    func toleratesBrokenDates() throws {
+        let undated = try decode(#"""
+        {"name": "d", "source_kind": "hf_space", "extra": {"id": "someone/d", "createdAt": 1760630817}}
+        """#)
+
+        #expect(undated.publishedAt == nil)
+        #expect(undated.updatedAt == nil)
+        #expect(undated.spaceID == "someone/d")
     }
 
     @Test("an app from anyone else is not official")

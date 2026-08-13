@@ -423,6 +423,43 @@ on the Robot tab.
   verdict already reached stands, and silence concludes nothing new. Anything else this model infers from elapsed
   time owes the same check.
 
+## The store's scope and sort
+
+`AppStoreFilters.swift` holds `AppStoreModel.Scope` and `.Sort`; `visibleApps` composes them as section →
+scope → search → order. A file of its own because `AppStoreModel.swift` is within a few dozen lines of both
+SwiftLint's file and type limits, and `--strict` turns that warning into a build failure.
+
+- **`.recommended` is the default because the daemon's order _is_ the curation.** `list_all_available_apps`
+  concatenates the curated `app-list.json` entries ahead of every other Space, and
+  `hf_space._build_app_info` stamps **`source_kind = hf_space` on both lists** — so curation survives only as
+  position in the array, and a default sort of anything else silently throws away the one editorial signal the
+  store has. `keepsDaemonOrdering` in `AppStoreModelTests` predates the sort and is what said so.
+- **Scopes are questions, not buckets.** `.community` is the complement of `.official`, so a private community
+  Space answers both it and `.privateSpaces`. Partitioning them would hide such a Space from a reader who asked
+  for community apps, which is the more surprising of the two ways to be wrong. And **official can only ever
+  mean the author** — there is no verified flag on a Space, and the curated list is indistinguishable on the
+  wire.
+- **The two dates were already on the robot, undecoded.** `extra.createdAt` / `extra.lastModified`, folded onto
+  that one spelling by the daemon's `_normalize_space_data`, and present in **both** its catalogue paths
+  (checked against the live Hub API, not inferred). `JSONCodec.daemon` already reads ISO 8601 with fractional
+  seconds and `Card`'s `value(_:_:)` already swallows a field of the wrong type, so decoding them cost two
+  properties and no new parsing.
+- **`sorted(by:)` is not stable**, so every sort ends in a tie-break on title and then `id`. Without it two apps
+  by the same author swap places between redraws of a list nobody touched — invisible in a snapshot, which
+  captures one frame.
+- **A toolbar item moves every reference of its screen and none of any other.** The filter menu moved 8
+  previews × 4 references and left the `App detail —` sheets alone, because the toolbar is on the screen and not
+  on the sheet. Predict that count before recording; anything beyond it is a second finding.
+  - **It renders at `maxDelta 13`, and that is not evidence it is missing.** The glyph is thin, light and on
+    glass, which `ReachyDesign/AGENTS.md` records as rendering faint headless. A pixel-diff summary alone would
+    read as "the bar resized"; cropping the reference and looking at it is what confirmed the button.
+- **`record` overwrote a good reference with an unstable one, and the run after it caught that.**
+  `Moves — dances loading` moved with the other 32 for no reason belonging to this change, and its
+  freshly recorded copy then failed against itself while the copy at `HEAD` passed — an indeterminate
+  `ProgressView` captured at an unlucky phase, the churn the previews section describes. So a re-record is not
+  the end of the job: run `test:snapshots` again afterwards, and `git checkout HEAD --` anything that moved for
+  a reason you cannot name.
+
 ## One page per app
 
 **`AppDetailSheet` is the only page about an app, and both surfaces open it** — a store row and the dock's expand

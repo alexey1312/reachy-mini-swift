@@ -55,6 +55,25 @@ import SwiftUI
     )
 }
 
+// The two apps from Pollen, and the toolbar glyph filled in to say a scope is in
+// force — the unfilled state is in every other `Apps —` reference.
+#Preview("Apps — filtered to official") {
+    PreviewScene.appStore(.preview(), model: .preview(scope: .official))
+}
+
+// Chess Coach is third in the daemon's own ordering and first alphabetically, so a
+// capture that opens with it is the sort itself rather than a list that would have
+// looked the same anyway.
+#Preview("Apps — sorted by name") {
+    PreviewScene.appStore(.preview(), model: .preview(sort: .name))
+}
+
+// A scope that empties the list. The wording has to send the reader to the filter
+// rather than to the robot — nothing here failed.
+#Preview("Apps — nothing matches the filter") {
+    PreviewScene.appStore(.preview(), model: .preview(section: .installed, scope: .privateSpaces))
+}
+
 // MARK: - Detail sheet
 
 #Preview("App detail — not installed") {

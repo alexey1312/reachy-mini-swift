@@ -27,6 +27,8 @@ final class AppStoreModel {
 
     var section: Section = .installed
     var searchText = ""
+    var scope: Scope = .all
+    var sort: Sort = .recommended
 
     /// Held so `runningApp` can read through to it. The mutating calls still take a
     /// session of their own — collapsing them is a separate change.
@@ -83,14 +85,26 @@ final class AppStoreModel {
         !hasCatalogueResult && (loading || !attemptedCatalogueLoad)
     }
 
+    /// Section, then scope, then the search field, then the order. The scope runs
+    /// over both sections rather than only over Discover: an installed app carries
+    /// the card the daemon saved for it, so "official" and "private" mean the same
+    /// thing on either side — and an installed app whose metadata the daemon lost
+    /// answers `.community`, which is the honest reading of an unattributed app.
     var visibleApps: [RobotApp] {
         let apps = switch section {
         case .installed: installed
         case .discover: catalogue
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return apps }
-        return apps.filter { $0.matchesSearch(query) }
+        let matched = apps.filter { scope.admits($0) && (query.isEmpty || $0.matchesSearch(query)) }
+        return sort.applied(to: matched)
+    }
+
+    /// Whether anything but the defaults is in force — the toolbar's glyph fills in
+    /// to say so, because a menu that hides its own state is a list a reader cannot
+    /// explain.
+    var isFiltering: Bool {
+        scope != .all || sort != .recommended
     }
 
     /// The installed row a catalogue card stands for. Everything the daemon does to
@@ -271,6 +285,8 @@ private extension RobotApp {
         static func preview(
             session: RobotSession? = nil,
             section: Section = .discover,
+            scope: Scope = .all,
+            sort: Sort = .recommended,
             catalogue: [RobotApp] = RobotApp.previewCatalogue,
             installed: [RobotApp] = RobotApp.previewInstalled,
             startupApp: String? = nil,
@@ -281,6 +297,8 @@ private extension RobotApp {
         ) -> AppStoreModel {
             let model = AppStoreModel(session: session ?? .preview())
             model.section = section
+            model.scope = scope
+            model.sort = sort
             model.catalogue = catalogue
             model.installed = installed
             // A preview is the state it was handed, never a debt to a robot.
