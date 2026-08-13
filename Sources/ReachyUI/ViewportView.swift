@@ -9,6 +9,11 @@ import SwiftUI
 /// because the session it closes over is.
 typealias TeleopFactory = @MainActor @Sendable () throws -> any TeleopChannel
 
+/// What a joystick calls to take the head off the robot's own two behaviours before
+/// driving it. Built by `PresenceModel.teleopStandDown(session:)` and cheap enough to
+/// call on every touch event; `nil` where there is no robot session to ask.
+typealias TeleopStandDown = @MainActor @Sendable () -> Void
+
 /// The Live tab's host for the viewport: `ViewportContent` under the full-size
 /// chrome.
 ///
@@ -29,16 +34,20 @@ struct ViewportView: View {
     /// than about the stream. `nil` in the floating window, which is a place to
     /// watch from rather than to configure.
     var robotSession: RobotSession?
+    /// Owned by `LiveTab` rather than by this view, and passed in for two reasons.
+    /// SwiftUI re-runs a sheet's content closure on every update of the view it hangs
+    /// off, so a model built there is silently replaced by an empty one — and these two
+    /// flags are the only record of what the robot was asked for. Held one level up
+    /// because this view is *conditional*: a sleeping robot and the floating window both
+    /// unmount it, and a `@State` model would forget the robot's behaviours across
+    /// either. `ControllerScreen` reads the same instance, which is what stops its
+    /// joystick from turning a behaviour off behind a switch still showing it on.
+    let presence: PresenceModel
 
-    /// Held here rather than built inside the sheet: SwiftUI re-runs a sheet's
-    /// content closure on every update of the view it hangs off, so a model built
-    /// there is silently replaced by an empty one — and these two flags are the only
-    /// record of what the robot was asked for.
-    @State private var presence = PresenceModel()
     @State private var showsPresence = false
 
     var body: some View {
-        ViewportContent(model: model, makeTeleop: makeTeleop)
+        ViewportContent(model: model, makeTeleop: makeTeleop, standDown: standDown)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .topLeading) { chrome }
             .overlay(alignment: .bottomLeading) { hearing }
@@ -54,6 +63,13 @@ struct ViewportView: View {
                     .reachySheet()
                 }
             }
+    }
+
+    /// Absent without a robot session — the relay carries no media routes, so there is
+    /// nothing on that side to stand down.
+    private var standDown: TeleopStandDown? {
+        guard let robotSession else { return nil }
+        return presence.teleopStandDown(session: robotSession)
     }
 
     /// Every floating control hugs the leading edge: on iPad the tab bar floats

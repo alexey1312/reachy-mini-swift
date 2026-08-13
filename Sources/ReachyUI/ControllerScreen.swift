@@ -7,6 +7,11 @@ import SwiftUI
 /// Targets stream over `ws/set_target`; the daemon clamps safety limits.
 struct ControllerScreen: View {
     let session: RobotSession
+    /// The same closure `CameraViewport` gets, built from the one `PresenceModel` in
+    /// `LiveTab`: this pad drives the same head, so it owes the same hand-off, and a
+    /// second model here would let one joystick turn a behaviour off behind a switch
+    /// still showing it on.
+    var standDown: TeleopStandDown?
 
     @State private var driver: TeleopDriver
     @State private var setupError: String?
@@ -15,11 +20,13 @@ struct ControllerScreen: View {
 
     init(
         session: RobotSession,
+        standDown: TeleopStandDown? = nil,
         driver: TeleopDriver = TeleopDriver(),
         setupError: String? = nil,
         recorder: MoveRecorderModel? = nil
     ) {
         self.session = session
+        self.standDown = standDown
         _driver = State(initialValue: driver)
         _setupError = State(initialValue: setupError)
         _recorder = State(initialValue: recorder ?? MoveRecorderModel())
@@ -48,10 +55,13 @@ struct ControllerScreen: View {
             }
             Group {
                 Section(.reachy("Head — drag: yaw / pitch, hold sideways: turn the body")) {
-                    JoystickPad(mapping: driver.mapping) { driver.apply($0) }
-                        .frame(maxWidth: 280)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                    JoystickPad(mapping: driver.mapping) { deflection in
+                        driver.apply(deflection)
+                        standDown?()
+                    }
+                    .frame(maxWidth: 280)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                 }
                 recordingSection
                 Section(.reachy("Head")) {

@@ -160,7 +160,11 @@ enum PreviewScene {
             model: model,
             offersCamera: offersCamera,
             makeTeleop: makeTeleop,
-            robotSession: offersPresence ? .preview() : nil
+            robotSession: offersPresence ? .preview() : nil,
+            // Built here rather than defaulted for the reason `offersPresence` is a
+            // `Bool`: a defaulted argument is evaluated nonisolated and this initialiser
+            // is `@MainActor`.
+            presence: PresenceModel()
         )
         .preview()
     }
