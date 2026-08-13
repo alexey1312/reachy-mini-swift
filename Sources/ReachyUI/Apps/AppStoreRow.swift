@@ -10,12 +10,21 @@ struct AppStoreRow: View {
     var isRunning = false
     var hasUpdate = false
     var isStartupApp = false
+    var isPinned = false
 
     var body: some View {
         HStack(spacing: Space.md) {
             AppArtworkTile(app: app)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 5) {
+                    // Beside the title rather than in `trailing`, whose four cases are
+                    // mutually exclusive and are all about the app's state on the robot.
+                    // A pin is the reader's own mark and coexists with every one of them.
+                    if isPinned {
+                        Image(systemName: "pin.fill")
+                            .foregroundStyle(.tint)
+                            .accessibilityLabel(.reachy("Pinned"))
+                    }
                     Text(app.title)
                         .font(Typography.rowTitle)
                         .lineLimit(1)

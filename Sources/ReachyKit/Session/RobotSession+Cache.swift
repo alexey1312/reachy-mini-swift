@@ -111,14 +111,14 @@ extension RobotSession {
     ///
     /// One copy: `RobotSession+Apps` and `RobotSession+Moves` each had a private
     /// version of this, which is the same thought written twice.
-    var connectedIdentity: RobotIdentity? {
+    public var connectedIdentity: RobotIdentity? {
         switch phase {
         case let .connected(identity), let .unreachable(identity): identity
         case .idle, .connecting: nil
         }
     }
 
-    var connectedRobotID: String? {
+    public var connectedRobotID: String? {
         connectedIdentity?.deduplicationKey
     }
 }

@@ -68,10 +68,27 @@ struct AppStoreScreen: View {
                             isInstalled: model.isInstalled(app),
                             isRunning: model.isRunning(app),
                             hasUpdate: model.hasUpdate(app),
-                            isStartupApp: model.isStartupApp(app)
+                            isStartupApp: model.isStartupApp(app),
+                            isPinned: model.isPinned(app)
                         )
                     }
                     .buttonStyle(.plain)
+                    .swipeActions(edge: .leading) {
+                        pinButton(for: app)
+                    }
+                    // Both gestures, on purpose: the swipe is the fast path for a
+                    // reader who knows it is there, the menu is the discoverable one
+                    // and the only one with room for a second action.
+                    .contextMenu {
+                        if model.canStart(app) {
+                            Button {
+                                Task { await model.start(app, session: session) }
+                            } label: {
+                                Label(.reachy("Start"), systemImage: "play.fill")
+                            }
+                        }
+                        pinButton(for: app)
+                    }
                 }
             }
         }
@@ -111,6 +128,19 @@ struct AppStoreScreen: View {
         .task {
             guard !previewMode else { return }
             await model.load(session: session)
+        }
+    }
+
+    /// One button, two hosts — the swipe and the menu must not drift into saying
+    /// different things about the same app.
+    private func pinButton(for app: RobotApp) -> some View {
+        Button {
+            model.togglePin(app)
+        } label: {
+            Label(
+                model.isPinned(app) ? .reachy("Unpin") : .reachy("Pin"),
+                systemImage: model.isPinned(app) ? "pin.slash" : "pin"
+            )
         }
     }
 
