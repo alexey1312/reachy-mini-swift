@@ -423,6 +423,43 @@ on the Robot tab.
   verdict already reached stands, and silence concludes nothing new. Anything else this model infers from elapsed
   time owes the same check.
 
+## The store's scope and sort
+
+`AppStoreFilters.swift` holds `AppStoreModel.Scope` and `.Sort`; `visibleApps` composes them as section →
+scope → search → order. A file of its own because `AppStoreModel.swift` is within a few dozen lines of both
+SwiftLint's file and type limits, and `--strict` turns that warning into a build failure.
+
+- **`.recommended` is the default because the daemon's order _is_ the curation.** `list_all_available_apps`
+  concatenates the curated `app-list.json` entries ahead of every other Space, and
+  `hf_space._build_app_info` stamps **`source_kind = hf_space` on both lists** — so curation survives only as
+  position in the array, and a default sort of anything else silently throws away the one editorial signal the
+  store has. `keepsDaemonOrdering` in `AppStoreModelTests` predates the sort and is what said so.
+- **Scopes are questions, not buckets.** `.community` is the complement of `.official`, so a private community
+  Space answers both it and `.privateSpaces`. Partitioning them would hide such a Space from a reader who asked
+  for community apps, which is the more surprising of the two ways to be wrong. And **official can only ever
+  mean the author** — there is no verified flag on a Space, and the curated list is indistinguishable on the
+  wire.
+- **The two dates were already on the robot, undecoded.** `extra.createdAt` / `extra.lastModified`, folded onto
+  that one spelling by the daemon's `_normalize_space_data`, and present in **both** its catalogue paths
+  (checked against the live Hub API, not inferred). `JSONCodec.daemon` already reads ISO 8601 with fractional
+  seconds and `Card`'s `value(_:_:)` already swallows a field of the wrong type, so decoding them cost two
+  properties and no new parsing.
+- **`sorted(by:)` is not stable**, so every sort ends in a tie-break on title and then `id`. Without it two apps
+  by the same author swap places between redraws of a list nobody touched — invisible in a snapshot, which
+  captures one frame.
+- **A toolbar item moves every reference of its screen and none of any other.** The filter menu moved 8
+  previews × 4 references and left the `App detail —` sheets alone, because the toolbar is on the screen and not
+  on the sheet. Predict that count before recording; anything beyond it is a second finding.
+  - **It renders at `maxDelta 13`, and that is not evidence it is missing.** The glyph is thin, light and on
+    glass, which `ReachyDesign/AGENTS.md` records as rendering faint headless. A pixel-diff summary alone would
+    read as "the bar resized"; cropping the reference and looking at it is what confirmed the button.
+- **`record` overwrote a good reference with an unstable one, and the run after it caught that.**
+  `Moves — dances loading` moved with the other 32 for no reason belonging to this change, and its
+  freshly recorded copy then failed against itself while the copy at `HEAD` passed — an indeterminate
+  `ProgressView` captured at an unlucky phase, the churn the previews section describes. So a re-record is not
+  the end of the job: run `test:snapshots` again afterwards, and `git checkout HEAD --` anything that moved for
+  a reason you cannot name.
+
 ## One page per app
 
 **`AppDetailSheet` is the only page about an app, and both surfaces open it** — a store row and the dock's expand
@@ -657,3 +694,67 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   and not worth contorting the screen for. Snapshots are unaffected — they capture the title _and_
   the toolbar items, so `RobotScreen`'s Settings gear and `MovesScreen`'s Refresh are covered.
   Only the storybook hoists.
+
+## Entities in Spotlight, beside the three systems above
+
+`Navigation/EntityIndex.swift` is the **fourth** system next to App Shortcuts, `ReachyQuickAction` and
+`ReachySpotlightIndex`. Its neighbour files _destinations_ — two rows that open two tabs, because Spotlight matches
+an installed app on its display name alone. This files the robot's own apps and moves as **entities**, and an
+indexed `AppEntity` carries its type with it, so Spotlight can pair the row with the intents that take that type:
+searching for a dance offers to play it. The conformances live in `ReachyWidgetUI` beside the entities themselves.
+
+- **Never the network.** Both lists come out of the caches the entity queries already read — `RobotAppsCacheStore`
+  and `MoveEntityQuery`, the latter documented as reading only. `RobotAppQuery.suggestedEntities()` is deliberately
+  _not_ used: it carries a 2 s live refresh this has no use for, and it **writes** the cache.
+- **Never `deleteAllSearchableItems()`.** `ReachySpotlightIndex` files its two destination rows into the same default
+  index, and a blanket delete takes them with it — silently, and long after anybody would connect the two files.
+  Deletion is `deleteAppEntities(ofType:)`, which is also what retires an app removed from the robot.
+- **The stamp is over the content and it is SHA-256, not `hashValue`.** Unlike the two destination rows, this list
+  changes while the app is installed: every install, removal and `reset-apps` moves it. And Swift seeds `Hasher` per
+  process, so a stored `hashValue` compares unequal on the very next launch — the index would be rewritten on every
+  cold start, and the only symptom would be battery. `EntityIndexTests` pins the digest as a pure function of the
+  content; nothing in one process can catch the `hashValue` version.
+- The trigger is one `.task(id:)` in `RootLifecycle`, keyed on the robot **and** the scene phase. Connect-only would
+  miss the ordinary case: the widget and Shortcuts both start and install apps with this process not running.
+- Only _installed_ apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
+  those cannot do what it promises — the same reason `ReachySpotlightIndex` leaves `.runningApp` out.
+
+## Where the robot heard you
+
+`DirectionOfArrivalModel` + `DirectionOfArrivalIndicator`, mounted in `ViewportView`'s chrome row and owned by
+`ViewportModel`.
+
+- **It opens a socket of its own rather than reading `RobotSceneModel`'s.** That one already receives every field of
+  every frame and could publish this for a line — but it streams only while the 3D model is on screen, so the badge
+  would go dead the moment somebody switched to the camera. That is exactly the view where "somebody spoke, off to
+  your left" is worth having, because the robot's own picture cannot show them. `StateStreamOptions.hearing` keeps
+  the second socket cheap, and **its three `false`s are the whole point**: the daemon defaults `with_head_pose`,
+  `with_body_yaw` and `with_antenna_positions` to _true_, so a preset that merely added `with_doa` would carry a full
+  pose five times a second for a two-field reading.
+- **An axis, never a compass.** The daemon reports one angle along the robot's left–right line — 0 = left,
+  π/2 = front/back, π = right (`.claude/rules/daemon-api.md`) — so **π/2 is a genuine degeneracy**: a two-microphone
+  array measures a delay along one axis and cannot tell in front from behind. A dial would have to invent the missing
+  half and would be wrong about it half the time with nothing on screen admitting it. `Side.frontOrBehind` is that
+  case, and it has a preview of its own so the wording cannot quietly be "improved" into a claim.
+- **The directions are the robot's, so they are `left`/`right` and the symbols do not mirror.** Same exception
+  `JoystickPad` takes, and the same reason: a right-to-left language flipping these would reverse a fact about the
+  world. The caption says _its_ left out loud, because looking through the camera and looking at the 3D model put the
+  robot's left on opposite sides of the screen — the only unambiguous thing to draw is a word.
+- **`isSupported` is what keeps the badge off a robot that cannot answer.** `doa` is nullable and `sim-daemon` sends
+  `null` for ever, as does any unit with no array; a badge mounted on hope would sit blank on every simulator run and
+  read as broken rather than absent. Quiet and unsupported render identically and are separate properties for exactly
+  that reason.
+  - **There is a third reason for `null`, and it is the one that looks like a bug in this file.** The array needs
+    ReSpeaker firmware **2.1.0 or higher** (`reachy_mini/media/audio_doa.py`, readable in `.venv-sim`), and the
+    daemon reports an older one by answering `null` rather than by complaining — so a unit that visibly _has_ the
+    array shows no badge and every layer here is behaving correctly. Check the firmware before reading the model.
+    The upgrade is Seeed's:
+    <https://wiki.seeedstudio.com/respeaker_xvf3800_introduction/#update-firmware>.
+- **The hold window is retired by the stream, not by a `Timer`.** Frames arrive at 5 Hz whether or not anybody is
+  talking, so the stream is a clock the model already owns — the same argument `RunningAppModel.expireActionFailure`
+  makes about its poll. `stop()` keeps the last reading, so a glance at another tab does not blank one still inside
+  its window; only `detach()` drops it, because that is a different robot.
+- **No existing reference moved.** `ViewportModel.preview` defaults `hearing` to nil, so the badge is absent from
+  every capture that predates it; `Viewport — heard a voice` is the one that shows it in the chrome row, and the
+  standalone `Direction of arrival —` set covers the badge itself. **None of it can be verified against
+  `sim-daemon`** — that sends `doa: null` — so the mapping is a hardware check.

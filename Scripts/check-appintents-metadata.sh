@@ -49,6 +49,8 @@ REQUIRED_APP_ACTIONS = [
     "ToggleRobotAppIntent",
     "PlayMoveIntent",
     "StopMoveIntent",
+    "RobotAwakeIntent",
+    "RunningAppIntent",
 ]
 REQUIRED_APPEX_ACTIONS = ["RobotAppsConfigurationIntent"]
 

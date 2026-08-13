@@ -27,6 +27,8 @@ final class AppStoreModel {
 
     var section: Section = .installed
     var searchText = ""
+    var scope: Scope = .all
+    var sort: Sort = .recommended
 
     /// Held so `runningApp` can read through to it. The mutating calls still take a
     /// session of their own — collapsing them is a separate change.
@@ -92,17 +94,27 @@ final class AppStoreModel {
         !hasCatalogueResult && (loading || !attemptedCatalogueLoad)
     }
 
+    /// Section, then scope, then the search field, then the order. The scope runs
+    /// over both sections rather than only over Discover: an installed app carries
+    /// the card the daemon saved for it, so "official" and "private" mean the same
+    /// thing on either side — and an installed app whose metadata the daemon lost
+    /// answers `.community`, which is the honest reading of an unattributed app.
     var visibleApps: [RobotApp] {
         let apps = switch section {
         case .installed: installed
         case .discover: catalogue
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let matched = query.isEmpty ? apps : apps.filter { $0.matchesSearch(query) }
-        // A pin lifts, it never filters — a search that excludes a pinned app still
-        // excludes it. `stableSort` by way of the index: the daemon puts curated
-        // entries first and that is the only editorial signal this store has.
-        return matched.enumerated()
+        let matched = apps.filter { scope.admits($0) && (query.isEmpty || $0.matchesSearch(query)) }
+        // A pin lifts, it never filters — a scope or a search that excludes a pinned
+        // app still excludes it — and it lifts above whatever order is in force,
+        // because it is a shortcut rather than an opinion about ranking.
+        //
+        // Stable by way of the index: `Array.sorted` is not, and the order underneath
+        // is either the daemon's curated one or the reader's own choice. Neither may
+        // be shuffled by the lift.
+        return sort.applied(to: matched)
+            .enumerated()
             .sorted { left, right in
                 let ranks = (rank(of: left.element), rank(of: right.element))
                 return ranks.0 == ranks.1 ? left.offset < right.offset : ranks.0 < ranks.1
@@ -128,6 +140,16 @@ final class AppStoreModel {
         guard let robotID = session.connectedRobotID else { return }
         pins.toggle(app.id, for: robotID)
         pinnedIDs = pins.pinned(for: robotID)
+    }
+
+    /// Whether anything but the defaults is in force — the toolbar's glyph fills in
+    /// to say so, because a menu that hides its own state is a list a reader cannot
+    /// explain.
+    ///
+    /// A pin is not in it: it reorders, it does not narrow, so a reader who sees
+    /// fewer rows than they expect is never looking at a pin.
+    var isFiltering: Bool {
+        scope != .all || sort != .recommended
     }
 
     /// The installed row a catalogue card stands for. Everything the daemon does to
@@ -322,6 +344,8 @@ private extension RobotApp {
         static func preview(
             session: RobotSession? = nil,
             section: Section = .discover,
+            scope: Scope = .all,
+            sort: Sort = .recommended,
             catalogue: [RobotApp] = RobotApp.previewCatalogue,
             installed: [RobotApp] = RobotApp.previewInstalled,
             startupApp: String? = nil,
@@ -336,6 +360,8 @@ private extension RobotApp {
             // Assigned, not toggled through the store: a preview renders the state it
             // was handed and must not write to the reader's own `UserDefaults`.
             model.pinnedIDs = pinned
+            model.scope = scope
+            model.sort = sort
             model.catalogue = catalogue
             model.installed = installed
             // A preview is the state it was handed, never a debt to a robot.

@@ -9,8 +9,13 @@ import ReachyWidgetUI
 ///
 /// **These do not reach the Home Screen icon's menu.** That menu is UIKit's, holds
 /// its own items, and is built by `ReachyQuickAction` — the two systems are
-/// described side by side there. Eight of the ten App Shortcuts an app may declare
-/// are used here.
+/// described side by side there.
+///
+/// **All ten App Shortcuts an app may declare are now used**, so the next intent
+/// worth speaking has to displace one rather than join them. The system takes the
+/// first ten and drops the rest silently, which is exactly the kind of failure that
+/// shows up as "Siri stopped hearing that phrase" months later — count before
+/// adding.
 ///
 /// `\(.applicationName)` is `CFBundleDisplayName`, so every phrase below reads
 /// "… Hey Reachy". `INAlternativeAppNames` in `Project.swift` adds "Reachy" beside
@@ -106,6 +111,22 @@ struct ReachyShortcuts: AppShortcutsProvider {
             phrases: ["Stop the move on \(.applicationName)"],
             shortTitle: "Stop move",
             systemImageName: "stop.circle"
+        )
+        // The two that answer rather than command, and the only ones here that
+        // reach no robot: both reply out of the App Group snapshot, so they are
+        // instant and cannot fail on an unreachable robot. What they cost instead
+        // is honesty about age — `RobotStatusReport` is where that is enforced.
+        AppShortcut(
+            intent: RobotAwakeIntent(),
+            phrases: ["Is \(.applicationName) awake"],
+            shortTitle: "Is it awake",
+            systemImageName: "questionmark.circle"
+        )
+        AppShortcut(
+            intent: RunningAppIntent(),
+            phrases: ["What is running on \(.applicationName)"],
+            shortTitle: "What is running",
+            systemImageName: "questionmark.app"
         )
     }
 }

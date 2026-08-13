@@ -105,6 +105,7 @@ struct AppStoreScreen: View {
         // copy on this one would be the same control twice.
         .minimizedSearchToolbar()
         .toolbar {
+            filterMenu
             Button {
                 Task { await model.load(session: session, refresh: true) }
             } label: {
@@ -144,6 +145,35 @@ struct AppStoreScreen: View {
         }
     }
 
+    /// One menu holding two inline `Picker`s, which is what buys the checkmarks,
+    /// the VoiceOver wording and the platform's own menu chrome for free. A pair of
+    /// hand-rolled rows would have to earn each of those back.
+    private var filterMenu: some View {
+        @Bindable var model = model
+        return Menu {
+            Picker(.reachy("Show"), selection: $model.scope) {
+                ForEach(AppStoreModel.Scope.allCases) { scope in
+                    Label(scope.title, systemImage: scope.symbol).tag(scope)
+                }
+            }
+            .pickerStyle(.inline)
+
+            Picker(.reachy("Sort by"), selection: $model.sort) {
+                ForEach(AppStoreModel.Sort.allCases) { sort in
+                    Label(sort.title, systemImage: sort.symbol).tag(sort)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Label(
+                .reachy("Filter and sort"),
+                systemImage: model.isFiltering
+                    ? "line.3.horizontal.decrease.circle.fill"
+                    : "line.3.horizontal.decrease.circle"
+            )
+        }
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         if !model.searchText.isEmpty {
@@ -156,6 +186,17 @@ struct AppStoreScreen: View {
                     .reachy("The robot could not reach Hugging Face. Pull to refresh once it is back online.")
                 )
             )
+            // Below the error on purpose: a filter over a catalogue that never arrived
+            // is not why the list is empty, and saying so would send the reader to
+            // clear a filter that was never the problem.
+        } else if model.scope != .all {
+            ContentUnavailableView {
+                Label(.reachy("Nothing matches this filter"), systemImage: "line.3.horizontal.decrease.circle")
+            } description: {
+                Text(.reachy("No app in this section is filed under that heading."))
+            } actions: {
+                Button(.reachy("Show all apps")) { model.scope = .all }
+            }
         } else {
             switch model.section {
             case .installed:
