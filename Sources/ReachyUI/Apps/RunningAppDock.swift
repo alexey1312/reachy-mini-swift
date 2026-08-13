@@ -32,6 +32,8 @@ struct RunningAppDock: View {
             RunningAppDockContent(
                 status: status,
                 conversationTurn: model.conversationTurn,
+                isMicrophoneMuted: model.isMicrophoneMuted,
+                offersConversationControls: model.offersConversationControls,
                 isReachable: model.isReachable(session),
                 busy: model.busy,
                 wedged: model.wedged != nil,
@@ -48,6 +50,12 @@ struct RunningAppDock: View {
             case .stop: await model.stop(session: session)
             case .restart: await model.restart(session: session)
             case .dismiss: model.dismissFailure(session)
+            case .toggleMicrophone:
+                guard let app = model.visibleStatus(for: session)?.app else { return }
+                await model.setMicrophoneMuted(!model.isMicrophoneMuted, on: session, app: app)
+            case .interrupt:
+                guard let app = model.visibleStatus(for: session)?.app else { return }
+                await model.interrupt(on: session, app: app)
             }
         }
     }
@@ -153,10 +161,16 @@ struct RunningAppDockContent: View {
         /// Only offered for a dead app: there is nothing left to stop, and the row
         /// would otherwise sit there forever.
         case dismiss
+        case toggleMicrophone
+        /// Offered only while the robot is speaking — which is the moment anybody
+        /// reaches for it, and what keeps the row from growing a fourth control.
+        case interrupt
     }
 
     let status: RobotAppStatus
     var conversationTurn: ConversationTurn?
+    var isMicrophoneMuted = false
+    var offersConversationControls = false
     var isReachable = true
     var busy = false
     /// The transition has outlasted its deadline: only the robot's software can end
@@ -225,6 +239,15 @@ struct RunningAppDockContent: View {
 
             if hasFailed {
                 dismissButton
+            } else if isTalking {
+                // Restart gives way rather than making a fourth control: the same
+                // trade `inlineRow` documents, and Restart is still one tap away
+                // through the row itself.
+                microphoneButton
+                if conversationTurn == .speaking {
+                    interruptButton
+                }
+                stopButton
             } else {
                 restartButton
                 stopButton
@@ -232,6 +255,13 @@ struct RunningAppDockContent: View {
         }
         .padding(.horizontal, Space.lg)
         .frame(minHeight: Metrics.dockStrip)
+    }
+
+    /// A conversation this dock can actually reach. `conversationTurn` is nil for
+    /// every other app, for an old build, and over the relay — so it is the one
+    /// condition, rather than a second guess at the same thing.
+    private var isTalking: Bool {
+        offersConversationControls && conversationTurn != nil
     }
 
     /// Merged into a minimised tab bar: one row the height of the bar, and a
@@ -306,6 +336,34 @@ struct RunningAppDockContent: View {
         .reachyButton(.prominent)
         .buttonBorderShape(.circle)
         .tint(.red)
+        .disabled(!canAct)
+    }
+
+    /// The **robot's** microphone, not this phone's — nothing here records.
+    private var microphoneButton: some View {
+        Button {
+            perform(.toggleMicrophone)
+        } label: {
+            Label(
+                isMicrophoneMuted ? .reachy("Unmute the robot") : .reachy("Mute the robot"),
+                systemImage: isMicrophoneMuted ? "mic.slash.fill" : "mic.fill"
+            )
+            .labelStyle(.iconOnly)
+        }
+        .reachyButton()
+        .buttonBorderShape(.circle)
+        .disabled(!canAct)
+    }
+
+    private var interruptButton: some View {
+        Button {
+            perform(.interrupt)
+        } label: {
+            Label(.reachy("Stop talking"), systemImage: "hand.raised.fill")
+                .labelStyle(.iconOnly)
+        }
+        .reachyButton()
+        .buttonBorderShape(.circle)
         .disabled(!canAct)
     }
 

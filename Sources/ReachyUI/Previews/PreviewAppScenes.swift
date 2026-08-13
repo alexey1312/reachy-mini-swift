@@ -103,6 +103,11 @@ extension PreviewScene {
     static func runningAppDock(
         _ status: RobotAppStatus,
         conversationTurn: ConversationTurn? = nil,
+        isMicrophoneMuted: Bool = false,
+        // `true` because the model's own default is: the controls are offered until
+        // an app answers `-32601`. A preview defaulting the other way would picture
+        // the rarer half of the fork.
+        offersConversationControls: Bool = true,
         isReachable: Bool = true,
         busy: Bool = false,
         wedged: Bool = false,
@@ -112,6 +117,8 @@ extension PreviewScene {
         RunningAppDockContent(
             status: status,
             conversationTurn: conversationTurn,
+            isMicrophoneMuted: isMicrophoneMuted,
+            offersConversationControls: offersConversationControls,
             isReachable: isReachable,
             busy: busy,
             wedged: wedged,

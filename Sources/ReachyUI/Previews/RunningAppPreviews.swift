@@ -27,6 +27,26 @@ import SwiftUI
     PreviewScene.runningAppDock(.previewConversation, conversationTurn: .ready)
 }
 
+// The robot's microphone, held muted. Nothing on the phone is recording — this is
+// the app's own input, switched off from here.
+#Preview("Dock — conversation muted", traits: .sizeThatFitsLayout) {
+    PreviewScene.runningAppDock(
+        .previewConversation,
+        conversationTurn: .listening,
+        isMicrophoneMuted: true
+    )
+}
+
+// An app build whose `/rpc` never had `conversation.mic`: it answered -32601 once
+// and the controls went. Restart comes back, which is what this captures.
+#Preview("Dock — conversation without controls", traits: .sizeThatFitsLayout) {
+    PreviewScene.runningAppDock(
+        .previewConversation,
+        conversationTurn: .listening,
+        offersConversationControls: false
+    )
+}
+
 #Preview("Dock — starting", traits: .sizeThatFitsLayout) {
     PreviewScene.runningAppDock(.preview(.starting))
 }

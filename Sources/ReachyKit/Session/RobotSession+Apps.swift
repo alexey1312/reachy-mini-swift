@@ -190,6 +190,21 @@ public extension RobotSession {
         return try ConversationRPCClient(address: address, port: app.customAppPort).turns()
     }
 
+    /// Mutes the **robot's** microphone, over the same socket the turns arrive on.
+    func setConversationMicrophoneMuted(_ muted: Bool, for app: RobotApp) async throws {
+        try await conversationClient(for: app).setMicrophoneMuted(muted)
+    }
+
+    /// Stops the robot mid-sentence.
+    func interruptConversation(for app: RobotApp) async throws {
+        try await conversationClient(for: app).interrupt()
+    }
+
+    private func conversationClient(for app: RobotApp) throws -> ConversationRPCClient {
+        guard let address else { throw ReachyKitError.notConnected }
+        return try ConversationRPCClient(address: address, port: app.customAppPort)
+    }
+
     /// Where an app serves its **own** settings page, on the port it declared and
     /// the host this session is connected to.
     ///

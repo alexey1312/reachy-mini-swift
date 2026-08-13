@@ -45,6 +45,18 @@ final class LocalWebSocketServer: @unchecked Sendable {
         )
     }
 
+    /// Hands each text frame the client sends to `onText`, until the connection ends.
+    ///
+    /// One `receiveMessage` per frame is the whole API — it does not repeat — so a
+    /// server that answers more than one request has to re-arm itself.
+    static func receiveText(over connection: NWConnection, onText: @escaping @Sendable (String) -> Void) {
+        connection.receiveMessage { data, _, _, error in
+            guard error == nil, let data, let text = String(data: data, encoding: .utf8) else { return }
+            onText(text)
+            receiveText(over: connection, onText: onText)
+        }
+    }
+
     /// Fires once the client closes: a WebSocket close frame, or the connection
     /// failing under it. A client that merely stops reading never gets here, which
     /// is exactly the distinction a cancellation test needs to draw.
