@@ -224,7 +224,17 @@ extension CoreBluetoothTransport {
 
     func scanIfPossible() {
         guard wantsScan, let central, central.state == .poweredOn else { return }
-        central.scanForPeripherals(withServices: [CBUUID(string: BLEGATT.advertisedService)])
+        central.scanForPeripherals(
+            withServices: [CBUUID(string: BLEGATT.advertisedService)],
+            // **Duplicates are what deliver the scan response.** Without this iOS
+            // coalesces a peripheral into one callback, and a manufacturer block that
+            // travels in the scan response rather than in the advertisement can miss
+            // it entirely — indistinguishable from firmware that sends none. It costs
+            // a callback per packet, which is bounded by the two screens that scan:
+            // both are open only while somebody is looking at them, and both stop on
+            // disappear. `merging` is what keeps the extra callbacks cheap.
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+        )
     }
 
     static func key(_ id: BLECharacteristicID) -> CBUUID {
@@ -357,7 +367,21 @@ extension CoreBluetoothTransport {
         _ snapshot: BLEPeripheralSnapshot,
         into list: [BLEPeripheralSnapshot]
     ) -> [BLEPeripheralSnapshot] {
-        (list.filter { $0.id != snapshot.id } + [snapshot]).sorted {
+        // **The manufacturer block is carried across a sighting that lacks one.**
+        // CoreBluetooth calls back on every packet it accepts, and that block usually
+        // travels in the scan response rather than in the advertisement — so most
+        // callbacks legitimately have no `manufacturerData`, and replacing the
+        // snapshot wholesale erased the one that did. The field then read nil for
+        // ever, which is indistinguishable from a robot whose firmware never sends
+        // one. Fresh data still wins: a robot that changed networks is saying so.
+        let previous = list.first { $0.id == snapshot.id }
+        let merged = BLEPeripheralSnapshot(
+            id: snapshot.id,
+            name: snapshot.name,
+            rssi: snapshot.rssi,
+            manufacturerData: snapshot.manufacturerData ?? previous?.manufacturerData
+        )
+        return (list.filter { $0.id != snapshot.id } + [merged]).sorted {
             if $0.rssi != $1.rssi {
                 return $0.rssi > $1.rssi
             }
