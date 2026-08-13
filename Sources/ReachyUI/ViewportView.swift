@@ -25,11 +25,34 @@ struct ViewportView: View {
     /// `nil` where this connection carries no teleop at all, and then the joystick
     /// is absent rather than inert.
     var makeTeleop: TeleopFactory?
+    /// The robot behind the picture, for the controls that are about *it* rather
+    /// than about the stream. `nil` in the floating window, which is a place to
+    /// watch from rather than to configure.
+    var robotSession: RobotSession?
+
+    /// Held here rather than built inside the sheet: SwiftUI re-runs a sheet's
+    /// content closure on every update of the view it hangs off, so a model built
+    /// there is silently replaced by an empty one — and these two flags are the only
+    /// record of what the robot was asked for.
+    @State private var presence = PresenceModel()
+    @State private var showsPresence = false
 
     var body: some View {
         ViewportContent(model: model, makeTeleop: makeTeleop)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .topLeading) { chrome }
+            .sheet(isPresented: $showsPresence) {
+                if let robotSession {
+                    NavigationStack {
+                        TelepresenceSheet(
+                            session: robotSession,
+                            dismiss: { showsPresence = false },
+                            presence: presence
+                        )
+                    }
+                    .reachySheet()
+                }
+            }
     }
 
     /// Every floating control hugs the leading edge: on iPad the tab bar floats
@@ -47,8 +70,26 @@ struct ViewportView: View {
         HStack(spacing: Space.md) {
             switcher
             contentControls
+            presenceButton
         }
         .padding(Space.md)
+    }
+
+    /// Speaker, microphone and the robot's own idle behaviour, without leaving the
+    /// stream — which is the whole point: every one of them is something a reader
+    /// wants *while* looking through the camera, and the Settings tab is a place
+    /// you have to give the picture up to reach.
+    @ViewBuilder
+    private var presenceButton: some View {
+        if robotSession != nil {
+            Button {
+                showsPresence = true
+            } label: {
+                Label(.reachy("Presence"), systemImage: "slider.horizontal.3")
+                    .labelStyle(.iconOnly)
+            }
+            .viewportControlStyle()
+        }
     }
 
     @ViewBuilder

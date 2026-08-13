@@ -139,10 +139,45 @@ enum PreviewScene {
     static func viewport(
         _ model: ViewportModel,
         offersCamera: Bool = true,
-        makeTeleop: TeleopFactory? = nil
+        makeTeleop: TeleopFactory? = nil,
+        // Whether this host offers the Presence button — true on the Live tab, false
+        // in the floating window, where the robot is watched rather than configured.
+        //
+        // A `Bool` rather than an optional session with a `.preview()` default: a
+        // defaulted argument is evaluated nonisolated, and every `RobotSession`
+        // factory is main-actor isolated. That compiles under SwiftPM and fails only
+        // in the Xcode targets, minutes into a snapshot run that has already deleted
+        // every reference.
+        offersPresence: Bool = true
     ) -> some View {
-        ViewportView(model: model, offersCamera: offersCamera, makeTeleop: makeTeleop)
-            .preview()
+        ViewportView(
+            model: model,
+            offersCamera: offersCamera,
+            makeTeleop: makeTeleop,
+            robotSession: offersPresence ? .preview() : nil
+        )
+        .preview()
+    }
+
+    /// The sheet that button opens: the robot's audio levels and its two presence
+    /// behaviours, reachable without giving up the stream.
+    static func telepresence(
+        _ session: RobotSession? = nil,
+        presence: PresenceModel? = nil
+    ) -> some View {
+        NavigationHost {
+            TelepresenceSheet(
+                session: session ?? .preview(),
+                dismiss: {},
+                presence: presence,
+                // Settled, not empty: `AudioSettingsSection`'s `.task` is skipped in
+                // preview mode, so the default model would capture every slider at
+                // zero with Test sound greyed out — a picture of a screen that never
+                // loaded rather than of this one.
+                audio: .preview()
+            )
+        }
+        .preview()
     }
 
     /// The floating window over a screen-shaped hole, so the corner it rests in is
