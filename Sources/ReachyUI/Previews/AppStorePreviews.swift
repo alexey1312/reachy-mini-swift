@@ -25,6 +25,12 @@ import SwiftUI
     )
 }
 
+// Chess Coach is third in the daemon's own ordering, so a capture that puts it
+// first is the lift itself — not merely the pin glyph.
+#Preview("Apps — pinned") {
+    PreviewScene.appStore(.preview(), model: .preview(pinned: ["someone/chess-coach"]))
+}
+
 // A relay session holds the same lock a local app does. The screen has to explain
 // itself rather than just disable the buttons.
 #Preview("Apps — held remotely") {

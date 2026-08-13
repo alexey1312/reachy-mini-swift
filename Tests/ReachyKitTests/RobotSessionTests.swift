@@ -308,4 +308,41 @@ struct RobotSessionTests {
         #expect(client.recordedSteps == [.gotoSleep, .motorMode(.disabled)])
         session.disconnect()
     }
+
+    /// The handshake deliberately does not seed this: it measures a different call,
+    /// so a figure taken from it would not be comparable with the poll's.
+    @Test("a poll that answered records how long it took")
+    func recordsRoundTrip() async {
+        let session = makeSession(client: MockRobotClient(probes: []))
+        await session.connect(to: RobotAddress(host: "10.0.0.9"))
+        #expect(session.lastRoundTrip == nil)
+
+        await waitUntil(session.lastRoundTrip != nil)
+        #expect(session.lastRoundTrip != nil)
+        session.disconnect()
+    }
+
+    /// A stale figure beside an unreachable robot is a lie the chip must not tell,
+    /// so the reading is dropped rather than left standing.
+    @Test("a poll that failed drops the round trip")
+    func dropsRoundTripWhenUnreachable() async {
+        // One success to fill it, then failures for long enough that the recovery
+        // the exhausted script would allow cannot refill it under the assertion.
+        let probes: [MockRobotClient.Probe] = [.ok] + Array(repeating: .fail, count: 60)
+        let session = makeSession(client: MockRobotClient(probes: probes))
+        await session.connect(to: RobotAddress(host: "10.0.0.9"))
+
+        await waitUntil(session.lastRoundTrip != nil)
+        #expect(session.lastRoundTrip != nil)
+
+        await waitUntil({
+            if case .unreachable = session.phase {
+                true
+            } else {
+                false
+            }
+        }())
+        #expect(session.lastRoundTrip == nil)
+        session.disconnect()
+    }
 }

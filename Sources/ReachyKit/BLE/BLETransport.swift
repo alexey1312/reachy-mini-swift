@@ -10,11 +10,24 @@ public struct BLEPeripheralSnapshot: Identifiable, Hashable, Sendable {
     public let id: UUID
     public let name: String
     public let rssi: Int
+    /// `kCBAdvDataManufacturerData`, verbatim and undecoded.
+    ///
+    /// Kept raw as well as parsed because **no robot here has been seen sending
+    /// anything at all**: `BLEAdvertisement` decodes the shape upstream's PR #1086
+    /// describes, and the recovery console prints these bytes so a robot on other
+    /// firmware can be read rather than guessed at. Nil is the ordinary answer.
+    public let manufacturerData: Data?
 
-    public init(id: UUID, name: String, rssi: Int) {
+    /// The robot's own claim about its address and identity, when it makes one.
+    public var advertisement: BLEAdvertisement? {
+        manufacturerData.flatMap(BLEAdvertisement.init(manufacturerData:))
+    }
+
+    public init(id: UUID, name: String, rssi: Int, manufacturerData: Data? = nil) {
         self.id = id
         self.name = name
         self.rssi = rssi
+        self.manufacturerData = manufacturerData
     }
 }
 

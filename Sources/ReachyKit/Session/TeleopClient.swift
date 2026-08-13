@@ -35,7 +35,10 @@ public protocol TeleopChannel: Sendable {
 ///
 /// Named here rather than inside `SetTargetClient` because two transports carry
 /// it now; the alias on that type keeps every existing call site compiling.
-public struct TeleopTarget: Sendable, Equatable {
+/// `Codable` because a recorded move is a list of these on disk. That makes the
+/// property names part of `JSONCodec.stored`'s frozen format: renaming one silently
+/// drops that axis from every recording a shipped build wrote.
+public struct TeleopTarget: Sendable, Equatable, Codable {
     public var x, y, z, roll, pitch, yaw: Double
     public var bodyYaw: Double
     public var antennaLeft: Double

@@ -55,8 +55,17 @@ final class AppStoreModel {
     /// of a refresh the user asked for afterwards (`MovesModel`'s pattern).
     private var loadID: UUID?
 
-    init(session: RobotSession) {
+    private let pins: PinnedAppStore
+    /// Mirrors the store so `@Observable` sees a pin land. Reading the store in
+    /// `visibleApps` would leave the list stale until something else redrew it.
+    private var pinnedIDs: [String] = []
+
+    init(session: RobotSession, pins: PinnedAppStore = PinnedAppStore()) {
         self.session = session
+        self.pins = pins
+        if let robotID = session.connectedRobotID {
+            pinnedIDs = pins.pinned(for: robotID)
+        }
         // Seeded here rather than in `.task`, which runs after the first frame:
         // the whole point of the disk cache is that the frame is not a spinner.
         // `RobotSession.warmCatalogues` has already put this in memory, before the
@@ -97,12 +106,48 @@ final class AppStoreModel {
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let matched = apps.filter { scope.admits($0) && (query.isEmpty || $0.matchesSearch(query)) }
+        // A pin lifts, it never filters — a scope or a search that excludes a pinned
+        // app still excludes it — and it lifts above whatever order is in force,
+        // because it is a shortcut rather than an opinion about ranking.
+        //
+        // Stable by way of the index: `Array.sorted` is not, and the order underneath
+        // is either the daemon's curated one or the reader's own choice. Neither may
+        // be shuffled by the lift.
         return sort.applied(to: matched)
+            .enumerated()
+            .sorted { left, right in
+                let ranks = (rank(of: left.element), rank(of: right.element))
+                return ranks.0 == ranks.1 ? left.offset < right.offset : ranks.0 < ranks.1
+            }
+            .map(\.element)
+    }
+
+    /// Pinned apps in the order they were pinned, everything else after them.
+    private func rank(of app: RobotApp) -> Int {
+        pinnedIDs.firstIndex(of: app.id) ?? pinnedIDs.count
+    }
+
+    func isPinned(_ app: RobotApp) -> Bool {
+        pinnedIDs.contains(app.id)
+    }
+
+    /// Keyed by `RobotApp.id` — `spaceID ?? name` — so a card pinned in Discover and
+    /// its installed row are two keys when the Space slug differs from the Python
+    /// entry point. The pin then reads as lost on install; re-pinning is one tap.
+    /// `installedTwin(of:)` could join them, at the cost of a store that has to be
+    /// rewritten whenever the daemon renames a thing.
+    func togglePin(_ app: RobotApp) {
+        guard let robotID = session.connectedRobotID else { return }
+        pins.toggle(app.id, for: robotID)
+        pinnedIDs = pins.pinned(for: robotID)
     }
 
     /// Whether anything but the defaults is in force — the toolbar's glyph fills in
     /// to say so, because a menu that hides its own state is a list a reader cannot
     /// explain.
+    ///
+    /// A pin is not in it: it reorders, it does not narrow, so a reader who sees
+    /// fewer rows than they expect is never looking at a pin.
     var isFiltering: Bool {
         scope != .all || sort != .recommended
     }
@@ -214,6 +259,20 @@ final class AppStoreModel {
         self.updates = updates
     }
 
+    /// Whether the context menu may offer Start.
+    ///
+    /// Every condition `AppDetailSheet` renders as a banner or a disabled button has
+    /// to be a condition here instead: a menu has nowhere to put the sentence that
+    /// would explain the refusal. A sleeping robot is not among them — `startApp`
+    /// wakes it — while a stopped backend is, being a 90 s job of its own.
+    func canStart(_ app: RobotApp) -> Bool {
+        isInstalled(app)
+            && runningApp?.isBusy != true
+            && !busy
+            && !isHeldRemotely
+            && session.isBackendRunning
+    }
+
     func start(_ app: RobotApp, session: RobotSession) async {
         guard let twin = installedTwin(of: app) else { return }
         await run { _ = try await session.startApp(named: twin.name) }
@@ -293,10 +352,14 @@ private extension RobotApp {
             hasUpdate: Bool = false,
             lock: RobotAppLockStatus? = nil,
             loading: Bool = false,
-            error: String? = nil
+            error: String? = nil,
+            pinned: [String] = []
         ) -> AppStoreModel {
             let model = AppStoreModel(session: session ?? .preview())
             model.section = section
+            // Assigned, not toggled through the store: a preview renders the state it
+            // was handed and must not write to the reader's own `UserDefaults`.
+            model.pinnedIDs = pinned
             model.scope = scope
             model.sort = sort
             model.catalogue = catalogue

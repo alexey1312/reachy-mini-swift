@@ -14,6 +14,8 @@ import ReachyKit
 @Observable
 final class RunningAppModel {
     typealias ConversationTurns = @MainActor (RobotSession, RobotApp) throws -> AsyncStream<ConversationTurn>
+    typealias SetConversationMuted = @MainActor (RobotSession, RobotApp, Bool) async throws -> Void
+    typealias InterruptConversation = @MainActor (RobotSession, RobotApp) async throws -> Void
 
     /// How long a deep link asking for the running app's page waits for one to
     /// appear.
@@ -84,10 +86,32 @@ final class RunningAppModel {
     /// The app's own state inside the daemon's broader `.running` process state.
     /// Nil for every other app, old Conversation App builds, and remote sessions
     /// whose daemon cannot relay `/rpc` yet.
-    private(set) var conversationTurn: ConversationTurn?
+    ///
+    /// Everything about the conversation is written in
+    /// `RunningAppModel+Conversation.swift` — this file is at SwiftLint's length
+    /// limit — so these are `internal(set)` rather than `private(set)`. Stored
+    /// properties cannot live in an extension, which is the whole of the reason.
+    internal(set) var conversationTurn: ConversationTurn?
+    /// What this dock last asked the robot's microphone to be.
+    ///
+    /// Remembered rather than read: `conversation.mic` is a command, and
+    /// `conversation.status` answers with backend configuration, not with the mic.
+    /// So this is right until something other than this dock mutes the app — which
+    /// nothing else in this app does, and only the app's own web UI could.
+    ///
+    /// `internal(set)` rather than `private(set)`: the two controls live in
+    /// `RunningAppModel+Conversation.swift`, because this file is at SwiftLint's
+    /// length limit, and `private(set)` does not reach across files.
+    internal(set) var isMicrophoneMuted = false
+    /// Cleared for good once the app answers `-32601`. A build without these methods
+    /// cannot grow them mid-session, and a control that always fails is worse than
+    /// no control.
+    internal(set) var offersConversationControls = true
 
     private let configuration: Configuration
-    private let conversationTurns: ConversationTurns
+    let conversationTurns: ConversationTurns
+    let setConversationMuted: SetConversationMuted
+    let interruptConversation: InterruptConversation
     private var dismissal: Dismissal?
     private var watch: TransitionWatch?
     /// When ``lastError`` was recorded, so the poll can retire it.
@@ -97,10 +121,16 @@ final class RunningAppModel {
 
     init(
         configuration: Configuration = Configuration(),
-        conversationTurns: @escaping ConversationTurns = { try $0.conversationTurns(for: $1) }
+        conversationTurns: @escaping ConversationTurns = { try $0.conversationTurns(for: $1) },
+        setConversationMuted: @escaping SetConversationMuted = {
+            try await $0.setConversationMicrophoneMuted($2, for: $1)
+        },
+        interruptConversation: @escaping InterruptConversation = { try await $0.interruptConversation(for: $1) }
     ) {
         self.configuration = configuration
         self.conversationTurns = conversationTurns
+        self.setConversationMuted = setConversationMuted
+        self.interruptConversation = interruptConversation
     }
 
     // MARK: - Visibility
@@ -273,47 +303,6 @@ final class RunningAppModel {
         }
     }
 
-    /// A stable task identity for the one app whose own socket carries the official
-    /// semantic conversation protocol. Returning nil tears the observer down while
-    /// backgrounded, during process transitions, and over daemon 1.9's relay path
-    /// (which has no address to dial).
-    ///
-    /// The port is part of the identity: a poll that refreshes the app's metadata
-    /// can name a port where the last one only had the fallback, and the observer
-    /// has to redial rather than sit on a socket to nowhere.
-    func conversationStreamKey(
-        for status: RobotAppStatus?,
-        session: RobotSession,
-        active: Bool
-    ) -> String? {
-        guard active,
-              let status,
-              status.state == .running,
-              status.app.exposesConversationRPC,
-              session.address != nil
-        else { return nil }
-        return "\(status.app.id)@\(status.app.customAppPort.map(String.init) ?? "default")"
-    }
-
-    /// Follows Conversation App 1.0's `conversation.turn` notifications. This is
-    /// presentation enrichment only: an absent or old `/rpc` surface quietly
-    /// leaves the daemon's ordinary "Running" caption in place.
-    ///
-    /// So does a live one until the conversation next moves. `turn` is push-only
-    /// and emitted on change, and `conversation.status` answers with backend config
-    /// rather than a state, so there is nothing to seed the first frame from.
-    func observeConversation(status: RobotAppStatus?, session: RobotSession) async {
-        conversationTurn = nil
-        guard let status, status.state == .running, status.app.exposesConversationRPC,
-              let turns = try? conversationTurns(session, status.app)
-        else { return }
-
-        for await turn in turns {
-            guard !Task.isCancelled else { return }
-            conversationTurn = turn
-        }
-    }
-
     /// Internal rather than private so a test can assert the cadence directly,
     /// instead of waiting one out.
     func interval(for status: RobotAppStatus?) -> Duration {
@@ -357,16 +346,22 @@ final class RunningAppModel {
             lastError = nil
             failedAt = nil
         } catch {
-            let previous = lastError
-            lastError.recordDaemonFailure(error)
-            // Stamped only when the message actually changed: a cancelled call
-            // reports nothing and leaves the slot as it was, so it must not restart
-            // the clock on a refusal somebody is still reading.
-            if lastError != previous {
-                failedAt = Date()
-            }
+            recordFailure(error)
         }
         noteTransition(session.runningApp)
+    }
+
+    /// The one writer of `lastError` and its clock, so both stay private to this
+    /// file while `RunningAppModel+Conversation` can still report.
+    func recordFailure(_ error: any Error) {
+        let previous = lastError
+        lastError.recordDaemonFailure(error)
+        // Stamped only when the message actually changed: a cancelled call
+        // reports nothing and leaves the slot as it was, so it must not restart
+        // the clock on a refusal somebody is still reading.
+        if lastError != previous {
+            failedAt = Date()
+        }
     }
 }
 

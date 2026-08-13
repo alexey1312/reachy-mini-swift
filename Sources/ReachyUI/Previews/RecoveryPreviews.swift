@@ -15,6 +15,17 @@ import SwiftUI
     ))
 }
 
+// What an advertisement adds to a scan, in the three shapes it comes in: a robot
+// sending the block upstream describes, one sending somebody else's (printed as hex
+// rather than decoded), and one sending none — which is every robot seen so far, and
+// what `Recovery — robots found` above already captures.
+#Preview("Recovery — advertised identity") {
+    PreviewScene.bleConsole(.preview(
+        stage: .scanning,
+        link: .preview(discovered: [.previewAdvertising, .previewUnknownAdvert, .previewNear])
+    ))
+}
+
 #Preview("Recovery — Bluetooth off") {
     PreviewScene.bleConsole(.preview(stage: .scanning, link: .preview(availability: .poweredOff)))
 }

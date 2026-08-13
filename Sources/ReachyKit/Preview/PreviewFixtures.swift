@@ -226,17 +226,6 @@
         static let preview = WiFiStatus(mode: .wlan, connected: "Home", known: ["Home", "Cafe", "Hotspot"])
     }
 
-    public extension BLEPeripheralSnapshot {
-        /// Fixed ids, not `UUID()`: they key the `ForEach` in the scan list, and a fresh one per
-        /// render is a diff in the snapshot for no reason.
-        static let previewNear = BLEPeripheralSnapshot(id: previewID(1), name: "Reachy Mini", rssi: -41)
-        static let previewFar = BLEPeripheralSnapshot(id: previewID(2), name: "Reachy Mini", rssi: -78)
-
-        private static func previewID(_ n: Int) -> UUID {
-            UUID(uuidString: "00000000-0000-0000-0000-00000000000\(n)") ?? UUID()
-        }
-    }
-
     public extension Components.Schemas.DaemonStatus {
         /// Built by decoding JSON rather than through the generated memberwise initialiser: the
         /// `backend_status` payload is a `oneOf` whose Swift shape changes whenever the spec is
@@ -320,6 +309,8 @@
             runningApp: RobotAppStatus? = nil,
             automaticConnectionAllowed: Bool = true,
             supportsRename: Bool = true,
+            // Defaulted: nil is the Link row before the first poll ever answered.
+            roundTrip: Duration? = .milliseconds(12),
             client: any RobotAPIClient = PreviewRobotClient()
         ) -> RobotSession {
             let session = RobotSession { _ in client }
@@ -338,6 +329,7 @@
             session.moveActivity = moveActivity
             session.runningApp = runningApp
             session.automaticConnectionAllowed = automaticConnectionAllowed
+            session.lastRoundTrip = roundTrip
             return session
         }
     }

@@ -82,7 +82,12 @@ struct LiveTab: View {
             LiveUnavailableView()
         } else if session.isAwake {
             if floating.isInline {
-                ViewportView(model: viewport, offersCamera: session.hasCamera, makeTeleop: makeTeleop)
+                ViewportView(
+                    model: viewport,
+                    offersCamera: session.hasCamera,
+                    makeTeleop: makeTeleop,
+                    robotSession: session
+                )
             } else {
                 // The shell builds all five tabs at once, so this body runs while
                 // another tab is showing — and that is exactly when the floating

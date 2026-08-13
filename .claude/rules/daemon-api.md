@@ -245,6 +245,21 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 
 ## Facts
 
+- **`media/wobbling` and `media/tracking` are write-only, and no route reports whether either is on.**
+  `GET /api/media/status` answers `{available, released, no_media}` — that is the media *server*, not these two.
+  `GET /api/media/tracking/face` answers `{detected, x, y, roll, ts}`, where `detected: false` means "tracking off"
+  and "tracking on, nobody there" alike. State is held in `backend._tracking_enabled` / the media server and reaches
+  no response. So a toggle here has no source of truth but the client's own memory, and any app on the robot can
+  change it underneath: `enable_wobbling` is an SDK method (`reachy_mini.py:235`) apps call for themselves.
+  - **`wobbling` is audio-reactive, not idle motion.** The route's own words: audio played on the daemon — sounds,
+    incoming WebRTC audio — is analysed into head movement. A silent robot with it enabled does not move. Since this
+    app sends the phone's microphone to the robot (`CameraSession`'s `reachy-mic` track), what it buys is a head that
+    moves while you talk *through* the robot. There is no daemon route that makes a robot fidget while idle.
+  - **`wobbling/enable` answers `{"status": "ok"}` even when it did nothing**: the call is inside
+    `if backend._media_server is not None`, and the return is outside it. A 200 is not evidence it took.
+  - `tracking/enable` is the honest one — `{"status": "ok"|"unavailable", "enabled": bool}`, `false` exactly when
+    there is no camera (`enable_head_tracking` returns False only on `_media_server is None`). It takes
+    `{weight: 0…1}`, where 0 pauses the worker without stopping it.
 - **`control_loop_stats` is the only live health telemetry the daemon publishes, and two fields beside it are dead.**
   `backend/robot/backend.py` refreshes the dictionary once a second with `mean_control_loop_frequency` (~100 Hz on
   healthy hardware), `max_control_loop_interval`, `nb_error` (cumulative since the backend started) and

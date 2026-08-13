@@ -8,8 +8,18 @@ import Testing
 /// when Bluetooth cannot be used, and the order robots are offered in.
 @Suite("CoreBluetoothTransport")
 struct CoreBluetoothTransportTests {
-    private static func robot(_ id: String, name: String = "ReachyMini", rssi: Int) -> BLEPeripheralSnapshot {
-        BLEPeripheralSnapshot(id: UUID(uuidString: id)!, name: name, rssi: rssi)
+    private static func robot(
+        _ id: String,
+        name: String = "ReachyMini",
+        rssi: Int,
+        manufacturerData: Data? = nil
+    ) -> BLEPeripheralSnapshot {
+        BLEPeripheralSnapshot(
+            id: UUID(uuidString: id)!,
+            name: name,
+            rssi: rssi,
+            manufacturerData: manufacturerData
+        )
     }
 
     private static let near = "00000000-0000-0000-0000-0000000000AA"
@@ -34,6 +44,46 @@ struct CoreBluetoothTransportTests {
 
         #expect(try updated.map(\.id) == [#require(UUID(uuidString: Self.near))])
         #expect(updated.first?.rssi == -45)
+    }
+
+    /// **A later sighting carrying no manufacturer data must not erase an earlier one
+    /// that did.** CoreBluetooth calls back on every packet it accepts, and the
+    /// manufacturer block often travels in the scan response rather than in the
+    /// advertisement — so the field is absent from most callbacks by design. Replacing
+    /// the snapshot wholesale left it nil for ever, which reads exactly like a robot
+    /// whose firmware never sends one.
+    @Test("a sighting without manufacturer data keeps the last one that had it")
+    func keepsManufacturerDataAcrossSightings() {
+        let advert = Data([0xFF, 0xFF, 0x01, 192, 168, 1, 42, 0xB6, 0x8F, 0xF6, 0xBB, 0xE4, 0x7F, 0x06])
+        var list = CoreBluetoothTransport.merging(
+            Self.robot(Self.near, rssi: -50, manufacturerData: advert),
+            into: []
+        )
+        list = CoreBluetoothTransport.merging(Self.robot(Self.near, rssi: -48), into: list)
+
+        #expect(list.first?.manufacturerData == advert)
+        #expect(list.first?.advertisement?.address == "192.168.1.42")
+        // The reading itself is still the newest one — only the absent field is carried.
+        #expect(list.first?.rssi == -48)
+    }
+
+    /// A robot that starts sending a different block replaces it: this is a robot
+    /// changing networks, not a packet that happened to omit the field.
+    @Test("fresh manufacturer data replaces the stored one")
+    func newerManufacturerDataWins() {
+        let first = Data([0xFF, 0xFF, 0x01, 192, 168, 1, 42, 1, 2, 3, 4, 5, 6, 7])
+        let second = Data([0xFF, 0xFF, 0x00, 10, 42, 0, 1, 1, 2, 3, 4, 5, 6, 7])
+        var list = CoreBluetoothTransport.merging(
+            Self.robot(Self.near, rssi: -50, manufacturerData: first),
+            into: []
+        )
+        list = CoreBluetoothTransport.merging(
+            Self.robot(Self.near, rssi: -50, manufacturerData: second),
+            into: list
+        )
+
+        #expect(list.first?.advertisement?.address == "10.42.0.1")
+        #expect(list.first?.advertisement?.isOnLAN == false)
     }
 
     @Test("the strongest signal is offered first")

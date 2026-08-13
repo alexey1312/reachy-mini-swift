@@ -16,6 +16,9 @@ public struct ConversationRPCClient: Sendable {
         public var fallbackPort = 7860
         public var initialBackoff: Duration = .milliseconds(500)
         public var maxBackoff: Duration = .seconds(15)
+        /// How long one request waits for its reply. Generous because the app is
+        /// answering from inside a conversation turn, not from an idle loop.
+        public var replyTimeout: Duration = .seconds(10)
 
         public init() {}
     }
@@ -23,8 +26,8 @@ public struct ConversationRPCClient: Sendable {
     public static let rpcPath = "/rpc"
 
     let url: URL
-    private let configuration: Configuration
-    private let session: URLSession
+    let configuration: Configuration
+    let session: URLSession
 
     /// - Parameters:
     ///   - address: the robot, whose host this keeps and whose port it replaces.
