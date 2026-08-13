@@ -320,6 +320,8 @@
             runningApp: RobotAppStatus? = nil,
             automaticConnectionAllowed: Bool = true,
             supportsRename: Bool = true,
+            // Defaulted: nil is the Link row before the first poll ever answered.
+            roundTrip: Duration? = .milliseconds(12),
             client: any RobotAPIClient = PreviewRobotClient()
         ) -> RobotSession {
             let session = RobotSession { _ in client }
@@ -338,6 +340,7 @@
             session.moveActivity = moveActivity
             session.runningApp = runningApp
             session.automaticConnectionAllowed = automaticConnectionAllowed
+            session.lastRoundTrip = roundTrip
             return session
         }
     }

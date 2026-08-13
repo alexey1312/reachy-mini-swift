@@ -149,6 +149,11 @@ public final class RobotSession {
     public internal(set) var phase: ConnectionPhase = .idle
     public internal(set) var link: Link = .none
     public internal(set) var lastStatus: Components.Schemas.DaemonStatus?
+    /// How long the last status poll took to answer, or nil while no answer is current.
+    ///
+    /// Not seeded from the handshake: that reads the same route through a different
+    /// call, so its figure is not comparable with the ones that follow.
+    public internal(set) var lastRoundTrip: Duration?
     /// The robot's own last failure: it could not be reached, or it would not
     /// change power state. Nothing else belongs here.
     ///
@@ -355,7 +360,9 @@ public final class RobotSession {
                 try? await Task.sleep(for: configuration.pollInterval)
                 guard !Task.isCancelled, let client = self.client else { return }
                 do {
+                    let started = ContinuousClock.now
                     let status = try await client.daemonStatus()
+                    lastRoundTrip = started.duration(to: .now)
                     lastStatus = status
                     // The widget's only source of truth, refreshed wherever the
                     // session already learns something — no extra round trip.
@@ -376,6 +383,7 @@ public final class RobotSession {
                     // connect path.
                     guard !Task.isCancelled else { return }
                     consecutiveSuccesses = 0
+                    lastRoundTrip = nil
                     phase = .unreachable(identity)
                 }
             }

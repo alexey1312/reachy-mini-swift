@@ -46,6 +46,23 @@ enum HealthFormat {
             ))
     }
 
+    /// A round trip, which is a different quantity from the loop interval above and
+    /// so carries a different precision: a network figure varies by whole
+    /// milliseconds, and a tenth of one is a digit that changes without meaning.
+    ///
+    /// The attoseconds are not optional — every round trip worth printing is under a
+    /// second, so `components.seconds` alone rounds all of them to zero.
+    static func milliseconds(_ duration: Duration) -> String {
+        let parts = duration.components
+        let seconds = Double(parts.seconds) + Double(parts.attoseconds) * 1e-18
+        return Measurement(value: seconds * 1000, unit: UnitDuration.milliseconds)
+            .formatted(.measurement(
+                width: .abbreviated,
+                usage: .asProvided,
+                numberFormatStyle: .number.precision(.fractionLength(0))
+            ))
+    }
+
     static func percent(_ value: Double) -> String {
         (value / 100).formatted(.percent.precision(.fractionLength(0)))
     }

@@ -100,6 +100,21 @@ struct RobotScreen: View {
         }
     }
 
+    /// How long the robot took to answer its last status poll.
+    ///
+    /// In the Link row because the five tabs each carry their own bar and there is no
+    /// persistent header to put it in. Absent rather than dashed when there is no
+    /// figure: the branch above already says "unreachable" in words.
+    @ViewBuilder
+    private var roundTrip: some View {
+        if let duration = session.lastRoundTrip {
+            Text(verbatim: HealthFormat.milliseconds(duration))
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(HealthLevel.roundTrip(duration).tone.style)
+        }
+    }
+
     private var statusSection: some View {
         Section(.reachy("Robot")) {
             LabeledContent(.reachy("Name"), value: identity?.name ?? "—")
@@ -130,6 +145,7 @@ struct RobotScreen: View {
                 } else {
                     Label(.reachy("Connected"), systemImage: "checkmark.circle")
                         .foregroundStyle(.green)
+                    roundTrip
                 }
             }
             if let fault = session.backendFault {

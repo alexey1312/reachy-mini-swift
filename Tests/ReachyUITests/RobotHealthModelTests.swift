@@ -290,6 +290,32 @@ struct HealthLevelTests {
         #expect(HealthLevel.frequency(49.59, nominal: 0) == .normal)
     }
 
+    /// A relay session legitimately answers slower than a LAN one, so the bands are
+    /// wide enough that reaching a robot from outside its network is amber rather
+    /// than red. They are a starting point measured against nothing yet — like every
+    /// feel constant in the teleop path, only a robot settles them.
+    @Test("round trip bands leave room for a session that is not on this network")
+    func roundTripThresholds() {
+        #expect(HealthLevel.roundTrip(.milliseconds(8)) == .normal)
+        #expect(HealthLevel.roundTrip(.milliseconds(149)) == .normal)
+        #expect(HealthLevel.roundTrip(.milliseconds(150)) == .elevated)
+        #expect(HealthLevel.roundTrip(.milliseconds(499)) == .elevated)
+        #expect(HealthLevel.roundTrip(.milliseconds(500)) == .critical)
+        #expect(HealthLevel.roundTrip(.seconds(2)) == .critical)
+    }
+
+    /// **The conversion is the part that can be wrong.** A `Duration` truncated to
+    /// its whole-second component reads every round trip a robot on a local network
+    /// answers with as zero, and the chip would print `0 ms` forever.
+    /// The precision differs from the loop interval's on purpose: a network figure
+    /// varies by whole milliseconds, so a tenth of one changes without meaning.
+    @Test("a sub-second round trip does not truncate to nothing")
+    func roundTripFormatting() {
+        #expect(HealthFormat.milliseconds(Duration.milliseconds(8)).contains("8"))
+        #expect(!HealthFormat.milliseconds(Duration.milliseconds(8)).hasPrefix("0"))
+        #expect(HealthFormat.milliseconds(Duration.milliseconds(12)) == "12 ms")
+    }
+
     /// The floor is what keeps a robot that was already degraded when the screen
     /// opened from being judged against its own worst rate — its best would be its
     /// worst, and everything would read normal.

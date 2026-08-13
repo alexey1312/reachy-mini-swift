@@ -53,6 +53,19 @@ extension HealthLevel {
         }
     }
 
+    /// How long the robot took to answer its status poll.
+    ///
+    /// Wide bands because they cover two transports: a relay session is not on this
+    /// network and legitimately answers in hundreds of milliseconds. A guess until
+    /// someone watches them against a robot.
+    static func roundTrip(_ duration: Duration) -> HealthLevel {
+        switch duration {
+        case ..<Duration.milliseconds(150): .normal
+        case ..<Duration.milliseconds(500): .elevated
+        default: .critical
+        }
+    }
+
     /// Against the loop's own nominal rate rather than an absolute figure: what
     /// matters is the shortfall.
     ///
