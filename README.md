@@ -21,15 +21,18 @@
 - **Connect and discover** — Bonjour discovery, manual addresses, IPv6, automatic reconnect; robots are identified by
   hardware id, never by IP.
 - **Live control** — joystick teleop of the 6-DoF head, antennas and body rotation, with the WebRTC camera and
-  two-way audio (talk through the robot's speaker).
+  two-way audio (talk through the robot's speaker); the speaker, the microphone and the robot's own wobbling and
+  face tracking are a sheet away from the viewport.
 - **3D viewer** — a RealityKit scene built from the robot's own URDF and meshes, mirroring it in real time.
 - **State** — the control loop the daemon publishes (frequency, worst interval, error count) charted live, beside
   CPU, memory, temperature and uptime read from `/proc` and `/sys` over SSH, because the API reports none of them.
-- **Moves** — browse and play the daemon's recorded moves, from the app or by asking Siri for one by name.
+- **Moves** — browse and play the daemon's recorded moves, from the app or by asking Siri for one by name, and
+  record your own takes from the phone — teleop the robot, then play the take back over the same wire path.
 - **App store** — install, update and remove robot apps from Hugging Face Spaces, following each job over the
-  daemon's job socket; a dock shows the running app everywhere in the client. Starting an app wakes the robot first
-  and parks it when the app lets go, and the catalogue and the move index survive launches, so both tabs open filled
-  before the network answers.
+  daemon's job socket; filter the catalogue by scope, sort it six ways and pin the apps you actually use. A dock
+  shows the running app everywhere in the client, and mutes or interrupts the conversation app from there. Starting
+  an app wakes the robot first and parks it when the app lets go, and the catalogue and the move index survive
+  launches, so both tabs open filled before the network answers.
 - **Bluetooth setup and recovery** — PIN-authenticated onboarding that sends Wi-Fi credentials over an encrypted BLE
   channel, plus a recovery console (raise the hotspot, restart the daemon, software reset) for a robot that fell off
   the network.
@@ -38,8 +41,8 @@
 - **Files** — an SFTP browser for the robot's filesystem.
 - **At home on Apple platforms** — status and apps widgets on the Home Screen, and the status one on the Lock Screen
   and in StandBy as well; wake and sleep from the widget itself; Control Center power controls; Siri / App Intents
-  (wake, sleep, power off, launch any installed app, play a recorded move), each of which can name the robot it
-  addresses, so two Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick
+  (wake, sleep, power off, launch any installed app, play a recorded move, and ask whether the robot is awake or
+  what is running on it), each of which can name the robot it addresses, so two Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick
   actions; full localization readiness.
 - **Six themes** — an accent colour and a matching app icon chosen as one decision in Settings, carried into the
   widgets too. On iPhone and iPad the Home Screen icon changes with it; on a Mac the theme is colour only.
@@ -174,9 +177,11 @@ widgets, Control Center controls, Siri shortcuts, Spotlight and quick actions.
 
 Open, and stated honestly:
 
-- **The Bluetooth path has not run against real hardware yet.** It is written against daemon 1.9.0's
+- **The Bluetooth provisioning path has not run against real hardware yet.** It is written against daemon 1.9.0's
   `bluetooth_service.py` — including the encrypted Wi-Fi join (X25519 + HKDF-SHA256 + AES-GCM) — and verified against
-  stubs. The question that gates it is whether the ~260-byte sealed payload fits a single BLE write on iOS; the
+  stubs. Only the scan has met a robot: a Wireless unit advertises no manufacturer data at all, so a robot is still
+  told apart after connecting and not before. The question that gates the rest is whether the ~260-byte sealed
+  payload fits a single BLE write on iOS; the
   fallback over the robot's own hotspot is implemented. The full hardware checklist is
   [docs/research/ble-provisioning.md](docs/research/ble-provisioning.md). The GATT protocol is not published upstream
   and its desktop client is being reworked, so treat the protocol as unstable.
