@@ -19,34 +19,34 @@ import ReachyJSON
             gradient: (from: String, to: String)? = ("pink", "indigo"),
             isPrivate: Bool = false,
             installed: Bool = false,
-            customAppURL: String? = nil
+            customAppURL: String? = nil,
+            publishedAt: String? = nil,
+            updatedAt: String? = nil
         ) -> RobotApp {
-            var card: [String] = []
-            if let title {
-                card.append("\"title\": \"\(title)\"")
-            }
-            if let emoji {
-                card.append("\"emoji\": \"\(emoji)\"")
-            }
+            var card = strings([
+                ("title", title),
+                ("emoji", emoji),
+                ("short_description", summary),
+            ])
             if let gradient {
                 card.append("\"colorFrom\": \"\(gradient.from)\", \"colorTo\": \"\(gradient.to)\"")
             }
-            if let summary {
-                card.append("\"short_description\": \"\(summary)\"")
-            }
 
+            // `createdAt` / `lastModified` are the daemon's own spelling:
+            // `_normalize_space_data` folds `HfApi`'s snake case onto the camel case
+            // the HTTP path returns.
             var extra = ["\"id\": \"\(author ?? "someone")/\(name)\""]
-            if let author {
-                extra.append("\"author\": \"\(author)\"")
-            }
+            extra += strings([
+                ("author", author),
+                ("custom_app_url", customAppURL),
+                ("createdAt", publishedAt),
+                ("lastModified", updatedAt),
+            ])
             if let likes {
                 extra.append("\"likes\": \(likes)")
             }
             if isPrivate {
                 extra.append("\"private\": true")
-            }
-            if let customAppURL {
-                extra.append("\"custom_app_url\": \"\(customAppURL)\"")
             }
             if !card.isEmpty {
                 extra.append("\"cardData\": {\(card.joined(separator: ", "))}")
@@ -60,13 +60,28 @@ import ReachyJSON
             return try! JSONCodec.daemon.decode(RobotApp.self, from: Data(json.utf8))
         }
 
+        /// The string-valued keys, skipping the ones that were not asked for. A run
+        /// of `if let` per key is what put this factory over SwiftLint's complexity
+        /// limit when the two dates arrived.
+        private static func strings(_ pairs: [(key: String, value: String?)]) -> [String] {
+            pairs.compactMap { pair in
+                pair.value.map { "\"\(pair.key)\": \"\($0)\"" }
+            }
+        }
+
+        /// Four apps whose five orderings — the daemon's own, name, author, likes,
+        /// published, updated — are all different from one another. That is what
+        /// makes a snapshot of a sorted store evidence that the sort ran, rather
+        /// than a picture of a list that would have looked the same anyway.
         static let previewCatalogue: [RobotApp] = [
             .preview(
                 name: "reachy-mini-dance",
                 title: "Dance Party",
                 emoji: "💃",
                 likes: 214,
-                summary: "Ten choreographies, one very determined robot."
+                summary: "Ten choreographies, one very determined robot.",
+                publishedAt: "2025-10-16T16:06:57.000Z",
+                updatedAt: "2026-08-05T14:30:40.000Z"
             ),
             .preview(
                 name: "face-tracking",
@@ -74,7 +89,9 @@ import ReachyJSON
                 emoji: "👀",
                 likes: 187,
                 summary: "Reachy follows whoever is talking.",
-                gradient: ("blue", "cyan")
+                gradient: ("blue", "cyan"),
+                publishedAt: "2026-03-02T09:12:00.000Z",
+                updatedAt: "2026-04-20T11:45:00.000Z"
             ),
             .preview(
                 name: "chess-coach",
@@ -83,7 +100,9 @@ import ReachyJSON
                 author: "someone",
                 likes: 12,
                 summary: "Narrates your blunders out loud.",
-                gradient: ("green", "yellow")
+                gradient: ("green", "yellow"),
+                publishedAt: "2025-11-08T18:20:00.000Z",
+                updatedAt: "2026-08-11T07:02:00.000Z"
             ),
             .preview(
                 name: "lab-notebook",
@@ -93,7 +112,9 @@ import ReachyJSON
                 likes: 0,
                 summary: "Private research build.",
                 gradient: ("gray", "slate"),
-                isPrivate: true
+                isPrivate: true,
+                publishedAt: "2026-06-30T12:00:00.000Z",
+                updatedAt: "2026-07-01T08:30:00.000Z"
             ),
         ]
 
