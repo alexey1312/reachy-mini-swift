@@ -309,6 +309,37 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   hides it without fixing it. **Nothing here could have caught it**: iOS renders a `Form` grouped whether the style is
   named or not, so the references say the same thing either way — expected to move nothing, and not yet confirmed by
   a full run.
+- **`ASWebAuthenticationSession` has two main-actor traps, and only one is visible in the source.**
+  `presentationAnchor(for:)` is `nonisolated` and AuthenticationServices calls it from a queue of its own, so
+  `MainActor.assumeIsolated` there is an assertion rather than a hop and takes the process with it — decide the
+  anchor on the main actor before `start()` and hand it back. The second has nothing to grep for: the completion
+  handler is written inside a `@MainActor` method and the ObjC block parameter is not `@Sendable`, so Swift 6 infers
+  the enclosing isolation and wraps it in the same `dispatch_assert_queue` **even though its body touches nothing
+  isolated** — which is why removing the explicit `assumeIsolated` fixed nothing and the crash came back unchanged.
+  `@Sendable` on the closure is the fix; hopping is not available (the requirement is synchronous) and a
+  `@preconcurrency` conformance only inserts the same check. The root `AGENTS.md` has how to find either one in the
+  log, because neither leaves an exception.
+- **A modifier around a `Button` or a `Menu` sets neither its appearance nor its click target** — both belong to the
+  control. Wrapped around one it draws the disc in the right place while macOS draws the button's own rectangle
+  around the glyph inside, and only that rectangle answers a click. A `Button` takes a `ButtonStyle`, whose body
+  _is_ the button; `ViewportControlButtonStyle` is the worked example and `viewportControlLabelStyle()` is named for
+  where it may go. **State the size and the shape, never derive them from the glyph**: `Circle` insets to the
+  shorter side, so anything wider than it is tall overhangs the disc drawn around it — at `.title3`
+  `slider.horizontal.3` is 35 × 31 against `ellipsis.circle`'s 33 × 33 and `mic.slash`'s 31 × 34, which is three
+  diameters and two overhangs, reported as a stray line across one button. The same mistake has a toolbar spelling:
+  a toolbar sizes its chrome around a **15 × 15** symbol, so a 26 pt avatar deformed the item's glass into a shape
+  neither round nor a capsule, and two attempts at the _shape_ moved it without settling it.
+  - **A `Menu` is measured, not guessed.** Painting a background straight onto the menu makes the rectangle drawn
+    the control itself, and therefore its hit area: `.borderlessButton` discards the label's layout entirely,
+    `.menuStyle(.button)` imposes **39 × 17** of its own, and only the default style plus `.buttonStyle(.plain)`
+    honours the label's **36 × 36**. So "just use the same `ButtonStyle` as the buttons" cannot work for a menu.
+  - **`ImageRenderer` measures SwiftUI layout and lies about anything AppKit-backed.** It reported 36 × 36 for a
+    `Menu` spelling that was visibly smaller in the app, which sent one fix in the wrong direction. The macOS twin
+    of the iOS probe above is the answer: a borderless `NSWindow` holding an `NSHostingView`, positioned at
+    `screen.frame.maxY - height - inset`, then `screencapture -R x,y,w,h`. **AppKit's origin is bottom-left and
+    `screencapture`'s is top-left**, which is what makes the first capture come back showing the desktop; key the
+    background to a colour nothing else uses and read the bounding box. `screencapture` needs Screen Recording
+    permission, and the window of an app under Stage Manager cannot be captured at all while it is in another stage.
 - Deployment floor is iOS 18 / macOS 15 (`Package.swift`, `Apps/Project.swift`), set by `RealityView`.
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.
