@@ -707,6 +707,12 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   `null` for ever, as does any unit with no array; a badge mounted on hope would sit blank on every simulator run and
   read as broken rather than absent. Quiet and unsupported render identically and are separate properties for exactly
   that reason.
+  - **There is a third reason for `null`, and it is the one that looks like a bug in this file.** The array needs
+    ReSpeaker firmware **2.1.0 or higher** (`reachy_mini/media/audio_doa.py`, readable in `.venv-sim`), and the
+    daemon reports an older one by answering `null` rather than by complaining — so a unit that visibly _has_ the
+    array shows no badge and every layer here is behaving correctly. Check the firmware before reading the model.
+    The upgrade is Seeed's:
+    <https://wiki.seeedstudio.com/respeaker_xvf3800_introduction/#update-firmware>.
 - **The hold window is retired by the stream, not by a `Timer`.** Frames arrive at 5 Hz whether or not anybody is
   talking, so the stream is a clock the model already owns — the same argument `RunningAppModel.expireActionFailure`
   makes about its poll. `stop()` keeps the last reading, so a glance at another tab does not blank one still inside
