@@ -15,10 +15,13 @@ import Foundation
 /// | 3…6   | IPv4, one byte per octet                           |
 /// | 7…13  | the first seven bytes of the hardware id           |
 ///
-/// **No robot in this project has been seen sending it.** The firmware on hand may
-/// predate the PR, and the only way to find out is to look — which is why
-/// `BLEPeripheralSnapshot` carries the raw bytes as well, and the recovery console
-/// prints them. Everything here answers nil for a robot that does not, which is
+/// **The robot on hand sends no manufacturer data at all** — measured on 2026-08-13,
+/// on a build that keeps the field across sightings and scans with `allowDuplicates`,
+/// so the absence is the firmware's rather than the scanner's. This decodes the shape
+/// anyway because the PR is merged upstream and the firmware will arrive; until it
+/// does, `BLEPeripheralSnapshot` carries the raw bytes and the recovery console prints
+/// them, so the next measurement is a glance rather than a build. Everything here
+/// answers nil for a robot that sends none, which is
 /// exactly what the app did before this existed.
 public struct BLEAdvertisement: Sendable, Hashable {
     /// `0xFFFF` is "no company assigned", which is what makes this a convention two
