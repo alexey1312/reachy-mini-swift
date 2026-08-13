@@ -10,6 +10,18 @@ import SwiftUI
 /// a robot that has not been reached yet put it exactly where it could not be
 /// found.
 struct HFAccountToolbarButton: View {
+    /// **The avatar matches what a toolbar symbol measures, and that is the whole
+    /// fix for the shape.** The signed-out state puts a bare `person.crop.circle`
+    /// here and renders correctly, because a toolbar sizes its chrome around a
+    /// symbol — measured at **15 × 15** at the default font. The avatar was 26,
+    /// 73% larger, so signing in grew the item's glass into a shape neither round
+    /// nor a capsule. Two attempts at the *shape* (`buttonBorderShape(.circle)`,
+    /// then `buttonStyle(.plain)`) each moved it and neither settled it, because
+    /// what disagrees is the content's size. A literal rather than a `Metrics`
+    /// token: it is optical parity with a number the system chose, not a rhythm of
+    /// ours, and it moves when Apple moves theirs.
+    private static let glyphSize: CGFloat = 16
+
     let action: () -> Void
 
     /// Optional for the same reason `SettingsScreen` reads it that way: the
@@ -34,11 +46,11 @@ struct HFAccountToolbarButton: View {
         case .signingIn:
             ProgressView().controlSize(.small)
         case let .signedIn(username):
-            HFAvatar(username: username, size: 26)
+            HFAvatar(username: username, size: Self.glyphSize)
         case let .needsReauth(username):
             // The session lapsed and cannot be renewed silently, which is worth
             // seeing before the next thing that needs it fails.
-            HFAvatar(username: username ?? "?", size: 26)
+            HFAvatar(username: username ?? "?", size: Self.glyphSize)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.caption2)

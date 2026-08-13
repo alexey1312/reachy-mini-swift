@@ -21,6 +21,21 @@ public enum Metrics {
     /// was meant to align on. That token had no call site: the stepper it was
     /// written for spelled the same number as a literal, and the stepper is gone.
     public static let railNode: CGFloat = 22
+    /// One floating control over the viewport — the switcher's neighbours.
+    ///
+    /// **Square, and stated rather than derived, because a glyph is not square.**
+    /// These used to be `padding(Space.sm)` around a `Label`, which hands `Circle`
+    /// a rectangle of the symbol's own proportions — and `Circle` insets to the
+    /// *shorter* side. Measured at `.title3`: `ellipsis.circle` came out 33 × 33,
+    /// `mic.slash` 31 × 34 and `slider.horizontal.3` 35 × 31, so the buttons had
+    /// three different diameters *and* the two oblong glyphs overhung the circle
+    /// they were supposed to sit in — reported as a stray grey line across the
+    /// settings button, which was the slider's own strokes past the edge.
+    ///
+    /// 36 is the widest of those glyphs (19 pt) plus `Space.sm` on each side, so
+    /// the padding the old spelling intended survives and every control now
+    /// matches. Anything wider than 19 pt at `.title3` needs this raised.
+    public static let viewportControl: CGFloat = 36
     /// The live view floating over the interface — wide enough to read what the
     /// robot is doing, narrow enough to leave a list legible beside it.
     public static let floatingViewport = CGSize(width: 160, height: 112)

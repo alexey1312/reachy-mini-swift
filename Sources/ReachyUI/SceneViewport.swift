@@ -66,7 +66,8 @@ struct SceneOptionsMenu: View {
         } label: {
             Label(.reachy("Options"), systemImage: "ellipsis.circle")
                 .labelStyle(.iconOnly)
+                .viewportControlLabelStyle()
         }
-        .viewportControlStyle()
+        .viewportControlMenuStyle()
     }
 }

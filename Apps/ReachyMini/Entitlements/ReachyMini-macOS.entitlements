@@ -14,5 +14,13 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- WebRTC, not a server of ours: ICE binds UDP sockets and receives datagrams
+	     from a peer it never connected() to, which the sandbox counts as inbound.
+	     macOS asks "accept incoming network connections?" the moment the camera
+	     negotiates, and without this key the bind is refused before the firewall is
+	     ever consulted — the stream then never leaves `.connecting` and
+	     `CameraSession`'s 10 s watchdog renegotiates for ever. -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 </dict>
 </plist>

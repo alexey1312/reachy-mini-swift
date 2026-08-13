@@ -119,7 +119,7 @@ struct CameraViewport: View {
                 Label(.reachy("Reset to neutral"), systemImage: "arrow.counterclockwise")
                     .labelStyle(.iconOnly)
             }
-            .viewportControlStyle()
+            .buttonStyle(ViewportControlButtonStyle())
             .transition(.scale.combined(with: .opacity))
         }
     }
@@ -152,7 +152,7 @@ struct CameraMicButton: View {
                 .labelStyle(.iconOnly)
                 .foregroundStyle(tint)
         }
-        .viewportControlStyle()
+        .buttonStyle(ViewportControlButtonStyle())
         // A blocked microphone is still worth explaining while the stream is down,
         // but there is nothing to unmute into, so the rule is unchanged.
         .disabled(session.phase != .streaming)

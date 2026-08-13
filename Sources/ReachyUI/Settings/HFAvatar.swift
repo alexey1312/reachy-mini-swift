@@ -30,12 +30,24 @@ struct HFAvatar: View {
         }
     }
 
+    /// A third tier, because the toolbar's avatar is now symbol-sized: a
+    /// `.subheadline` letter nearly fills a 16 pt disc. The two existing tiers keep
+    /// their thresholds, so the 32 pt avatar in the account card is unchanged and
+    /// its references do not move.
+    private var monogramFont: Font {
+        switch size {
+        case ..<20: .caption2
+        case ..<30: .subheadline
+        default: .headline
+        }
+    }
+
     private var monogram: some View {
         Circle()
             .fill(.tint.opacity(0.2))
             .overlay {
                 Text(username.prefix(1).uppercased())
-                    .font(size < 30 ? .subheadline : .headline)
+                    .font(monogramFont)
             }
             .frame(width: size, height: size)
     }

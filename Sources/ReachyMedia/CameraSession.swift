@@ -183,10 +183,10 @@ public final class CameraSession {
         case let .offer(_, sdp):
             await accept(offerSDP: sdp)
         case let .remoteCandidate(_, candidate, sdpMLineIndex, sdpMid):
+            guard let candidate = Self.iceCandidate(sdp: candidate, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
+            else { return }
             // Late-candidate errors are expected once ICE is connected — ignore (upstream does too).
-            try? await peerConnection?.add(
-                RTCIceCandidate(sdp: candidate, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
-            )
+            try? await peerConnection?.add(candidate)
         case let .sessionEnded(reason):
             teardownPeer()
             // On the LAN the client re-negotiates on its own, so this is a lull

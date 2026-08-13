@@ -124,7 +124,7 @@ struct ViewportView: View {
                 Label(.reachy("Presence"), systemImage: "slider.horizontal.3")
                     .labelStyle(.iconOnly)
             }
-            .viewportControlStyle()
+            .buttonStyle(ViewportControlButtonStyle())
         }
     }
 
@@ -162,17 +162,47 @@ struct ViewportView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(maxWidth: 240)
-            // A segmented control's track is translucent, so on the camera's black
-            // backdrop the unselected segment had no contrast left and read as missing
-            // (seen in dark mode). It now carries its own backing like every other
-            // floating control here — which is the rule stated at the bottom of this
-            // file, and the reason it holds regardless of theme or what is behind it.
+            // **The cap is iOS-only, because only iOS stretches the segments.**
+            // A macOS segmented control keeps its natural width whatever it is
+            // offered and centres itself in the surplus — measured by rendering it
+            // in a 300 pt container and reading the bounding box: 158 pt spanning
+            // x 71…228, unchanged by a `maxWidth: .infinity` inside the cap. So the
+            // 240 left ~82 pt of empty capsule around it. Dropping it here lets the
+            // capsule hug the control instead; on iOS the segments do fill, so the
+            // cap is what stops the switcher spanning an iPad.
+            #if !os(macOS)
+                .frame(maxWidth: 240)
+            #endif
+                // A segmented control's track is translucent, so on the camera's black
+                // backdrop the unselected segment had no contrast left and read as missing
+                // (seen in dark mode). It now carries its own backing like every other
+                // floating control here — which is the rule stated at the bottom of this
+                // file, and the reason it holds regardless of theme or what is behind it.
+                //
+                // 3 pt is optical, not rhythm: it is what stops the segmented track from
+                // touching the backing around it.
+                .padding(3)
+            // **On macOS the backing is concentric with the control, not a capsule.**
+            // A capsule was the third instance of the same mistake the round controls
+            // made — drawing a shape the thing inside does not have. Rendered on a
+            // keyed background and traced by pixel, an AppKit segmented control comes
+            // out **157 × 24 pt with a ~4 pt corner** (its left inset decays 7,5,4,3,
+            // 2,1,1,0 half-pixels), where a capsule at that height would be 12. So the
+            // capsule curved away from the segment inside it and left a crescent at
+            // each end — visible as a mismatch, and clickable where nothing was drawn.
+            // Concentric means the control's radius plus the 3 pt inset ≈ 7;
+            // `Radius.xs` is the token nearest it.
             //
-            // 3 pt is optical, not rhythm: it is what stops the segmented track from
-            // touching the capsule around it.
-            .padding(3)
-            .reachySurface(.chrome, in: .capsule)
+            // iOS keeps the capsule: its segments fill and round differently, nobody
+            // has reported it, and changing it would move every `Viewport —` and
+            // `Root — live tab` reference with no run here to re-record them.
+            #if os(macOS)
+                .reachySurface(.chrome, in: Radius.rect(Radius.xs))
+                .contentShape(Radius.rect(Radius.xs))
+            #else
+                .reachySurface(.chrome, in: .capsule)
+                .contentShape(.capsule)
+            #endif
         }
     }
 }
@@ -209,10 +239,93 @@ extension View {
     /// `@MainActor` because `reachySurface` is: a `ViewModifier`'s initialiser
     /// carries that isolation in Swift 6, and a nonisolated helper cannot return
     /// what it builds.
+    ///
+    /// **The name is the rule: this goes on a label, never around a `Button`.** A
+    /// button's appearance *and* its click target both belong to the button, so
+    /// applied outside one it sets neither — it drew the disc in the right place
+    /// while macOS drew the button's own rectangle around the glyph inside it, and
+    /// only that rectangle answered a click. A `Button` takes
+    /// `ViewportControlButtonStyle`; a `Menu` puts this on its label.
     @MainActor
-    func viewportControlStyle() -> some View {
-        font(.title3)
-            .padding(Space.sm)
+    func viewportControlLabelStyle() -> some View {
+        modifier(ViewportControlStyle())
+    }
+
+    /// A `Menu` wearing the same disc as the buttons beside it — **the default menu
+    /// style plus `.buttonStyle(.plain)`, with the disc on the label.**
+    ///
+    /// The other two spellings were measured in a real window, painting a
+    /// background straight onto each menu so the rectangle drawn *is* the control
+    /// and therefore the click target:
+    ///
+    /// | menu style                  | control          |
+    /// | --------------------------- | ---------------- |
+    /// | `.borderlessButton`         | label's own layout discarded — the disc vanished |
+    /// | `.button`                   | **39 × 17** — its own metrics, not the label's    |
+    /// | default + `.buttonStyle(.plain)` | **36 × 36** — exactly the label's frame       |
+    ///
+    /// So `.button` plus `ViewportControlButtonStyle` — the obvious "same as the
+    /// buttons" — cannot reproduce them: it imposes its own size, which is why that
+    /// build came out visibly smaller and flatter. Only the last row honours the
+    /// label, and honouring the label is what makes the whole disc clickable rather
+    /// than just the glyph.
+    @MainActor
+    func viewportControlMenuStyle() -> some View {
+        menuIndicator(.hidden)
+            .buttonStyle(.plain)
+    }
+}
+
+/// What a `Button` in the viewport's chrome takes.
+///
+/// A `ButtonStyle`'s body *is* the button, so the disc it draws is also the area
+/// that answers a click — which is the whole reason this is a style and not a
+/// modifier applied around the button.
+struct ViewportControlButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        // A nested `View` rather than building it here: `makeBody` is nonisolated
+        // and `viewportControlLabelStyle()` is `@MainActor`, which a `body` is.
+        StyledLabel(configuration: configuration)
+    }
+
+    private struct StyledLabel: View {
+        let configuration: ButtonStyleConfiguration
+
+        var body: some View {
+            configuration.label
+                .viewportControlLabelStyle()
+                // The platform's chrome is gone, so the press has to be visible
+                // somewhere; without this a tap gives no acknowledgement at all.
+                .opacity(configuration.isPressed ? 0.55 : 1)
+        }
+    }
+}
+
+/// **A square stated once, because none of these glyphs is square.** `Circle` as a
+/// background insets to the shorter side of whatever it is given, and at `.title3`
+/// `ellipsis.circle` measures 33 × 33, `mic.slash` 31 × 34 and `slider.horizontal.3`
+/// 35 × 31 — so padding each glyph gave three different diameters, and the two
+/// oblong ones overhung the circle they sat in. That overhang is what was reported
+/// as a stray grey line across the settings button: the slider's own strokes,
+/// outside the disc. A `Menu` was the extreme case at 79 × 40, chevron and all.
+///
+/// `@ScaledMetric` rather than a bare constant, because the glyph inside grows with
+/// the reader's text size and a fixed box would clip it — this module's rule for
+/// every `Metrics` constant. At the default size the multiplier is 1, so adopting
+/// it moves no reference image.
+private struct ViewportControlStyle: ViewModifier {
+    @ScaledMetric private var side = Metrics.viewportControl
+
+    func body(content: Content) -> some View {
+        content
+            .font(.title3)
+            .frame(width: side, height: side)
             .reachySurface(.chrome, in: .circle)
+            // The frame is a square and the surface drawn in it is a disc, so
+            // without this the corners outside the disc stay tappable — 21% of the
+            // box, in the gaps between three controls sitting `Space.md` apart.
+            // Stating the square's size is what made that visible; the padded
+            // version had the same mismatch on a smaller box.
+            .contentShape(.circle)
     }
 }

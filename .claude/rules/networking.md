@@ -30,6 +30,19 @@ link-local IPv6). Our rules:
   correctly reports nothing.
 - Network change: `NWPathMonitor` + exponential backoff reconnect.
 
+## macOS sandbox (app target)
+
+- **WebRTC needs `com.apple.security.network.server`, not only `network.client`.** ICE binds UDP sockets and receives
+  datagrams from a peer it never `connect()`ed to, which App Sandbox counts as inbound; without the key the bind is
+  refused *before* the firewall is consulted, so nothing prompts and nothing logs. The stream then never leaves
+  `.connecting` and `CameraSession`'s 10 s watchdog renegotiates for ever — which reads as "the camera does not turn
+  on" rather than as a permission. The tell that the app really does listen is macOS asking "accept incoming network
+  connections?" once the entitlement is there.
+- **An empty ICE candidate is the end-of-candidates marker**, and the robot's gstreamer webrtcsink sends one on every
+  negotiation. `RTCIceCandidate.init` answers it with `NSParameterAssert(sdp.length)` — an `NSException`, which no
+  `try?` catches, thrown by an argument evaluated before `peerConnection?.add` is reached. `CameraSession+ICE.swift`
+  is the one guard, and it covers the LAN and the relay alike because both signalling paths funnel into it.
+
 ## iOS/iPadOS requirements (app targets)
 
 - `NSLocalNetworkUsageDescription` + `NSBonjourServices` in Info.plist. Daemon mDNS service types (from upstream

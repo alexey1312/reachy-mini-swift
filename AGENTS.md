@@ -200,6 +200,18 @@ there is no `ReachyMiniUITests` scheme, both smoke tasks test the `ReachyMini` s
 run `test:sim` against a live `sim-daemon` to exercise it.
 `swift test --skip-build` runs the previously built binary: rebuild with `swift build --build-tests` after editing a
 test, or the run silently verifies stale code.
+**Two classes of macOS crash leave no trace a normal search finds** — no `Fatal error`, no `NSException`, nothing on
+stderr, and no file in `~/Library/Logs/DiagnosticReports` (which may not exist at all). Both call
+`abort_with_payload`, which is not a Swift trap: a **main-actor assertion** prints
+`BUG IN CLIENT OF LIBDISPATCH: Assertion failed: Block was expected to execute on queue [com.apple.main-thread]`, and
+**TCC** prints `[com.apple.TCC:access] … must contain an NS…UsageDescription key`. So the search is
+`log show --last 3d --predicate 'process == "ReachyMini" AND (eventMessage CONTAINS "LIBDISPATCH" OR eventMessage
+CONTAINS "usage description")'` — grepping for `Assertion failure` / `NSException` / `Fatal error` returns nothing and
+reads as "the app never crashed", which is how a reported sign-in crash was three times declared unreproducible.
+**Only trust TCC's version when the app was launched through LaunchServices**: running the binary directly, or under
+`lldb`, makes TCC read the _parent's_ Info.plist, so a correct bundle is killed anyway. For a real backtrace, sign a
+copy with `com.apple.security.get-task-allow` added and run `lldb --batch -k "bt all" -k "quit" -o run -- <binary>`.
+Addresses in that log are hex — `IPv4#0a184ea1` is 10.24.78.161.
 Everything pipes through xcsift, which on long runs can truncate and report `status: incomplete` while hiding the real
 result — verify the artifact, or rerun the tool directly
 (`./bin/mise x -- swiftlint lint --strict` with the explicit path list the lint task in `mise.toml` names,
@@ -329,6 +341,11 @@ had just written. Get `mise run snapshots:_run` to compile first, then record. T
 compile is invisible until `mise run project` plus a snapshot build. Watch for `failed to produce diagnostic for
 expression` in particular — it names the enclosing function and nothing else, and one cause is unifying an optional
 `@MainActor` closure with `nil` in a ternary (`PreviewScene.advancedSection` uses an `if` for exactly that reason).
+**A successful `record` reports every test as failed** — 1488 failed / 0 passed is what a clean recording looks like,
+because swift-snapshot-testing fails a test whenever it writes a reference. The exit code says nothing;
+`git status -- '*__Snapshots__*'` says what actually moved. Check the PNGs are still _there_ first
+(`find Apps -path '*__Snapshots__*' -name '*.png' | wc -l`) — that count is the one thing separating a recording from
+the build failure that deletes all of them.
 **Adding previews can move references belonging to screens you did not touch — but not in proportion to how many.**
 Every preview holding an indeterminate `ProgressView` — anything named _loading_, _scanning_, _connecting_,
 _waking up_, _building_ — captures that spinner at whatever phase it reached, and the phase depends on where in the
