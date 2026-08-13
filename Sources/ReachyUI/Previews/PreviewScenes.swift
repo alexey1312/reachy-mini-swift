@@ -80,9 +80,13 @@ enum PreviewScene {
 
     /// The model defaults are `nil` rather than `.preview()`: a default argument is evaluated in a
     /// nonisolated context, and every one of these factories is main-actor isolated.
-    static func movesScreen(_ session: RobotSession, model: MovesModel? = nil) -> some View {
+    static func movesScreen(
+        _ session: RobotSession,
+        model: MovesModel? = nil,
+        recorder: MoveRecorderModel? = nil
+    ) -> some View {
         NavigationHost {
-            MovesScreen(session: session, model: model ?? .preview())
+            MovesScreen(session: session, model: model ?? .preview(), recorder: recorder)
         }
         .preview()
     }
@@ -116,13 +120,15 @@ enum PreviewScene {
     static func controller(
         _ session: RobotSession,
         driver: TeleopDriver? = nil,
-        setupError: String? = nil
+        setupError: String? = nil,
+        recorder: MoveRecorderModel? = nil
     ) -> some View {
         NavigationHost {
             ControllerScreen(
                 session: session,
                 driver: driver ?? TeleopDriver(),
-                setupError: setupError
+                setupError: setupError,
+                recorder: recorder
             )
         }
         .preview()

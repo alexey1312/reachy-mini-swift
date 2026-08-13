@@ -10,17 +10,27 @@ struct ControllerScreen: View {
 
     @State private var driver: TeleopDriver
     @State private var setupError: String?
+    @State private var recorder: MoveRecorderModel
     @Environment(\.reachyPreviewMode) private var previewMode
 
     init(
         session: RobotSession,
         driver: TeleopDriver = TeleopDriver(),
-        setupError: String? = nil
+        setupError: String? = nil,
+        recorder: MoveRecorderModel? = nil
     ) {
         self.session = session
         _driver = State(initialValue: driver)
         _setupError = State(initialValue: setupError)
+        _recorder = State(initialValue: recorder ?? MoveRecorderModel())
     }
+
+    /// How often a take samples the driver.
+    ///
+    /// 10 Hz because that is the daemon's own full-state rate and well inside what
+    /// `ws/set_target` accepts — a take is replayed as targets, so sampling faster
+    /// buys resolution the robot's own loop would smooth away anyway.
+    private static let sampleInterval = Duration.milliseconds(100)
 
     /// Comfortable UI ranges; hardware limits (clamped by the daemon anyway):
     /// head pitch/roll ±40°, yaw ±180°. Body yaw is `TeleopDriver.bodyYawLimit`, which
@@ -43,6 +53,7 @@ struct ControllerScreen: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
+                recordingSection
                 Section(.reachy("Head")) {
                     slider(
                         "Roll",
@@ -96,7 +107,67 @@ struct ControllerScreen: View {
                 driver.reset()
             }
         }
-        .onDisappear { driver.stop() }
+        .onDisappear {
+            // A take that outlived the screen has nothing sampling it, so it would
+            // save whatever it happened to hold — end it here rather than keep a
+            // stopwatch running over a driver nobody is driving.
+            recorder.endRecording(named: Self.defaultName(for: recorder.recordings.count))
+            driver.stop()
+        }
+    }
+
+    /// Recording is here rather than on the Live tab because this is the screen that
+    /// drives the robot: what a take captures is the target this screen is setting,
+    /// and a button somewhere else would record a joystick the reader cannot see.
+    ///
+    /// The sampler is a `.task` keyed on `isRecording` — it exists exactly while a
+    /// take does, and cancelling it is what stops it. It reads `driver.target`, which
+    /// is the same value the channel is being sent, so a take is what the robot was
+    /// asked to do rather than a second guess at it.
+    private var recordingSection: some View {
+        Section {
+            Button {
+                toggleRecording()
+            } label: {
+                Label(
+                    recorder.isRecording ? .reachy("Stop recording") : .reachy("Record a move"),
+                    systemImage: recorder.isRecording ? "stop.circle.fill" : "record.circle"
+                )
+            }
+            .tint(recorder.isRecording ? .red : nil)
+            if recorder.isRecording {
+                LabeledContent(.reachy("Recording")) {
+                    Text(.reachy("\(recorder.elapsed.formatted(.number.precision(.fractionLength(1)))) s"))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } footer: {
+            Text(.reachy("Takes are kept on this phone and play back from the Moves tab."))
+        }
+        .task(id: recorder.isRecording) {
+            guard !previewMode, recorder.isRecording else { return }
+            while !Task.isCancelled, recorder.isRecording {
+                try? await Task.sleep(for: Self.sampleInterval)
+                guard !Task.isCancelled else { return }
+                recorder.capture(driver.target)
+            }
+        }
+    }
+
+    private func toggleRecording() {
+        if recorder.isRecording {
+            recorder.endRecording(named: Self.defaultName(for: recorder.recordings.count))
+        } else {
+            recorder.beginRecording()
+        }
+    }
+
+    /// Named rather than prompted: the recording is the thing worth keeping, and a
+    /// text field between the reader and the save is where a take gets lost. Renaming
+    /// is a swipe away in the Moves tab.
+    private static func defaultName(for existing: Int) -> String {
+        String(localized: .reachy("Take \(existing + 1)"))
     }
 
     private enum SliderFormat { case degrees, millimeters }
