@@ -46,6 +46,21 @@ import SwiftUI
     PreviewScene.viewport(.preview(source: .remote(.preview(.waitingForProducer))))
 }
 
+// The direction-of-arrival badge in the chrome row it actually lives in — the
+// standalone `Direction of arrival —` references capture the badge, and only this one
+// can say it sits beside the switcher rather than under the iPad's floating tab bar.
+// Over the camera on purpose: that is the view where a voice off to one side is
+// something the picture cannot show.
+#Preview("Viewport — heard a voice") {
+    PreviewScene.viewport(
+        .preview(
+            content: .camera,
+            cameraSession: .preview(.streaming),
+            hearing: .preview(.left)
+        )
+    )
+}
+
 // And with only the camera to show, the switcher is gone rather than offering a dead segment.
 #Preview("Viewport — remote camera") {
     let camera = CameraSession.preview(.waitingForProducer)

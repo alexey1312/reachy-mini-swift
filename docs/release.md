@@ -152,6 +152,23 @@ are listed by `asc validate --app 6799644194 --version-id <id> --platform <p>`,
 which is the one command worth running before every submission — it prints an
 ordered remediation plan and exits non-zero while anything is missing.
 
+Two of those answers are judgement calls, and both were decided against the two
+Reachy apps already on the store rather than from first principles. Pollen's own
+`Reachy Mini` (id 6766823749) sells the same community app catalogue this one
+does — "browse and launch community apps instantly" — and stands at **9+** with
+_Infrequent/Mild Cartoon or Fantasy Violence_ and _Mature/Suggestive Themes_,
+which is a statement about what a community app might do rather than about the
+app's own content. The independent `Reachy's Brain` (id 6757115923) is **4+**
+with no advisories, but it ships no catalogue at all, so it is not the precedent
+to copy. Hence: `USES_THIRD_PARTY_CONTENT`, because the Apps tab renders a Hugging
+Face catalogue this project does not own, and every age-rating answer left at
+`NONE` with an explicit `--age-rating-override-v2 NINE_PLUS` on top — declaring a
+shelf position rather than asserting content the app does not contain. Both are
+one `asc` command to revert. Their public halves are readable without a session:
+`curl -s "https://itunes.apple.com/lookup?id=<id>"` carries
+`contentAdvisoryRating`, `advisories` and `genres`; the content-rights
+declaration is private and cannot be checked this way.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,
