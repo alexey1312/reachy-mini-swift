@@ -41,9 +41,9 @@
 - **Files** — an SFTP browser for the robot's filesystem.
 - **At home on Apple platforms** — status and apps widgets on the Home Screen, and the status one on the Lock Screen
   and in StandBy as well; wake and sleep from the widget itself; Control Center power controls; Siri / App Intents
-  (wake, sleep, power off, launch any installed app, play a recorded move, and ask whether the robot is awake or
-  what is running on it), each of which can name the robot it addresses, so two Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick
-  actions; full localization readiness.
+  (wake, sleep, power off, launch any installed app, play a recorded move, and ask whether the robot is awake or what
+  is running on it), each of which can name the robot it addresses, so two Reachys on one desk are told apart; the
+  app's destinations in Spotlight; Home Screen quick actions; full localization readiness.
 - **Six themes** — an accent colour and a matching app icon chosen as one decision in Settings, carried into the
   widgets too. On iPhone and iPad the Home Screen icon changes with it; on a Mac the theme is colour only.
 
@@ -181,8 +181,8 @@ Open, and stated honestly:
   `bluetooth_service.py` — including the encrypted Wi-Fi join (X25519 + HKDF-SHA256 + AES-GCM) — and verified against
   stubs. Only the scan has met a robot: a Wireless unit advertises no manufacturer data at all, so a robot is still
   told apart after connecting and not before. The question that gates the rest is whether the ~260-byte sealed
-  payload fits a single BLE write on iOS; the
-  fallback over the robot's own hotspot is implemented. The full hardware checklist is
+  payload fits a single BLE write on iOS; the fallback over the robot's own hotspot is implemented. The full
+  hardware checklist is
   [docs/research/ble-provisioning.md](docs/research/ble-provisioning.md). The GATT protocol is not published upstream
   and its desktop client is being reworked, so treat the protocol as unstable.
 - The Stewart platform's passive joints are computed client-side for the 3D view — the daemon reports them only under
