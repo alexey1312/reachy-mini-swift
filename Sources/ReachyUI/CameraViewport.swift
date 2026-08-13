@@ -14,6 +14,10 @@ struct CameraViewport: View {
     /// `nil` hides the joystick outright rather than showing one that cannot move
     /// anything.
     var makeTeleop: TeleopFactory?
+    /// Called on the pad's first deflection, so the robot's own head behaviours let go
+    /// before this one starts driving. `nil` leaves them alone, which is what a preview
+    /// and the floating window both want.
+    var standDown: TeleopStandDown?
 
     @State private var driver: TeleopDriver
     @Environment(\.reachyPreviewMode) private var previewMode
@@ -21,10 +25,12 @@ struct CameraViewport: View {
     init(
         session: CameraSession,
         makeTeleop: TeleopFactory? = nil,
+        standDown: TeleopStandDown? = nil,
         driver: TeleopDriver = TeleopDriver()
     ) {
         self.session = session
         self.makeTeleop = makeTeleop
+        self.standDown = standDown
         _driver = State(initialValue: driver)
     }
 
@@ -84,8 +90,11 @@ struct CameraViewport: View {
         if session.phase == .streaming, makeTeleop != nil {
             HStack(spacing: Space.md) {
                 recenterButton
-                JoystickPad(mapping: driver.mapping) { driver.apply($0) }
-                    .frame(width: 140, height: 140)
+                JoystickPad(mapping: driver.mapping) { deflection in
+                    driver.apply(deflection)
+                    standDown?()
+                }
+                .frame(width: 140, height: 140)
             }
             .padding()
             .animation(Motion.stateChange, value: driver.isBodyTurned)

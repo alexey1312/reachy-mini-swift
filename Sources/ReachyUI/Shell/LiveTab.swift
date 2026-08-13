@@ -15,6 +15,13 @@ struct LiveTab: View {
     let router: ReachyRouter
     let remoteLink: RemoteRobotLink?
 
+    /// The one record of what this robot was last asked for, and it lives here because
+    /// this tab is where both readers are: the Presence sheet inside the viewport, and
+    /// the two joysticks that turn those behaviours off when a hand takes the head.
+    /// `ViewportView` used to own it, which lost the record every time a sleeping robot
+    /// or the floating window unmounted that view.
+    @State private var presence = PresenceModel()
+
     var body: some View {
         @Bindable var router = router
         return NavigationStack {
@@ -32,7 +39,10 @@ struct LiveTab: View {
                     if session.canTeleoperate {
                         ToolbarItem {
                             NavigationLink {
-                                ControllerScreen(session: session)
+                                ControllerScreen(
+                                    session: session,
+                                    standDown: presence.teleopStandDown(session: session)
+                                )
                             } label: {
                                 Label(.reachy("Controller"), systemImage: "gamecontroller")
                             }
@@ -86,7 +96,8 @@ struct LiveTab: View {
                     model: viewport,
                     offersCamera: session.hasCamera,
                     makeTeleop: makeTeleop,
-                    robotSession: session
+                    robotSession: session,
+                    presence: presence
                 )
             } else {
                 // The shell builds all five tabs at once, so this body runs while

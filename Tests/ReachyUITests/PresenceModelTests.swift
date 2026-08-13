@@ -15,8 +15,13 @@ struct PresenceModelTests {
         /// What the robot answers `setFaceTracking` with — false is a camera-less one.
         var trackingTakes = true
         var failure: (any Error)?
+        /// Holds `setWobbling` open so a second hand-off really does overlap the first.
+        /// The latch is only reachable while a call is in flight, which a sequential
+        /// test cannot arrange.
+        var gate: Gate?
 
-        func wobble(_ value: Bool) throws {
+        func wobble(_ value: Bool) async throws {
+            await gate?.wait()
             if let failure {
                 throw failure
             }
@@ -32,9 +37,41 @@ struct PresenceModelTests {
         }
     }
 
+    /// Every waiter is resumed, never only the newest: a missing latch is meant to fail
+    /// the count, not to strand nineteen continuations and hang the run instead.
+    final class Gate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+        private var isOpen = false
+
+        func wait() async {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                lock.lock()
+                guard !isOpen else {
+                    lock.unlock()
+                    continuation.resume()
+                    return
+                }
+                waiting.append(continuation)
+                lock.unlock()
+            }
+        }
+
+        func open() {
+            lock.lock()
+            isOpen = true
+            let pending = waiting
+            waiting = []
+            lock.unlock()
+            for continuation in pending {
+                continuation.resume()
+            }
+        }
+    }
+
     private func model(_ calls: Calls) -> PresenceModel {
         PresenceModel(
-            setWobbling: { _, value in try calls.wobble(value) },
+            setWobbling: { _, value in try await calls.wobble(value) },
             setFaceTracking: { _, value in try calls.track(value) }
         )
     }
@@ -91,4 +128,102 @@ struct PresenceModelTests {
         #expect(!model.isWobbling)
         #expect(!model.isTracking)
     }
+
+    /// A joystick takes the head, and face tracking at `weight: 1` replaces the teleop
+    /// pose outright rather than blending with it — so both behaviours let go before the
+    /// pad starts driving.
+    @Test("a deflection stands both behaviours down")
+    func standsBothDown() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+        await model.setWobbling(true, session: session)
+        await model.setFaceTracking(true, session: session)
+
+        await model.standDown(session: session)
+
+        #expect(calls.wobbling == [true, false])
+        #expect(calls.tracking == [true, false])
+        #expect(!model.isWobbling)
+        #expect(!model.isTracking)
+    }
+
+    /// The pad delivers its callback on every touch event, and neither flag turns false
+    /// until its own call has been accepted — so without the latch a single drag would
+    /// aim a POST per axis per frame at the robot for as long as the first pair is in
+    /// flight. Twenty events land here before any of them can complete.
+    @Test("a drag hands over once, not once per touch event")
+    func handsOverOnlyOnce() async {
+        let calls = Calls()
+        let gate = Gate()
+        let model = model(calls)
+        let session = RobotSession.preview()
+        await model.setWobbling(true, session: session)
+        await model.setFaceTracking(true, session: session)
+        calls.gate = gate
+
+        let standDown = model.teleopStandDown(session: session)
+        for _ in 0 ..< 20 {
+            standDown()
+        }
+        gate.open()
+
+        await waitUntil("the hand-off completes") { !model.isWobbling && !model.isTracking }
+        #expect(calls.wobbling == [true, false])
+        #expect(calls.tracking == [true, false])
+    }
+
+    /// Both are off already on every screen nobody has touched these switches on, and
+    /// that is the common case: the pad must not talk to the robot for it.
+    @Test("a deflection over a robot doing neither says nothing")
+    func staysQuietWhenNeitherIsOn() async {
+        let calls = Calls()
+        let model = model(calls)
+
+        model.teleopStandDown(session: .preview())()
+        await model.standDown(session: .preview())
+
+        #expect(calls.wobbling.isEmpty)
+        #expect(calls.tracking.isEmpty)
+    }
+
+    /// A refused hand-off is not a hand-off. Recording it would leave the switch showing
+    /// off over a robot still tracking, which is the one thing these controls must not
+    /// do — so the next deflection asks again.
+    @Test("a refused hand-off is retried on the next deflection")
+    func retriesAfterFailure() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+        await model.setWobbling(true, session: session)
+        calls.failure = ReachyKitError.notConnected
+
+        await model.standDown(session: session)
+        #expect(model.isWobbling)
+
+        calls.failure = nil
+        await model.standDown(session: session)
+
+        #expect(!model.isWobbling)
+        #expect(calls.wobbling == [true, false])
+    }
+}
+
+/// Polls rather than sleeping: the suites are `@MainActor` and a loaded runner starves
+/// them, so a fixed wait before an assertion is a flake in waiting (rule 7).
+@MainActor
+private func waitUntil(
+    _ description: String,
+    timeout: Duration = .seconds(10),
+    _ condition: () -> Bool,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async {
+    let deadline = ContinuousClock.now.advanced(by: timeout)
+    while ContinuousClock.now < deadline {
+        if condition() {
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }

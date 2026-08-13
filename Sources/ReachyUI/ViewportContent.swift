@@ -14,6 +14,9 @@ struct ViewportContent: View {
     /// `nil` where this host offers no teleop at all — over the relay, and in the
     /// floating window, where the robot is watched rather than driven.
     var makeTeleop: TeleopFactory?
+    /// Travels beside `makeTeleop` and is `nil` in the same places: only the host that
+    /// offers a joystick has anything to hand the head over from.
+    var standDown: TeleopStandDown?
 
     var body: some View {
         if let setupError = model.setupError {
@@ -40,7 +43,7 @@ struct ViewportContent: View {
                 }
             case .camera:
                 if let session = model.cameraSession {
-                    CameraViewport(session: session, makeTeleop: makeTeleop)
+                    CameraViewport(session: session, makeTeleop: makeTeleop, standDown: standDown)
                 } else {
                     ViewportStatus.loading("Connecting…", progress: nil)
                 }
