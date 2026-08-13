@@ -51,8 +51,11 @@ struct BLEConsoleScreen: View {
                         Button {
                             Task { await model.connect(to: robot.id) }
                         } label: {
-                            LabeledContent(robot.name) {
-                                Text(.reachy("\(robot.rssi) dBm")).font(.caption.monospaced())
+                            VStack(alignment: .leading, spacing: 2) {
+                                LabeledContent(robot.name) {
+                                    Text(.reachy("\(robot.rssi) dBm")).font(.caption.monospaced())
+                                }
+                                advertisementCaption(for: robot)
                             }
                         }
                         .disabled(model.isBusy)
@@ -120,6 +123,28 @@ struct BLEConsoleScreen: View {
                     }
             }
             .reachySheet()
+        }
+    }
+
+    /// What the robot said about itself before anything connected.
+    ///
+    /// **This row is how the question gets answered at all.** Every Reachy Mini
+    /// advertises the same local name, so nothing in a scan tells two apart —
+    /// upstream's PR #1086 puts an address and an id prefix in `ManufacturerData`,
+    /// and no robot in this project has been observed sending it. Decoded when it
+    /// matches that shape, printed as hex when it does not, and absent when there is
+    /// nothing at all, which is what older firmware looks like.
+    @ViewBuilder
+    private func advertisementCaption(for robot: BLEPeripheralSnapshot) -> some View {
+        if let advert = robot.advertisement {
+            Text(verbatim: "\(advert.address) · \(advert.hardwareIDPrefix)…")
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+        } else if let raw = robot.manufacturerData {
+            Text(verbatim: raw.map { String(format: "%02x", $0) }.joined())
+                .font(.caption2.monospaced())
+                .foregroundStyle(.tertiary)
+                .lineLimit(2)
         }
     }
 
