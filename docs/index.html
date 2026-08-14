@@ -1,0 +1,241 @@
+---
+layout: default
+title: Control your Reachy Mini
+---
+
+<section class="hero">
+  <div class="hero-inner">
+    <img class="hero-icon" src="media/icon.png" width="128" height="128" alt="Hey Reachy app icon" />
+    <h1>Hey Reachy</h1>
+    <p class="lede">
+      Joystick teleop, the robot's camera and two-way audio, a live 3D twin, recorded moves and the robot app store —
+      for the Reachy Mini Wireless on your desk.
+    </p>
+    <p class="cta-row">
+      <a class="cta" href="https://testflight.apple.com/join/CGjefT9a">Join the public beta on TestFlight</a>
+      <a class="cta cta-secondary" href="https://github.com/alexey1312/reachy-mini-swift/releases">
+        Notarized Mac build
+      </a>
+    </p>
+    <p class="hero-meta">One app for iPhone, iPad and Mac · iOS 18 or macOS 15 · free and open source</p>
+  </div>
+</section>
+
+<section class="band band-notice">
+  <div class="wrap">
+    <h2>You need a robot</h2>
+    <p>
+      Hey Reachy talks to a <a href="https://www.pollen-robotics.com">Reachy Mini Wireless</a> on your network.
+      Without one the app stops at its Connect screen, because every feature lives behind a live session with the
+      robot's own daemon. There is no demo mode and no account to create.
+    </p>
+  </div>
+</section>
+
+<section class="wrap" id="features">
+  <h2>What it does</h2>
+  <ul class="cards">
+    <li>
+      <h3>Connect and discover</h3>
+      <p>
+        Bonjour discovery, manual addresses, IPv6 and automatic reconnect. Robots are identified by hardware id, never
+        by IP — the same robot at a new address is still the same robot.
+      </p>
+    </li>
+    <li>
+      <h3>Live control</h3>
+      <p>
+        Joystick teleop of the 6-DoF head, the antennas and body rotation, with the camera and two-way audio, so you
+        can talk through the robot's speaker.
+      </p>
+    </li>
+    <li>
+      <h3>3D viewer</h3>
+      <p>
+        A RealityKit scene built from the robot's own URDF and meshes, mirroring what the robot is doing in real time.
+      </p>
+    </li>
+    <li>
+      <h3>Moves</h3>
+      <p>
+        Browse and play the recorded moves the robot ships with, from the app or by asking Siri for one by name.
+        Record your own takes straight from the phone, then play them back.
+      </p>
+    </li>
+    <li>
+      <h3>Apps</h3>
+      <p>
+        Install, update and remove robot apps from Hugging Face Spaces, following each job as it runs. Filter and sort
+        the catalogue and pin the ones you use most. The robot wakes itself before an app starts and parks again when
+        it lets go.
+      </p>
+    </li>
+    <li>
+      <h3>State</h3>
+      <p>
+        The control loop's frequency, worst interval and error count charted live, beside the robot's own processor,
+        memory, temperature and uptime.
+      </p>
+    </li>
+    <li>
+      <h3>Files</h3>
+      <p>An SFTP browser for the robot's filesystem, so a log or a recording is one tap away.</p>
+    </li>
+    <li>
+      <h3>Bluetooth setup and recovery</h3>
+      <p>
+        Put a brand-new robot onto Wi-Fi over an encrypted Bluetooth channel, or bring back one that fell off the
+        network — raise the hotspot, restart the daemon, software reset.
+      </p>
+    </li>
+    <li>
+      <h3>Remote access</h3>
+      <p>
+        Reach your robots from outside their network through the Hugging Face relay. Commands travel on a brokered
+        WebRTC data channel; the daemon's port is never exposed.
+      </p>
+    </li>
+  </ul>
+</section>
+
+<section class="band" id="screenshots">
+  <div class="wrap">
+    <h2>Screenshots</h2>
+    <ul class="shots">
+      <li>
+        <img
+          src="media/live.jpg"
+          width="1206"
+          height="2622"
+          loading="lazy"
+          decoding="async"
+          alt="Live tab: RealityKit model mirroring the robot from its own URDF"
+        />
+        <p>Live — the 3D twin, built from the robot's own URDF</p>
+      </li>
+      <li>
+        <img
+          src="media/moves.jpg"
+          width="1206"
+          height="2622"
+          loading="lazy"
+          decoding="async"
+          alt="Moves tab with the floating 3D viewport"
+        />
+        <p>Moves — recorded takes, with the viewport floating over them</p>
+      </li>
+      <li>
+        <img
+          src="media/store.jpg"
+          width="1206"
+          height="2622"
+          loading="lazy"
+          decoding="async"
+          alt="App store: discovering robot apps while the conversation app runs in the dock"
+        />
+        <p>Apps — the catalogue, with the running app in the dock</p>
+      </li>
+      <li>
+        <img
+          src="media/robot.jpg"
+          width="1206"
+          height="2622"
+          loading="lazy"
+          decoding="async"
+          alt="Robot tab: connected over the LAN, wake, sleep and power off"
+        />
+        <p>Robot — connected over the LAN: wake, sleep and power off</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>At home on your devices</h2>
+  <ul class="cards cards-tight">
+    <li>
+      <h3>Widgets</h3>
+      <p>Status and apps on the Home Screen, and the status one on the Lock Screen and in StandBy as well.</p>
+    </li>
+    <li>
+      <h3>Control Center</h3>
+      <p>Power controls where every other toggle lives.</p>
+    </li>
+    <li>
+      <h3>Siri and Shortcuts</h3>
+      <p>
+        Wake, sleep, power off, launch an app, play a move, or ask whether the robot is awake and what is running on
+        it — and each of those can name which robot it means, so two Reachys on one desk are told apart.
+      </p>
+    </li>
+    <li>
+      <h3>Six themes</h3>
+      <p>An accent colour and a matching app icon chosen as one decision, carried into the widgets too.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="band band-quiet">
+  <div class="wrap split">
+    <div>
+      <h2>Nothing is collected</h2>
+      <p>
+        There is no server on our side. The app talks to your robot on your own network and, if you choose to sign in,
+        to Hugging Face with your own account. No analytics, no crash-reporting SDK, no advertising, no account with
+        the developer.
+      </p>
+      <p><a class="more" href="privacy.html">Read the privacy policy</a></p>
+    </div>
+    <div class="warn">
+      <h2>A note on your network</h2>
+      <p>
+        The robot's daemon provides <strong>no authentication and no encryption</strong> of its own. Use Hey Reachy on
+        a trusted private network or on the robot's own access point — never through a port forward or a public
+        address.
+      </p>
+      <p>
+        <a
+          class="more"
+          href="https://github.com/alexey1312/reachy-mini-swift/blob/main/docs/adr/0001-daemon-compatibility-and-lan-security.md"
+        >
+          Why, in one page
+        </a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="developers">
+  <h2>For developers</h2>
+  <p>
+    Hey Reachy is Apache-2.0 and built on eight public Swift packages — transport and domain, WebRTC media, a
+    RealityKit scene, the design tokens, the widget layer, SFTP, Hugging Face auth, and the UI that composes them.
+    <code>ReachyKit</code> is the only one a robot strictly needs, and the only one that pulls in no UI framework.
+  </p>
+  <pre><code>.package(url: "https://github.com/alexey1312/reachy-mini-swift.git", branch: "main"),</code></pre>
+  <p>
+    The daemon's OpenAPI spec is committed in the repository, the whole suite runs against a MuJoCo simulator with no
+    hardware attached, and every SwiftUI preview is a recorded snapshot test.
+  </p>
+  <p>
+    <a class="more" href="https://github.com/alexey1312/reachy-mini-swift">Source on GitHub</a> ·
+    <a class="more" href="https://github.com/alexey1312/reachy-mini-swift/tree/main/docs/adr">Design decisions</a> ·
+    <a class="more" href="https://github.com/alexey1312/reachy-mini-swift/issues">Issues</a>
+  </p>
+</section>
+
+<section class="band band-cta">
+  <div class="wrap">
+    <h2>Try it</h2>
+    <p>
+      One link for iPhone, iPad and Mac; installing needs Apple's TestFlight app. The Mac also ships outside
+      TestFlight — every release carries a notarized zip.
+    </p>
+    <p class="cta-row">
+      <a class="cta" href="https://testflight.apple.com/join/CGjefT9a">Join the public beta on TestFlight</a>
+      <a class="cta cta-secondary" href="https://github.com/alexey1312/reachy-mini-swift/releases">
+        Notarized Mac build
+      </a>
+    </p>
+  </div>
+</section>
