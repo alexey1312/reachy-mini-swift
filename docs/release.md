@@ -142,7 +142,9 @@ mise run asc -- metadata push --app 6799644194 --version 0.2.0 --platform IOS --
 ```
 
 Push once per platform — `IOS` and `MAC_OS` carry separate version localizations
-off the same files. `whatsNew` is deliberately absent: Apple refuses it on an
+off the same files. A version sitting in `WAITING_FOR_REVIEW` still takes the URL
+fields (measured on 0.2.1), so a listing does not have to be pulled out of review
+to repoint it. `whatsNew` is deliberately absent: Apple refuses it on an
 app's **first** App Store version (`Attribute 'whatsNew' cannot be edited at this
 time`), so release notes start with the second one.
 
@@ -151,6 +153,27 @@ rights, age rating, availability, price, and the reviewer contact and notes. The
 are listed by `asc validate --app 6799644194 --version-id <id> --platform <p>`,
 which is the one command worth running before every submission — it prints an
 ordered remediation plan and exits non-zero while anything is missing.
+
+**It does not catch what rejected the macOS build.** An automated App Review check
+reads the entitlements and refused 0.2.1 for carrying
+`com.apple.security.network.server` "without matching functionality", while
+`asc validate` reported zero blocking issues. The entitlement is required — WebRTC's
+ICE binds UDP sockets and receives datagrams from a peer it never `connect()`ed to,
+which App Sandbox counts as listening (`.claude/rules/networking.md`) — so the answer
+is Apple's second option: keep it and justify it in **App Review Information**, which
+is a per-version, per-platform record with a 4000-character limit and no presence in
+`metadata/`. It lives only on the server, so a new version needs it written again,
+and the check fires on every macOS submission that carries the key:
+
+```bash
+mise run asc -- review details-for-version --version-id <id>
+mise run asc -- review details-update --id <detail-id> --notes "..."
+```
+
+Not to be confused with `testflight review edit`: Beta App Review and App Review keep
+separate notes, and neither one is read by the other. A rejection's own text is in
+Resolution Center, which the public API does not expose at all — `asc web review show`
+reaches it, at the price of an Apple ID web session with 2FA.
 
 Two of those answers are judgement calls, and both were decided against the two
 Reachy apps already on the store rather than from first principles. Pollen's own
@@ -191,12 +214,22 @@ mise run asc -- testflight review submissions list --build-id "<id>"
 What review reads lives at the app level, not the build level, so it is written
 once and stays: the tester-facing text in `testflight app-localizations`
 (description, feedback email, marketing URL, and the privacy policy — which has
-to resolve, or review fails on a 404; `metadata/` now points both at the Pages
-site, so **enable Pages and open the URLs before pushing metadata**, and note
-that `docs/privacy.md` still resolves at its github.com blob URL, which is what
-any previously-pushed value points at),
-and the reviewer-facing contact and notes in `testflight review edit`. The notes
-carry the thing no reviewer can guess — that the app needs a robot nobody at
+to resolve, or review fails on a 404, so **enable Pages and open the URLs
+first**), and the reviewer-facing contact and notes in `testflight review edit`.
+
+**`metadata push` never reaches those.** `betaAppLocalizations` holds its own
+copy of the marketing and privacy URLs, outside `metadata/` and outside every
+version, so a store listing moved to a new host leaves TestFlight on the old one
+until this runs too:
+
+```bash
+mise run asc -- testflight app-localizations list --app 6799644194
+mise run asc -- testflight app-localizations update --id "<id>" \
+  --marketing-url "https://alexey1312.github.io/reachy-mini-swift/" \
+  --privacy-policy-url "https://alexey1312.github.io/reachy-mini-swift/privacy.html"
+```
+
+The reviewer notes carry the thing no reviewer can guess — that the app needs a robot nobody at
 Apple has, that the Bluetooth sheet auto-presenting on first launch hides the
 Local Network alert underneath it, and that Hugging Face sign-in is the one path
 that completes without hardware. Beta App Review has no demo account to give,
