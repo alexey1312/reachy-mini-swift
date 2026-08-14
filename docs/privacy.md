@@ -1,3 +1,9 @@
+---
+layout: page
+title: Privacy Policy
+permalink: /privacy.html
+---
+
 # Privacy Policy — Hey Reachy
 
 Last updated: 10 August 2026.

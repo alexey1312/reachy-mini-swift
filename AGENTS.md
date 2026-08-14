@@ -465,3 +465,28 @@ Per-target notes live beside the code: `Sources/{ReachyKit,ReachyUI,ReachyScene,
 the `SurfaceRole` facade, the four things glass does headless, what a dark reference proves and what it does not, and
 the localization catalogue. Read it before any visual change, not after one moved a reference.
 Background reading: `docs/adr/` for accepted decisions, `docs/research/webrtc.md` for 8443 signaling quirks.
+
+**`docs/` is also the GitHub Pages root**, served at `https://alexey1312.github.io/reachy-mini-swift/` by Pages' own
+Jekyll (Settings → Pages → Deploy from a branch → `main` → `/docs`). There is no workflow, no mise task and no Ruby
+pin — nothing in CI builds it, and none of the five macOS slots is touched. The site is `_config.yml`, `_layouts/`,
+`index.html`, `assets/site.css` and the two markdown pages `privacy.md` / `support.md`; `media/` and `privacy.md` are
+shared with the README and with App Store Connect rather than copied, which is the whole reason the site lives here
+instead of in a `site/` directory of its own. Four things follow from that:
+
+- **`exclude` in `_config.yml` is a denylist.** `adr/`, `research/`, `superpowers/` and `release.md` are kept out of
+  the built site; a new file _inside_ those directories is excluded for free, but a new **top-level** `docs/*.md`
+  becomes a public marketing page unless it is added to that list.
+- **Every page sits at the same depth and every path is relative** — `index.html`, `privacy.html`, `support.html`, all
+  flat `permalink`s. That is what keeps one set of hrefs valid from disk, under `jekyll serve`, and under the
+  `/reachy-mini-swift` baseurl. A nested page would need `relative_url` on every link instead.
+- **The palette is `ReachyTheme.graphite`**, hand-copied into `assets/site.css` (accent `#3E4757` / `#A9B6CC`, the
+  icon's own gradient stops `#9AA6B8` → `#3E4757`). It is a third hand-kept copy alongside the colour and icon
+  scripts, and no test checks it.
+- **Marketing, support and privacy URLs in `metadata/` point at this site**, so it must be live before
+  `asc metadata push` runs — review fails on a 404 privacy URL. `docs/privacy.md` keeps resolving at its github.com
+  blob URL too, which is what the previously-pushed value points at.
+
+Local preview needs Ruby, which is deliberately not pinned: use
+`docker run --rm -v "$PWD/docs":/srv/jekyll -p 4000:4000 jekyll/jekyll:4 jekyll serve --baseurl /reachy-mini-swift`,
+or point Pages at a feature branch — deploy-from-branch accepts any branch, so a site change is reviewable before it
+is merged.

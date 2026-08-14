@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#3e4757" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161a21" media="(prefers-color-scheme: dark)" />
+    {% seo %}
+    <!-- Every page sits at the same depth (index.html, privacy.html, support.html), so a
+         relative href is valid from disk, from `jekyll serve` and under the baseurl alike. -->
+    <link rel="stylesheet" href="assets/site.css" />
+    <link rel="icon" href="media/icon.png" />
+    <link rel="apple-touch-icon" href="media/icon.png" />
+  </head>
+
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <img class="brand-icon" src="media/icon.png" width="32" height="32" alt="" />
+        <span>Hey Reachy</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#screenshots">Screenshots</a>
+        <a href="index.html#developers">Developers</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/alexey1312/reachy-mini-swift">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main">{{ content }}</main>
+
+    <footer class="footer">
+      <p>
+        <strong>Hey Reachy</strong> is unofficial and is not affiliated with, endorsed by or supported by
+        <a href="https://www.pollen-robotics.com">Pollen Robotics</a>. It is an independent client for the robot
+        daemon's documented HTTP and WebSocket API. “Reachy Mini” is a product name of Pollen Robotics, used here
+        solely to describe what this app is compatible with.
+      </p>
+      <p>
+        <a href="https://github.com/alexey1312/reachy-mini-swift/blob/main/LICENSE">Apache&nbsp;2.0</a> ·
+        <a href="https://github.com/alexey1312/reachy-mini-swift/blob/main/NOTICE">Third-party notices</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="support.html">Support</a> ·
+        <a href="mailto:akakoulin.dev@gmail.com">akakoulin.dev@gmail.com</a>
+      </p>
+      <p class="fine">
+        © 2026 Aleksei Kakoulin. This site sets no cookies and runs no analytics — it loads nothing from anywhere
+        but this domain.
+      </p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,443 @@
+/* Hey Reachy — marketing site.
+ *
+ * The palette is the app's own `graphite` theme, which is `ReachyTheme.fallback` and the
+ * icon the README shows: accent #3E4757 light / #A9B6CC dark, with the icon's own gradient
+ * stops #9AA6B8 → #3E4757 carrying the hero. Keep these in step with
+ * Sources/ReachyDesign/ReachyTheme.swift if that palette ever moves.
+ *
+ * System fonts only, and nothing loaded from another host — a page claiming the app collects
+ * nothing should not itself phone home for a typeface.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --bg-alt: #f4f6f8;
+  --bg-quiet: #eef1f4;
+  --fg: #1c1c1e;
+  --fg-muted: #58616f;
+  --accent: #3e4757;
+  --accent-ink: #ffffff;
+  --border: #dde1e7;
+  --card: #ffffff;
+  --shadow: 0 1px 2px rgb(28 28 30 / 6%), 0 8px 24px rgb(28 28 30 / 8%);
+  --hero-from: #9aa6b8;
+  --hero-to: #3e4757;
+  --testflight: #0d96f6;
+  --warn-bg: #fff6e6;
+  --warn-border: #e8c88a;
+
+  --measure: 68ch;
+  --wrap: 1080px;
+  --radius: 16px;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131519;
+    --bg-alt: #191c22;
+    --bg-quiet: #1e222a;
+    --fg: #f1f3f5;
+    --fg-muted: #a3abb8;
+    --accent: #a9b6cc;
+    --accent-ink: #131519;
+    --border: #2b303a;
+    --card: #1b1f26;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 32%);
+    --hero-from: #3e4757;
+    --hero-to: #161a21;
+    --warn-bg: #241d10;
+    --warn-border: #5a4620;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: 1.75rem;
+  margin: 0 0 0.75rem;
+}
+
+h3 {
+  font-size: 1.0625rem;
+  margin: 0 0 0.375rem;
+}
+
+p {
+  margin: 0 0 1rem;
+  max-width: var(--measure);
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--bg-quiet);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+pre code {
+  font-size: 0.875rem;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 10;
+  background: var(--bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+}
+
+/* ---------- chrome ---------- */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 650;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.brand-icon {
+  border-radius: 22%;
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.125rem;
+  font-size: 0.9375rem;
+}
+
+.topbar nav a {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+
+.topbar nav a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+.footer {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.footer p {
+  max-width: var(--measure);
+}
+
+.footer .fine {
+  opacity: 0.8;
+}
+
+/* ---------- layout ---------- */
+
+.wrap {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+}
+
+.band {
+  background: var(--bg-alt);
+  border-block: 1px solid var(--border);
+  margin-block: 3rem;
+}
+
+.band .wrap {
+  padding-block: 3rem;
+}
+
+.band-quiet {
+  background: var(--bg-quiet);
+}
+
+.band-cta {
+  margin-bottom: 0;
+}
+
+.split {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  background: linear-gradient(180deg, var(--hero-from), var(--hero-to));
+  color: #ffffff;
+}
+
+.hero-inner {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem 4rem;
+  text-align: center;
+}
+
+.hero-icon {
+  border-radius: 22%;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 7vw, 3.5rem);
+  margin: 1.25rem 0 0.5rem;
+}
+
+.lede {
+  font-size: clamp(1.0625rem, 2.4vw, 1.3125rem);
+  margin-inline: auto;
+  max-width: 46ch;
+  color: rgb(255 255 255 / 92%);
+}
+
+.hero-meta {
+  margin: 1.25rem auto 0;
+  font-size: 0.9375rem;
+  color: rgb(255 255 255 / 78%);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0;
+  max-width: none;
+}
+
+.cta {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  background: var(--testflight);
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.cta:hover {
+  filter: brightness(1.08);
+}
+
+.cta-secondary {
+  background: rgb(255 255 255 / 12%);
+  border-color: rgb(255 255 255 / 45%);
+}
+
+.band-cta .cta-secondary {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+/* ---------- notice + warning ---------- */
+
+.band-notice {
+  background: var(--warn-bg);
+  border-block-color: var(--warn-border);
+  margin-top: 0;
+}
+
+.band-notice h2 {
+  font-size: 1.25rem;
+}
+
+.band-notice .wrap {
+  padding-block: 1.75rem;
+}
+
+.band-notice p {
+  margin-bottom: 0;
+}
+
+.warn {
+  border-left: 3px solid var(--warn-border);
+  padding-left: 1.25rem;
+}
+
+/* ---------- cards ---------- */
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.cards li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.cards p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+/* Four items, so a 280px floor leaves an orphan on the second row at desktop widths.
+   240px fits all four across at the 1080px wrap and still drops to two on a tablet. */
+.cards-tight {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.cards-tight li {
+  box-shadow: none;
+}
+
+/* ---------- screenshots ---------- */
+
+.shots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.shots img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  background: var(--card);
+}
+
+.shots p {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.more {
+  font-weight: 600;
+}
+
+/* ---------- markdown pages ---------- */
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 1rem;
+}
+
+/* The article is already the measure; a second cap on each paragraph only makes the
+   column look off-centre next to the headings. */
+.page p,
+.page li {
+  max-width: none;
+}
+
+.page h1 {
+  font-size: 2.125rem;
+  margin: 0 0 1.5rem;
+}
+
+.page h2 {
+  font-size: 1.375rem;
+  margin: 2rem 0 0.5rem;
+}
+
+.page table {
+  border-collapse: collapse;
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+  font-size: 0.9375rem;
+}
+
+.page th,
+.page td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.page th {
+  background: var(--bg-alt);
+}
+
+.page blockquote {
+  margin: 1.5rem 0;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  border-left: 3px solid var(--border);
+  color: var(--fg-muted);
+}

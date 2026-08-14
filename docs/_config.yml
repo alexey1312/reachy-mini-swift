@@ -1,0 +1,36 @@
+# GitHub Pages builds this folder with its own Jekyll — there is no workflow and no
+# toolchain pinned in mise for it. Settings → Pages → Deploy from a branch → main → /docs.
+#
+# The site shares this folder with the engineering docs so that the privacy policy and
+# the screenshots exist exactly once: docs/privacy.md is both the page served here and
+# the file the App Store Connect privacy URL resolves to, and docs/media/ serves the
+# README and this site from the same blobs.
+title: Hey Reachy
+description: >-
+  Control your Reachy Mini — a native iPhone, iPad and Mac client for the
+  Reachy Mini Wireless robot.
+url: https://alexey1312.github.io
+baseurl: /reachy-mini-swift
+lang: en
+
+# Both are on the GitHub Pages plugin allowlist, so no Gemfile is needed.
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# What the site is NOT. Directories rather than files on purpose: a new ADR or research
+# note is excluded the day it is written, with nothing to remember. This is a denylist,
+# though — a new *top-level* docs/*.md becomes a public page unless it is added here.
+exclude:
+  - adr/
+  - research/
+  - superpowers/
+  - release.md
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      # Square rather than a screenshot: the shots are 1206×2622, and a link preview
+      # crops that shape to nothing.
+      image: /media/icon.png

@@ -190,8 +190,11 @@ mise run asc -- testflight review submissions list --build-id "<id>"
 
 What review reads lives at the app level, not the build level, so it is written
 once and stays: the tester-facing text in `testflight app-localizations`
-(description, feedback email, marketing URL, and the privacy policy at
-`docs/privacy.md` — which has to resolve on `main`, or review fails on a 404),
+(description, feedback email, marketing URL, and the privacy policy — which has
+to resolve, or review fails on a 404; `metadata/` now points both at the Pages
+site, so **enable Pages and open the URLs before pushing metadata**, and note
+that `docs/privacy.md` still resolves at its github.com blob URL, which is what
+any previously-pushed value points at),
 and the reviewer-facing contact and notes in `testflight review edit`. The notes
 carry the thing no reviewer can guess — that the app needs a robot nobody at
 Apple has, that the Bluetooth sheet auto-presenting on first launch hides the

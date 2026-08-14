@@ -10,6 +10,10 @@
 [![CI](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml)
 [![TestFlight](https://img.shields.io/badge/TestFlight-public%20beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/CGjefT9a)
 
+The app's own page — what it does, screenshots, privacy and support — is at
+**[alexey1312.github.io/reachy-mini-swift](https://alexey1312.github.io/reachy-mini-swift/)**. This README is the
+developer side of the same project.
+
 > [!NOTE]
 > Unofficial project, not affiliated with Pollen Robotics. This is **not a fork** of the official
 > [desktop app](https://github.com/pollen-robotics/reachy-mini-desktop-app) — it is an independent Swift client for
@@ -66,7 +70,8 @@ _A one-minute demo video from a live robot is on its way._
 
 One link for iPhone, iPad and Mac; installing needs Apple's TestFlight app. **You need a Reachy Mini Wireless on your
 network** — without a robot the app stops at the connect screen, since every tab is behind a live session. Minimum
-iOS 18 and macOS 15.
+iOS 18 and macOS 15. The app's [own page](https://alexey1312.github.io/reachy-mini-swift/) says the same thing without
+the build instructions, and carries the [support notes](https://alexey1312.github.io/reachy-mini-swift/support.html).
 
 The Mac also ships outside TestFlight: each [release](https://github.com/alexey1312/reachy-mini-swift/releases)
 carries a notarized zip.
