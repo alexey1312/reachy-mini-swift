@@ -7,6 +7,17 @@ import SwiftUI
 
 // The root is a gate or a five-tab shell and nothing else, so every capture here is one of those two.
 // The iPad shots are the ones carrying `.sidebarAdaptable`: the same five tabs, as a sidebar.
+//
+// **They are also the ones carrying the viewport's trailing column**, on every shell capture with a
+// source to show. Nothing here asks for it — `FloatingViewportModifier` writes `hasTabBar` from the
+// size class before the first frame — so the iPhone and iPad halves of one preview legitimately show
+// two different things, and no injected value can change that.
+//
+// **On iPad that includes the `tab: .live` captures, and they no longer show a viewport at all.** A
+// sidebar keeps the picture in the column for the whole connection — one host, because two was what
+// let a second `RealityView` steal the robot — so the Live tab there draws the controller instead, or
+// `ControlsUnavailableView` where the connection cannot drive the robot. Both are captured in place
+// rather than standalone, which is also the whole of `LiveUnavailableView`'s cover.
 
 #Preview("Root — idle") {
     PreviewScene.root(.preview(phase: .idle, status: nil, address: nil))
@@ -34,9 +45,13 @@ import SwiftUI
 }
 
 // The pair to `Root — connected`, and it only means anything read against it: same robot, same tab,
-// same everything except the switch on the Live tab. Without both, a capture with no window in the
-// corner cannot say whether the window is switchable or merely absent.
-#Preview("Root — mini window off") {
+// same everything except the switch on the Live tab. Without both, a capture with the viewport back
+// in its tab cannot say whether the second place is switchable or merely absent.
+//
+// **Renamed from `Root — mini window off`, because the switch governs two things now.** One key, one
+// toggle, and `hasTabBar` decides what it is called — so this capture is a window switched off on
+// iPhone and a column switched off on iPad, and the old name was wrong on half of its own references.
+#Preview("Root — viewport switched off") {
     PreviewScene.root(
         .preview(),
         viewport: .preview(sceneModel: .preview(.buildingScene)),

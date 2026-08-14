@@ -47,22 +47,33 @@ final class FloatingViewportModel {
     /// the modifier that mounts the overlay, because that is the one place the
     /// size class is read.
     ///
-    /// False collapses everything back to today's behaviour: the viewport is the
-    /// tab's, always, and `isStreaming` is never true — so a sidebar layout cannot
-    /// leave a stream running behind a screen that is not showing it.
+    /// **It chooses between the two second places, and no longer decides whether
+    /// there is one.** A tab bar hides the Live tab behind it, so the viewport
+    /// leaves as a window that covers the content; a sidebar has width to spare, so
+    /// it leaves as a column that takes some. This used to collapse everything to
+    /// `.inline`, which left iPad and macOS with no way to see the robot and do
+    /// anything else at once.
+    ///
+    /// The flag also flips under a resize: an iPad narrowed into Split View reports
+    /// a compact width, so the column becomes the window on its own. That is the
+    /// intended behaviour and costs no code — both forms read this one input.
     var hasTabBar = false
 
     /// Whether the Live tab is the selected one. Written by the shell.
     var isLiveTabSelected = false
 
-    /// Whether the window is offered at all — the only one of `placement`'s four
-    /// inputs that outlives the app.
+    /// Whether the viewport is offered anywhere but the Live tab at all — the only
+    /// one of `placement`'s inputs that outlives the app.
     ///
     /// **The gesture is not half of this switch.** Throwing the window at an edge
     /// answers "get out of the way for a minute" and leaves a tab saying how to get
     /// it back; this answers "do not offer it". Off collapses `placement` to
-    /// `.inline` — the shape a sidebar layout already had, which is why nothing in
-    /// `RootLifecycle` needs to know it exists.
+    /// `.inline`, which is the shape this target had before either second place
+    /// existed — so `RootLifecycle` still needs to know nothing about it.
+    ///
+    /// One key covers both forms deliberately. A device draws a tab bar or a
+    /// sidebar, not both, so it only ever has one second place to have an opinion
+    /// about; two keys would be two answers to a question nobody is asked twice.
     private(set) var isEnabled: Bool
 
     /// Whether the running-app strip is on screen. Written by the shell, because
@@ -113,54 +124,11 @@ final class FloatingViewportModel {
         isEnabled = preferences.isEnabled
     }
 
-    var placement: Placement {
-        isLiveTabSelected || !hasTabBar || !isEnabled ? .inline : rest
-    }
-
-    /// The placement the geometry draws: where an animation in flight is heading, and
-    /// the real one otherwise. Inline out-votes both — the overlay is not on screen at
-    /// all while the tab has the viewport.
-    var drawn: Placement {
-        guard !isInline else { return .inline }
-        return settling ?? placement
-    }
-
-    /// The window's size at rest in whichever placement is being drawn. The content
-    /// inside keeps `Metrics.floatingViewport` and is clipped by this, so the
-    /// renderer's own frame never moves and the morph costs no layout.
-    var drawnSize: CGSize {
-        switch drawn {
-        case .inline, .floating: Metrics.floatingViewport
-        case .docked: Metrics.viewportTab
-        }
-    }
-
-    /// The edge the drawn shape is flush with, and `nil` where it is flush with
-    /// nothing. Feeds `Radius.flush(to:_:)`, which is what squares off the two corners
-    /// that meet the screen.
-    var drawnEdge: HorizontalEdge? {
-        if case let .docked(edge, _) = drawn {
-            edge
-        } else {
-            nil
-        }
-    }
-
-    /// Whether the tab owns the viewport. The overlay draws exactly when this is
-    /// false, and `LiveTab` exactly when it is true.
-    var isInline: Bool {
-        placement == .inline
-    }
-
-    /// The one thing `RootLifecycle` asks: is anything outside the Live tab
-    /// keeping the stream alive? A docked window is the off switch, so it is not.
-    var isStreaming: Bool {
-        if case .floating = placement {
-            true
-        } else {
-            false
-        }
-    }
+    // The derivations every host reads — `placement` and the six values that fall out
+    // of it — live in `FloatingViewportPlacement.swift`, beside the vocabulary they
+    // are written in. They were here until the fourth case took this file past
+    // SwiftLint's 400-line limit, which is the same pressure that put `Placement` and
+    // the geometry in files of their own.
 
     // MARK: - Placement
 
@@ -169,7 +137,10 @@ final class FloatingViewportModel {
     /// **Coming back lands in a corner, never where the window was left.** `rest`
     /// remembers one that was thrown at an edge, and restoring a 44 pt tab is
     /// indistinguishable from a switch that does nothing — which is the very
-    /// complaint this exists to answer, wearing a different hat.
+    /// complaint this exists to answer, wearing a different hat. It is written
+    /// under a sidebar too, where `rest` is not read at all: keeping the reset
+    /// unconditional means a device that changes its mind about the tab bar — an
+    /// iPad leaving Split View — finds a corner rather than an edge tab.
     func setEnabled(_ enabled: Bool) {
         guard isEnabled != enabled else { return }
         isEnabled = enabled

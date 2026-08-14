@@ -42,6 +42,23 @@ public enum Metrics {
     /// What that window leaves at the edge once it is switched off. 44 pt across
     /// because the tab is the only way back and nothing else can be aimed at.
     public static let viewportTab = CGSize(width: 44, height: 72)
+    /// The trailing column the live view takes where the shell draws a sidebar, as
+    /// the three widths `inspectorColumnWidth(min:ideal:max:)` asks for.
+    ///
+    /// **`ideal` is the first launch and nothing after it.** The system persists
+    /// whatever the reader drags the divider to, so these bound a range rather than
+    /// set a width — and without the modifier there is no divider to drag at all,
+    /// which is the one thing the API does that its name does not say.
+    ///
+    /// `max` is picked so the content keeps `readableForm` beside it on an 11-inch
+    /// iPad in landscape (1210 − 640 = 570). It is a ceiling and not a promise: in
+    /// portrait there is not that much to go round, and the system clamps `ideal`
+    /// down on its own rather than starving the content — measured at 280 against an
+    /// `ideal` of 380 on an 834 pt screen. `min` is where the robot stops being
+    /// recognisable, which is the only thing a column this narrow is for.
+    public static let viewportColumnMinWidth: CGFloat = 260
+    public static let viewportColumnIdealWidth: CGFloat = 380
+    public static let viewportColumnMaxWidth: CGFloat = 640
     /// Room for the floating tab bar, for anything drawn *over* a `TabView`.
     ///
     /// The bar insets the safe area of each **tab's content** and reports none of

@@ -94,13 +94,20 @@ import SwiftUI
 }
 
 // In place, which is the only way to see what no component capture can: that the
-// window clears the floating tab bar and lands inside the safe area. iPhone only —
-// on iPad the shell draws a sidebar and the viewport never leaves the Live tab, so
-// the iPad half of each of these is the plain tab it is captured on.
+// window clears the floating tab bar and lands inside the safe area.
+//
+// **Each of these captures two different things, one per device, and neither half is
+// injected.** `FloatingViewportModifier` writes `hasTabBar` from the size class on
+// `.onChange(initial: true)`, so whatever a preview passes for it is overwritten
+// before the first frame — the iPhone half is the window these comments describe and
+// the iPad half is the trailing column, from the same model. That is also why there is
+// no separate column preview and cannot be one. The iPad halves used to be described
+// here as "the plain tab it is captured on", which was true only while a sidebar
+// layout had no second place at all.
 //
 // The plain floating case needs nothing new: `Root — connected` builds the model
-// with its own defaults and is now that capture. These two are the states a default
-// cannot reach.
+// with its own defaults and is now that capture — a window in the corner on iPhone,
+// the column on iPad. These two are the states a default cannot reach.
 //
 // The first answers "does it sit on the dock's buttons": both are in the bottom
 // inset, and the window is the one that has to give way.
@@ -118,6 +125,11 @@ import SwiftUI
 // all five at once, and comes out half drawn. `AGENTS.md` records which tabs have a
 // usable root capture — the placement is the point here, so it is taken on one that
 // settles.
+//
+// Its iPad half is **not** a docked tab and is not meant to be: `rest` is the window's
+// own memory and a column has no edge to be docked at, so a sidebar reaches `.column`
+// whatever this preview injects. `columnIgnoresRest` is the test that says so; this is
+// the picture of it.
 #Preview("Root — viewport docked at the edge") {
     PreviewScene.root(
         .preview(),

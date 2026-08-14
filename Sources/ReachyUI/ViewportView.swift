@@ -43,6 +43,15 @@ struct ViewportView: View {
     /// either. `ControllerScreen` reads the same instance, which is what stops its
     /// joystick from turning a behaviour off behind a switch still showing it on.
     let presence: PresenceModel
+    /// Puts the viewport away, where there is somewhere for it to go. `nil` on the Live
+    /// tab, which is where it would go — a control that closes the thing you are
+    /// looking at *into* the thing you are looking at does nothing.
+    ///
+    /// It exists because the column had no visible way out: the switch is a toolbar
+    /// menu on the Live tab, which is a different destination from the one the column
+    /// is beside. That is the same complaint the floating window's menu answered, in a
+    /// second place — and the answer is the same shape, a control on the object itself.
+    var dismiss: (() -> Void)?
 
     @State private var showsPresence = false
 
@@ -88,8 +97,23 @@ struct ViewportView: View {
             switcher
             contentControls
             presenceButton
+            dismissButton
         }
         .padding(Space.md)
+    }
+
+    /// Last in the row, after the controls that are about the picture: this one is
+    /// about the picture's *place*, and it is the only control here that makes
+    /// something disappear.
+    @ViewBuilder
+    private var dismissButton: some View {
+        if let dismiss {
+            Button(action: dismiss) {
+                Label(.reachy("Close"), systemImage: "xmark")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(ViewportControlButtonStyle())
+        }
     }
 
     /// **The bottom, because this row is a reading and the top row is controls.** It

@@ -28,6 +28,16 @@ struct ReachyTabShell: View {
     @State private var store: AppStoreModel
     @State private var install: AppInstallModel
 
+    /// The one record of what this robot was last asked for. `LiveTab` owned it, and
+    /// its own note said why it could not live in `ViewportView`: that view is
+    /// *conditional*, and a `@State` model inside something that unmounts forgets the
+    /// robot's behaviours. The column is the third thing that unmounts it — after a
+    /// sleeping robot and the floating window — and the first that unmounts the tab
+    /// as well, so the record moves up one more level. One instance per connection is
+    /// also the truthful shape: presence belongs to the robot, and two copies could
+    /// disagree about what it was asked for.
+    @State private var presence = PresenceModel()
+
     init(
         session: RobotSession,
         viewport: ViewportModel,
@@ -65,7 +75,8 @@ struct ReachyTabShell: View {
                         viewport: viewport,
                         floating: floating,
                         router: router,
-                        remoteLink: remoteLink
+                        remoteLink: remoteLink,
+                        presence: presence
                     )
                 }
             } label: {
@@ -125,6 +136,15 @@ struct ReachyTabShell: View {
         .floatingViewport(model: floating, viewport: viewport, session: session) {
             router.tab = .live
         }
+        // The other second place, and the two are mutually exclusive by construction:
+        // `placement` yields a window or a column, never both, so only one of these
+        // two modifiers ever has anything to draw.
+        .viewportColumn(
+            model: floating,
+            viewport: viewport,
+            session: session,
+            presence: presence
+        )
         // Not mounted in the gate: with no connection `RunningAppModel.canPoll` is
         // false and the dock draws nothing, so the polling should die with the shell
         // rather than idle behind the gate.

@@ -136,4 +136,66 @@ struct OrbitCameraTests {
         let farthest = simd_distance(camera.entity.position(relativeTo: nil), robotBounds.center)
         #expect(farthest < 10)
     }
+
+    /// The shipping robot's two radii, which is what makes the numbers below mean
+    /// something: the bounding **sphere** is nearly twice as wide as the robot, and
+    /// which of the two the horizontal check uses is the whole design of `distance`.
+    private var sphereRadius: Float {
+        simd_length(robotBounds.extents) / 2
+    }
+
+    private var groundRadius: Float {
+        max(robotBounds.extents.x, robotBounds.extents.z) / 2
+    }
+
+    private func distance(aspect: Float) -> Float {
+        OrbitCamera.distance(sphereRadius: sphereRadius, groundRadius: groundRadius, aspect: aspect)
+    }
+
+    /// **Every viewport that framed correctly before must frame identically now**, and
+    /// that is a wider set than "wider than it is tall": the vertical fit is a floor, so
+    /// the camera only ever moves back. `2.2` is `1 / sin(30°) · 1.1` — a bounding sphere
+    /// inside a 60° field with a tenth to spare.
+    ///
+    /// **0.517 is an iPhone in portrait** (402 × 778) and it belongs in this list, not
+    /// in the one below. It was in the wrong list once: an earlier version checked width
+    /// against the sphere, which is nearly twice the robot, and would have shrunk the
+    /// robot by half on every phone to protect the empty corners of a box.
+    @Test("every viewport that framed correctly before is untouched")
+    func correctlyFramedAspectsAreUnchanged() {
+        let unchanged: Float = sphereRadius * 2.2
+        let aspects: [Float] = [0.517, 0.69, 1, 1.43, 2, 16.0 / 9]
+        for aspect in aspects {
+            #expect(abs(distance(aspect: aspect) - unchanged) < 1e-5)
+        }
+    }
+
+    /// The column is 280 pt wide against 1210 tall — aspect 0.23, where the robot really
+    /// did hang out of both sides.
+    @Test("a column too narrow for the robot backs the camera off")
+    func narrowAspectsPullBack() {
+        let unchanged = distance(aspect: 1)
+        var previous = unchanged
+        let aspects: [Float] = [0.4, 0.31, 0.23]
+        for aspect in aspects {
+            let pulled = distance(aspect: aspect)
+            #expect(pulled > previous)
+            previous = pulled
+        }
+        #expect(distance(aspect: 0.23) > unchanged * 1.5)
+    }
+
+    /// A drag on the divider changes the column's width while the scene is mounted, so
+    /// the framing has to follow rather than be decided once when the robot arrives.
+    @Test("changing the aspect re-frames a camera that has already framed")
+    func aspectReframesInPlace() {
+        let camera = OrbitCamera()
+        camera.frame(robotBounds)
+        let wide = simd_distance(camera.entity.position(relativeTo: nil), robotBounds.center)
+
+        camera.aspect = 0.23
+        let narrow = simd_distance(camera.entity.position(relativeTo: nil), robotBounds.center)
+
+        #expect(narrow > wide)
+    }
 }
