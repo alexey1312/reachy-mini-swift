@@ -15,8 +15,9 @@ extension FloatingViewportModel {
     /// point, so the window, the tab and the spring's own arithmetic cannot disagree
     /// about where something is.
     ///
-    /// `.inline` has no position — the overlay is not on screen — and the middle is the
-    /// only answer that is not a lie about a corner.
+    /// Neither `.inline` nor `.column` has a position — the overlay is not on screen for
+    /// either, and a column's width is the inspector's business — so both take the
+    /// middle, the only answer that is not a lie about a corner.
     ///
     /// `bleed` reaches the docked case and nothing else, on purpose: the tab is the one
     /// placement that belongs against the screen's edge rather than the safe area's.
@@ -26,7 +27,7 @@ extension FloatingViewportModel {
         bleed: EdgeBleed = .none
     ) -> CGPoint {
         switch placement {
-        case .inline:
+        case .inline, .column:
             CGPoint(x: bounds.midX, y: bounds.midY)
         case let .floating(corner):
             centre(of: corner, in: bounds)

@@ -26,6 +26,14 @@ public struct RobotSceneView: View {
             // Intentionally empty: poses are written to the entity tree directly,
             // so SwiftUI is not in the 20 Hz path.
         }
+        // The camera frames the robot against the **narrower** field of view, so it has
+        // to be told the shape of the rectangle it is drawing into. Read here rather
+        // than in a `GeometryReader` because this view has no layout of its own to hang
+        // one on, and because the column's width changes under a finger on the divider —
+        // `frame(_:)` re-runs on each new value and nothing else does.
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+            model.camera.aspect = size.height > 0 ? Float(size.width / size.height) : 1
+        }
         .gesture(orbit)
         .simultaneousGesture(zoom)
     }

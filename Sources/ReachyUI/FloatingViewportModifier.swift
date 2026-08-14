@@ -61,7 +61,9 @@ private struct FloatingViewportModifier: ViewModifier {
             .overlay {
                 GeometryReader { geometry in
                     let bounds = available(in: geometry)
-                    if hasSomethingToShow, !model.isInline {
+                    // `isWindowed`, never `!isInline`: a column is not inline either,
+                    // and asking the old question here would draw the window over it.
+                    if hasSomethingToShow, model.isWindowed {
                         FloatingViewport(
                             model: model,
                             viewport: viewport,

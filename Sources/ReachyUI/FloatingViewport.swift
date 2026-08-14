@@ -46,9 +46,7 @@ struct FloatingViewport: View {
     @Environment(\.reachyPreviewMode) private var previewMode
 
     var body: some View {
-        if model.isInline {
-            EmptyView()
-        } else {
+        if model.isWindowed {
             chrome
         }
     }

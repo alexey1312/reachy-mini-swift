@@ -7,14 +7,81 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   The root used to build a two-column `HStack` for a regular width and hide the Live tab on a compact one;
   `.tabViewStyle(.sidebarAdaptable)` does that adaptation itself, and it is iOS 18 / macOS 15, not an iOS 26 API.
   Reaching for the size class to fork a _layout_ is still a sign the layout is being forked rather than adapted.
-- **There is exactly one size-class branch, in `FloatingViewportModifier`, and it is not a layout fork.** The floating
-  viewport asks a different question: not "how wide is this" but **"does the shell draw a tab bar or a sidebar"**. A
-  sidebar keeps the Live tab beside every other destination, so there is nothing to float out of it and no second
-  place the viewport could go; a tab bar hides it, which is the whole reason the window exists. `.sidebarAdaptable`
-  makes that decision on the size class and offers no way to ask what it decided, so the modifier reads the same input
-  and writes `FloatingViewportModel.hasTabBar`. False collapses `placement` to `.inline` everywhere — the exact
-  behaviour this target had before the window existed, including `viewportIsOnScreen`. This entry used to say nothing
-  in the target branched on the size class; do not "restore" it by deleting the branch.
+- **There is exactly one size-class branch, in `FloatingViewportModifier`, and it is not a layout fork.** The
+  viewport asks a different question: not "how wide is this" but **"does the shell draw a tab bar or a sidebar"**.
+  `.sidebarAdaptable` makes that decision on the size class and offers no way to ask what it decided, so the modifier
+  reads the same input and writes `FloatingViewportModel.hasTabBar`. This entry used to say nothing in the target
+  branched on the size class; do not "restore" it by deleting the branch.
+  - **What the flag decides has changed, and the old answer is written down here because it reads as the safe one.**
+    It used to mean "is there a second place for the viewport at all": false collapsed `placement` to `.inline`
+    everywhere, on the reasoning that a sidebar keeps the Live tab beside every other destination so there is nothing
+    to float out of it. That is true of a **window** and false of the **viewport**. A sidebar layout still hides the
+    Live tab's _content_ behind a selection, so iPad and macOS had no way to watch the robot and do anything else at
+    once — while having the one thing an iPhone does not, which is width to spare. The flag now picks **which** second
+    place: a tab bar gets the floating window, a sidebar gets a trailing column. Only `isEnabled` collapses everything
+    to `.inline` now, and that is still the pre-window shape, `viewportIsOnScreen` included.
+  - **`placement` has four cases and three hosts, so `!isInline` is no longer the overlay's condition.** `isWindowed`
+    is — `.floating` or `.docked` — and the two mount points (`FloatingViewportModifier`, `FloatingViewport.body`)
+    both read it. Left asking `!isInline` they draw the window **over** the column, because a column is not inline
+    either. `drawn` guards on the same predicate, which is what keeps `drawnSize` and `drawnEdge` window arithmetic
+    instead of switches carrying a meaningless fourth answer: a column has no corner, no edge, and a width the
+    inspector owns.
+  - **The column is `.inspector`, and the three things that made it viable were measured on a booted iPad, not read.**
+    A ~100-line probe by the recipe below, on an iPad Pro 11 (M5) / iOS 26.4 at 834 × 1210: the inspector applied to
+    the `TabView` renders as a trailing column at `hClass == .regular`, the content comes out **554 × 1099 against the
+    column's 280 × 1210** — the 111 pt being the tab bar the content is inset by and the column is not, which is the
+    "full height of the trailing column" a modifier outside a navigation structure gets — and a synthetic drag on the
+    divider moved it **280 → 320** with the content at 514, so the sum stays 834 and the divider is live.
+    - **`inspectorColumnWidth(min:ideal:max:)` is what makes it resizable at all**, which its name does not say:
+      "inspectors can collapse by default, they aren't resizable by default" (WWDC23, _Inspectors in SwiftUI_). Drop
+      the line and the column is fixed. The same session is why nothing here stores a width — the system persists
+      what the reader drags to, and `ideal` is the first launch only.
+    - **It goes on the `TabView`, never inside a tab.** Inside one it is rebuilt on every tab change, which tears
+      down and remounts the `RealityView`; and only outside a navigation structure does it get the full height above.
+    - **The `isPresented` binding is `.constant`, deliberately.** SwiftUI writes back through a two-way binding when
+      it collapses the inspector itself, and it collapses on a width-class change — an iPad Split View resize away.
+      That write would reach `setEnabled(false)` and persist "do not offer it" because a window was made narrower.
+    - **The builder returns `Color.clear` unless `placement == .column`.** Neither the reference documentation nor
+      that session says whether an inspector's content is evaluated while dismissed, and the cost of guessing wrong
+      is the second `RealityView` this whole design exists to prevent. The guard makes the question moot rather than
+      answered; it is the same shape `LiveTab` already uses.
+    - **An iPad narrowed into Split View turns the column back into the window on its own**, because both forms read
+      the one flag. Nothing implements that and nothing should: `.inspector` on a compact width adapts to a _sheet_,
+      which is what the collapse to `rest` avoids.
+    - **Applying `.inspector` collapses the iPad's large navigation titles to inline, presented or not — and that is
+      accepted, not a bug to chase.** It is the modifier's mere presence: measured on `Root — viewport switched off`,
+      which is the one root capture where `isEnabled` is false and the column therefore never appears at all. Its
+      iPad reference still moved **28.1 % of pixels at maxDelta 255**, bounding box `x 600…2347 of 2388` — the whole
+      content column shifted up by the height of a large title, with the sidebar to its left untouched. The iPhone
+      reference of the same preview came back **byte-identical**, which is the control that makes the rest of that
+      reading safe and the reason nothing here reaches a phone.
+      This is what explains the four root captures that moved with **no viewport source at all**
+      (`Root — apps need the local network`, `— dock on the apps tab`, `— no live view`, `— relay moves tab`): they
+      have no column and never could, but they do have a navigation title. Predicting the column's captures and
+      finding those four as well is exactly the "anything beyond the prediction is a second finding" case — do not
+      re-record a wide sweep here without checking the titles first.
+  - **A sidebar reads `isLiveTabSelected` nowhere, and that is a bug fix rather than a simplification.** It did at
+    first, on the symmetry with the window: selecting Live handed the viewport back to the tab. A window has to do
+    that because it _covers_ the Live tab's own content; a column sits beside it and never needs to — and paying the
+    symmetry cost meant one `RealityView` with two mount points, which `ReachyScene/AGENTS.md` forbids outright.
+    Reported as "3D does not always render after a tab switch", and instrumenting `RobotSceneView` on a booted iPad is
+    what settled it. Four switches produced **four `make`s and four teardowns**, with `container.parent != nil` at two
+    of the `make`s — the entity really was being reparented between scenes — one scene made and torn down **4 ms
+    later**, and a running `made − gone` that reached **−1**. After the fix the same four switches produce **one**
+    `make` and nothing else.
+    - **That −1 is the part worth keeping.** `onDisappear` fires for a subtree whose `RealityView` `make` never ran,
+      so it is not a teardown signal — which kills the obvious alternative fix of sequencing the two hosts on it. Do
+      not reach for a "blank for one runloop turn" hand-over here; there is nothing reliable to key it on.
+    - **Two hosts still exist behind the switch, and this is the known remainder.** Turning the column off on a
+      sidebar sends the viewport back to the Live tab, which is a crossing of exactly the kind above. It is one
+      deliberate action instead of every tab switch, and it animates nothing, so it has not been seen to fail — but
+      it is the place to look if the symptom ever comes back.
+    - **The Live tab therefore draws the controls on a sidebar**, not the picture: `ControllerScreen` inline, or
+      `ControlsUnavailableView` where `canTeleoperate` is false (the relay carries no `ws/set_target`). Its
+      `Controller` toolbar link is hidden there — pushing it would put a second `TeleopDriver` over the first. This is
+      also the one arrangement in the app where the controls and the live view are on screen together: pushed as a
+      screen, that `Form` covers a stream that goes on running behind it, which it did on every platform for as long
+      as it shipped.
   - **`dockBleed(in:)` in the same file is the second branch on how the device is held, and it passes the same test.**
     It reads `UIInterfaceOrientation`, and it asks neither "how wide" nor "how tall" but **"which end of this screen
     has no cutout in it"** — because that is the one thing no amount of geometry will say. iOS reports the landscape
@@ -44,6 +111,12 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
       bounding box starting 14 pt in at the opposite end. The portrait run reproduced the 402 × 778 / t62 b34 already
       recorded in `FloatingViewportModifier`, which is what certified the probe as a faithful replica before any of
       its landscape numbers were believed.
+      - **On an iPad the plist needs `UIRequiresFullScreen` as well, and the symptom is the same lie in new
+        clothes.** iPadOS 26 runs an app in a resizable window by default, so the first run of the inspector probe
+        measured **280 × 834 inside a window** and reported it as the screen — plausible numbers, wrong question.
+        The tell is a resize grab handle in the bottom-trailing corner of the screenshot. With the key set the same
+        probe reported 834 × 1210, which is the figure every conclusion here rests on. `UILaunchScreen` does not
+        cover this: they are two different ways to be given a viewport that is not the device's.
 - **Navigation is `ReachyRouter` plus two destinations.** `ReachyRootView` owns what outlives a screen and picks the
   gate or the shell; `Navigation/` holds the router, the effect cluster and the sheet stack; `Shell/` holds the five
   tabs. The five are unconditional — a tab that comes and goes forces the shell to catch its disappearance and drag
@@ -187,8 +260,14 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     what separates it from the docked tab: a tab at the edge is somewhere the window _is_, so it belongs to the
     connection, while "do not offer it" does not. **Switching it back on resets `rest` to a corner**, because
     restoring a window that was thrown at an edge returns a 44 pt tab and reads as a switch that does nothing —
-    which is the complaint the switch exists to answer. The menu is behind `floating.hasTabBar` rather than a second
-    size-class read, and it is a menu rather than a bare glyph because what a reader finds is a word.
+    which is the complaint the switch exists to answer. It is a menu rather than a bare glyph because what a reader
+    finds is a word.
+    - **The menu is no longer behind `floating.hasTabBar`, and that flag now only picks the word inside it.** It was
+      hidden under a sidebar on the reasoning that there was nothing there to switch off; once there is a column,
+      that left iPad and macOS with a placement and no way to refuse it. One stored key
+      (`floatingViewport.isEnabled`) covers both forms on purpose — a device draws a tab bar or a sidebar, never
+      both, so it only ever has one second place to have an opinion about — and `secondPlaceName` picks between
+      "Mini window" and "Side column" off the model, which keeps the target's one size-class branch its only one.
 - **A move belongs to the robot, not to the Moves screen, and `onDisappear` no longer stops one.** It used to:
   leaving the tab killed the dance. That was indefensible next to restoring a move across a relaunch — force-quit the
   app and the dance survived, glance at the camera and it did not. `MoveActivityBar` is the strip that replaced the

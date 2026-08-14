@@ -18,9 +18,10 @@ struct FloatingViewportModelTests {
     private func model(
         _ rest: FloatingViewportModel.Placement = .floating(.bottomTrailing),
         hasTabBar: Bool = true,
-        live: Bool = false
+        live: Bool = false,
+        enabled: Bool = true
     ) -> FloatingViewportModel {
-        .preview(rest, hasTabBar: hasTabBar, isLiveTabSelected: live)
+        .preview(rest, hasTabBar: hasTabBar, isLiveTabSelected: live, isEnabled: enabled)
     }
 
     // MARK: - The placement automaton
@@ -35,10 +36,11 @@ struct FloatingViewportModelTests {
         #expect(!model.isInline)
     }
 
-    /// The single value both hosts read. There is no state in which the tab and the
-    /// overlay would each draw a viewport, because there is nothing to disagree
-    /// about — which is what keeps a second `RealityView` off the screen.
-    @Test("the tab and the overlay never both draw")
+    /// The single value all three hosts read, and what keeps a second `RealityView`
+    /// off the screen. **It used to compare two predicates that were each other's
+    /// negation**, which held for any input at all and certified nothing; with a third
+    /// host the count is what has to be one.
+    @Test("exactly one of the three hosts draws")
     func exactlyOneHost() {
         let rests: [FloatingViewportModel.Placement] = [
             .floating(.topLeading),
@@ -49,12 +51,14 @@ struct FloatingViewportModelTests {
         for rest in rests {
             for hasTabBar in [true, false] {
                 for live in [true, false] {
-                    let model = model(rest, hasTabBar: hasTabBar, live: live)
-                    let tabDraws = model.isInline
-                    let overlayDraws = !model.isInline
-                    #expect(tabDraws != overlayDraws)
-                    #expect(model.isInline == (model.placement == .inline))
-                    #expect(!(model.isStreaming && model.isInline))
+                    for enabled in [true, false] {
+                        let model = model(rest, hasTabBar: hasTabBar, live: live, enabled: enabled)
+                        let hosts = [model.isInline, model.isWindowed, model.placement == .column]
+                        let drawing = hosts.filter(\.self).count
+                        #expect(drawing == 1)
+                        #expect(model.isInline == (model.placement == .inline))
+                        #expect(!(model.isStreaming && model.isInline))
+                    }
                 }
             }
         }
@@ -74,14 +78,37 @@ struct FloatingViewportModelTests {
         #expect(model.placement == before)
     }
 
-    /// A sidebar has the Live tab beside everything else, so there is nothing to
-    /// float — and nothing that could leave a stream running behind a screen that
-    /// is not showing it.
-    @Test("no tab bar, no window, no stream")
-    func regularWidthIsUnchanged() {
-        let model = model(.floating(.topLeading), hasTabBar: false)
+    /// **This asserted `.inline` and no stream until the column existed**, and the
+    /// `live` half is a bug fix on top of that: a sidebar has exactly one host, so
+    /// selecting Live must not move the viewport. `placement`'s own note carries the
+    /// measurement that forced it. `rest` is ignored because a column has neither
+    /// corner nor edge.
+    @Test("a sidebar has one host, whatever the tab and the window were doing")
+    func regularWidthUsesTheColumn() {
+        let rests: [FloatingViewportModel.Placement] = [
+            .floating(.topLeading),
+            .docked(.leading, y: 200),
+            .docked(.trailing, y: 600),
+        ]
+        for rest in rests {
+            for live in [false, true] {
+                let model = model(rest, hasTabBar: false, live: live)
+                #expect(model.placement == .column)
+                #expect(model.isStreaming)
+                #expect(!model.isInline)
+                #expect(!model.isWindowed)
+            }
+        }
+    }
+
+    /// Switched off under a sidebar is the one state that still behaves the way this
+    /// target did before either second place existed — which is what the switch is for.
+    @Test("switched off, a sidebar hands the viewport back to the tab")
+    func disabledSidebarIsInline() {
+        let model = model(hasTabBar: false, enabled: false)
 
         #expect(model.placement == .inline)
+        #expect(model.isInline)
         #expect(!model.isStreaming)
     }
 
