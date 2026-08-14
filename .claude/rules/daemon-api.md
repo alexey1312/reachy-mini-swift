@@ -287,6 +287,19 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   recorded move are indistinguishable in `GET /api/move/running` — which returns `[{uuid}]` and no other field. There
   is no route that names a running move. `POST /api/move/stop` awaits the cancellation before answering, so a 200
   means the slot is already free.
+  - **A stop for a uuid the daemon no longer holds is a 500, not a 404**, and the uuid goes the instant the move's
+    coroutine ends — `wrap_coro`'s `finally` pops it, while `stop_move_task` opens with a bare
+    `raise KeyError(...)` that no exception handler catches. Measured against the Wireless unit on 2026-08-14: the
+    reply is `text/plain; charset=utf-8`, **content-length 21** (`Internal Server Error`), which is Starlette's
+    `ServerErrorMiddleware` and the fingerprint to recognise it by — a `HTTPException` would have answered JSON.
+    So a dance that merely finished answers a stop exactly as a robot that refused one does, and the only way to
+    tell them apart is to ask `GET /running` afterwards. `RobotSession.stopMove` does, because reading the 500 as a
+    refusal also skips the parking and leaves the head wherever the last frame put it.
+  - **The sound is not part of the move task, and nothing on the robot ever stops it.** `play_move` calls
+    `play_sound` (fire-and-forget, GStreamer) and then loops for `move.duration` alone, so a track longer than its
+    dance plays on after the uuid is gone — a client that is asleep is a robot that keeps playing music. Only
+    `POST /api/media/stop_sound` ends it; `RobotSession` sends it when the poll sees the move end, and
+    `refreshMoveActivity()` is what covers the case where the poll was asleep with the app.
   - `/api/move/ws/updates` pushes `move_started` / `move_completed` / `move_failed` / `move_cancelled` with the uuid,
     but **only to listeners already attached** — nothing is sent on connect. Same shape as `conversation.turn`: a
     client joining mid-move learns nothing until the next transition, so a `GET /running` is needed regardless and

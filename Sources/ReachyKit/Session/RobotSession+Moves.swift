@@ -35,6 +35,24 @@ extension RobotSession {
         startMonitoring(.playing(playback), client: client)
     }
 
+    /// Re-reads the daemon's move list at once rather than waiting for the poll.
+    ///
+    /// The poll is the only thing that notices a dance ending, and it sleeps with
+    /// the process — so a phone locked mid-dance comes back to a Stop button over
+    /// a move the daemon has already forgotten, and pressing it is a 500 (see
+    /// `stopMove`). It is also what silences the music: `play_move` fires
+    /// `play_sound` and never waits for it, so a track longer than its dance plays
+    /// on until this client says otherwise, and nothing on the robot will.
+    ///
+    /// One miss settles it here, against the poll's two: this is asked after a gap
+    /// rather than in the moments a play is still being registered.
+    public func refreshMoveActivity() async {
+        guard let client, let activity = moveActivity, !isStoppingMove else { return }
+        guard let running = try? await client.runningMoveUUIDs() else { return }
+        guard moveActivity?.uuid == activity.uuid, !running.contains(activity.uuid) else { return }
+        await finish(activity, client: client)
+    }
+
     /// Frees the daemon's move slot before a power transition claims it.
     ///
     /// `goto_sleep` is a move task like any dance, so `_try_start_move` refuses it
@@ -88,43 +106,72 @@ extension RobotSession {
         movePollTask?.cancel()
         movePollTask = nil
 
-        let errors = await withTaskGroup(of: String?.self, returning: [String].self) { group in
+        let result = await withTaskGroup(
+            of: (failure: String?, moveWasCancelled: Bool).self,
+            returning: (failures: [String], moveWasCancelled: Bool).self
+        ) { group in
             group.addTask {
                 do {
                     try await client.stopMove(uuid: playback.uuid)
-                    return nil
+                    return (nil, false)
                 } catch {
-                    return "Move: \(error)"
+                    // A refusal says nothing on its own. `stop_move_task` raises a
+                    // bare `KeyError` for a uuid it no longer holds — a 500 rather
+                    // than a 404, and the uuid is popped the instant the move's
+                    // coroutine ends — so a dance that finished while nothing was
+                    // watching answers exactly like a robot that would not listen.
+                    // Who is running tells the two apart, and only the second may
+                    // cost the parking.
+                    if let running = try? await client.runningMoveUUIDs(),
+                       !running.contains(playback.uuid)
+                    {
+                        return (nil, false)
+                    }
+                    guard let message = Self.message(for: error) else { return (nil, true) }
+                    return ("Move: \(message)", false)
                 }
             }
             group.addTask {
                 do {
                     try await client.stopSound()
-                    return nil
+                    return (nil, false)
                 } catch {
-                    return "Sound: \(error)"
+                    return (Self.message(for: error).map { "Sound: \($0)" }, false)
                 }
             }
 
-            var errors: [String] = []
-            for await error in group {
-                if let error {
-                    errors.append(error)
+            var failures: [String] = []
+            var moveWasCancelled = false
+            for await result in group {
+                if let failure = result.failure {
+                    failures.append(failure)
                 }
+                moveWasCancelled = moveWasCancelled || result.moveWasCancelled
             }
-            return errors
+            return (failures, moveWasCancelled)
         }
 
-        guard moveActivity?.uuid == playback.uuid else { return errors.sorted() }
+        guard moveActivity?.uuid == playback.uuid else { return result.failures.sorted() }
+        // A cancelled stop learned nothing, so it may conclude nothing: the dance is
+        // most likely still running, and both a cleared phase and a parking `goto`
+        // would be claims about a robot nobody asked. It is the one path back to
+        // `.playing`, and the monitor has to be restarted with it — this method
+        // cancelled `movePollTask` on its way in, so a phase restored without one is
+        // a Stop button that nothing will ever take off the screen.
+        if result.moveWasCancelled {
+            moveActivity = .playing(playback)
+            startMonitoring(.playing(playback), client: client)
+            return result.failures.sorted()
+        }
         moveActivity = nil
         playbacks.clear()
         // A move that refused to stop is still running, and `_try_start_move` would
         // drop the parking anyway — so the only thing sending it would add is a
         // phase on screen over a robot that never left the dance.
-        let stopped = !errors.contains { $0.hasPrefix("Move:") }
-        guard parking, stopped, isAwake else { return errors.sorted() }
+        let stopped = !result.failures.contains { $0.hasPrefix("Move:") }
+        guard parking, stopped, isAwake else { return result.failures.sorted() }
         let parkingErrors = await recentre(client: client)
-        return (errors + parkingErrors).sorted()
+        return (result.failures + parkingErrors).sorted()
     }
 
     /// Walks the robot back to its zero pose and follows that task to its end.
@@ -146,7 +193,8 @@ extension RobotSession {
             startMonitoring(.recentring(uuid: uuid), client: client)
             return []
         } catch {
-            return ["Neutral: \(error)"]
+            guard let message = Self.message(for: error) else { return [] }
+            return ["Neutral: \(message)"]
         }
     }
 

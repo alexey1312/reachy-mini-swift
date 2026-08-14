@@ -2,132 +2,6 @@ import Foundation
 @testable import ReachyKit
 import Testing
 
-private enum MoveProbe {
-    case running(Set<String>)
-    case failure
-}
-
-private enum MoveFailure: Error, CustomStringConvertible {
-    case failed
-    var description: String {
-        "failed"
-    }
-}
-
-private final class MoveRobotClient: RobotAPIClient, @unchecked Sendable {
-    private let lock = NSLock()
-    private var nextUUID = 0
-    private var running: [MoveProbe]
-    private var activeUUID: String?
-    var failStopMove = false
-    var failStopSound = false
-    var failGotoNeutral = false
-    private(set) var listCalls = 0
-    private(set) var events: [String] = []
-    private(set) var stopSoundCalls = 0
-    private(set) var gotoNeutralCalls = 0
-    private(set) var lastGotoUUID: String?
-
-    private let awake: Bool
-
-    init(running: [MoveProbe] = [], awake: Bool = true) {
-        self.running = running
-        self.awake = awake
-    }
-
-    private var status: Components.Schemas.DaemonStatus {
-        let json = """
-        {"robot_name":"testbot","state":"running","wireless_version":false,
-         "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,
-         "backend_status":{"motor_control_mode":"\(awake ? "enabled" : "disabled")","error":null}}
-        """
-        // swiftlint:disable:next force_try
-        return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
-    }
-
-    func handshake() async throws -> RobotConnection.Handshake {
-        .init(identity: .init(hardwareID: "hw", name: "testbot", daemonVersion: "1.9.0"), status: status)
-    }
-
-    func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
-        status
-    }
-
-    func wakeUp() async throws -> String {
-        "wake"
-    }
-
-    func gotoSleep() async throws -> String {
-        lock.withLock { events.append("sleep") }
-        return "sleep"
-    }
-
-    func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws {
-        lock.withLock { events.append("motors:\(mode.rawValue)") }
-    }
-
-    func listMoves(dataset _: String) async throws -> [String] {
-        lock.withLock { listCalls += 1 }
-        return ["happy_move", "wave"]
-    }
-
-    func playMove(dataset: String, move: String) async throws -> String {
-        lock.withLock {
-            nextUUID += 1
-            activeUUID = "move-\(nextUUID)"
-            events.append("play:\(dataset):\(move)")
-            return activeUUID!
-        }
-    }
-
-    func gotoNeutral(duration _: Double) async throws -> String {
-        let shouldFail = lock.withLock {
-            nextUUID += 1
-            activeUUID = "goto-\(nextUUID)"
-            lastGotoUUID = activeUUID
-            gotoNeutralCalls += 1
-            events.append("goto:\(activeUUID!)")
-            return failGotoNeutral
-        }
-        if shouldFail {
-            throw MoveFailure.failed
-        }
-        return lock.withLock { activeUUID! }
-    }
-
-    func runningMoveUUIDs() async throws -> Set<String> {
-        let probe = lock.withLock {
-            running.isEmpty ? MoveProbe.running(activeUUID.map { [$0] } ?? []) : running.removeFirst()
-        }
-        switch probe {
-        case let .running(uuids): return uuids
-        case .failure: throw MoveFailure.failed
-        }
-    }
-
-    func stopMove(uuid: String) async throws {
-        let shouldFail = lock.withLock {
-            events.append("stop:\(uuid)")
-            activeUUID = nil
-            return failStopMove
-        }
-        if shouldFail {
-            throw MoveFailure.failed
-        }
-    }
-
-    func stopSound() async throws {
-        let shouldFail = lock.withLock {
-            stopSoundCalls += 1
-            events.append("sound")
-            return failStopSound
-        }
-        if shouldFail {
-            throw MoveFailure.failed
-        }
-    }
-}
-
 @MainActor
 @Suite("RobotSession moves")
 struct RobotSessionMoveTests {
@@ -353,6 +227,61 @@ struct RobotSessionMoveTests {
         // The sleep animation is the parking; a neutral goto would only fight it.
         #expect(client.gotoNeutralCalls == 0)
         #expect(session.currentMove == nil)
+        session.disconnect()
+    }
+
+    /// The daemon pops a move's uuid the moment its task ends and then answers a
+    /// stop for it with a bare `KeyError` — a 500, not a 404 (`routers/move.py`,
+    /// `stop_move_task`), which is what a phone locked through the end of a dance
+    /// comes back to: a live Stop button over a move nobody is running. Refusing
+    /// to park after it was the expensive half — the head stays wherever the last
+    /// frame left it.
+    @Test("a stop refused because the move already ended is not a failure")
+    func stopOverFinishedMoveIsNotAFailure() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        try await session.playMove(dataset: "library", move: "wave")
+        client.finishMove()
+        client.failStopMove = true
+        let failures = await session.stopMove()
+        #expect(failures.isEmpty)
+        #expect(client.gotoNeutralCalls == 1)
+        #expect(session.currentMove == nil)
+        session.disconnect()
+    }
+
+    /// `movePollInterval` is five seconds here on purpose: the poll cannot be what
+    /// notices this, so what the test asserts is the explicit ask. It is the phone
+    /// coming back from a locked screen — and the sound is why it is worth a call
+    /// of its own, since a recorded move's audio is a daemon task that outlives the
+    /// motion and only this client ever stops it.
+    @Test("returning to the app notices a move that ended while it slept")
+    func refreshNoticesTheEndOfAMove() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        try await session.playMove(dataset: "library", move: "wave")
+        client.finishMove()
+        await session.refreshMoveActivity()
+        #expect(session.currentMove == nil)
+        #expect(client.stopSoundCalls == 1)
+        #expect(client.gotoNeutralCalls == 1)
+        session.disconnect()
+    }
+
+    /// The interpolated `\(error)` printed the generated client's whole
+    /// `UndocumentedPayload` dump on screen, and would have printed the word
+    /// "cancelled" just as faithfully. `RobotSession.message(for:)` is the one
+    /// filter, and this is the half of it no other test can see.
+    @Test("a cancelled stop reports nothing")
+    func cancelledStopSaysNothing() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        try await session.playMove(dataset: "library", move: "wave")
+        client.cancelStopMove = true
+        let failures = await session.stopMove()
+        #expect(failures.isEmpty)
+        #expect(session.currentMove?.uuid == "move-1")
+        #expect(client.gotoNeutralCalls == 0)
         session.disconnect()
     }
 

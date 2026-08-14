@@ -49,6 +49,9 @@ struct RootLifecycle: ViewModifier {
                 guard !previewMode, scenePhase == .active else { return }
                 await ReachyEntityIndex.indexIfNeeded(robotID: connectedRobotID)
             }
+            .task(id: scenePhase) {
+                await noticeEndedMove()
+            }
             // `initial: true` because a cold launch fills the inbox in
             // `scene(_:willConnectTo:)`, before this body has ever run.
             .onChange(of: quickActions.pending, initial: true) { _, _ in
@@ -91,6 +94,24 @@ struct RootLifecycle: ViewModifier {
                 follow(link)
             }
             .widgetReload(session: session, isPreview: previewMode)
+    }
+
+    /// A move outlives this process being put away, and the poll that notices one
+    /// ending does not — it sleeps with the app. So a screen locked mid-dance comes
+    /// back offering Stop over a move the daemon has already forgotten, and that
+    /// Stop is a 500; the music is worse, because a recorded move's audio is a
+    /// daemon task only this client ever stops.
+    ///
+    /// It belongs to the root rather than to the Moves screen for the reason the
+    /// dance itself does: the robot owns the move, and a track playing over a robot
+    /// that has stopped dancing is audible from every tab — including the four this
+    /// effect would never run on if it hung off the one showing it.
+    ///
+    /// A body of its own only because the guard costs `body` its last point of
+    /// cyclomatic budget; `runQuickAction` is here for the same reason.
+    private func noticeEndedMove() async {
+        guard !previewMode, scenePhase == .active else { return }
+        await session.refreshMoveActivity()
     }
 
     /// What makes the entity index re-check itself, in one `Equatable` value.
