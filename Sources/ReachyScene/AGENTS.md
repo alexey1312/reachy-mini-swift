@@ -23,3 +23,14 @@ ever sends the robot a command.
   therefore carries 0.177 rather than deriving it, and `RobotSceneGraph` takes its lift from there so the head and
   the rods `PassiveJointSolver` aims at it cannot end up at two different heights. Either number alone looks
   plausible on screen — one detaches the head from the platform, the other sinks it into the body.
+- **A passive wrist is three stacked joints, so its three angles compose `Rx * Ry * Rz` — the reverse of URDF `rpy`**,
+  and `PassiveJointSolver` decomposes with `RigidTransform.wristAngles(from:)` for exactly that reason. The pair is
+  not interchangeable and the mistake is invisible where it is cheapest to look: the two orders agree to first order,
+  so the rest pose and a small nod both draw correctly. But the daemon's neutral head pose already stands the motors
+  at ±35.9° (`fk([±0.6266 …])` is identity — the URDF's own zero configuration is the head 27 mm _lower_), so every
+  wrist sits 80–110° from its rest orientation across the head's whole working range. Feeding those angles back
+  through the joint chain in `rpy` order aimed the rods 9 mm past their mounts at rest and up to **8 cm** during an
+  emotion that raises the head — `understanding2`, which holds the head 10–17 mm up and pitches it 21°, drew the head
+  hanging free of a linkage pointing somewhere else entirely. `PassiveJointChainTests` pins it on a synthetic
+  description, because the property that matters is that the _joint chain_ rebuilds the direction the solver
+  extracted: rebuilding with the convention it was extracted with proves nothing and passed throughout.

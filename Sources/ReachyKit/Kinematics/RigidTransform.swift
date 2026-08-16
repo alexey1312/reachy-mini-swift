@@ -20,7 +20,11 @@ public enum RigidTransform {
     }
 
     /// Inverse of ``rotation(rpy:)``. Extrinsic X-Y-Z extraction, matching
-    /// `scipy`'s `as_euler("XYZ")`.
+    /// `scipy`'s `as_euler("xyz")`.
+    ///
+    /// - Important: this is the convention of a URDF `origin rpy`, **not** of a
+    ///   joint chain. Three stacked revolute joints compose the other way round —
+    ///   see ``wristAngles(from:)``.
     public static func euler(from rotation: simd_double3x3) -> SIMD3<Double> {
         // Column-major storage: `rotation[column][row]`.
         let sy = -rotation[0][2]
@@ -32,6 +36,43 @@ public enum RigidTransform {
             atan2(rotation[1][2], rotation[2][2]),
             asin(sy),
             atan2(rotation[0][1], rotation[0][0])
+        )
+    }
+
+    /// A spherical wrist spelled as three stacked revolute joints — `passive_i_x`,
+    /// then `_y`, then `_z`, each turning about its own axis in its own frame — so
+    /// the chain composes as `Rx(x) * Ry(y) * Rz(z)`.
+    ///
+    /// This is the **reverse** of ``rotation(rpy:)``, and the two are not
+    /// interchangeable: a triplet extracted with one and rebuilt with the other
+    /// names a different rotation as soon as the angles leave the small-angle
+    /// regime, which is why the wrists get a pair of their own.
+    public static func wristRotation(angles: SIMD3<Double>) -> simd_double3x3 {
+        let (sx, cx) = (sin(angles.x), cos(angles.x))
+        let (sy, cy) = (sin(angles.y), cos(angles.y))
+        let (sz, cz) = (sin(angles.z), cos(angles.z))
+        return simd_double3x3(rows: [
+            SIMD3(cy * cz, -cy * sz, sy),
+            SIMD3(sx * sy * cz + cx * sz, cx * cz - sx * sy * sz, -sx * cy),
+            SIMD3(sx * sz - cx * sy * cz, cx * sy * sz + sx * cz, cx * cy),
+        ])
+    }
+
+    /// Inverse of ``wristRotation(angles:)``. Intrinsic X-Y-Z extraction, matching
+    /// `scipy`'s `as_euler("XYZ")`.
+    public static func wristAngles(from rotation: simd_double3x3) -> SIMD3<Double> {
+        // Column-major storage: `rotation[column][row]`.
+        let sine = rotation[2][0]
+        guard abs(sine) < Self.gimbalLockThreshold else {
+            // The middle joint at ±90° folds the outer and inner ones onto one
+            // axis, so pin the inner one to 0 and give their sum to the outer.
+            let sign: Double = sine > 0 ? 1 : -1
+            return SIMD3(atan2(sign * rotation[0][1], rotation[1][1]), sign * .pi / 2, 0)
+        }
+        return SIMD3(
+            atan2(-rotation[2][1], rotation[2][2]),
+            asin(sine),
+            atan2(-rotation[1][0], rotation[0][0])
         )
     }
 
