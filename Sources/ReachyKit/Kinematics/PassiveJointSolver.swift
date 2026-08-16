@@ -10,6 +10,14 @@ import simd
 /// the gap between its crank tip and its mount on the platform. The loop is never
 /// closed and the rod length never enforced — for a viewer, pointing each rod the
 /// right way is enough, and any residual is far below a pixel.
+///
+/// Each wrist leaves here as three angles for three stacked revolute joints, so it
+/// is decomposed with ``RigidTransform/wristAngles(from:)`` and never with the
+/// URDF-`rpy` extraction beside it: the chain composes `Rx * Ry * Rz` and `rpy`
+/// composes `Rz * Ry * Rx`. The two agree to first order, so the rest pose and a
+/// small nod look right either way — but these wrists sit 80–110° from their rest
+/// orientation across the head's whole working range, and there the wrong order
+/// aimed the rods up to 8 cm past the head they hold.
 public struct PassiveJointSolver: Sendable {
     private let geometry: StewartGeometry
 
@@ -43,7 +51,7 @@ public struct PassiveJointSolver: Sendable {
 
         for leg in 0 ..< StewartGeometry.legCount {
             let solved = solveLeg(leg, pose: pose, angle: stewart[leg])
-            angles.append(contentsOf: [solved.euler.x, solved.euler.y, solved.euler.z])
+            angles.append(contentsOf: [solved.angles.x, solved.angles.y, solved.angles.z])
             lastWrist = (solved.wristFrame, solved.rodRotation)
         }
 
@@ -52,7 +60,8 @@ public struct PassiveJointSolver: Sendable {
     }
 
     private struct SolvedLeg {
-        let euler: SIMD3<Double>
+        /// The wrist's three joint angles, in chain order.
+        let angles: SIMD3<Double>
         let wristFrame: simd_double3x3
         let rodRotation: simd_double3x3
     }
@@ -73,7 +82,7 @@ public struct PassiveJointSolver: Sendable {
         let span = mount - tip
         guard simd_length(span) > 1e-12 else {
             return SolvedLeg(
-                euler: .zero,
+                angles: .zero,
                 wristFrame: wristFrame,
                 rodRotation: matrix_identity_double3x3
             )
@@ -81,7 +90,7 @@ public struct PassiveJointSolver: Sendable {
         let direction = simd_normalize(wristFrame.transpose * span)
         let rodRotation = RigidTransform.alignment(from: geometry.rodDirections[leg], to: direction)
         return SolvedLeg(
-            euler: RigidTransform.euler(from: rodRotation),
+            angles: RigidTransform.wristAngles(from: rodRotation),
             wristFrame: wristFrame,
             rodRotation: rodRotation
         )
@@ -97,7 +106,7 @@ public struct PassiveJointSolver: Sendable {
         let head = pose.rotation * geometry.headToDrawnLink.rotation
         let rod = lastWrist.frame * lastWrist.rotation
             * RigidTransform.rotation(rpy: geometry.passiveOffsets[StewartGeometry.legCount])
-        let euler = RigidTransform.euler(from: rod.transpose * head)
-        return [euler.x, euler.y, euler.z]
+        let angles = RigidTransform.wristAngles(from: rod.transpose * head)
+        return [angles.x, angles.y, angles.z]
     }
 }

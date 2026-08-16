@@ -124,9 +124,11 @@ struct PassiveJointSolverTests {
         }
     }
 
-    /// The angles are only useful if they rebuild the rotation they were extracted
-    /// from — this is where an Euler convention mismatch would surface, and it
-    /// holds for any input rather than just the rest pose.
+    /// The angles are only useful if the **joint chain** rebuilds the direction they
+    /// were extracted from, and that is the whole test: rebuilding them with the
+    /// convention they were extracted with proves nothing, which is how a wrist
+    /// chain fed URDF-`rpy` triplets passed here while aiming the rods 2 cm wide of
+    /// the head on screen.
     @Test("the reported angles rebuild each rod's direction")
     func anglesReproduceRodDirections() throws {
         let geometry = try loadGeometry()
@@ -154,8 +156,12 @@ struct PassiveJointSolverTests {
             let wrist = motor.rotation * crank
                 * RigidTransform.rotation(rpy: geometry.passiveOffsets[leg])
 
+            // `passive_i_x` → `_y` → `_z`, exactly as the description stacks them.
             let solved = SIMD3(angles[leg * 3], angles[leg * 3 + 1], angles[leg * 3 + 2])
-            let pointing = wrist * RigidTransform.rotation(rpy: solved) * geometry.rodDirections[leg]
+            let chain = RigidTransform.rotation(axis: SIMD3(1, 0, 0), angle: solved.x)
+                * RigidTransform.rotation(axis: SIMD3(0, 1, 0), angle: solved.y)
+                * RigidTransform.rotation(axis: SIMD3(0, 0, 1), angle: solved.z)
+            let pointing = wrist * chain * geometry.rodDirections[leg]
             #expect(simd_distance(pointing, simd_normalize(mount - tip)) < 1e-9, "leg \(leg + 1)")
         }
     }
