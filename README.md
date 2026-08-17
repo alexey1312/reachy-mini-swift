@@ -8,6 +8,7 @@
 <br clear="left" />
 
 [![CI](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml)
+[![Mac App Store](https://img.shields.io/itunes/v/6799644194?label=Mac%20App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
 [![TestFlight](https://img.shields.io/badge/TestFlight-public%20beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/CGjefT9a)
 
 The app's own page — what it does, screenshots, privacy and support — is at
@@ -32,6 +33,9 @@ developer side of the same project.
   CPU, memory, temperature and uptime read from `/proc` and `/sys` over SSH, because the API reports none of them.
 - **Moves** — browse and play the daemon's recorded moves, from the app or by asking Siri for one by name, and
   record your own takes from the phone — teleop the robot, then play the take back over the same wire path.
+- **Sounds** — a soundboard for the robot's speaker. The library is durable on the device and the robot is a cache in
+  front of it: uploads live in the daemon's `/tmp`, so a play sends the file first whenever the robot is not known to
+  hold it, and a restart that empties the robot costs nothing.
 - **App store** — install, update and remove robot apps from Hugging Face Spaces, following each job over the
   daemon's job socket; filter the catalogue by scope, sort it six ways and pin the apps you actually use. A dock
   shows the running app everywhere in the client, and mutes or interrupts the conversation app from there. Starting
@@ -44,10 +48,12 @@ developer side of the same project.
   a brokered WebRTC data channel, the daemon's port is never exposed.
 - **Files** — an SFTP browser for the robot's filesystem.
 - **At home on Apple platforms** — status and apps widgets on the Home Screen, and the status one on the Lock Screen
-  and in StandBy as well; wake and sleep from the widget itself; Control Center power controls; Siri / App Intents
-  (wake, sleep, power off, launch any installed app, play a recorded move, and ask whether the robot is awake or what
-  is running on it), each of which can name the robot it addresses, so two Reachys on one desk are told apart; the
-  app's destinations in Spotlight; Home Screen quick actions; full localization readiness.
+  and in StandBy as well; wake and sleep from the widget itself; Control Center controls for power, for a move or an
+  app you pick yourself, for a sound, and for stopping whatever is running, each reaching the Lock Screen and the
+  Action button too; Siri / App Intents (wake, sleep, power off, launch any installed app, play a recorded move, and
+  ask whether the robot is awake or what is running on it), each of which can name the robot it addresses, so two
+  Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick actions; German,
+  Spanish, French and Russian beside English.
 - **Six themes** — an accent colour and a matching app icon chosen as one decision in Settings, carried into the
   widgets too. On iPhone and iPad the Home Screen icon changes with it; on a Mac the theme is colour only.
 
@@ -63,18 +69,22 @@ _A one-minute demo video from a live robot is on its way._
 ## Try it
 
 <p align="center">
+  <a href="https://apps.apple.com/app/hey-reachy/id6799644194">
+    <img src="https://img.shields.io/badge/Download%20on%20the%20Mac%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the Mac App Store" />
+  </a>
   <a href="https://testflight.apple.com/join/CGjefT9a">
     <img src="https://img.shields.io/badge/Join%20the%20public%20beta%20on%20TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Join the public beta on TestFlight" />
   </a>
 </p>
 
-One link for iPhone, iPad and Mac; installing needs Apple's TestFlight app. **You need a Reachy Mini Wireless on your
+The Mac version is on the App Store. iPhone and iPad are in review, and until they land the TestFlight link is the
+way in — one link for all three, installing needs Apple's TestFlight app. **You need a Reachy Mini Wireless on your
 network** — without a robot the app stops at the connect screen, since every tab is behind a live session. Minimum
 iOS 18 and macOS 15. The app's [own page](https://alexey1312.github.io/reachy-mini-swift/) says the same thing without
 the build instructions, and carries the [support notes](https://alexey1312.github.io/reachy-mini-swift/support.html).
 
-The Mac also ships outside TestFlight: each [release](https://github.com/alexey1312/reachy-mini-swift/releases)
-carries a notarized zip.
+The Mac also ships outside the App Store: each [release](https://github.com/alexey1312/reachy-mini-swift/releases)
+carries a notarized zip, signed with a Developer ID.
 
 Feedback goes through TestFlight (a screenshot in the app, or the Send Beta Feedback button) or as an
 [issue](https://github.com/alexey1312/reachy-mini-swift/issues). The Bluetooth onboarding path is the one worth
@@ -199,9 +209,10 @@ Background research lives in [docs/research/](docs/research/), accepted decision
 ## Releases
 
 Tags are bare semver (`0.1.0`); each tag publishes a GitHub Release with notes generated by
-[git-cliff](https://git-cliff.org) from conventional commits. TestFlight builds and the notarized macOS zip are
-produced locally — credentials never enter the repository or CI. Every iOS and macOS build goes to the public
-TestFlight group linked above. The whole procedure, including the one-time App Store Connect setup, is in
+[git-cliff](https://git-cliff.org) from conventional commits. App Store builds, TestFlight builds and the notarized
+macOS zip are produced locally — credentials never enter the repository or CI. Every iOS and macOS build goes to the
+public TestFlight group linked above; a tagged one also goes to App Review, carrying the store copy from
+[metadata/](metadata). The whole procedure, including the one-time App Store Connect setup, is in
 [docs/release.md](docs/release.md).
 
 ## License
