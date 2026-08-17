@@ -384,7 +384,11 @@ clean HEAD passes, and re-recording settles it. Diff one to confirm nothing but 
 Reference images are
 **Git LFS**; `bootstrap.sh` enables the filter, and without it they check out as text stubs. LFS uploads objects from
 a `pre-push` hook, and `core.hooksPath` makes git ignore `.git/hooks` — so its four hooks are tracked in `.githooks/`
-alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them.
+alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them — which is what
+their own generated message invites you to do, and it is the wrong reading of the failure: git-lfs is pinned in
+`mise.toml` rather than installed globally, so all four exit 2 with "not found on your path" on a checkout where
+nothing put it on a bare PATH, and for `pre-push` that blocks every push. They try the bare call first (a Mac that
+has one behaves exactly as before) and fall through to `bin/mise x --`.
 Adding a reference image still needs an explicit `git add`: the LFS filter decides how a staged file is _stored_, and
 the pre-commit hook only re-stages what it reformatted (`*.swift`, `*.md`) — neither one stages a PNG for you.
 No CI job _compares_ references — local Xcode and the CI pin differ, so references recorded on one fail on the

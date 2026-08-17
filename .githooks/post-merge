@@ -1,3 +1,14 @@
 #!/bin/sh
-command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'post-merge' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."; exit 2; }
-git lfs post-merge "$@"
+# git-lfs's own generated hook, with one addition. mise owns git-lfs (it is pinned in
+# mise.toml), so on a checkout where nothing installed it globally the generated guard
+# below finds no `git-lfs` and **exits 2** — which for pre-push means every push is
+# blocked, and the message blames a missing tool that is in fact installed. The bare
+# call is tried first so a Mac that already has one behaves exactly as before; the mise
+# route is what makes the pinned binary reachable otherwise. Never "fix" this by
+# deleting the hook as the message suggests: LFS uploads objects from pre-push, so
+# without it a push sends pointers with no data behind them.
+if command -v git-lfs >/dev/null 2>&1; then
+    exec git lfs post-merge "$@"
+fi
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec "$REPO_ROOT/bin/mise" x -- git lfs post-merge "$@"
