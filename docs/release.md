@@ -135,24 +135,75 @@ for the fields that belong to the app (name, subtitle, privacy policy URL) and
 `version/<ver>/en-US.json` for the ones that belong to a version (description,
 keywords, promotional text, support and marketing URLs). Edit those, then:
 
+There is one directory, named after the version being pushed, and the previous one
+is renamed rather than kept — two directories would be two answers to what the
+store says.
+
 ```bash
 mise run asc -- metadata validate --dir ./metadata
-mise run asc -- metadata push --app 6799644194 --version 0.2.0 --platform IOS --dir ./metadata --dry-run
-mise run asc -- metadata push --app 6799644194 --version 0.2.0 --platform IOS --dir ./metadata
+mise run asc -- metadata push --app 6799644194 --version 0.3.0 --platform IOS --dir ./metadata \
+  --app-info 3d4b1b94-cc75-4f09-976c-951c7f7e1577 --dry-run
+mise run asc -- metadata push --app 6799644194 --version 0.3.0 --platform IOS --dir ./metadata \
+  --app-info 3d4b1b94-cc75-4f09-976c-951c7f7e1577
 ```
 
 Push once per platform — `IOS` and `MAC_OS` carry separate version localizations
 off the same files. A version sitting in `WAITING_FOR_REVIEW` still takes the URL
 fields (measured on 0.2.1), so a listing does not have to be pulled out of review
-to repoint it. `whatsNew` is deliberately absent: Apple refuses it on an
-app's **first** App Store version (`Attribute 'whatsNew' cannot be edited at this
-time`), so release notes start with the second one.
+to repoint it.
+
+**`--app-info` is not optional any more.** An app that has shipped carries two app
+infos — the live one and the editable one — and the push refuses to guess between
+them (`multiple app infos found`). Take the editable one, which is whichever is
+_not_ `READY_FOR_DISTRIBUTION`; `asc apps info list --app 6799644194` names both
+with their states, and the id changes when a version ships, so read it rather than
+copy the one above.
+
+**`whatsNew` is per platform, and the file cannot say so.** Apple refuses the field
+on an app's **first** App Store version (`Attribute 'whatsNew' cannot be edited at
+this time`) — and "first" is counted per platform. On 0.3.0 macOS took it, because
+0.2.3 had shipped, while iOS refused it, because iOS had never been approved. The
+whole localization fails on that one field, taking the description with it. So
+`metadata/` carries `whatsNew` for the platform that can take it, and the other one
+is pushed from a copy with the field dropped:
+
+```bash
+mkdir -p /tmp/metadata-ios/version/0.3.0 /tmp/metadata-ios/app-info
+cp metadata/app-info/en-US.json /tmp/metadata-ios/app-info/
+python3 -c "import json; d=json.load(open('metadata/version/0.3.0/en-US.json')); d.pop('whatsNew'); \
+  json.dump(d, open('/tmp/metadata-ios/version/0.3.0/en-US.json','w'), indent=2, ensure_ascii=False)"
+```
+
+`asc validate` then reports `what's new is empty` as a warning on that platform,
+which is the expected reading and not a blocker.
 
 Everything that is not a localization is set once and stays: category, content
 rights, age rating, availability, price, and the reviewer contact and notes. They
 are listed by `asc validate --app 6799644194 --version-id <id> --platform <p>`,
 which is the one command worth running before every submission — it prints an
-ordered remediation plan and exits non-zero while anything is missing.
+ordered remediation plan and exits non-zero while anything is missing. Screenshots
+and the reviewer notes are carried into a new version by App Store Connect itself,
+so `versions create` starts with both already in place — check them rather than
+re-upload them.
+
+**`asc review submit` fails after doing the work, and the failure is a false
+negative.** It creates the review submission, adds the version to it, and then
+cannot read its own item back: the items endpoint answers without relationships
+unless asked for them, so the final check reports `review submission <id> does not
+contain target version <id>` over a submission that does contain it. Both platforms
+did this on 0.3.0. The item is there — finish by hand and confirm on the version's
+state, not on the command's exit code:
+
+```bash
+mise run asc -- review items-list --submission "<submission-id>"   # 1 item, READY_FOR_REVIEW
+mise run asc -- review submissions-submit --id "<submission-id>" --confirm
+mise run asc -- versions list --app 6799644194                     # WAITING_FOR_REVIEW
+```
+
+A retry of `review submit` leaves an empty submission behind, which then reads as
+`stale ... not exclusively usable for this version` on the next run and cannot be
+cancelled (`Resource is not in cancellable state`). It carries no items and does
+not reach App Review; leave it.
 
 **It does not catch what rejected the macOS build.** An automated App Review check
 reads the entitlements and refused 0.2.1 for carrying
