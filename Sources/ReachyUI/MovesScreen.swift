@@ -27,6 +27,7 @@ struct MovesScreen: View {
                 }
             }
             recordingsSection
+            soundboardLink
             Section {
                 Picker(.reachy("Library"), selection: $model.selection) {
                     ForEach(MovesModel.libraries.indices, id: \.self) { index in
@@ -123,6 +124,26 @@ struct MovesScreen: View {
                 }
             } header: {
                 Text(.reachy("Your recordings"))
+            }
+        }
+    }
+
+    /// The soundboard, as a sibling of the dances rather than a sixth tab.
+    ///
+    /// Gated on the capability rather than left to fail: a relayed session carries no
+    /// `/api/media/*` at all, so the screen behind this row could only report that it
+    /// cannot ask. The model is built inside the destination closure, which is safe for
+    /// the reason `filesLink` is — a pushed screen adopts it into `@State`, and
+    /// `State(initialValue:)` keeps the first one when the closure re-runs.
+    @ViewBuilder
+    private var soundboardLink: some View {
+        if session.canManageSounds {
+            Section {
+                NavigationLink {
+                    SoundboardScreen(session: session)
+                } label: {
+                    Label(.reachy("Sounds"), systemImage: "music.note.list")
+                }
             }
         }
     }

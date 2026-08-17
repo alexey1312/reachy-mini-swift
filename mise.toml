@@ -357,13 +357,22 @@ xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 
 [tasks.lint]
 description = "Run SwiftLint, actionlint, the catalogue check, and the version lockstep checks"
+# The shebang is not decoration: mise runs an inline task with `sh -c`, which on macOS is
+# bash and on Linux is dash — where the next line fails outright with
+# `set: Illegal option -o pipefail`. Naming bash is also the only way to fix that from a
+# committed config, since mise ignores `unix_default_inline_shell_args` outside the
+# global one ("ignored for security reasons") and warns on every invocation about it.
 run = '''
+#!/bin/bash
 set -o pipefail
+# On Linux this is what puts libsourcekitdInProc.so on the loader's path; on macOS it
+# does nothing. Without it swiftlint below dies before reading a rule, which is how a
+# `--strict` warning stayed unfindable off a Mac until CI named it.
+. Scripts/sourcekit-env.sh
 # Rule 9 routes every user-facing string through `.reachy(_:)`, and nothing checked
 # that the key it names is in the catalogue — a missing key renders the English key
 # perfectly, for ever, so 139 of them accumulated unnoticed. Runs first because it
-# needs no toolchain and no network: on a Linux checkout it is the only one of these
-# that can run at all.
+# needs neither a toolchain nor a network.
 python3 Scripts/check-catalogue.py
 PINNED="$(sed -nE 's/^hk = "([0-9.]+)".*/\1/p' mise.toml)"
 DRIFT="$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' hk.pkl | sort -u | grep -vFx "$PINNED" || true)"
@@ -389,19 +398,46 @@ for PIN in prefire swift-snapshot-testing; do
     exit 1
   fi
 done
-swiftlint lint --strict Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget 2>&1 | xcsift
+PATHS="Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
+# xcsift is an Xcode-output filter and ships for macOS only, so a Linux checkout has
+# swiftlint but not the pipe to read it through. Raw output is no loss here — AGENTS.md
+# already says to rerun the tool directly when xcsift truncates a long run.
+if command -v xcsift >/dev/null 2>&1; then
+  swiftlint lint --strict $PATHS 2>&1 | xcsift
+else
+  # --quiet drops the per-file progress xcsift would have swallowed, and nothing else:
+  # violations still print, which is the whole point of the branch.
+  swiftlint lint --strict --quiet $PATHS
+fi
 actionlint
 '''
 
 [tasks.format]
 description = "Format all files (Swift + Markdown)"
-run = "hk fix --all 2>&1 | grep -E '^(✔|✗|hk )' || true"
+run = """
+. Scripts/sourcekit-env.sh
+hk fix --all 2>&1 | grep -E '^(✔|✗|hk )' || true
+"""
 
 [tasks.format-check]
 description = "Check all formatting (CI)"
+# The filter keeps a passing run to one line per step, and it used to be applied
+# unconditionally — which also stripped the violations. A failed `swiftlint-strict`
+# reached CI as `✗ swiftlint-strict [====>] 2/3` and nothing else: no file, no line,
+# no rule, and nothing in the run's other four jobs to read instead. hk *does* print
+# the tool's own output (it repeats it under `<step> stderr:` at the end), so the fix
+# is to stop filtering the moment there is something to read.
 run = """
-set -o pipefail
-hk check --all 2>&1 | grep -E '^(✔|✗|hk )'
+# hk's own children inherit this, which is what makes its swiftlint steps work on a
+# Linux checkout — see Scripts/sourcekit-env.sh.
+. Scripts/sourcekit-env.sh
+LOG="$(mktemp)"
+if hk check --all >"$LOG" 2>&1; then
+  grep -E '^(✔|✗|hk )' "$LOG" || true
+else
+  cat "$LOG"
+  exit 1
+fi
 """
 
 [tasks.setup]

@@ -13,6 +13,13 @@ import SwiftUI
     PreviewScene.telepresence(presence: .preview(wobbling: true, tracking: true))
 }
 
+// The slider appears only under a switch that is on, because the daemon takes the weight
+// as a parameter of enabling — there is no route that sets it alone. Half strength is the
+// state worth a picture: at 100% the row says nothing the label does not.
+#Preview("Presence — following at half strength") {
+    PreviewScene.telepresence(presence: .preview(tracking: true, weight: 0.5))
+}
+
 // A robot with no camera answers `enabled: false` under a 200, so the switch springs
 // back and the section says why rather than leaving a claim on screen.
 #Preview("Presence — no camera for tracking") {

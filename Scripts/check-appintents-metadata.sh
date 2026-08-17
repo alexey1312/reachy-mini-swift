@@ -12,10 +12,10 @@
 # Sources/ReachyWidgetUI/AGENTS.md describes doing by hand against Debug
 # products, run against whatever bundle it is handed.
 #
-# Checked: the eight Shortcuts-facing intents and a non-empty `autoShortcuts`
-# (the extracted ReachyShortcuts provider) in the app's own metadata, the three
+# Checked: every Shortcuts-facing intent and a non-empty `autoShortcuts`
+# (the extracted ReachyShortcuts provider) in the app's own metadata, the four
 # configuration intents in the appex's (iOS only — that metadata is what the
-# widget's and the two configurable controls' Edit sheets are built from), and
+# widget's and the three configurable controls' Edit sheets are built from), and
 # that no `extract.packagedata` exists anywhere — an AppIntentsPackage
 # conformance emits one, and linkd rejects the bundle's entire metadata over it
 # (aggregateMetadataIsEmpty).
@@ -52,6 +52,12 @@ REQUIRED_APP_ACTIONS = [
     "StopMoveIntent",
     "RobotAwakeIntent",
     "RunningAppIntent",
+    # The two sound intents carry no App Shortcut phrase — ReachyShortcuts is at ten of
+    # ten — but they are discoverable in the Shortcuts app, which is exactly what this
+    # file decides. Extraction failing is a warning, so their absence here would ship
+    # green.
+    "PlaySoundIntent",
+    "StopSoundIntent",
 ]
 REQUIRED_APPEX_ACTIONS = [
     "RobotAppsConfigurationIntent",
@@ -61,6 +67,7 @@ REQUIRED_APPEX_ACTIONS = [
     # anyway — the flag is a field in the file, not an absence from it.
     "MoveControlConfigurationIntent",
     "RobotAppControlConfigurationIntent",
+    "SoundControlConfigurationIntent",
 ]
 
 metadata = list(target.rglob("extract.actionsdata"))

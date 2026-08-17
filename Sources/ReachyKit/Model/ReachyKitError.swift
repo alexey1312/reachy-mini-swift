@@ -54,6 +54,28 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// Appended for the reason ``daemonLogsUnavailable`` was. Nothing was sent: it
     /// is the client refusing itself, which is why it is not a `daemonRejected`.
     case powerTransitionInFlight
+    /// This connection cannot reach the robot's sound library — the same
+    /// distinction as ``appsUnavailable``: `/api/media/*` is a LAN surface, and a
+    /// relayed session's data channel carries none of it.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case soundboardUnavailable
+    /// The file is larger than the daemon's documented ceiling, refused here so a
+    /// 25 MiB body is never put on the network to be rejected.
+    ///
+    /// **This is the only cap there is.** `MAX_SOUND_UPLOAD_BYTES` is declared in
+    /// `routers/media.py` and named in the route's own docstring, and nothing there
+    /// ever compares it against the body it streams to disk.
+    case soundTooLarge(bytes: Int, limit: Int)
+    /// The name is not one of the audio extensions the daemon accepts, refused
+    /// before the request for the reason above. The robot also probes the content
+    /// itself, which no client can do for it — so this catches the obvious half.
+    case soundTypeUnsupported(name: String)
+    /// The name itself cannot be sent: a path separator (which `delete_sound`
+    /// answers 400 for and `play_sound` would read as an absolute location), or a
+    /// quote or newline, which would break out of the multipart header the upload is
+    /// carried in rather than being escaped by it.
+    case soundNameRejected(name: String)
 
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
@@ -91,7 +113,8 @@ public enum ReachyKitError: Error, Sendable, Equatable {
         case .invalidAddress, .notConnected, .unsupportedDaemonVersion,
              .backendNotRunning, .daemonBusy, .wirelessFeaturesUnavailable,
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
-             .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight:
+             .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
+             .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected:
             nil
         }
     }
@@ -144,6 +167,17 @@ extension ReachyKitError: LocalizedError {
             "The robot cannot be driven over this connection"
         case .powerTransitionInFlight:
             "The robot is waking up or going to sleep; try again in a moment"
+        case .soundboardUnavailable:
+            "The robot's sounds cannot be reached over this connection"
+        case let .soundTooLarge(bytes, limit):
+            """
+            \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \
+            accepts (\(ByteCountFormatter.string(fromByteCount: Int64(limit), countStyle: .file)))
+            """
+        case let .soundTypeUnsupported(name):
+            "\(name) is not an audio file the robot can play — try WAV, MP3, OGG, Opus, FLAC, M4A or AAC"
+        case let .soundNameRejected(name):
+            "The robot cannot accept a file called \(name) — rename it and try again"
         }
     }
 }

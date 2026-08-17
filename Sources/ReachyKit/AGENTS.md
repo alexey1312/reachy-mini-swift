@@ -195,6 +195,33 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     three write into `UserDefaults`, which a test replaces with a suite; a file system has no suites, and a default
     of `.default` would have every `--parallel` suite sharing one `Caches` directory. The production convenience
     `init` names `.default` explicitly, and `withTemporaryCatalogueCache` is how a test gets a real one.
+- **The sound library is two libraries, and the robot holds the throwaway one.** `SoundboardClient` is the capability
+  (`PresenceClient`'s shape: conforming _is_ the capability, so a relayed session reports it unavailable rather than
+  failing a button), `RobotConnection+Sounds` the four routes, `SoundLibraryStore` the device's own copy. What decides
+  the whole design is that uploads land in `/tmp/reachy_mini_sounds` and `GET /api/media/sounds` lists that directory
+  and nothing else: a reboot empties it, no route returns a sound's bytes, and the built-in assets are playable by name
+  but not enumerable. So the device owns the library and the robot is a cache in front of it — measured facts and the
+  two-stage upload validation are in `.claude/rules/daemon-api.md`.
+  - **`play_sound` answers `{"status": "ok"}` for a name that matches nothing**, the same shape `wobbling/enable` has.
+    Every play in this app is therefore preceded by a listing — `SoundboardModel.play` sends the file first when the
+    robot is not known to have it, and `RobotSoundPlayer` refuses by name. Delete either and the feature reports
+    success into silence for ever, which is the one failure mode this surface has and the only one it cannot report.
+  - **`SoundLibraryStore` is in `Library/Application Support`, not `Caches`, and that is the whole distinction.**
+    Everything under `Cache/` is recoverable from the robot; a sound the user imported is not, because `/tmp` is the
+    volatile copy. It is also the one store here **not keyed by robot identity**: a library belongs to a person, not
+    to a unit, and keying it per robot would make a second robot start empty for no reason a reader could name.
+  - **A name is refused, never sanitised.** The filename _is_ the identity — it is the play argument, the delete path
+    component and `SoundEntity.id` — so a silently rewritten one makes the device's copy and the robot's two different
+    sounds and a saved shortcut point at neither. `RobotSound.isSafeName` covers what each of those three places
+    would break on, beside `basename` and `isAllowedExtension` — the daemon's rules belong to the value, not to the
+    store that keeps it.
+  - **The upload is the one hand-written `multipart/form-data` in the repository** (`SoundUpload`), on `hubData`'s 35 s
+    session rather than the 3.5 s generated client: the daemon runs a GStreamer probe its own comment budgets at five
+    seconds. The generated multipart payload was the alternative and is a drop-in; it was not taken because nothing
+    here had exercised it, while these bytes are asserted exactly by `StubURLProtocol.bodies(for:)` and were posted at
+    a real robot before being trusted. The client-side extension and size checks exist so a 25 MiB body is never put
+    on the network to be refused — and the size one is the only cap there is, since the daemon's is declared and never
+    applied.
 - **`robotError` is the robot's connection and power, and nothing else.** It was `lastError`, every funnel in the
   session wrote to it, and that is the second half of the same bug: a genuine Apps failure surfaced on the Robot tab
   too. Now `withClient`, `withAppsClient`, `withWiFiClient`, `withHFAuthClient` and `withUpdateClient` only throw —

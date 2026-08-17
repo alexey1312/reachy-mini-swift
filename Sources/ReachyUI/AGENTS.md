@@ -277,6 +277,28 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   daemon's one move slot, so a screen silent about it would claim an idle robot while it was still travelling.
   `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view: every phase in it is a phase where
   `_try_start_move` would drop the play without a word.
+- **The soundboard is two libraries on one screen, and every row says which one it is in.** `Sounds/` holds
+  `SoundboardScreen` and `SoundboardModel`, pushed from the Moves tab rather than given a tab of its own — the five are
+  unconditional, and "things the robot does when you ask" is the tab this already belongs to. The row is gated on
+  `session.canManageSounds`, so a relayed session never offers a screen that could only report that it cannot ask.
+  - **A play sends the file first when the robot is not known to have it, and that ordering is the feature.** Uploads
+    live in the daemon's `/tmp`, so a restart empties them, and `play_sound` answers `{"status": "ok"}` for a name that
+    matches nothing — so without the send a tap reports success into silence. `SoundboardModelTests.sendsBeforePlaying`
+    asserts the order rather than the outcome, because both orders "work".
+  - **`Presence.unknown` is not a fourth shade of absent.** It is what a row says when the _robot_ has not answered, and
+    it exists so a failed listing never claims the robot is missing a sound. A failed load therefore keeps the device's
+    library on screen as `unknown` with the reason in the error section, rather than relabelling everything
+    `deviceOnly`.
+  - **The rows are gated on the backend and never on `isAwake`.** A speaker is not a motor: a parked robot plays
+    perfectly well, and only `play_sound`/`stop_sound` sit behind `get_backend`. Listing, sending and deleting work on a
+    robot whose motors were never enabled, which is why `AsleepBanner` appears here off `!isBackendRunning` rather than
+    off `!isAwake` as it does on the Moves screen.
+  - **Nothing on this screen claims a sound is playing**, because no route reports it. The caption says a sound _was_
+    played, and Stop is unconditional — sending it over silence is free, and claiming to know would not be.
+  - **Three things here are deliberately uncovered by any reference**, each for a reason already written up elsewhere in
+    this file: the `fileImporter` sheet and the delete `confirmationDialog` both capture as nothing, and the two
+    `ControlWidget`s are WidgetKit, which the snapshot suite never exercises. The confirmation _copy_ is model-adjacent
+    and is asserted in the screen's own tests instead; the controls are a built-metadata check plus a device install.
 - **`.unreachable` belongs to the shell, not the gate.** Only `.idle` and `.connecting` show the gate. A network blip
   must not pull the tab bar out from under a finger, and the robot screen already reports the state in place.
 - **The gate's fork has progress conditions, and they only ever delay.** For `.connected`, `isConnectedEnough` waits

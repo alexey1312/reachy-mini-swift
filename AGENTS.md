@@ -217,44 +217,71 @@ result — verify the artifact, or rerun the tool directly
 (`./bin/mise x -- swiftlint lint --strict` with the explicit path list the lint task in `mise.toml` names,
 `Apps/ReachyWidget` included). Always pass those explicit paths — a bare
 `.` walks into `Apps/DerivedData`, and swiftformat then "fails" on generated and vendored sources.
-**swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
-`allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
-`call can throw, but it is not marked with 'try'` at `macro expansion #expect`, pointing at generated code rather
-than at the line you wrote. So `mise run format` breaks a test that compiled a minute earlier, and undoing it by hand
-is a loop — the next format run puts it back. Assert on a mapped array instead
-(`map(\.isTappable).contains(false) == false`), which the rule leaves alone.
-`mise run clean` only clears `.build` — `Apps/DerivedData` (Xcode's, several GB) is not touched.
-**SwiftPM holds one `.build` lock per worktree**, so a second invocation waits instead of failing, printing
-`Another instance of SwiftPM (PID: …) is already running` — a line that never appears when the output is piped
-through `tail`. A run that timed out in your tool keeps running and keeps the lock, and every later command then
-looks like the code under test is hanging. Check `pgrep -f 'swift-build|swift-test|swift-frontend'` before
-diagnosing a hang, and run one SwiftPM process at a time.
-**A hang with no test output at all is the compiler, not the code.** `ps -o command= -p <frontend-pid>` names the
-`-primary-file` it is stuck on and `sample <pid>` names the pass. One shape found here: a closure nested inside an
-`AsyncStream { continuation in … }` builder that captures the escaping continuation (e.g. `lock.withLock { … }`
-assigning it to a stored property) emits a `convert_escape_to_noescape` that sends the `ClosureLifetimeFixup` SIL
-pass into a dominator walk it does not return from — 20+ minutes of one core, no diagnostic, no timeout. It is a
-diagnostic pass, so `-Onone` does not avoid it; flatten the nesting and lock by hand instead
-(`Tests/ReachyKitTests/RemoteControlChannelTests.swift` carries the worked example).
-Two files sharing a basename in one target fail as `couldn't build <name>.swift.o because of multiple producers`,
-never as a redeclaration and never naming the other file — check `find Sources -name Foo.swift` before adding one.
-`sim-daemon` **cannot** serve `/wifi/*` or `/update/*`: `--wireless-version` crashes on import (`.venv-sim` has
-neither `nmcli` nor `cryptography`), and `main.py` would run robot-image maintenance on your Mac. Those routes are
-covered by `StubURLProtocol` / `LocalWebSocketServer` and real hardware only. BLE likewise — the robot's GATT service
-is Linux/BlueZ, so nothing simulates it.
-`.venv-sim` does hold the daemon's own source (`lib/python3.12/site-packages/reachy_mini/`) — read
-`daemon/app/routers/*.py` and `daemon/app/services/` there rather than inferring a route's shape. Still a
-specification (rule 1), never code to port.
-It is 1.3 GB and gitignored, but it is filled by `uv pip install`, which writes APFS clones instead of copying out
-of its cache: a second worktree builds one in under a second and consumes ~6 MiB of actual disk. The venv itself is
-still created by `python -m venv` — mjpython wants a real framework build, and `uv venv` was never tried against
-mujoco. **Do not move it out of the worktree to share it between them**, and do not read the old advice to wait out
-pip: an install that takes minutes now means a cold `~/.cache/uv`, not normal behaviour.
-Both a relocated copy and a clean install into `~/.cache` leave the daemon stuck before it binds :8000, logging
-`External plugin loader failed` — while the same venv under the worktree serves in four seconds. The cause is not
-the scanner binary (it executes fine from either path) and was not identified; the shared-cache experiment is a
-dead end, not an unfinished idea. Probe readiness on `/api/daemon/status` — **there is no `/api/status`**, so a
-poll for it reports a healthy daemon as down.
+**`mise run lint` and `mise run format-check` work on a Linux checkout, and four separate things had to be true for
+that** — each of them a way the linter was silently unavailable off a Mac, which is how a `--strict`
+`function_body_length` violation reached CI with `swiftformat`, `dprint` and `Scripts/check-catalogue.py` all green.
+They are wired now; the entries are here because each failure reads as something else.
+
+- **SwiftLint needs SourceKit, and dies before reading a single rule without it**:
+  `SourceKittenFramework/library_wrapper.swift:58: Fatal error: Loading libsourcekitdInProc.so failed`. So disabling
+  the SourceKit-dependent rules (the `json_codec_only` custom rule and its `match_kinds`) does not help. The library
+  ships in the swift.org toolchain, and `Scripts/install-sourcekit.sh` extracts it and the runtime it links —
+  **324 MB out of a 3.3 GB toolchain**, straight out of the download stream, into
+  `$XDG_CACHE_HOME/reachy-mini/sourcekit` (outside the worktree, so `mise run clean` cannot take it and worktrees
+  share one copy). `Scripts/sourcekit-env.sh` is what the tasks source to find it; both directories go on
+  `LD_LIBRARY_PATH`, because only the libraries under `swift/host/compiler` find each other by rpath. There is no
+  Swift compiler afterwards and none is wanted: `swift build` / `swift test` stay out of reach because the targets
+  import SwiftUI and CoreBluetooth.
+- **`sh` is not bash here.** mise runs an inline task with `sh -c`, which is bash on macOS and **dash** on Linux,
+  where `set -o pipefail` — two dozen occurrences in `mise.toml` — fails as `set: Illegal option -o pipefail`. The
+  fix is a `#!/bin/bash` shebang inside the `run` block, the way `project` and `storybook` already have one;
+  `unix_default_inline_shell_args` is _not_ available, because mise ignores that setting outside the global config
+  ("ignored for security reasons") and warns about it on every invocation.
+- **Four of the pinned tools are macOS binaries** (tuist, xcsift, Prefire, asc), so `mise install` fails outright and
+  `set -e` used to end `bootstrap.sh` before it wired the git hooks. Its Linux branch writes those four into
+  `disable_tools` in the gitignored `mise.local.toml` — a file rather than an exported variable, so a later
+  `mise run lint` in a fresh shell still works. The one that then goes missing inside a task is xcsift, which the
+  lint task pipes swiftlint through; it falls back to `swiftlint --quiet` instead.
+- **The pre-commit hook does not go through a task.** It is `mise x -- hk run pre-commit`, so it sources
+  `sourcekit-env.sh` itself — without that line every commit on a Linux checkout fails inside hk's swiftlint step.
+  **swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
+  `allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
+  `call can throw, but it is not marked with 'try'` at `macro expansion #expect`, pointing at generated code rather
+  than at the line you wrote. So `mise run format` breaks a test that compiled a minute earlier, and undoing it by hand
+  is a loop — the next format run puts it back. Assert on a mapped array instead
+  (`map(\.isTappable).contains(false) == false`), which the rule leaves alone.
+  `mise run clean` only clears `.build` — `Apps/DerivedData` (Xcode's, several GB) is not touched.
+  **SwiftPM holds one `.build` lock per worktree**, so a second invocation waits instead of failing, printing
+  `Another instance of SwiftPM (PID: …) is already running` — a line that never appears when the output is piped
+  through `tail`. A run that timed out in your tool keeps running and keeps the lock, and every later command then
+  looks like the code under test is hanging. Check `pgrep -f 'swift-build|swift-test|swift-frontend'` before
+  diagnosing a hang, and run one SwiftPM process at a time.
+  **A hang with no test output at all is the compiler, not the code.** `ps -o command= -p <frontend-pid>` names the
+  `-primary-file` it is stuck on and `sample <pid>` names the pass. One shape found here: a closure nested inside an
+  `AsyncStream { continuation in … }` builder that captures the escaping continuation (e.g. `lock.withLock { … }`
+  assigning it to a stored property) emits a `convert_escape_to_noescape` that sends the `ClosureLifetimeFixup` SIL
+  pass into a dominator walk it does not return from — 20+ minutes of one core, no diagnostic, no timeout. It is a
+  diagnostic pass, so `-Onone` does not avoid it; flatten the nesting and lock by hand instead
+  (`Tests/ReachyKitTests/RemoteControlChannelTests.swift` carries the worked example).
+  Two files sharing a basename in one target fail as `couldn't build <name>.swift.o because of multiple producers`,
+  never as a redeclaration and never naming the other file — check `find Sources -name Foo.swift` before adding one.
+  `sim-daemon` **cannot** serve `/wifi/*` or `/update/*`: `--wireless-version` crashes on import (`.venv-sim` has
+  neither `nmcli` nor `cryptography`), and `main.py` would run robot-image maintenance on your Mac. Those routes are
+  covered by `StubURLProtocol` / `LocalWebSocketServer` and real hardware only. BLE likewise — the robot's GATT service
+  is Linux/BlueZ, so nothing simulates it.
+  `.venv-sim` does hold the daemon's own source (`lib/python3.12/site-packages/reachy_mini/`) — read
+  `daemon/app/routers/*.py` and `daemon/app/services/` there rather than inferring a route's shape. Still a
+  specification (rule 1), never code to port.
+  It is 1.3 GB and gitignored, but it is filled by `uv pip install`, which writes APFS clones instead of copying out
+  of its cache: a second worktree builds one in under a second and consumes ~6 MiB of actual disk. The venv itself is
+  still created by `python -m venv` — mjpython wants a real framework build, and `uv venv` was never tried against
+  mujoco. **Do not move it out of the worktree to share it between them**, and do not read the old advice to wait out
+  pip: an install that takes minutes now means a cold `~/.cache/uv`, not normal behaviour.
+  Both a relocated copy and a clean install into `~/.cache` leave the daemon stuck before it binds :8000, logging
+  `External plugin loader failed` — while the same venv under the worktree serves in four seconds. The cause is not
+  the scanner binary (it executes fine from either path) and was not identified; the shared-cache experiment is a
+  dead end, not an unfinished idea. Probe readiness on `/api/daemon/status` — **there is no `/api/status`**, so a
+  poll for it reports a healthy daemon as down.
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both
@@ -357,7 +384,11 @@ clean HEAD passes, and re-recording settles it. Diff one to confirm nothing but 
 Reference images are
 **Git LFS**; `bootstrap.sh` enables the filter, and without it they check out as text stubs. LFS uploads objects from
 a `pre-push` hook, and `core.hooksPath` makes git ignore `.git/hooks` — so its four hooks are tracked in `.githooks/`
-alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them.
+alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them — which is what
+their own generated message invites you to do, and it is the wrong reading of the failure: git-lfs is pinned in
+`mise.toml` rather than installed globally, so all four exit 2 with "not found on your path" on a checkout where
+nothing put it on a bare PATH, and for `pre-push` that blocks every push. They try the bare call first (a Mac that
+has one behaves exactly as before) and fall through to `bin/mise x --`.
 Adding a reference image still needs an explicit `git add`: the LFS filter decides how a staged file is _stored_, and
 the pre-commit hook only re-stages what it reformatted (`*.swift`, `*.md`) — neither one stages a PNG for you.
 No CI job _compares_ references — local Xcode and the CI pin differ, so references recorded on one fail on the

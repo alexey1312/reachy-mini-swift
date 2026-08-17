@@ -260,6 +260,42 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   - `tracking/enable` is the honest one — `{"status": "ok"|"unavailable", "enabled": bool}`, `false` exactly when
     there is no camera (`enable_head_tracking` returns False only on `_media_server is None`). It takes
     `{weight: 0…1}`, where 0 pauses the worker without stopping it.
+  - **Tracking is faces and only faces, and it aims the head.** `enable_head_tracking` builds a `FaceTracker`
+    (`vision/face_tracking.py`), whose first line names its detector: **YuNet**. There is no hand, body or pose
+    detector anywhere in the package, and the output is one `FaceTarget {detected, x, y, roll, ts}` composed into the
+    head aim as `linear_pose_interpolation(pose, aim, weight)`. So "follow my hand" is not a weaker version of this
+    feature, it is absent — and it cannot be added client-side, because the tracking runs in the daemon and the
+    client only switches it on.
+- **The sound files are a real library and a temporary one, and both halves matter.** Four routes, all measured
+  against a Wireless unit on **daemon 1.9.0, 2026-08-17** — so unlike the five routes above, these are *not*
+  spec-ahead-of-firmware and a supported robot serves them.
+  - `GET /api/media/sounds` → **`{"files": [...]}`**, one key, sorted by `os.scandir` order through `sorted()`. It
+    lists `/tmp/reachy_mini_sounds` **and nothing else**: the daemon's built-in assets are playable by name and
+    cannot be enumerated by any route, so a soundboard's content is whatever has been uploaded.
+  - **`/tmp` is the whole storage.** A reboot (or a tmpfs sweep) empties it, and no route ever returns a sound's
+    bytes — `GET` answers names. So the durable copy has to live on the client, and a sound the robot has but the
+    client does not is unrecoverable. `SoundLibraryStore` is this app's half of that, in the App Group's
+    *Application Support* rather than `Caches` for exactly this reason.
+  - **`POST /api/media/play_sound` answers `{"status": "ok"}` for a name that matches nothing.** `media_server.py`
+    logs "Sound file … not found in assets directory or given path" and returns. Same shape as `wobbling/enable`: a
+    200 is not evidence of a sound. Only a listing beforehand can establish it, which is what `RobotSoundPlayer` and
+    `SoundboardModel` both do before playing.
+  - **`POST /api/media/sounds/upload` is `multipart/form-data`, field name `file`.** Validation is two-stage and the
+    order is visible in the two different 400s: the extension allow-list first
+    (`.wav .mp3 .ogg .oga .opus .flac .m4a .aac`, answered as `Unsupported file extension; allowed: …`), then a
+    GStreamer content probe (`Unsupported or invalid audio file`) on a temp copy that is `os.replace`d into place, so
+    a partial or invalid file never appears under the public name. Success is
+    `{"status": "ok", "path": "/tmp/reachy_mini_sounds/<name>"}`. **`MAX_SOUND_UPLOAD_BYTES = 25 MiB` is declared,
+    documented in the route's own docstring, and never compared against anything** — the body is streamed to disk in
+    1 MiB chunks with no size check — so a client-side cap is the only cap there is.
+  - **`DELETE /api/media/sounds/{filename}` is the one route on this surface that reports existence**: 404
+    `File '…' not found` for a name it does not have, 400 for any name that is not already its own basename. `GET`
+    cannot make that distinction — `{"files": []}` is the answer for an empty directory and for no directory alike.
+  - **Only playing needs a backend.** `play_sound` and `stop_sound` take the `get_backend` check and answer 503
+    without one; `sounds`, `upload` and `delete` depend on nothing and work on a robot whose motors were never
+    enabled. So a soundboard can be filled and tidied while the robot is off, and only its play button is gated.
+  - `clear_incoming_audio` is a barge-in primitive for a conversation app — it drops WebRTC audio already queued for
+    the speaker — and is not part of the sound library.
 - **`control_loop_stats` is the only live health telemetry the daemon publishes, and two fields beside it are dead.**
   `backend/robot/backend.py` refreshes the dictionary once a second with `mean_control_loop_frequency` (~100 Hz on
   healthy hardware), `max_control_loop_interval`, `nb_error` (cumulative since the backend started) and

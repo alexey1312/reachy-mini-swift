@@ -187,12 +187,28 @@ extension RobotConnection {
 
     /// Unlike `wirelessData`, a 404 here is the resource's absence — a forgotten
     /// job — not a route that was never mounted, so it is reported as itself.
-    func hubData(method: String = "GET", path: String) async throws -> Data {
+    ///
+    /// `body` and `contentType` are defaulted so every existing caller is unchanged.
+    /// The one that passes them is the sound upload, which is `multipart/form-data`
+    /// and therefore cannot go through the generated client the rest of this file
+    /// prefers (`RobotConnection+Sounds`). It also wants this session rather than the
+    /// 3.5 s one: the robot probes the file with GStreamer before answering, which
+    /// its own comment budgets at up to five seconds.
+    func hubData(
+        method: String = "GET",
+        path: String,
+        body: Data? = nil,
+        contentType: String? = nil
+    ) async throws -> Data {
         guard let url = address.httpURL(path: path) else {
             throw ReachyKitError.invalidAddress(address)
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.httpBody = body
+        if let contentType {
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        }
 
         let (data, response) = try await hubSession.data(for: request)
         guard let http = response as? HTTPURLResponse else {

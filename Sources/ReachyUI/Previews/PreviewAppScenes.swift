@@ -130,3 +130,19 @@ extension PreviewScene {
         .preview()
     }
 }
+
+/// The soundboard, which is not an app — it lives in this file only because
+/// `PreviewScenes.swift` is at its length limit and a fourth scene file for one
+/// wrapper would be worse.
+@MainActor
+extension PreviewScene {
+    static func soundboard(
+        _ session: RobotSession,
+        model: SoundboardModel? = nil
+    ) -> some View {
+        NavigationHost {
+            SoundboardScreen(session: session, model: model ?? .preview())
+        }
+        .preview()
+    }
+}
