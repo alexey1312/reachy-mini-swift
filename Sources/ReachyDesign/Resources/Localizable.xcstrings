@@ -175,6 +175,35 @@
         }
       }
     },
+    "A sound your Reachy Mini can play.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Sound, den dein Reachy Mini abspielen kann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un sonido que tu Reachy Mini puede reproducir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un son que votre Reachy Mini peut jouer."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звук, который может воспроизвести Reachy Mini."
+          }
+        }
+      }
+    },
     "About": {
       "extractionState": "manual",
       "localizations": {
@@ -258,6 +287,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Действия"
+          }
+        }
+      }
+    },
+    "Add a sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound hinzufügen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir un sonido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un son"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить звук"
           }
         }
       }
@@ -722,6 +780,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложениям нужна локальная сеть"
+          }
+        }
+      }
+    },
+    "Asking the robot what it can play…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den Roboter fragen, was er abspielen kann…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntando al robot qué puede reproducir…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrogation du robot sur ce qu'il peut jouer…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спрашиваем у робота, что он может воспроизвести…"
           }
         }
       }
@@ -2988,6 +3075,35 @@
         }
       }
     },
+    "Delete the robot's copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopie auf dem Roboter löschen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar la copia del robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la copie du robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить копию на роботе"
+          }
+        }
+      }
+    },
     "Delete from the robot?": {
       "extractionState": "manual",
       "localizations": {
@@ -4115,6 +4231,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Забыть все сохранённые сети?"
+          }
+        }
+      }
+    },
+    "Forget this sound?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Sound entfernen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Olvidar este sonido?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oublier ce son ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забыть этот звук?"
           }
         }
       }
@@ -5478,6 +5623,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Последний вывод"
+          }
+        }
+      }
+    },
+    "Last played": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuletzt abgespielt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducido por última vez"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joué en dernier"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизведён последним"
           }
         }
       }
@@ -7280,6 +7454,35 @@
         }
       }
     },
+    "No sounds": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Sounds"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin sonidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun son"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет звуков"
+          }
+        }
+      }
+    },
     "None linked to your Hugging Face account are online.": {
       "extractionState": "manual",
       "localizations": {
@@ -7537,6 +7740,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не привязано"
+          }
+        }
+      }
+    },
+    "Not on the robot yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nicht auf dem Roboter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no está en el robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore sur le robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ещё не на роботе"
           }
         }
       }
@@ -7827,6 +8059,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "В сети"
+          }
+        }
+      }
+    },
+    "On the robot only — not saved here": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur auf dem Roboter — hier nicht gespeichert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo en el robot — no guardado aquí"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uniquement sur le robot — non enregistré ici"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только на роботе — здесь не сохранён"
           }
         }
       }
@@ -8320,6 +8581,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Воспроизвести движение"
+          }
+        }
+      }
+    },
+    "Play a sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound abspielen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir un sonido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jouer un son"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизвести звук"
           }
         }
       }
@@ -9277,6 +9567,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Удалить все приложения?"
+          }
+        }
+      }
+    },
+    "Remove from this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von diesem Gerät entfernen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar de este dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer de cet appareil"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить с этого устройства"
           }
         }
       }
@@ -10296,6 +10615,35 @@
         }
       }
     },
+    "Send an audio file from this device and the robot can play it on demand.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sende eine Audiodatei von diesem Gerät, dann spielt der Roboter sie auf Abruf ab."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envía un archivo de audio desde este dispositivo y el robot podrá reproducirlo cuando quieras."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyez un fichier audio depuis cet appareil et le robot pourra le jouer à la demande."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправьте аудиофайл с этого устройства, и робот сможет воспроизвести его по запросу."
+          }
+        }
+      }
+    },
     "Send to the robot": {
       "extractionState": "manual",
       "localizations": {
@@ -11282,6 +11630,64 @@
         }
       }
     },
+    "sound, audio, soundboard, Reachy Mini": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound, Audio, Klang, Soundboard, Reachy Mini"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sonido, audio, panel de sonidos, Reachy Mini"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "son, audio, sons, Reachy Mini"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "звук, аудио, звуки, саундборд, Reachy Mini"
+          }
+        }
+      }
+    },
+    "Sounds": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sounds"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sons"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звуки"
+          }
+        }
+      }
+    },
     "Speaking…": {
       "extractionState": "manual",
       "localizations": {
@@ -11978,6 +12384,35 @@
         }
       }
     },
+    "Stop the sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound stoppen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener el sonido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrêter le son"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить звук"
+          }
+        }
+      }
+    },
     "Stopped": {
       "extractionState": "manual",
       "localizations": {
@@ -12032,6 +12467,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Движение остановлено."
+          }
+        }
+      }
+    },
+    "Stopped the sound.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sound wurde gestoppt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se detuvo el sonido."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le son a été arrêté."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звук остановлен."
           }
         }
       }
@@ -13627,6 +14091,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот подключается к этой сети и дальше общается с приложением через неё. Bluetooth нужен только чтобы довести его до этого шага."
+          }
+        }
+      }
+    },
+    "The robot keeps these in temporary storage and forgets them when it restarts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hält diese in einem temporären Speicher und vergisst sie beim Neustart."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot los guarda en almacenamiento temporal y los olvida al reiniciarse."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot les conserve dans un stockage temporaire et les oublie à son redémarrage."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот хранит их во временной памяти и забывает при перезапуске."
           }
         }
       }
@@ -16034,6 +16527,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "на этом роботе установлена более старая"
+          }
+        }
+      }
+    },
+    "“Move while speaking” in the live view makes the head move to whatever is playing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Beim Sprechen bewegen“ in der Live-Ansicht lässt den Kopf sich zu allem bewegen, was gerade läuft."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«Moverse al hablar» en la vista en directo hace que la cabeza se mueva con lo que esté sonando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« Bouger en parlant » dans la vue en direct fait bouger la tête au rythme de ce qui est joué."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«Двигаться при разговоре» в прямом просмотре заставляет голову двигаться под то, что играет."
           }
         }
       }

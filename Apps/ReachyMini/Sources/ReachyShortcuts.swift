@@ -17,6 +17,13 @@ import ReachyWidgetUI
 /// shows up as "Siri stopped hearing that phrase" months later — count before
 /// adding.
 ///
+/// **`PlaySoundIntent` and `StopSoundIntent` are the first two to be turned away by
+/// that**, and it was a decision rather than an oversight: displacing a working phrase
+/// for a new one is a trade nobody asked for. They stay discoverable in the Shortcuts
+/// app, reachable from Spotlight as `SoundEntity` rows, and available as Control Centre
+/// buttons — everything but the spoken form. Whichever of the ten below is judged least
+/// used is where a sound phrase would go.
+///
 /// `\(.applicationName)` is `CFBundleDisplayName`, so every phrase below reads
 /// "… Hey Reachy". `INAlternativeAppNames` in `Project.swift` adds "Reachy" beside
 /// it, which is the spoken form these were written for; changing the display name

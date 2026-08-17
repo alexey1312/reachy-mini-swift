@@ -101,3 +101,27 @@ enum ReachyEntityKeywords {
         return pieces + words
     }
 }
+
+/// A sound, indexed so that searching for one offers to play it — the same pairing a
+/// move gets, and the reason `IndexedEntity` is here at all.
+///
+/// The keywords carry the filename beside the spoken name, for the reason the move's
+/// carry its file stem: `airhorn.wav` is what the reader named the file and what the
+/// Sounds screen prints under the title, so it is a term somebody will type.
+/// `ReachyEntityKeywords` splits on whitespace, `_` and `-` but not on `.`, so the
+/// filename goes in whole and `title` is what puts the bare stem in beside it.
+extension SoundEntity: IndexedEntity {
+    public var attributeSet: CSSearchableItemAttributeSet {
+        let attributes = CSSearchableItemAttributeSet(contentType: .content)
+        attributes.title = title
+        attributes.displayName = title
+        attributes.contentDescription = String(localized: .reachy("A sound your Reachy Mini can play."))
+        attributes.keywords = ReachyEntityKeywords.list(
+            title,
+            id,
+            String(localized: .reachy("sound, audio, soundboard, Reachy Mini"))
+        )
+        attributes.alternateNames = attributes.keywords
+        return attributes
+    }
+}

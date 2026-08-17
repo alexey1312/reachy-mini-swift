@@ -17,9 +17,11 @@ import ReachyWidgetUI
 /// is why this is `IndexedEntity` rather than a second table of hand-rolled deep
 /// links.
 ///
-/// **Never the network.** Both lists come out of the caches the entity queries
-/// already read: `RobotAppsCacheStore` for installed apps and `MoveEntityQuery` for
-/// moves. `RobotAppQuery.suggestedEntities()` is deliberately *not* used — it
+/// **Never the network.** All three lists come out of what the entity queries already
+/// read: `RobotAppsCacheStore` for installed apps, `MoveEntityQuery` for moves, and
+/// `SoundEntityQuery` for sounds — the last of which is not a cache at all but this
+/// device's own library, so it is the one list that is never empty for want of a warm
+/// connection. `RobotAppQuery.suggestedEntities()` is deliberately *not* used — it
 /// carries a 2 s live refresh that this has no use for, and it *writes* the cache.
 /// `MoveEntityQuery` is safe to call because it is documented as reading only: a
 /// second writer stamping `Date()` would re-date every library the app had merely
@@ -48,16 +50,17 @@ enum ReachyEntityIndex {
         guard let robotID else { return }
         let apps = installedApps(for: robotID)
         let moves = await (try? MoveEntityQuery().suggestedEntities()) ?? []
+        let sounds = await (try? SoundEntityQuery().suggestedEntities()) ?? []
         // Nothing to say is not the same as "index an empty list": a cold launch
         // before the catalogues have been warmed would otherwise delete every row
         // and stamp itself as done.
-        guard !apps.isEmpty || !moves.isEmpty else { return }
+        guard !apps.isEmpty || !moves.isEmpty || !sounds.isEmpty else { return }
 
         // Named `current` rather than `stamp`: a local `let stamp = stamp(…)`
         // shadows the static it is calling.
-        let current = stamp(robotID: robotID, apps: apps, moves: moves)
+        let current = stamp(robotID: robotID, apps: apps, moves: moves, sounds: sounds)
         guard defaults.string(forKey: stampKey) != current else { return }
-        guard await index(apps: apps, moves: moves) else { return }
+        guard await index(apps: apps, moves: moves, sounds: sounds) else { return }
         defaults.set(current, forKey: stampKey)
     }
 
@@ -75,14 +78,22 @@ enum ReachyEntityIndex {
     /// stamp unset, so the next launch repairs it. That is the safe end of the
     /// mistake: the alternative is stale rows promising an app the robot no longer
     /// has.
+    /// `sounds` is defaulted so the two-list call sites in the tests still read as
+    /// statements about apps and moves.
     @discardableResult
-    static func index(apps: [RobotAppEntity], moves: [MoveEntity]) async -> Bool {
+    static func index(
+        apps: [RobotAppEntity],
+        moves: [MoveEntity],
+        sounds: [SoundEntity] = []
+    ) async -> Bool {
         do {
             let spotlight = CSSearchableIndex.default()
             try await spotlight.deleteAppEntities(ofType: RobotAppEntity.self)
             try await spotlight.deleteAppEntities(ofType: MoveEntity.self)
+            try await spotlight.deleteAppEntities(ofType: SoundEntity.self)
             try await spotlight.indexAppEntities(apps)
             try await spotlight.indexAppEntities(moves)
+            try await spotlight.indexAppEntities(sounds)
             return true
         } catch {
             log.error("entity indexing failed: \(error.localizedDescription, privacy: .public)")
@@ -108,10 +119,16 @@ enum ReachyEntityIndex {
     /// re-index every time — the exact failure the stamp exists to prevent, and one
     /// that would never show up as anything but battery. The idiom is
     /// `RobotCatalogueCache`'s.
-    static func stamp(robotID: String, apps: [RobotAppEntity], moves: [MoveEntity]) -> String {
+    static func stamp(
+        robotID: String,
+        apps: [RobotAppEntity],
+        moves: [MoveEntity],
+        sounds: [SoundEntity] = []
+    ) -> String {
         let identifiers = [robotID, Locale.preferredLanguages.first ?? ""]
             + apps.map(\.id).sorted()
             + moves.map(\.id).sorted()
+            + sounds.map(\.id).sorted()
         let digest = SHA256.hash(data: Data(identifiers.joined(separator: "\u{1}").utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }

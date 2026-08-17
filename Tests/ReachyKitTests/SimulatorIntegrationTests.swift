@@ -114,6 +114,72 @@ struct SimulatorIntegrationTests {
         }
     }
 
+    /// The sound library, end to end: send, list, play, stop, delete.
+    ///
+    /// **The only test that exercises the hand-written multipart body against something
+    /// that parses it.** `RobotConnectionSoundsTests` asserts the bytes; only a daemon can
+    /// say whether `python-multipart` accepts them. The same body was posted at a Wireless
+    /// unit on 2026-08-17 and answered `{"status":"ok","path":"/tmp/reachy_mini_sounds/…"}`.
+    ///
+    /// The name is unique per run and deleted at the end, so a failure leaves one file in
+    /// the daemon's `/tmp` and nothing else. **On `sim-daemon` the play comes out of the
+    /// host Mac's own speaker** — the same warning `/api/volume/*` carries.
+    @Test("a sound round-trips through the daemon", .timeLimit(.minutes(1)))
+    func soundRoundTrip() async throws {
+        let connection = try RobotConnection(address: address)
+        let name = "reachy-kit-probe-\(UUID().uuidString.prefix(8)).wav"
+
+        try await connection.uploadSound(named: name, data: Self.probeWAV())
+        // A mapped array rather than `contains { … }` inside the macro: swiftformat's
+        // `preferKeyPath` rewrites such a closure and `#expect` cannot expand the result.
+        #expect(try await connection.sounds().map(\.filename).contains(name))
+
+        try await connection.playSound(named: name)
+        try await connection.stopSound()
+
+        try await connection.deleteSound(named: name)
+        #expect(try await connection.sounds().map(\.filename).contains(name) == false)
+
+        // Measured rather than assumed: `delete_sound` is the one route on this surface
+        // that reports whether a file exists, and it does so as a 404.
+        let error = await #expect(throws: ReachyKitError.self) {
+            try await connection.deleteSound(named: name)
+        }
+        #expect(error?.statusCode == 404)
+    }
+
+    /// A real WAV, because the daemon probes the *content* with GStreamer and refuses
+    /// anything it cannot open — a header with silence behind it is not enough to assume.
+    /// Measured: a text file named `.wav` comes back `400 Unsupported or invalid audio
+    /// file`, which is a second refusal after the extension allow-list.
+    private static func probeWAV(frames: Int = 4410, rate: Int = 22050) -> Data {
+        func u32(_ value: Int) -> Data {
+            withUnsafeBytes(of: UInt32(value).littleEndian) { Data($0) }
+        }
+        func u16(_ value: Int) -> Data {
+            withUnsafeBytes(of: UInt16(value).littleEndian) { Data($0) }
+        }
+
+        var samples = Data()
+        for index in 0 ..< frames {
+            let value = Int16(12000 * sin(2 * Double.pi * 440 * Double(index) / Double(rate)))
+            samples.append(UInt8(truncatingIfNeeded: value))
+            samples.append(UInt8(truncatingIfNeeded: value >> 8))
+        }
+
+        // PCM, mono, 16-bit.
+        var format = Data()
+        format += u16(1) + u16(1)
+        format += u32(rate) + u32(rate * 2)
+        format += u16(2) + u16(16)
+
+        var body = Data("WAVE".utf8)
+        body += Data("fmt ".utf8) + u32(format.count) + format
+        body += Data("data".utf8) + u32(samples.count) + samples
+
+        return Data("RIFF".utf8) + u32(body.count) + body
+    }
+
     private func measuredRate(options: StateStreamOptions) async throws -> Double {
         var configuration = StateStreamClient.Configuration()
         configuration.options = options

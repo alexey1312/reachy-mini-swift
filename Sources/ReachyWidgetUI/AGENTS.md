@@ -142,9 +142,9 @@ reverse.
 
 ## The intents, and who each one is for
 
-Six protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
-`RobotSleep`, `RobotShutdown` and `RobotMovePlayer` — and three pieces of bookkeeping, `RobotAppCommand`,
-`RobotPowerCommand` and `RobotMoveCommand`. Each has a twin in `RobotSession`,
+Seven protocols with no session around them — `RobotPower` (in `ReachyKit`), `RobotAppLauncher`, `RobotAppRelease`,
+`RobotSleep`, `RobotShutdown`, `RobotMovePlayer` and `RobotSoundPlayer` — and **still** three pieces of bookkeeping,
+`RobotAppCommand`, `RobotPowerCommand` and `RobotMoveCommand`. Each has a twin in `RobotSession`,
 and the twins are not shared code on purpose: a session reads its own cached state and reports each failure onto a
 screen, while an intent has seconds, one client, and one sentence. Say which is which in the doc comment when adding
 the next pair.
@@ -165,7 +165,25 @@ the next pair.
     `RobotWidgetContent` draws, so there is no pending marker and no timeline reload for the move itself. What it
     does write is `MovePlaybackRecord` — the app's only way to name a move that is already playing, since
     `GET /api/move/running` answers with task ids alone — and a snapshot **only when the call woke the robot**.
-- **`MoveEntity`'s identifier is the whole move, and it is the only entity here that resolves with no cache.**
+- **`RobotSoundPlayer` is the fourth of these with no `Command` beside it, and the absence is the entry.** Its three
+  siblings exist to write a snapshot, file a pending marker or reload a timeline. A sound is none of those:
+  `RobotWidgetContent` has no place for one, playing wakes nothing, and there is no equivalent of `MovePlaybackRecord`
+  to keep — no route reports a sound as playing, so there would be nothing true to write down. What was left is the
+  connection budget, and that lives on the player as `perform(robot:_:)` rather than in a type with nothing else in it.
+  - **It deliberately does none of what `RobotMovePlayer` must.** No wake, no `clearTheFloor`, no parking: the speaker
+    is not a motor, so a parked robot plays perfectly well; a sound is not a move task, so it occupies no slot and
+    there is nothing to park. It also needs no readiness probe, because a torn-down backend answers `play_sound` with
+    an honest 503 — the one refusal on that surface that reports itself.
+  - **What it does check is presence, and that is why it exists at all.** `play_sound` answers `{"status": "ok"}` for
+    a name that matches nothing, and uploads live in `/tmp` — so a shortcut naming a sound the robot lost over a
+    restart would report success into silence for ever. The listing is one round trip, spent on the failure that is
+    silent instead of on the one that answers.
+  - **An intent never uploads, and that is a budget decision rather than a missing feature.** Sending a sound again
+    means reading bytes out of the App Group library and posting up to 25 MiB into a GStreamer probe the daemon
+    budgets at five seconds; a control has a few seconds in total. So `Failure.notOnRobot` names the sound and points
+    at the Sounds screen, which is the one place that can fix it.
+- **`MoveEntity`'s identifier is the whole move, and `SoundEntity`'s is its filename — the two that resolve with no
+  cache.**
   `dataset#move`, because the daemon gives a move no id at all and a dataset name is itself `owner/name` (so a slash
   would have to be read from the right as a convention). `RobotAppEntity` cannot do this — its id is a Space slug
   that means nothing until it is joined against an installed list — which is why a year-old move shortcut still runs
@@ -176,6 +194,11 @@ the next pair.
     a second writer stamping `Date()` would re-date every library the app had merely read off disk — the index would
     then never expire. The cost of reading only is that a library nobody has opened in the app is absent from the
     picker.
+  - **`SoundEntityQuery` goes one step further and reads no cache either** — the list is this device's own library
+    (`SoundLibraryStore`), so it is instant, needs no network from a process with seconds, and is the superset: the
+    robot's copy is whatever survived its last restart. The cost is a sound that is _only_ on the robot, uploaded from
+    another device; it is playable from the app's screen and absent from this picker, because nothing in this process
+    could have the bytes to send it again.
 
 - **`RobotAppRelease` is the step both parking intents take first, and `RobotSleep` exists because of it.** Neither
   `move/play/goto_sleep` nor `daemon/stop` says anything to the app manager, so an app left running has the motors
@@ -210,9 +233,8 @@ the next pair.
   `python3 -c "import json; d=json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app/Metadata.appintents/extract.actionsdata')); print({k: v['isDiscoverable'] for k, v in d['actions'].items()})"`.
   The same file's `autoShortcuts` is the extracted `ReachyShortcuts`, phrase templates and parameter presentations
   included — the only way to see that a parameterized phrase compiled into anything.
-  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the eight
-  Shortcuts-facing
-  actions, a non-empty `autoShortcuts` and the appex's three configuration intents, from every Release build task and
+  **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts every Shortcuts-facing
+  action, a non-empty `autoShortcuts` and the appex's four configuration intents, from every Release build task and
   from both release archives before upload. It exists because extraction failing is a warning, never a build error —
   TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all. **A new discoverable
   intent owes that list an entry**, or its extraction can fail in a release and nothing goes red.
@@ -273,12 +295,15 @@ from.
   name is free text somebody typed, so a robot called "100% Reachy" is all it takes. Interpolating into the resource
   keeps the name an argument rather than part of the key.
 - **`ReachyShortcuts` is now at ten of ten.** The next intent worth speaking has to displace one; the system takes
-  the first ten and drops the rest without saying so.
+  the first ten and drops the rest without saying so. **`PlaySoundIntent` and `StopSoundIntent` are the first two to
+  be turned away by that**, deliberately: displacing a working phrase for a new one is a trade nobody asked for. They
+  are discoverable in Shortcuts, indexed as `SoundEntity` rows, and available as Control Centre buttons — everything
+  but the spoken form.
 
 ## Entities in Spotlight
 
-`EntityIndexing.swift` conforms `RobotAppEntity` and `MoveEntity` to `IndexedEntity` (iOS 18 / macOS 15, this app's
-floor exactly). That is a **fourth** system beside the three `ReachyUI/AGENTS.md` names, and the distinction is the
+`EntityIndexing.swift` conforms `RobotAppEntity`, `MoveEntity` and `SoundEntity` to `IndexedEntity` (iOS 18 /
+macOS 15, this app's floor exactly). That is a **fourth** system beside the three `ReachyUI/AGENTS.md` names, and the distinction is the
 point: App Shortcuts put commands in Spotlight, the icon's menu is UIKit's, `ReachySpotlightIndex` files two
 destinations that open two tabs — and an indexed `AppEntity` carries its _type_, so Spotlight can pair the row with
 the intents that take it. Searching for a dance offers to play it. A destination row never could.

@@ -93,3 +93,44 @@ public struct RobotAppControlConfigurationIntent: ControlConfigurationIntent {
         return .result(dialog: IntentDialog(.reachy("Started \(app.title).")))
     }
 }
+
+/// What "Choose a sound" offers when a control is configured — and what the tap then
+/// plays.
+///
+/// A third of these for the reason the second exists: a control's argument has to be a
+/// `ControlConfigurationIntent`, which is the type the system builds an Edit sheet out
+/// of, so it can be neither `PlaySoundIntent` nor anything else whatever it takes. It
+/// shares `RobotSoundPlayer` with its Shortcuts twin and nothing else.
+///
+/// It draws a name and no state, which is the line `RobotPowerControls` draws: what the
+/// reader chose cannot go stale, while a reading in this process can.
+public struct SoundControlConfigurationIntent: ControlConfigurationIntent {
+    public static let title: LocalizedStringResource = "Play a chosen Reachy Mini sound"
+    public static let description = IntentDescription(
+        "Plays the sound this control is set to, and says so when the robot has forgotten it."
+    )
+    public static let isDiscoverable = false
+
+    @Parameter(title: "Sound")
+    public var sound: SoundEntity?
+
+    @Parameter(title: "Robot")
+    public var robot: RobotEntity?
+
+    public init() {}
+
+    public init(sound: SoundEntity?, robot: RobotEntity? = nil) {
+        self.sound = sound
+        self.robot = robot
+    }
+
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let sound else {
+            throw $sound.needsValueError()
+        }
+        try await RobotSoundPlayer.perform(robot: robot?.id) { player in
+            try await player.play(named: sound.id)
+        }
+        return .result(dialog: IntentDialog(.reachy("Playing \(sound.title).")))
+    }
+}
