@@ -236,6 +236,7 @@
             error: String? = nil,
             wirelessVersion: Bool = true,
             simulationEnabled: Bool = false,
+            mockupSimEnabled: Bool = false,
             controlLoop: ControlLoopStats? = nil
         ) -> Components.Schemas.DaemonStatus {
             let backend = state == .running
@@ -248,7 +249,7 @@
             let json = """
             {"robot_name": "Reachy Mini", "state": "\(state.rawValue)",
              "wireless_version": \(wirelessVersion), "desktop_app_daemon": false,
-             "simulation_enabled": \(simulationEnabled), "mockup_sim_enabled": false,
+             "simulation_enabled": \(simulationEnabled), "mockup_sim_enabled": \(mockupSimEnabled),
              \(errorField)
              "backend_status": \(backend)}
             """

@@ -92,9 +92,15 @@ breaking first — see [Status](#status) for why. Privacy: [nothing is collected
 
 ## Scope
 
-- **Wireless only.** On the Wireless model the daemon runs on the robot itself (`http://reachy-mini.local:8000`), so
-  this app is a pure network client. The Lite model (daemon on a USB-connected computer) is out of scope for v1 — a
-  Lite owner can still connect if the daemon runs on a reachable host in the same network.
+- **Any reachable daemon, and this app never starts one.** On the Wireless model the daemon runs on the robot itself
+  (`http://reachy-mini.local:8000`); on the Lite model, and for the simulator, it is the same daemon run on a computer
+  — `--serialport` for the robot wired to it, `--sim` for no robot at all. All three speak the same HTTP API, so all
+  three connect, and macOS offers the one on this computer as a row of its own. What this app does not do is install
+  or launch that daemon the way Pollen's desktop app does: that means shipping a Python environment, which the Mac App
+  Store does not allow and iOS cannot run.
+  - A daemon started on another computer is reachable **only if it was given `--fastapi-host 0.0.0.0`**. The default
+    outside `--wireless-version` is `127.0.0.1`, which binds loopback alone — a phone on the same Wi-Fi is refused by
+    that computer's kernel before the daemon is ever reached.
 - **Camera is WebRTC-only.** The daemon exposes no MJPEG endpoint, so video and two-way audio go through WebRTC.
 
 ## Architecture

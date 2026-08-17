@@ -106,7 +106,29 @@ struct SettingsScreen: View {
         } header: {
             Text(.reachy("Robot"))
         } footer: {
-            Text(nameField.footer)
+            VStack(alignment: .leading, spacing: Space.sm) {
+                Text(nameField.footer)
+                absentSettingsNote
+            }
+        }
+    }
+
+    /// Why this screen is shorter on a Lite robot and on a simulator.
+    ///
+    /// It sits here rather than on the Robot tab because this is the screen the
+    /// cards are missing *from*: `supportsWirelessFeatures` drops `SystemUpdateCard`
+    /// a few lines up, and `canPerformMaintenance` drops `MaintenanceCard` inside
+    /// Advanced. Both are correct — neither route is mounted without
+    /// `--wireless-version` — and both used to be silent, which is
+    /// `MaintenanceCard`'s own rule applied to a whole screen: an absence with no
+    /// reason attached tells the reader nothing to act on.
+    ///
+    /// A Wireless robot and a relayed session get nothing, so their references do
+    /// not move for a sentence that does not apply to them.
+    @ViewBuilder
+    private var absentSettingsNote: some View {
+        if let flavour = session.flavour, let note = DaemonFlavourCaption.absentSettings(for: flavour) {
+            Text(note)
         }
     }
 
