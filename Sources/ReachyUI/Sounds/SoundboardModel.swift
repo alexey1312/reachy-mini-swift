@@ -188,7 +188,9 @@ final class SoundboardModel {
     func importFile(at url: URL, session: RobotSession?) async {
         let name = RobotSound.basename(url.lastPathComponent)
         await perform(name) {
-            let data = try await Self.pickedFile(at: url, limit: RobotSound.maxUploadBytes)
+            let data = try await PickedFile.read(at: url, limit: RobotSound.maxUploadBytes) {
+                ReachyKitError.soundTooLarge(bytes: $0, limit: RobotSound.maxUploadBytes)
+            }
             try await library.add(data, named: name)
             markStored(name)
             guard let session else { return }
@@ -295,28 +297,6 @@ final class SoundboardModel {
         } catch {
             lastError.recordDaemonFailure(error)
         }
-    }
-
-    /// Off the main actor, size-checked before anything is read, and the
-    /// security-scoped access balanced by `defer` whichever way it leaves — lifted
-    /// whole from `RobotFilesModel`, where each of those three was learned.
-    ///
-    /// A plain `Task` would not do: created in a `@MainActor` context it inherits that
-    /// isolation, and `Data(contentsOf:)` would read a 25 MiB file on the main thread.
-    private nonisolated static func pickedFile(at url: URL, limit: Int) async throws -> Data {
-        try await Task.detached {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer {
-                if scoped {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            guard size <= limit else {
-                throw ReachyKitError.soundTooLarge(bytes: size, limit: limit)
-            }
-            return try Data(contentsOf: url)
-        }.value
     }
 }
 

@@ -247,41 +247,22 @@ final class RobotFilesModel {
 
     /// Reads a file the user picked on the device and writes it to the robot.
     ///
-    /// The read happens off the main actor. A plain `Task` would not achieve that —
-    /// created inside a `@MainActor` context it *inherits* that isolation, so
-    /// `Data(contentsOf:)` would still block the interface — hence the detached task
-    /// in `pickedFile(at:limit:)`.
+    /// `PickedFile.read` is where the detached task, the security scope and the
+    /// size-check-before-read live; the limit and the sentence for crossing it are this
+    /// screen's, which is why they are passed in.
     func upload(from url: URL, to destination: String) async {
         transferring = (destination as NSString).lastPathComponent
         defer { transferring = nil }
         do {
-            let data = try await Self.pickedFile(at: url, limit: Self.transferLimit)
+            let limit = Self.transferLimit
+            let data = try await PickedFile.read(at: url, limit: limit) {
+                ReachySSHError.fileTooLarge(bytes: UInt64($0), limit: limit)
+            }
             try await files.write(data, to: destination)
             await refresh()
         } catch {
             report(error)
         }
-    }
-
-    /// Off the main actor, size-checked before anything is read, and the
-    /// security-scoped access balanced by `defer` whichever way it leaves.
-    ///
-    /// A picked URL is security-scoped on iOS and reading it without the scope
-    /// silently yields nothing.
-    private nonisolated static func pickedFile(at url: URL, limit: Int) async throws -> Data {
-        try await Task.detached {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer {
-                if scoped {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            guard size <= limit else {
-                throw ReachySSHError.fileTooLarge(bytes: UInt64(size), limit: limit)
-            }
-            return try Data(contentsOf: url)
-        }.value
     }
 
     /// Writes bytes already in hand to an explicit path. This is both "add a file
