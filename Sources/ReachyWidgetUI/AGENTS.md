@@ -69,7 +69,7 @@ reverse.
     "toggle the running app" #66 asks for and is deliberately **not** a two-state toggle, for the reason
     `RobotPowerControls` gives.
   - **A configurable control's parameter and its action are one intent, unlike a widget's.** A widget's
-    configuration decides what a *view* draws and the tap runs something else (`RobotAppsConfigurationIntent` then
+    configuration decides what a _view_ draws and the tap runs something else (`RobotAppsConfigurationIntent` then
     `RobotAppTileIntent`); a control has no view to decide, so its configuration **is** its argument and
     `MoveControlConfigurationIntent` / `RobotAppControlConfigurationIntent` perform the work themselves — through
     `RobotMoveCommand` and `RobotAppCommand`, sharing nothing with their Shortcuts twins but the command.

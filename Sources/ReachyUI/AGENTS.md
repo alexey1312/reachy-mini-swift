@@ -424,7 +424,7 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `LogConsoleScreen` predates the bump and is not a required pattern.
 - **A `@State` property assigned in `init` is declared without a default, and that convention is what made TN3211 a
   non-event here.** Xcode 27 initialises `@State` lazily — back-deployed to iOS 17 — so a default expression runs at
-  the property's first *access* rather than at the view's construction, and the shape it breaks is a property that
+  the property's first _access_ rather than at the view's construction, and the shape it breaks is a property that
   has both a default **and** an `init` assignment. The audit found **none**: all 58 `_x = State(initialValue:)`
   assignments in `Sources/` and `Apps/` belong to properties declared bare. Do not "tidy" a type annotation into a
   default on one of them; that is the bug, and it is silent.
