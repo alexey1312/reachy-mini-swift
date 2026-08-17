@@ -137,8 +137,12 @@ struct ConnectHeader: View {
     /// `.idle` gets a sentence of its own because the rail is now permanently
     /// mounted — see the type's note on why — so this line has to read sensibly with
     /// nothing happening at all.
+    /// `"the robot"` rather than `"robot"`: the fragment fills a sentence, and a
+    /// bare noun there both reads wrong in English ("Connected to robot") and
+    /// derives the same `xcstringstool` symbol as the `"Robot"` section title —
+    /// a hard build error the moment both are in the catalogue.
     private var headerText: LocalizedStringResource {
-        let target = session.link == .none ? String(localized: .reachy("robot")) : session.link.displayString
+        let target = session.link == .none ? String(localized: .reachy("the robot")) : session.link.displayString
         if isFailed {
             return .reachy("Couldn't connect to \(target)")
         }

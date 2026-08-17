@@ -311,6 +311,22 @@ It lives here because **both executables link this target**, so SwiftPM copies `
 each — verified on a device build: `en.lproj/Localizable.strings` is present in `ReachyMini.app` _and_ in
 `PlugIns/ReachyWidget.appex`. One catalogue, one hand-off to a translator, two processes served.
 
+**Four languages ship: `de`, `es`, `fr`, `ru`** — 553 keys × 4, plus `Apps/ReachyMini/Resources/InfoPlist.xcstrings`
+for the four `NS*UsageDescription` alerts, which are the first sentences a user reads and live in no catalogue
+otherwise. That second file does a second job: it gives the **main** bundle real `<lang>.lproj` directories, which is
+what makes the per-app Language picker appear and the App Store list four languages. The catalogue itself lives in the
+nested `ReachyMini_ReachyDesign.bundle`, which negotiates independently, so without it the app would advertise
+English while rendering Russian. If a built bundle ever shows no `InfoPlist.strings` at its root, the fallback is a
+`CFBundleLocalizations` array in `Apps/Project.swift` — deliberately not added up front, because a second hand-kept
+list of languages is exactly the drift this file keeps warning about.
+
+**They are machine-translated and no native speaker has reviewed them.** `state` is `"translated"` rather than
+`"needs_review"` because the latter reads as 0 % done in Xcode's progress column; the honest status is here instead.
+`fr` is checkable against Pollen's own French copy. **Nothing in CI can catch truncation** — the references are
+English-only by design (`-testLanguage en -testRegion US`), so a German or Russian label that clips does so
+invisibly. The five-tab bar is the tightest spot; `Live` is deliberately `Directo` / `Direct` / `Эфир` rather than the
+longer phrase for that reason, while `Einstellungen` and `Приложения` are as short as those languages get.
+
 Three things measured rather than assumed:
 
 - **`Section`, `LabeledContent`, `TextField` and `SecureField` only got their `LocalizedStringResource` initialiser in
@@ -322,17 +338,50 @@ Three things measured rather than assumed:
   build error from `xcstringstool`, not a warning. `"Bluetooth is switched off."` against `"Bluetooth is switched
   off"` was the app saying the same sentence two ways; `"Starting…"` against `"Starting"` was not, and the daemon's
   lifecycle took `"Starting up"` / `"Shutting down"` to clear it. Expect to be told when a new key rhymes with an old
-  one, and fix the copy rather than the tooling.
+  one, and fix the copy rather than the tooling. **Case counts too**: `"robot"` — the fallback noun in
+  `ConnectHeader`'s header sentence — collides with the `"Robot"` section title, which is why that call site now reads
+  `.reachy("the robot")`. `Scripts/check-catalogue.py` reproduces the rule in Python and so catches all three on
+  Linux, before a Mac build can. It is an approximation of a tool we cannot run there, tuned to over-report rather
+  than under-report: a false positive costs one copy edit, a false negative costs a red build.
 - **`.xcstrings` compiles under the pinned swift.org toolchain**, unlike `#Preview`: SwiftPM shells out to `xcrun`
   for `xcstringstool`, so `mise run build` and `mise run test` are unaffected.
 
-Seeding is manual. `SWIFT_EMIT_LOC_STRINGS` is not set for SwiftPM targets through Tuist, so Xcode never extracts:
-the 335 keys with no interpolation were collected from the source and written in with `extractionState: "manual"`.
-The ~50 keys that _do_ interpolate are deliberately absent — their stored form carries `%@` / `%lld` placeholders
-whose types cannot be read off the call site, and a wrong entry is worse than a missing one, which merely falls back
-to the English key. Finish them by opening the catalogue in Xcode, which extracts the placeholders correctly. The
-working list lives under gitignored `.context/` and does not travel to another clone: rebuild it with
-`grep -rnE '\.reachy\("[^"]*\\\(' Sources --include='*.swift'` — 62 call sites, ~56 distinct keys.
+Seeding is manual. `SWIFT_EMIT_LOC_STRINGS` is not set for SwiftPM targets through Tuist, so Xcode never extracts,
+and every entry carries `extractionState: "manual"`. **Because nothing extracted, nothing checked, and the catalogue
+drifted 139 keys behind the code** — each one rendering its English key perfectly and so invisibly. That is what
+`Scripts/check-catalogue.py` exists for, and it runs first in `mise run lint` because it is the only check in that
+task that needs no toolchain at all. It asserts four things: the plain `.reachy("…")` literals in the sources are
+_exactly_ the catalogue's keys, every shipped language covers every key in both catalogues, the file round-trips
+byte-identically through its own emitter, and no two keys derive the same symbol. `--fix` writes the canonical form;
+it deliberately will **not** add or remove keys, because a scanner bug would then delete shipping copy.
+
+Two things the scanner has to get right, both of which gave a wrong answer first:
+
+- **Comments are stripped before scanning, literal-aware.** `.reachy(` and its literal can be separated by a
+  `// swiftlint:disable:next line_length` (`ReachyUI/Onboarding/OnboardingWelcomeStep.swift`), and skipping only
+  whitespace reported nine _live_ onboarding sentences as stale — copy a reconciliation would have deleted.
+- **`.reachy(_:)` in a doc comment is not a call site.** Four `///` mentions read as unparseable arguments until
+  comments were gone.
+
+**Key order is the file's own and is not sorted.** The seed is byte-sorted with five case-insensitive exceptions — the
+fingerprint of entries Xcode's editor inserted into a hand-written list — so imposing either single rule produces a
+diff the other tool undoes. New keys go in case-insensitively beside those five; the checker asserts formatting, never
+ordering.
+
+The 79 keys that _do_ interpolate are deliberately absent — their stored form carries `%@` / `%lld` placeholders whose
+types cannot be read off the call site, and a wrong entry is worse than a missing one, which merely falls back to the
+English key. Finish them by opening the catalogue in Xcode, which extracts the placeholders correctly. Rebuild the
+working list with `grep -rnE '\.reachy\("[^"]*\\\(' Sources --include='*.swift'` — 79 call sites, 79 distinct keys.
+
+**Three translated keys are _fragments_ of those English frames, so they read mixed until the interpolating pass
+lands.** `"the robot"` fills `"Connected to \(target)"` / `"Connecting to …"` / `"Couldn't connect to …"`;
+`"this robot runs an older one"` and `"The hardware ID never changes."` fill `RobotNameField`'s footer. They are
+translated forward-correctly rather than pinned to English, so the interpolating pass completes them rather than
+having to revisit them — but that pass is what makes those two sentences read whole. A fourth pair is worse and is
+not an interpolation at all: `OnboardingScanStep` **concatenates** two catalogue keys (`"…or join "` +
+`"its own reachy-mini-ap network…"`) to dodge a line-length warning. Both halves are translated so their join is
+grammatical in all four languages, and the trailing space on the first half is load-bearing. Prefer merging them into
+one key over adding a fifth of these.
 
 ## Applying a role — what happened
 

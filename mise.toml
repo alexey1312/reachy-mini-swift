@@ -356,9 +356,15 @@ xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 '''
 
 [tasks.lint]
-description = "Run SwiftLint, actionlint, and the version lockstep checks"
+description = "Run SwiftLint, actionlint, the catalogue check, and the version lockstep checks"
 run = '''
 set -o pipefail
+# Rule 9 routes every user-facing string through `.reachy(_:)`, and nothing checked
+# that the key it names is in the catalogue — a missing key renders the English key
+# perfectly, for ever, so 139 of them accumulated unnoticed. Runs first because it
+# needs no toolchain and no network: on a Linux checkout it is the only one of these
+# that can run at all.
+python3 Scripts/check-catalogue.py
 PINNED="$(sed -nE 's/^hk = "([0-9.]+)".*/\1/p' mise.toml)"
 DRIFT="$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' hk.pkl | sort -u | grep -vFx "$PINNED" || true)"
 if [ -n "$DRIFT" ]; then

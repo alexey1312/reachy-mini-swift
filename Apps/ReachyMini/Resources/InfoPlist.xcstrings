@@ -1,0 +1,146 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSBluetoothAlwaysUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richtet das Wi-Fi deines Reachy Mini ein und stellt einen Roboter wieder her, der das Netzwerk nicht erreicht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configura el Wi-Fi de tu Reachy Mini y recupera un robot que no puede alcanzar la red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configure le Wi-Fi de votre Reachy Mini et récupère un robot qui ne parvient pas à joindre le réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настраивает Wi-Fi вашего Reachy Mini и восстанавливает робота, который не может подключиться к сети."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey Reachy nimmt nie mit der Kamera deines Telefons auf; der Video-Stack des Roboters verweist auf diese API."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey Reachy never records with your phone's camera; the robot video stack references this API."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey Reachy nunca graba con la cámara de tu teléfono; la pila de vídeo del robot hace referencia a esta API."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey Reachy n'enregistre jamais avec la caméra de votre téléphone ; la pile vidéo du robot référence cette API."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey Reachy никогда не записывает камерой вашего телефона; видеостек робота лишь ссылается на этот API."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findet deinen Reachy Mini im lokalen Netzwerk und verbindet sich mit ihm."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discovers and connects to your Reachy Mini robot on the local network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecta tu robot Reachy Mini en la red local y se conecta a él."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détecte votre robot Reachy Mini sur le réseau local et s'y connecte."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Находит вашего робота Reachy Mini в локальной сети и подключается к нему."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprich über den Lautsprecher deines Reachy Mini mit Menschen in seiner Nähe."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Talk to people near your Reachy Mini through its speaker."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habla con las personas cerca de tu Reachy Mini a través de su altavoz."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parlez aux personnes près de votre Reachy Mini via son haut-parleur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Говорите с людьми рядом с вашим Reachy Mini через его динамик."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
