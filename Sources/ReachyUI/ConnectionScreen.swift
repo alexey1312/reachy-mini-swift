@@ -31,7 +31,15 @@ struct ConnectionScreen: View {
     @Environment(\.reachyPreviewMode) private var previewMode
     @State private var resolving: String?
     @State private var showsOnboarding = false
-    @State private var awaitedHardwareID = KnownRobots.pendingProvisionedHardwareID
+    /// Read in `init` rather than defaulted here, and TN3211 is why: Xcode 27
+    /// initialises `@State` lazily — back-deployed to iOS 17 — so a default
+    /// expression runs at the property's first *access* instead of at the view's
+    /// construction. This one reads mutable global state that `RobotSession`
+    /// clears on the handshake (`finishOnboarding` below is the writer), so
+    /// deferring the read to the first body evaluation is the difference between
+    /// the banner appearing and never appearing. `manualInput` reads
+    /// `KnownRobots.lastAddress` from the same position for the same reason.
+    @State private var awaitedHardwareID: String?
     /// Resolved in `onAppear` rather than defaulted here: a default argument is
     /// evaluated in a nonisolated context, and both models are main-actor isolated.
     @State private var knownRobots: KnownRobotsModel?
@@ -54,6 +62,7 @@ struct ConnectionScreen: View {
         self.showPermissions = showPermissions
         _browser = State(initialValue: browser)
         _manualInput = State(initialValue: manualInput ?? KnownRobots.lastAddress.map(\.displayString) ?? "")
+        _awaitedHardwareID = State(initialValue: KnownRobots.pendingProvisionedHardwareID)
         _knownRobots = State(initialValue: knownRobots)
         _sweep = State(initialValue: sweep)
         _route = State(initialValue: route)

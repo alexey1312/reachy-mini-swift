@@ -422,6 +422,28 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
 - Deployment floor is iOS 18 / macOS 15 (`Package.swift`, `Apps/Project.swift`), set by `RealityView`.
   `ScrollPosition`, `onScrollPhaseChange` and `onScrollGeometryChange` are available; the zero-height sentinel row in
   `LogConsoleScreen` predates the bump and is not a required pattern.
+- **A `@State` property assigned in `init` is declared without a default, and that convention is what made TN3211 a
+  non-event here.** Xcode 27 initialises `@State` lazily — back-deployed to iOS 17 — so a default expression runs at
+  the property's first *access* rather than at the view's construction, and the shape it breaks is a property that
+  has both a default **and** an `init` assignment. The audit found **none**: all 58 `_x = State(initialValue:)`
+  assignments in `Sources/` and `Apps/` belong to properties declared bare. Do not "tidy" a type annotation into a
+  default on one of them; that is the bug, and it is silent.
+  - **What the audit did change is one default that read mutable global state**: `ConnectionScreen`'s
+    `awaitedHardwareID`, which reads `KnownRobots.pendingProvisionedHardwareID` — a value `RobotSession` clears on the
+    handshake, so a deferred read is a banner that never appears. It is assigned in `init` now, beside `manualInput`,
+    which reads `KnownRobots.lastAddress` from the same position. **The rule generalises past `@State`**: a default
+    that reads global state is a default whose evaluation time is part of its meaning.
+  - **The other two computed defaults were checked and deliberately left alone.** `ReachyTabShell.presence`
+    (`PresenceModel()`) and `RobotScreen.powerOff` (`RobotPowerOffModel()`) construct a fresh model and read nothing,
+    so lazy construction is strictly cheaper and observably identical.
+  - **Nothing pins any of this, and no test could.** `@State` initialisation order is not reachable from a unit test,
+    and the banner has no reference image. This entry is the cover.
+- **The UIScene launch requirement is declared in `Apps/Project.swift` and belongs to `QuickActionSceneDelegate`.**
+  SwiftUI's `App` has always been scene-based, but adoption is an Info.plist key and Tuist's `.extendingDefault` does
+  not supply one. The manifest carries `UIApplicationSupportsMultipleScenes: false` and **no** `UISceneConfigurations`
+  — the app builds its own configuration in `application(_:configurationForConnecting:)` to name the delegate, and a
+  listed configuration would disagree with it. The widget extension is an appex, not an app, and the requirement does
+  not reach it.
 
 ## The joystick's rotation zone
 
