@@ -349,8 +349,13 @@ Three things measured rather than assumed:
 Seeding is manual. `SWIFT_EMIT_LOC_STRINGS` is not set for SwiftPM targets through Tuist, so Xcode never extracts,
 and every entry carries `extractionState: "manual"`. **Because nothing extracted, nothing checked, and the catalogue
 drifted 139 keys behind the code** — each one rendering its English key perfectly and so invisibly. That is what
-`Scripts/check-catalogue.py` exists for, and it runs first in `mise run lint` because it is the only check in that
-task that needs no toolchain at all. It asserts four things: the plain `.reachy("…")` literals in the sources are
+`Scripts/check-catalogue.py` exists for, and it runs in **two** places, the way `actionlint` does: as an `hk` step
+(so a commit touching `*.swift` or `*.xcstrings` fails at pre-commit, where the string was just written) and first in
+`mise run lint`, which is what CI runs and which must not depend on a hook being installed — `HK=0` skips them all.
+The hk step takes no `{{files}}`: the script compares the whole tree against the whole catalogue, and handed a subset
+of the staged files it would report every key the unstaged ones use as missing. It `depends = "swiftlint"` for the
+reason the Swift steps are chained — swiftformat and `swiftlint --fix` rewrite the very files it reads. It asserts
+four things: the plain `.reachy("…")` literals in the sources are
 _exactly_ the catalogue's keys, every shipped language covers every key in both catalogues, the file round-trips
 byte-identically through its own emitter, and no two keys derive the same symbol. `--fix` writes the canonical form;
 it deliberately will **not** add or remove keys, because a scanner bug would then delete shipping copy.
