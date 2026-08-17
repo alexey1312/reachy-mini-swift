@@ -52,6 +52,9 @@ struct TelepresenceSheet: View {
             Toggle(isOn: tracking) {
                 Label(.reachy("Follow faces"), systemImage: "eye")
             }
+            if presence.isTracking {
+                followStrength
+            }
             if let lastError = presence.lastError {
                 Text(lastError)
                     .font(.caption)
@@ -66,6 +69,32 @@ struct TelepresenceSheet: View {
             Text(.reachy("The robot does not report these, so they show what this app last asked for."))
         }
         .disabled(presence.busy)
+    }
+
+    /// Only under a switch that is on, because the daemon takes the weight as a
+    /// parameter of *enabling* — there is no route that sets it alone, so a slider over
+    /// an off switch would be a control with nothing to send.
+    ///
+    /// The robot hears it once the thumb lifts, the way the two audio levels are sent:
+    /// dragging across the range would otherwise re-enable tracking at every step.
+    private var followStrength: some View {
+        @Bindable var presence = presence
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(.reachy("Follow strength"))
+                Spacer()
+                Text(.reachy("\(Int((presence.trackingWeight * 100).rounded()))%"))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $presence.trackingWeight, in: PresenceModel.weightRange, step: 0.05) { editing in
+                guard !editing else { return }
+                Task { await presence.commitTrackingWeight(session: session) }
+            }
+            Text(.reachy("Lower means the head follows less of the way. The switch above is what stops it."))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
     }
 
     /// Bindings rather than `$presence.x`: each setter is a call that can be refused,

@@ -12,6 +12,9 @@ struct PresenceModelTests {
         private let lock = NSLock()
         private(set) var wobbling: [Bool] = []
         private(set) var tracking: [Bool] = []
+        /// The weight each `setFaceTracking` carried, which is the whole of what the
+        /// slider can be asserted on: no route reports it back.
+        private(set) var weights: [Double] = []
         /// What the robot answers `setFaceTracking` with — false is a camera-less one.
         var trackingTakes = true
         var failure: (any Error)?
@@ -28,11 +31,14 @@ struct PresenceModelTests {
             lock.withLock { wobbling.append(value) }
         }
 
-        func track(_ value: Bool) throws -> Bool {
+        func track(_ value: Bool, weight: Double) throws -> Bool {
             if let failure {
                 throw failure
             }
-            lock.withLock { tracking.append(value) }
+            lock.withLock {
+                tracking.append(value)
+                weights.append(weight)
+            }
             return value && trackingTakes
         }
     }
@@ -72,7 +78,7 @@ struct PresenceModelTests {
     private func model(_ calls: Calls) -> PresenceModel {
         PresenceModel(
             setWobbling: { _, value in try await calls.wobble(value) },
-            setFaceTracking: { _, value in try calls.track(value) }
+            setFaceTracking: { _, value, weight in try calls.track(value, weight: weight) }
         )
     }
 
@@ -226,4 +232,90 @@ private func waitUntil(
         try? await Task.sleep(for: .milliseconds(20))
     }
     Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
+
+    // MARK: - How hard it follows
+
+    /// The weight rides on *enabling*: `enable_head_tracking` takes it as a parameter and
+    /// no route sets it alone, so a changed weight is a second enable.
+    @Test("the weight the slider settled on is what the robot is told")
+    func sendsTheWeightOnCommit() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+
+        await model.setFaceTracking(true, session: session)
+        #expect(calls.weights == [1])
+
+        model.trackingWeight = 0.5
+        await model.commitTrackingWeight(session: session)
+
+        #expect(calls.tracking == [true, true])
+        #expect(calls.weights == [1, 0.5])
+    }
+
+    /// A gesture that ends where it started is not a command. The route is idempotent, so
+    /// this is thrift rather than a rule — but a slider that re-enables tracking on every
+    /// touch is a slider nobody can rest a thumb on.
+    @Test("committing an unchanged weight sends nothing")
+    func skipsAnUnchangedWeight() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+
+        await model.setFaceTracking(true, session: session)
+        await model.commitTrackingWeight(session: session)
+
+        #expect(calls.weights == [1])
+    }
+
+    /// While the switch is off the slider is a preference, not a control: the only route
+    /// that carries the weight also turns tracking on, and doing that behind a switch
+    /// somebody left off is not what dragging it asked for.
+    @Test("the slider sends nothing while tracking is off")
+    func staysSilentWhileOff() async {
+        let calls = Calls()
+        let model = model(calls)
+
+        model.trackingWeight = 0.4
+        await model.commitTrackingWeight(session: .preview())
+
+        #expect(calls.tracking.isEmpty)
+        #expect(!model.isTracking)
+    }
+
+    /// The preference outlives the switch, so turning tracking back on uses the number
+    /// the reader chose rather than resetting to the whole of it.
+    @Test("re-enabling tracking carries the weight last chosen")
+    func remembersTheWeightAcrossTheSwitch() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+
+        await model.setFaceTracking(true, session: session)
+        model.trackingWeight = 0.3
+        await model.commitTrackingWeight(session: session)
+        await model.setFaceTracking(false, session: session)
+        await model.setFaceTracking(true, session: session)
+
+        #expect(calls.weights == [1, 0.3, 0.3, 0.3])
+        #expect(model.isTracking)
+    }
+
+    /// A camera-less robot answers `enabled: false`, so nothing was applied — and the
+    /// next commit must not read the refused number as already sent.
+    @Test("a refused enable does not record its weight as applied")
+    func doesNotRecordARefusedWeight() async {
+        let calls = Calls()
+        calls.trackingTakes = false
+        let model = model(calls)
+        let session = RobotSession.preview()
+
+        model.trackingWeight = 0.5
+        await model.setFaceTracking(true, session: session)
+        #expect(!model.isTracking)
+
+        // Off, so the commit is skipped for that reason rather than for the weight's.
+        await model.commitTrackingWeight(session: session)
+        #expect(calls.weights == [0.5])
+    }
 }

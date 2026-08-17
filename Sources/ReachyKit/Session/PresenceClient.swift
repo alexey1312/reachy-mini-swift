@@ -38,12 +38,16 @@ public extension RobotSession {
         try await withPresenceClient { try await $0.setWobbling(enabled) }
     }
 
+    /// - Parameter weight: how much of the tracked aim reaches the head, 0…1. The
+    ///   daemon composes it as `linear_pose_interpolation(pose, aim, weight)`, so 1
+    ///   replaces the pose outright and anything less leaves part of what the head was
+    ///   already doing. Defaulted, so every existing caller means "all of it".
     /// - Returns: whether the robot took it. False from a camera-less robot, which
     ///   the screen reports rather than leaving a switch on over a robot watching
     ///   nothing.
     @discardableResult
-    func setFaceTracking(_ enabled: Bool) async throws -> Bool {
-        try await withPresenceClient { try await $0.setFaceTracking(enabled, weight: 1) }
+    func setFaceTracking(_ enabled: Bool, weight: Double = 1) async throws -> Bool {
+        try await withPresenceClient { try await $0.setFaceTracking(enabled, weight: weight) }
     }
 }
 

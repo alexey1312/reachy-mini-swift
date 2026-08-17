@@ -4148,6 +4148,35 @@
         }
       }
     },
+    "Follow strength": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgestärke"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad del seguimiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensité du suivi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сила слежения"
+          }
+        }
+      }
+    },
     "Forget": {
       "extractionState": "manual",
       "localizations": {
@@ -6203,6 +6232,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключение к роботу потеряно."
+          }
+        }
+      }
+    },
+    "Lower means the head follows less of the way. The switch above is what stops it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niedriger heißt, der Kopf folgt weniger weit. Ganz aufhören lässt ihn der Schalter darüber."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más bajo significa que la cabeza sigue menos. El interruptor de arriba es lo que lo detiene."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus bas, la tête suit moins loin. C'est l'interrupteur au-dessus qui l'arrête."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чем ниже, тем меньше голова доводит движение. Полностью останавливает переключатель выше."
           }
         }
       }
