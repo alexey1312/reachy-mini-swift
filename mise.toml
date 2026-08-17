@@ -399,9 +399,20 @@ run = "hk fix --all 2>&1 | grep -E '^(✔|✗|hk )' || true"
 
 [tasks.format-check]
 description = "Check all formatting (CI)"
+# The filter keeps a passing run to one line per step, and it used to be applied
+# unconditionally — which also stripped the violations. A failed `swiftlint-strict`
+# reached CI as `✗ swiftlint-strict [====>] 2/3` and nothing else: no file, no line,
+# no rule, and nothing in the run's other four jobs to read instead. hk *does* print
+# the tool's own output (it repeats it under `<step> stderr:` at the end), so the fix
+# is to stop filtering the moment there is something to read.
 run = """
-set -o pipefail
-hk check --all 2>&1 | grep -E '^(✔|✗|hk )'
+LOG="$(mktemp)"
+if hk check --all >"$LOG" 2>&1; then
+  grep -E '^(✔|✗|hk )' "$LOG" || true
+else
+  cat "$LOG"
+  exit 1
+fi
 """
 
 [tasks.setup]

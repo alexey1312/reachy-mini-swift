@@ -217,6 +217,16 @@ result — verify the artifact, or rerun the tool directly
 (`./bin/mise x -- swiftlint lint --strict` with the explicit path list the lint task in `mise.toml` names,
 `Apps/ReachyWidget` included). Always pass those explicit paths — a bare
 `.` walks into `Apps/DerivedData`, and swiftformat then "fails" on generated and vendored sources.
+**SwiftLint does run on a Linux checkout, and the thing that stops it is one shared library.** It dies at
+`SourceKittenFramework/library_wrapper.swift:58: Fatal error: Loading libsourcekitdInProc.so failed` — before reading
+any rule, so disabling the SourceKit-dependent ones (the `json_codec_only` custom rule and its `match_kinds`) does not
+help. That library ships in the swift.org Linux toolchain and nothing else in it is needed: unpack
+`swift-<version>-RELEASE-ubuntu24.04.tar.gz` and run swiftlint under
+`LD_LIBRARY_PATH=<toolchain>/usr/lib:<toolchain>/usr/lib/swift/linux`. Worth the gigabyte, because a `--strict`
+warning is otherwise unfindable off a Mac — `swiftformat`, `dprint` and `Scripts/check-catalogue.py` all pass over a
+`function_body_length` violation, and the lint task's own comment ("on a Linux checkout it is the only one of these
+that can run at all") is about needing no _network_, not about SwiftLint being impossible. `swift build` / `swift test`
+stay out of reach for the reason they always were: the targets import SwiftUI.
 **swiftformat and `#expect` disagree about key paths, and the formatter wins.** `preferKeyPath` rewrites
 `allSatisfy { $0.isTappable }` into `allSatisfy(\.isTappable)`, which the macro cannot expand: the build fails with
 `call can throw, but it is not marked with 'try'` at `macro expansion #expect`, pointing at generated code rather
