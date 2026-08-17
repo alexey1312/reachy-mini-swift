@@ -6,4 +6,7 @@ test -d "$(git rev-parse --git-dir)/rebase-merge" 2>/dev/null && exit 0
 test -d "$(git rev-parse --git-dir)/rebase-apply" 2>/dev/null && exit 0
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# hk's swiftlint steps need SourceKit, and `mise x` is not one of the tasks that source
+# this — without it every commit on a Linux checkout fails in the hook. No-op on macOS.
+. "$REPO_ROOT/Scripts/sourcekit-env.sh"
 exec "$REPO_ROOT/bin/mise" x -- hk run --silent pre-commit "$@"
