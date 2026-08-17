@@ -13,11 +13,12 @@
 # products, run against whatever bundle it is handed.
 #
 # Checked: the eight Shortcuts-facing intents and a non-empty `autoShortcuts`
-# (the extracted ReachyShortcuts provider) in the app's own metadata, the
-# widget configuration intent in the appex's (iOS only — that metadata is what
-# the widget's Edit sheet is built from), and that no `extract.packagedata`
-# exists anywhere — an AppIntentsPackage conformance emits one, and linkd
-# rejects the bundle's entire metadata over it (aggregateMetadataIsEmpty).
+# (the extracted ReachyShortcuts provider) in the app's own metadata, the three
+# configuration intents in the appex's (iOS only — that metadata is what the
+# widget's and the two configurable controls' Edit sheets are built from), and
+# that no `extract.packagedata` exists anywhere — an AppIntentsPackage
+# conformance emits one, and linkd rejects the bundle's entire metadata over it
+# (aggregateMetadataIsEmpty).
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
@@ -52,7 +53,15 @@ REQUIRED_APP_ACTIONS = [
     "RobotAwakeIntent",
     "RunningAppIntent",
 ]
-REQUIRED_APPEX_ACTIONS = ["RobotAppsConfigurationIntent"]
+REQUIRED_APPEX_ACTIONS = [
+    "RobotAppsConfigurationIntent",
+    # A control's Edit sheet is built from this metadata exactly as the widget's
+    # is, so a configuration intent that stopped extracting costs the picker and
+    # nothing goes red. Both are isDiscoverable = false and are recorded here
+    # anyway — the flag is a field in the file, not an absence from it.
+    "MoveControlConfigurationIntent",
+    "RobotAppControlConfigurationIntent",
+]
 
 metadata = list(target.rglob("extract.actionsdata"))
 app_files = [p for p in metadata if not any(a.suffix == ".appex" for a in p.parents)]

@@ -61,6 +61,26 @@ reverse.
   A transition in flight offers nothing at all; `.unknown` offers nothing and lets the tap fall through to
   `widgetURL`. **`Widget — no robot` is the reference that proves the button is conditional**, and it came back
   byte-identical when the button landed — which is also what made the other 76 movements readable.
+  - **A _configurable_ control may draw a name, and that does not reopen the argument.** `PlayMoveControl` and
+    `ToggleRobotAppControl` (`Apps/ReachyWidget/Sources/RobotActivityControls.swift`) read their own saved
+    configuration through an `AppIntentControlValueProvider` that touches nothing — no robot, no cache, no network —
+    so what they draw is what the reader chose, which cannot go stale the way a reading can. They stay imperatives
+    all the same: the button says which move it plays, never whether one is playing. `ToggleRobotAppControl` is the
+    "toggle the running app" #66 asks for and is deliberately **not** a two-state toggle, for the reason
+    `RobotPowerControls` gives.
+  - **A configurable control's parameter and its action are one intent, unlike a widget's.** A widget's
+    configuration decides what a *view* draws and the tap runs something else (`RobotAppsConfigurationIntent` then
+    `RobotAppTileIntent`); a control has no view to decide, so its configuration **is** its argument and
+    `MoveControlConfigurationIntent` / `RobotAppControlConfigurationIntent` perform the work themselves — through
+    `RobotMoveCommand` and `RobotAppCommand`, sharing nothing with their Shortcuts twins but the command.
+  - **They are the first widget buttons that depend on metadata extraction**, which is the trade a picker costs.
+    `RobotAppTileIntent` takes plain `String`s precisely so a tile never does; a control's Edit sheet has no such
+    option, because the system builds it out of `Metadata.appintents`. Both are therefore in
+    `Scripts/check-appintents-metadata.sh`'s `REQUIRED_APPEX_ACTIONS` beside the widget's — being
+    `isDiscoverable = false` does not keep an intent out of that file, it records a flag in it.
+  - **`.promptsForUserConfiguration()` is not decoration.** Without it an unconfigured control's first tap reaches a
+    `perform` that throws `needsValueError()`, and Control Centre has nowhere to prompt from — the reader gets a
+    button that fails silently.
   - **`invalidatableContent()` here takes no condition, unlike the tile's.** A pending tile is still on screen, so
     `RobotAppTileView` can key the flag off its state; this button is gone the moment a transition is pending, so a
     condition off `isPending` would be false at every call site and switch the dimming off rather than drive it. The
@@ -180,6 +200,10 @@ the next pair.
 - **`RobotAppTileIntent` and `ToggleRobotAppIntent` do the same thing and must stay two types.** The tile's takes
   plain `String`s so a widget button never depends on metadata extraction; the Shortcuts one takes a
   `RobotAppEntity` so the picker exists. The tile's is the one that is `isDiscoverable = false`.
+  - **`RobotAppControlConfigurationIntent` is a third, and it is not one too many.** A control's argument has to be a
+    `ControlConfigurationIntent` — that is the type the system builds an Edit sheet from — so it can be neither of
+    the two above whatever it takes. All three share `RobotAppCommand` and nothing else, which is the rule rather
+    than the exception here.
 - **`isDiscoverable = false` does not remove an intent from `Metadata.appintents`** — it is recorded there as a flag.
   Reading the built metadata to check what Shortcuts offers means reading `isDiscoverable`, not looking for an
   absence:
@@ -188,8 +212,8 @@ the next pair.
   included — the only way to see that a parameterized phrase compiled into anything.
   **Release runs this check automatically**: `Scripts/check-appintents-metadata.sh` asserts the eight
   Shortcuts-facing
-  actions, a non-empty `autoShortcuts` and the appex's configuration intent, from every Release build task and from
-  both release archives before upload. It exists because extraction failing is a warning, never a build error —
+  actions, a non-empty `autoShortcuts` and the appex's three configuration intents, from every Release build task and
+  from both release archives before upload. It exists because extraction failing is a warning, never a build error —
   TestFlight 0.1.1 archived green and installed with no actions in the Shortcuts app at all. **A new discoverable
   intent owes that list an entry**, or its extraction can fail in a release and nothing goes red.
 - **`RobotAppLauncher` reads the running app exactly once per call.** Every path goes through one private

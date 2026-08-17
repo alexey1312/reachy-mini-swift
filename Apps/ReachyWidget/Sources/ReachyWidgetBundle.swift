@@ -11,5 +11,7 @@ struct ReachyWidgetBundle: WidgetBundle {
         PowerOffRobotControl()
         StopMoveControl()
         StopRobotAppControl()
+        PlayMoveControl()
+        ToggleRobotAppControl()
     }
 }
