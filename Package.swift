@@ -26,7 +26,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.7.0"),
         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.0"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.1.0"),
-        .package(url: "https://github.com/stasel/WebRTC.git", from: "150.0.0"),
+        .package(url: "https://github.com/stasel/WebRTC.git", from: "151.0.0"),
         // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
         // rather than the `from:` every other dependency here uses.
         .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
