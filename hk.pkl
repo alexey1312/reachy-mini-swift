@@ -73,10 +73,33 @@ local builtin_checks = new Mapping<String, Step> {
     }
 }
 
+// Rule 9's other half: the key a `.reachy(_:)` names has to be *in* the catalogue.
+// A missing one renders the English key perfectly and for ever, so 139 of them
+// accumulated unnoticed — this is the step that makes that a commit-time failure
+// rather than something CI mentions later.
+local catalogue_checks = new Mapping<String, Step> {
+    ["catalogue"] {
+        // Both extensions matter: the drift opens by editing Swift *or* the catalogue.
+        glob = List("*.swift", "*.xcstrings")
+        // Deliberately no `{{files}}`. The script compares the whole tree against the
+        // whole catalogue; handed a subset of the staged files it would report every
+        // key the unstaged ones use as missing. `batch = false` keeps that one
+        // invocation rather than one per group of the files that triggered it.
+        check = "python3 Scripts/check-catalogue.py"
+        batch = false
+        // swiftformat and `swiftlint --fix` rewrite the very files this reads, and a
+        // reader racing them sees half-written source — the same reason the Swift
+        // steps above are chained. Ordering only; a failed swiftlint does not skip it.
+        depends = "swiftlint"
+        hide = true
+    }
+}
+
 local all_linters = new Mapping<String, Step> {
     ...swift_linters
     ...dprint_checks
     ...builtin_checks
+    ...catalogue_checks
 }
 
 hooks {
