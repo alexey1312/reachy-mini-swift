@@ -38,6 +38,14 @@
 
     /// Exists only to name the scene delegate above — a SwiftUI app has no other
     /// place to hand one to UIKit.
+    ///
+    /// **This is what the UIScene launch requirement lands on.** Under the iOS 27
+    /// SDK an app must adopt the scene lifecycle, and SwiftUI's `App` already has —
+    /// but the declaration is an Info.plist key, and `Apps/Project.swift` now
+    /// carries a `UIApplicationSceneManifest` with **no** `UISceneConfigurations`
+    /// under it. That absence belongs to this type: the configuration returned
+    /// below is the one UIKit uses, and a listed configuration would be a second
+    /// answer about `delegateClass`.
     final class QuickActionAppDelegate: NSObject, UIApplicationDelegate {
         func application(
             _: UIApplication,

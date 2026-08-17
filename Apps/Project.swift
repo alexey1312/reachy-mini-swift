@@ -103,6 +103,23 @@ let project = Project(
                     "Talk to people near your Reachy Mini through its speaker."
                 ),
                 "UILaunchScreen": .dictionary([:]),
+                // The UIScene lifecycle is a launch requirement under the iOS 27
+                // SDK, and SwiftUI's `App` being scene-based is not the same as
+                // this app *declaring* it — Tuist's `.extendingDefault` does not
+                // supply the manifest, so nothing here said so.
+                //
+                // **No `UISceneConfigurations`, deliberately.** The one scene is
+                // configured in code: `QuickActionAppDelegate` answers
+                // `configurationForConnecting` with a `UISceneConfiguration(name:
+                // nil, …)` naming `QuickActionSceneDelegate`, which is the only way
+                // to be told a Home Screen quick action was tapped. Listing a
+                // configuration here would give UIKit a second, disagreeing answer
+                // about the delegate class; declaring adoption and leaving the
+                // configuration to the delegate is the combination Apple documents
+                // for an app that builds its own.
+                "UIApplicationSceneManifest": .dictionary([
+                    "UIApplicationSupportsMultipleScenes": .boolean(false),
+                ]),
                 // Read by `KnownRobots`, which is in a library and so cannot know
                 // one developer account's group. The extension declares the same.
                 "ReachyAppGroupIdentifier": .string(appGroup),
