@@ -13,6 +13,27 @@ struct SimulatedRobotClientTests {
         try #require(SimulatedRobotClient(tick: .seconds(30)))
     }
 
+    /// The opposite errand: a client whose pose actually advances, for the two
+    /// tests that need a move still running.
+    private func walkingClient() throws -> SimulatedRobotClient {
+        try #require(SimulatedRobotClient(tick: .milliseconds(5)))
+    }
+
+    /// Walks the **pose** away from neutral, which sending a target does not do on
+    /// its own: a teleop send moves the goal, and "go to neutral" moves it straight
+    /// back — so a robot that never left settles the instant it is asked to return
+    /// and drops the slot before anything can read it. Waits on the state stream
+    /// rather than on a duration, and picks `z` because 0.05 m/s is the slowest
+    /// axis the limiter has, which makes the walk back the widest window on offer.
+    private func moveAwayFromNeutral(_ client: SimulatedRobotClient) async {
+        await client.makeTeleopChannel().send(TeleopTarget(z: 0.05))
+        for await update in client.updates(.visualization) {
+            if let z = update.frame?.headPose?.transform?.translation.z, z > 0.04 {
+                break
+            }
+        }
+    }
+
     // MARK: - What it claims to be
 
     /// The identity a robot cannot supply: no hardware, so no id, and
@@ -107,10 +128,9 @@ struct SimulatedRobotClientTests {
     /// untestable against it.
     @Test("a second move is answered with an id it never files")
     func secondMoveIsAnsweredAndIgnored() async throws {
-        let client = try stillClient()
+        let client = try walkingClient()
         defer { client.shutDown() }
-        // Somewhere to walk back from, or "go to neutral" is already over.
-        await client.makeTeleopChannel().send(TeleopTarget(pitch: 0.3))
+        await moveAwayFromNeutral(client)
 
         let first = try await client.gotoNeutral(duration: 1)
         let second = try await client.gotoNeutral(duration: 1)
@@ -122,9 +142,9 @@ struct SimulatedRobotClientTests {
 
     @Test("stopping the running move empties the slot")
     func stoppingEmptiesTheSlot() async throws {
-        let client = try stillClient()
+        let client = try walkingClient()
         defer { client.shutDown() }
-        await client.makeTeleopChannel().send(TeleopTarget(pitch: 0.3))
+        await moveAwayFromNeutral(client)
         let uuid = try await client.gotoNeutral(duration: 1)
 
         try await client.stopMove(uuid: uuid)
