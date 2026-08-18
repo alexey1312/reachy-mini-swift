@@ -20,6 +20,21 @@ public struct StateStreamUpdate: Sendable {
     /// matrix. See ``RobotStateFrame`` for why the generated type is not enough.
     public let frame: RobotStateFrame?
     public let diagnostics: StateStreamDiagnostics
+
+    /// Public so a `RobotStateStreaming` implementation outside this module can
+    /// yield one. The generated `state` defaults to nil because a producer that is
+    /// not a socket has no `FullState` to offer — `RobotSceneModel` and
+    /// `DirectionOfArrivalModel` both read `frame`, and the schema type is the
+    /// health signal for a decode that did not happen here.
+    public init(
+        state: Components.Schemas.FullState? = nil,
+        frame: RobotStateFrame?,
+        diagnostics: StateStreamDiagnostics = .init()
+    ) {
+        self.state = state
+        self.frame = frame
+        self.diagnostics = diagnostics
+    }
 }
 
 /// Streams the robot's full state from `ws://<host>:<port>/api/state/ws/full`.

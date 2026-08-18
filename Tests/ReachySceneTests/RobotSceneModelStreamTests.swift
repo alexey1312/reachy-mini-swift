@@ -62,14 +62,33 @@ private final class SceneStubClient: RobotAPIClient, @unchecked Sendable {
 private final class StubStateStream: RobotStateStreaming, @unchecked Sendable {
     private let lock = NSLock()
     private var _requested: [StateStreamOptions] = []
+    private var continuations: [AsyncStream<StateStreamUpdate>.Continuation] = []
 
     var requested: [StateStreamOptions] {
         lock.withLock { _requested }
     }
 
+    /// `makeStream` and a lock outside it, rather than `AsyncStream { continuation
+    /// in … }` with the locking inside: a closure nested in that builder which
+    /// captures the escaping continuation sends `ClosureLifetimeFixup` into a walk
+    /// it does not return from — twenty minutes of one core and no diagnostic. The
+    /// root `CLAUDE.md` carries the write-up.
     func updates(_ options: StateStreamOptions) -> AsyncStream<StateStreamUpdate> {
-        lock.withLock { _requested.append(options) }
-        return AsyncStream { _ in }
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: StateStreamUpdate.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        lock.withLock {
+            _requested.append(options)
+            continuations.append(continuation)
+        }
+        return stream
+    }
+
+    func yield(_ frame: RobotStateFrame) {
+        for continuation in lock.withLock({ continuations }) {
+            continuation.yield(StateStreamUpdate(frame: frame))
+        }
     }
 }
 
@@ -147,6 +166,25 @@ struct RobotSceneModelStreamTests {
         model.resumeStream()
         await waitUntil(stream.requested.count == 2)
         #expect(stream.requested == [.visualization, .visualization])
+        model.stop()
+    }
+
+    /// What the seam is *for*, and what could not be written before frames became
+    /// constructible outside `ReachyKit`: a frame that never touched a socket
+    /// drives the model exactly as a robot's would.
+    @Test("a frame from the supplied stream reaches the model")
+    func consumesASuppliedFrame() async {
+        let stream = StubStateStream()
+        let model = makeModel(SceneStubClient(), stream: stream)
+
+        model.start()
+        await waitUntil(model.phase == .ready)
+        #expect(model.lastFrameAt == nil)
+
+        stream.yield(RobotStateFrame(bodyYaw: 0.5, headJoints: [0.5, 0, 0, 0, 0, 0, 0]))
+
+        await waitUntil(model.lastFrameAt != nil)
+        #expect(model.lastFrameAt != nil)
         model.stop()
     }
 

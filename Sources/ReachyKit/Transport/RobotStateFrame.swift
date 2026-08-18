@@ -51,6 +51,27 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         case m, x, y, z, roll, pitch, yaw
     }
 
+    /// Declaring `init(from:)` below suppresses the memberwise initialiser, and
+    /// nothing needed one while every frame in the app arrived off a socket. A
+    /// simulator does not decode frames, it *produces* them — and from another
+    /// module, where an internal memberwise init would not be visible even if one
+    /// existed.
+    public init(
+        timestamp: Date? = nil,
+        bodyYaw: Double? = nil,
+        headJoints: [Double]? = nil,
+        antennas: [Double]? = nil,
+        headPose: HeadPose? = nil,
+        passiveJoints: [Double]? = nil
+    ) {
+        self.timestamp = timestamp
+        self.bodyYaw = bodyYaw
+        self.headJoints = headJoints
+        self.antennas = antennas
+        self.headPose = headPose
+        self.passiveJoints = passiveJoints
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp)
