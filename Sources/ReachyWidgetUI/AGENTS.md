@@ -55,10 +55,17 @@ reverse.
     sandbox refuses that connection before it leaves — the button does nothing and says nothing, the same silent shape
     `.claude/rules/networking.md` records for `network.server` and WebRTC. No `network.server`: no ICE here, so
     nothing arrives unsolicited.
-  - **What this does not prove.** A local build signs nothing (`CODE_SIGNING_ALLOWED=NO`), and there is no macOS
-    provisioning profile for `com.alexey1312.ReachyMini.Widget` — only for the app. The App Group itself is already
-    registered on the Mac side, so what is missing is the widget's own Mac profile, which Xcode mints only with an
-    Apple ID signed in. Until then the Mac widget is compiled and embedded but never installed or rendered.
+  - **It signs, installs and registers — measured, not assumed.** The mise tasks pass `CODE_SIGNING_ALLOWED=NO`, so
+    they prove compilation and embedding only. A signed build needs `DEVELOPMENT_TEAM` **and**
+    `CODE_SIGN_STYLE=Automatic` (a Tuist project sets neither, and without the style every target fails as "requires
+    a provisioning profile", including ones whose profiles already exist). With both, Xcode mints
+    `Mac Team Provisioning Profile: com.alexey1312.ReachyMini.Widget` on demand — **the App Group needs no manual
+    macOS registration**, because the App ID already carries it from iOS. The signed appex came out with
+    `app-sandbox`, the group and `network.client`, and `pluginkit -m -p com.apple.widgetkit-extension` then lists
+    `com.alexey1312.ReachyMini.Widget`. Check entitlements with
+    `codesign -d --entitlements :- <path>.appex | plutil -p -`, never by the exit code.
+  - **Still unmeasured: how it looks.** No reference image covers a Mac widget or the menu bar item — the suite
+    renders views, never a desktop — so the Mac gallery and the popover's AppKit chrome are a device check.
 - `AppRowLabel` takes an `AppRowLayout` preset rather than loose numbers, and a `ReachyStatusLabel` already built.
   Each caller keeps its own mapping from a domain state onto a `StatusTone`, so this target never grows a rule about
   what "running" should look like — `RunningAppCaption` owns that for the app, `RobotAppTileView.statusTone` for the
