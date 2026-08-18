@@ -1,6 +1,5 @@
 import Foundation
 @testable import ReachyKit
-import ReachySimulator
 import simd
 import Testing
 
@@ -178,25 +177,12 @@ struct URDFParserTests {
     }
 }
 
-/// Validates the parser against a real robot description.
-///
-/// **These ran nowhere until `ReachySimulator` landed.** The suite was gated on
-/// `REACHY_URDF_FIXTURE` because this client shipped no robot geometry — every
-/// assertion below was written against a file someone had pulled off a daemon by
-/// hand, and then skipped on every machine that had not. The simulator carries
-/// upstream's description precisely so a session with no robot can draw one, and
-/// the same file answers this suite.
-///
-/// The environment variable still wins where it is set: pointed at
-/// `GET /api/kinematics/urdf` from a live daemon, it is what would catch upstream
-/// changing the shape the viewer assumes before the bundled copy is refreshed.
+/// Validates the parser against a real robot description — see
+/// `RobotDescriptionFixture` for why this suite ran nowhere until one was bundled.
 @Suite("URDF parser against a real description")
 struct RealURDFTests {
     private func loadDocument() throws -> URDFDocument {
-        if let path = ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"] {
-            return try URDFParser.parse(Data(contentsOf: URL(fileURLWithPath: path)))
-        }
-        return try URDFParser.parse(BundledRobotGeometry().urdf())
+        try RobotDescriptionFixture.document()
     }
 
     @Test("the Reachy Mini tree has the shape the viewer assumes")

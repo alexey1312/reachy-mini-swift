@@ -4,20 +4,17 @@ import simd
 import Testing
 
 /// Needs a real robot description: the platform's dimensions come from the URDF,
-/// and a toy fixture would only test the plumbing. Point `REACHY_URDF_FIXTURE` at
-/// a file pulled from a daemon (`GET /api/kinematics/urdf`).
-@Suite(
-    "Stewart geometry and passive joints",
-    .enabled(if: ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"] != nil)
-)
+/// and a toy fixture would only test the plumbing. `RobotDescriptionFixture`
+/// supplies one — until it existed this whole suite was skipped, which is why the
+/// derivation it pins had never actually been run anywhere.
+@Suite("Stewart geometry and passive joints")
 struct PassiveJointSolverTests {
     private func loadDescription() throws -> URDFDocument {
-        let path = try #require(ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"])
-        return try URDFParser.parse(Data(contentsOf: URL(fileURLWithPath: path)))
+        try RobotDescriptionFixture.document()
     }
 
     private func loadGeometry() throws -> StewartGeometry {
-        try #require(StewartGeometry(urdf: loadDescription()))
+        try RobotDescriptionFixture.geometry()
     }
 
     private func polar(_ point: SIMD3<Double>) -> (radius: Double, degrees: Double) {

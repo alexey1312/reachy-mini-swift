@@ -22,6 +22,22 @@ public struct StewartGeometry: Sendable {
     /// every leg — leg 2's mount is rotated.
     public let rodDirections: [SIMD3<Double>]
     public let armLength: Double
+    /// Rod length per leg, derived at the configuration where the linkage is
+    /// actually **assembled** — every joint at zero, the head at its URDF rest
+    /// height. There the five closing pairs meet to within a micrometre, which is
+    /// what says the loop is closed; the six lengths come out at 0.085 m and agree
+    /// to 5·10⁻⁷.
+    ///
+    /// **Not derived at `head_pose` zero, and the difference is 24 mm of stretched
+    /// rod.** The daemon reports the head with `head_z_offset` already subtracted,
+    /// and that offset is 27 mm *above* the rest height — so identity on the wire
+    /// is the platform jacked up, not the robot at rest. Measuring there yields
+    /// 0.109 m, a rod no leg of this robot has, and a solver built on it draws a
+    /// robot sitting 27 mm too high while looking entirely plausible.
+    public let rodLengths: [Double]
+    /// The head's height with every joint at zero, in the root link's frame.
+    /// 0.14957 on the shipped description.
+    public let headRestHeight: Double
     /// What the daemon subtracted from the head's height before reporting it, so
     /// adding it back is how a `head_pose` becomes a position in the root link's
     /// frame. Every consumer — the solver and the scene graph both — has to use
@@ -34,12 +50,24 @@ public struct StewartGeometry: Sendable {
     /// datum, and deriving a prettier number from the URDF only moves the drawn
     /// robot away from what the daemon said. Notably it is *not* the head's rest
     /// height: the URDF's zero configuration sits 27 mm lower, at 0.14957.
-    public let headHeightOffset = 0.177
+    public let headHeightOffset = Self.headZOffset
+
+    /// The same number, reachable before `self` is whole — `init` needs it to place
+    /// the rest pose the rod lengths are measured at.
+    private static let headZOffset = 0.177
     /// Rest transform from the pose's frame to the link the meshes hang off.
     public let headToDrawnLink: simd_double4x4
 
     public static let legCount = 6
     public static let passiveChainCount = 7
+
+    /// What the wire carries when the robot is at rest: the head's rest height with
+    /// the daemon's offset taken off, which is −0.02743 rather than zero. A
+    /// simulator's idle pose, and the pose every "does nothing" assertion is made
+    /// against.
+    public var restHeadPoseZ: Double {
+        headRestHeight - headHeightOffset
+    }
 
     public init?(urdf: URDFDocument) {
         var motorFrames: [simd_double4x4] = []
@@ -71,8 +99,21 @@ public struct StewartGeometry: Sendable {
         }
 
         guard let armLength,
-              let headToDrawnLink = urdf.restTransform(from: "head", to: "xl_330") else { return nil }
+              let headToDrawnLink = urdf.restTransform(from: "head", to: "xl_330"),
+              let headRestHeight = urdf.restTransformFromRoot("head")?.translation.z else { return nil }
 
+        // At the assembled configuration the crank is at zero, so each rod simply
+        // spans from the tip of its arm to its mount on the platform.
+        let restPose = RigidTransform.transform(
+            rotation: matrix_identity_double3x3,
+            translation: SIMD3(0, 0, headRestHeight)
+        )
+        rodLengths = (0 ..< Self.legCount).map { leg in
+            let mount = restPose.rotation * branchPositions[leg] + restPose.translation
+            let tip = (motorFrames[leg] * SIMD4(SIMD3(armLength, 0, 0), 1)).xyz
+            return simd_length(mount - tip)
+        }
+        self.headRestHeight = headRestHeight
         self.motorFrames = motorFrames
         self.branchPositions = branchPositions
         self.passiveOffsets = passiveOffsets
