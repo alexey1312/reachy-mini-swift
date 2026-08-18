@@ -233,7 +233,6 @@ struct ConnectionScreen: View {
     /// `Could not connect to the server` about an address nobody chose, under a list
     /// that already reads "Searching…" with two paragraphs explaining it.
     @ViewBuilder
-    @ViewBuilder
     private var errorSection: some View {
         if let error = session.robotError, !session.automaticConnectionAllowed {
             Section {

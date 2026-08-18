@@ -158,7 +158,7 @@ public final class SimulatedRobotClient: RobotAPIClient, @unchecked Sendable {
     }
 
     public func stopMove(uuid: String) async throws {
-        lock.withLock { moveUUIDs.remove(uuid) }
+        lock.withLock { _ = moveUUIDs.remove(uuid) }
     }
 
     public func urdf() async throws -> String {
