@@ -129,7 +129,10 @@ let package = Package(
             // `StewartIK`, `TargetSlewLimiter` and `RobotStateFrame` are all the
             // real client's, so the simulator cannot drift from what a robot does
             // by reimplementing any of them.
-            dependencies: ["ReachyKit"],
+            // `ReachyJSON` for the one payload it has to build rather than read:
+            // the daemon status, which rule 11 says goes through `JSONCodec.daemon`
+            // like every other thing the robot would have said.
+            dependencies: ["ReachyJSON", "ReachyKit"],
             exclude: ["AGENTS.md", "CLAUDE.md"],
             resources: [.process("Resources")]
         ),

@@ -52,6 +52,25 @@ public struct SimulatedRobotCore: Sendable {
         pose = slew.next(current: pose, goal: goal, dt: .seconds(seconds))
     }
 
+    /// Whether the pose has arrived. What ends a "move": the daemon drops a move's
+    /// UUID the instant its coroutine ends, and here the coroutine is the walk.
+    public var isSettled: Bool {
+        Self.axisDifference(pose, goal) < 1e-4
+    }
+
+    static func axisDifference(_ lhs: TeleopTarget, _ rhs: TeleopTarget) -> Double {
+        max(
+            max(abs(lhs.x - rhs.x), max(abs(lhs.y - rhs.y), abs(lhs.z - rhs.z))),
+            max(
+                max(abs(lhs.roll - rhs.roll), max(abs(lhs.pitch - rhs.pitch), abs(lhs.yaw - rhs.yaw))),
+                max(
+                    abs(lhs.bodyYaw - rhs.bodyYaw),
+                    max(abs(lhs.antennaLeft - rhs.antennaLeft), abs(lhs.antennaRight - rhs.antennaRight))
+                )
+            )
+        )
+    }
+
     /// The daemon's three rules on a target, in the order it applies them.
     ///
     /// Recorded in `.claude/rules/daemon-api.md` from `inverse_kinematics_safe`,

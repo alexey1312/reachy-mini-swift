@@ -53,9 +53,23 @@ public final class SimulatedRobot: RobotStateStreaming, @unchecked Sendable {
         lock.withLock { core.pose }
     }
 
+    /// Whether the pose has arrived where it was told. What ends a "move".
+    public var isSettled: Bool {
+        lock.withLock { core.isSettled }
+    }
+
     /// Command it, exactly as `ws/set_target` would.
+    ///
+    /// **Starts the loop even with nobody subscribed**, and that is not an
+    /// optimisation detail. The 3D viewport subscribes only while it is on screen,
+    /// so a wake taken from the Robot tab would otherwise never advance — and a
+    /// "move" that never arrives is a move slot held for ever, which the session
+    /// polls and reports as a robot permanently dancing.
     public func aim(at target: TeleopTarget) {
-        lock.withLock { core.aim(at: target) }
+        lock.withLock {
+            core.aim(at: target)
+            startLoopLocked()
+        }
     }
 
     /// Ends every subscription and stops integrating.
@@ -99,14 +113,11 @@ public final class SimulatedRobot: RobotStateStreaming, @unchecked Sendable {
         return stream
     }
 
+    /// Leaves the loop alone: a pose still walking toward its goal has to arrive
+    /// whether or not anyone is watching it, and `step` retires the loop itself
+    /// once it has.
     private func remove(_ id: UUID) {
-        lock.withLock {
-            subscribers[id] = nil
-            if subscribers.isEmpty {
-                loop?.cancel()
-                loop = nil
-            }
-        }
+        lock.withLock { subscribers[id] = nil }
     }
 
     /// Caller holds the lock.
@@ -124,6 +135,13 @@ public final class SimulatedRobot: RobotStateStreaming, @unchecked Sendable {
     private func step() {
         let due: [(StateStreamUpdate, AsyncStream<StateStreamUpdate>.Continuation)] = lock.withLock {
             core.advance(by: tickSeconds)
+            // Nothing left to move and nobody watching: stop until something asks
+            // again. A simulator idling on somebody's phone should cost nothing.
+            if core.isSettled, subscribers.isEmpty {
+                loop?.cancel()
+                loop = nil
+                return []
+            }
             let timestamp = now()
             var due: [(StateStreamUpdate, AsyncStream<StateStreamUpdate>.Continuation)] = []
             for id in subscribers.keys {
