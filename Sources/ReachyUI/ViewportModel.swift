@@ -190,7 +190,10 @@ final class ViewportModel {
     /// because that is a different robot.
     private func startHearing(at address: RobotAddress) {
         if hearing == nil {
-            hearing = DirectionOfArrivalModel(address: address)
+            // An address no socket can be built from leaves an inert model rather
+            // than an error: this indicator has never had a failure state, and one
+            // reading fewer is not worth a banner over the viewport.
+            hearing = DirectionOfArrivalModel(stream: try? RobotStateStream(address: address))
         }
         hearing?.start()
     }
@@ -201,11 +204,13 @@ final class ViewportModel {
 
     private func startScene(at address: RobotAddress) {
         if sceneModel == nil {
-            guard let connection = try? RobotConnection(address: address) else {
+            guard let connection = try? RobotConnection(address: address),
+                  let stream = try? RobotStateStream(address: address)
+            else {
                 setupError = String(localized: .reachy("Could not reach \(address.host)"))
                 return
             }
-            sceneModel = RobotSceneModel(address: address, client: connection)
+            sceneModel = RobotSceneModel(stream: stream, client: connection)
         }
         // Both are idempotent; whichever applies at this point is the one that runs.
         sceneModel?.start()
@@ -264,8 +269,8 @@ extension ViewportModel.Source: Equatable {
             source: Source? = nil,
             // Nil by default, so the direction-of-arrival badge is absent from every
             // reference that predates it and none of them moved when it landed. A
-            // preview that wants the badge injects a settled model, which has no
-            // address and therefore no socket to open.
+            // preview that wants the badge injects a settled model, which is built
+            // with no stream and therefore has no socket to open.
             hearing: DirectionOfArrivalModel? = nil
         ) -> ViewportModel {
             let model = ViewportModel()
