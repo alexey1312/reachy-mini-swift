@@ -25,17 +25,6 @@ public final class RobotSession {
         case none
         case lan(RobotAddress)
         case remote
-
-        /// What to call this connection in front of a user. Every screen that used
-        /// to print `address?.displayString ?? "robot"` was naming the transport
-        /// badly for one of the two cases; this names both.
-        public var displayString: String {
-            switch self {
-            case .none: "—"
-            case let .lan(address): address.displayString
-            case .remote: "Hugging Face relay"
-            }
-        }
     }
 
     /// Where a connection attempt currently stands. Split out of `.connecting`

@@ -142,7 +142,9 @@ struct ConnectHeader: View {
     /// derives the same `xcstringstool` symbol as the `"Robot"` section title —
     /// a hard build error the moment both are in the catalogue.
     private var headerText: LocalizedStringResource {
-        let target = session.link == .none ? String(localized: .reachy("the robot")) : session.link.displayString
+        let target = session.link == .none
+            ? String(localized: .reachy("the robot"))
+            : ConnectionLinkCaption.text(for: session.link)
         if isFailed {
             return .reachy("Couldn't connect to \(target)")
         }

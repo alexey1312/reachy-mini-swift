@@ -121,7 +121,6 @@ struct RobotSessionRemoteConnectTests {
         #expect(session.link == .remote)
         #expect(session.isRemote)
         #expect(session.address == nil)
-        #expect(session.link.displayString == "Hugging Face relay")
     }
 
     /// The whole point of the change, as one table. Everything the data channel

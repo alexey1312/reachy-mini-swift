@@ -19,7 +19,7 @@ struct LogConsoleScreen: View {
     var body: some View {
         LogConsoleView(
             model: model,
-            source: session.link.displayString,
+            source: ConnectionLinkCaption.text(for: session.link),
             emptyDescription: emptyDescription,
             failure: setupError
         )

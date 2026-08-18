@@ -98,7 +98,7 @@ struct SettingsScreen: View {
                     .foregroundStyle(.red)
             }
             LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
-            LabeledContent(.reachy("Connection"), value: session.link.displayString)
+            LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
             if let hardwareID = identity?.hardwareID {
                 LabeledContent(.reachy("Hardware ID"), value: hardwareID)
                     .font(.body.monospaced())
