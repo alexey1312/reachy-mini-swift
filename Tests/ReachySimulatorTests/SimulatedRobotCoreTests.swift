@@ -109,6 +109,71 @@ struct SimulatedRobotCoreTests {
         #expect(abs(core.pose.bodyYaw - goal.bodyYaw) < 1e-4)
     }
 
+    // MARK: - The edge of the workspace, which is where the head used to come off
+
+    /// **The reported bug.** The controller's height slider runs to 30 mm and the
+    /// platform lifts 23; past that `StewartIK` has no answer, so the frame carried
+    /// no `head_joints`, the viewer posed every crank at zero and drew the head
+    /// where `head_pose` said — a head floating over an open shell. A robot reports
+    /// where its motors are, so a simulated one has to stop at the edge instead.
+    @Test("a height the platform cannot lift to stops at the edge")
+    func unreachableHeightStopsShort() throws {
+        var core = try core()
+        core.aim(at: TeleopTarget(z: 0.030))
+
+        for _ in 0 ..< 400 {
+            core.advance(by: 0.02)
+        }
+
+        #expect(core.pose.z < 0.024, "the head went past the platform's reach")
+        #expect(core.pose.z > 0.020, "the head stopped well short of the reach it has")
+    }
+
+    /// Every pose the walk passes through, not only where it ends up. The two
+    /// halves of the reported combination — 28 mm of height and −40° of roll — are
+    /// each reachable on their own and neither halfway point is, because the
+    /// workspace is coupled: a clamp per axis would pass this test's endpoints and
+    /// fail every frame in between.
+    @Test("every pose along the way carries the motor angles that draw it")
+    func everyFrameIsDrawable() throws {
+        var core = try core()
+        core.aim(at: TeleopTarget(z: 0.028, roll: radians(-40), bodyYaw: radians(30)))
+
+        for step in 0 ..< 400 {
+            core.advance(by: 0.02)
+            let frame = core.frame(at: Date(timeIntervalSince1970: 0), options: .visualization)
+            #expect(frame.headJoints?.count == 7, "step \(step) has no linkage to draw")
+        }
+    }
+
+    /// A goal outside the workspace is ordinary — the sliders reach one — and the
+    /// walk toward it has to end anyway: `isSettled` is what drops a move's UUID,
+    /// and a move that never settles is a move slot held for ever.
+    @Test("a walk that runs into the edge still settles")
+    func blockedWalkSettles() throws {
+        var core = try core()
+        core.aim(at: TeleopTarget(z: 0.030))
+
+        for _ in 0 ..< 400 {
+            core.advance(by: 0.02)
+        }
+
+        #expect(core.isSettled)
+        #expect(core.pose.z < core.goal.z, "the goal was reached after all — pick a further one")
+    }
+
+    /// The goal stays what the robot was told. Only the pose is bounded by what the
+    /// platform can hold, which is the same split a real daemon has: it takes the
+    /// target, and its motors are where they are.
+    @Test("the goal keeps the commanded height, however unreachable")
+    func theGoalIsNotClamped() throws {
+        var core = try core()
+
+        core.aim(at: TeleopTarget(z: 0.030))
+
+        #expect(core.goal.z == 0.030)
+    }
+
     @Test("a zero step moves nothing")
     func zeroStepIsInert() throws {
         var core = try core()

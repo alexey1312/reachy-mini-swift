@@ -1,7 +1,7 @@
 @testable import ReachyUI
 import SwiftUI
 
-// The fourth segment, and the only one that offers a robot rather than a way to
+// The third segment, and the only one that offers a robot rather than a way to
 // reach one. Standalone rather than as states of `Connection —` for the reason
 // `Local daemon —` is: both are sections, and the segment they sit under is a
 // picker a capture of the screen shows in only one position anyway.

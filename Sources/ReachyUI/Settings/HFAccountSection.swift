@@ -111,7 +111,7 @@ struct HFAccountSection: View {
             }
 
             DisclosureGroup(String(localized: .reachy("Use an access token")), isExpanded: $showsTokenField) {
-                SecureField(.reachy("hf_…"), text: $model.pastedToken)
+                SecureField(.reachy("hf_xxx…"), text: $model.pastedToken)
                     .textContentType(.password)
                     .autocorrectionDisabled()
                 #if os(iOS)

@@ -3,8 +3,12 @@ import ReachyKit
 import SwiftUI
 
 // The segments are the screen's shape now, so `route` is part of what a capture
-// says: the two manual-address previews below verify nothing without it, because
+// says: the Hugging Face and simulator previews verify nothing without it, because
 // the section they are about is not on screen in the default segment.
+//
+// The address field is the exception, and that is the point of it having moved: it
+// sits under the robot list in `Local`, so the three previews about it are captures
+// of the default segment with something typed in.
 
 #Preview("Connection — searching") {
     PreviewScene.connection(.preview(phase: .idle, status: nil, address: nil))
@@ -111,7 +115,6 @@ import SwiftUI
 #Preview("Connection — manual address typed") {
     PreviewScene.connection(
         .preview(phase: .idle, status: nil, address: nil),
-        route: .manual,
         browser: .preview(names: []),
         manualInput: "192.168.1.42"
     )
@@ -120,21 +123,20 @@ import SwiftUI
 #Preview("Connection — manual address invalid") {
     PreviewScene.connection(
         .preview(phase: .idle, status: nil, address: nil),
-        route: .manual,
         browser: .preview(names: []),
         manualInput: "not an address"
     )
 }
 
-// The bug this section was moved for. The banner used to live inside the network
-// segment, so someone blocked from discovery switched to typing an address — the one
-// route where the explanation was invisible — and watched that fail silently too,
-// because the permission gates plain HTTP to the LAN and not only Bonjour. This
-// reference is the proof it survives the segment it is not in.
+// The bug this section was moved out of the robot list for. Someone blocked from
+// discovery goes on to type an address, and watches that fail just as silently,
+// because the permission gates plain HTTP to the LAN and not only Bonjour. The
+// banner is a section of the screen rather than of any segment, which is what this
+// reference holds — see `Connection — Hugging Face segment` for the other half,
+// where it survives a segment with no robot list in it at all.
 #Preview("Connection — manual address, permission denied") {
     PreviewScene.connection(
         .preview(phase: .idle, status: nil, address: nil),
-        route: .manual,
         browser: .preview(names: [], permissionDenied: true),
         manualInput: "192.168.1.42"
     )

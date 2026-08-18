@@ -247,7 +247,7 @@ enum PreviewScene {
             .preview()
     }
 
-    /// `route` is a parameter because the segments are now the screen's shape: a
+    /// `route` is a parameter because the segments are the screen's shape: a
     /// capture of one says nothing about the other two.
     ///
     /// The progress model is always zero-dwell. With a real one the screen's
@@ -256,7 +256,7 @@ enum PreviewScene {
     /// previews already have, and avoidable here.
     static func connection(
         _ session: RobotSession,
-        route: ConnectRoute = .network,
+        route: ConnectRoute = .local,
         browser: RobotBrowser? = nil,
         manualInput: String = "",
         knownRobots: KnownRobotsModel? = nil

@@ -2,9 +2,13 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// The `Manual` segment. A first-class way in, not a fallback: one robot can appear
-/// at several addresses and discovery reaches neither of them on some networks
-/// (upstream issue #269).
+/// The address field at the foot of the `Local` segment. A first-class way in, not
+/// a fallback: one robot can appear at several addresses and discovery reaches
+/// neither of them on some networks (upstream issue #269).
+///
+/// It was a segment of its own until the segments were shortened, and it is under
+/// the list now because that is where the list's own copy points — see
+/// `ConnectRoute`.
 struct ManualAddressSection: View {
     @Binding var input: String
     var connect: (RobotAddress) -> Void

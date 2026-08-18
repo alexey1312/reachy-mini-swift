@@ -34,3 +34,11 @@ ever sends the robot a command.
   hanging free of a linkage pointing somewhere else entirely. `PassiveJointChainTests` pins it on a synthetic
   description, because the property that matters is that the _joint chain_ rebuilds the direction the solver
   extracted: rebuilding with the convention it was extracted with proves nothing and passed throughout.
+- **A frame with no `head_joints` is the ordinary case, and the linkage may not fall back to zero.** The daemon
+  defaults `with_head_joints` to false; `StateStreamOptions.visualization` asks for them, but a stream that did not
+  — or a frame the daemon dropped them from — used to leave all six cranks at their zero configuration while
+  `applyHeadPose` went on placing the head from `head_pose`, which is 27 mm above that configuration before any
+  rotation is added. The head is then drawn hanging off a robot standing somewhere else. `RobotJointState.resolve`
+  now takes a `StewartIK` and recovers the angles from the pose, which is exactly what the daemon would have sent;
+  `RobotSceneModel` builds it from the same `StewartGeometry` the passive solver gets, so the rods, the cranks and
+  the head cannot disagree about what they were derived from.

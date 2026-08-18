@@ -55,9 +55,14 @@ private struct ThemeSample: View {
             Section {
                 Button(.reachy("Set up a new robot over Bluetooth")) {}
                 Toggle(.reachy("Automatic reconnect"), isOn: $isOn)
+                // Borrowed from the connect screen rather than invented, and it has
+                // to be: `check-catalogue.py` scans `Sources/` and not `Previews/`,
+                // so a key spelled only here is dead copy by its reckoning and gets
+                // reconciled away. Every literal in this sample is one a real screen
+                // also uses.
                 Picker(.reachy("Source"), selection: $segment) {
-                    Text(.reachy("This network")).tag(0)
-                    Text(.reachy("Manual")).tag(1)
+                    Text(.reachy("Local")).tag(0)
+                    Text(.reachy("HF")).tag(1)
                 }
                 .pickerStyle(.segmented)
             }

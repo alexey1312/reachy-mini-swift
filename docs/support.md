@@ -6,13 +6,16 @@ permalink: /support.html
 
 # Support — Hey Reachy
 
-Hey Reachy is an independent, open-source client for the Reachy Mini Wireless. Everything below is answered in public,
-so the fastest route is usually an issue rather than an email.
+Hey Reachy is an independent, open-source client for the Reachy Mini. Everything below is answered in public, so the
+fastest route is usually an issue rather than an email.
 
 ## What you need
 
-- **A Reachy Mini Wireless on your network.** The app is a pure network client for the daemon that runs on the robot
-  itself. Without a robot it stops at the Connect screen — there is no demo mode and no account to create.
+- **A Reachy Mini, or none at all.** The app is a pure network client for the robot's daemon: on a **Wireless** robot
+  that daemon runs on the robot itself, and on a **Lite** one it runs on the computer the robot is plugged into —
+  which is also where its Wi-Fi, its updates and its caches live, so those cards are not shown for it. With no robot,
+  the Connect screen's **Simulator** choice starts one the app carries: the robot's own shape and movement, with no
+  camera, no app store and no Wi-Fi behind it. There is still no account to create.
 - **Daemon 1.9.0 or newer.** Newer 1.x daemons connect with a compatibility warning; older or different-major versions
   are refused before any command is sent.
 - **iOS 18 or macOS 15.** The Mac version is on the
@@ -32,7 +35,12 @@ so the fastest route is usually an issue rather than an email.
 
 **The app cannot find the robot.** iOS asks for the Local Network permission the first time the app looks for a robot,
 and discovery finds nothing until it is granted. If it was dismissed, turn it back on in Settings → Hey Reachy → Local
-Network. Failing that, type the robot's address by hand on the Connect screen — `reachy-mini.local` or its IP.
+Network. Failing that, type the robot's address by hand in the field under the robot list on the Connect screen —
+`reachy-mini.local` or its IP.
+
+**A Lite robot or a simulated daemon is not reachable from a phone.** Both are the same daemon run on a computer, and
+it binds that computer's loopback unless it was started with `--fastapi-host 0.0.0.0`. Same Wi-Fi or not, the
+connection is refused by that computer before the daemon ever sees it.
 
 **Bluetooth setup does not complete.** The Bluetooth provisioning path is written against the daemon's own
 `bluetooth_service.py` and verified against stubs, but it has not yet run against real hardware — treat it as the least

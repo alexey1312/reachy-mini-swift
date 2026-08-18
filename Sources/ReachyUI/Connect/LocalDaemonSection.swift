@@ -8,7 +8,7 @@ import SwiftUI
 /// Both are the same daemon a Wireless robot runs, started on the reader's own
 /// computer — `--serialport` for the robot wired to it, `--sim` for no robot at
 /// all — so this adds no transport and no capability. What it adds is the address:
-/// `127.0.0.1` was always typeable in the Manual segment, and a Lite owner had no
+/// `127.0.0.1` was always typeable in the address field, and a Lite owner had no
 /// way to know that was the answer.
 ///
 /// **macOS and the Simulator only**, mounted by the caller. There is no daemon on a

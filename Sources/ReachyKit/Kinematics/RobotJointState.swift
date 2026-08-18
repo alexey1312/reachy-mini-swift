@@ -60,16 +60,33 @@ public struct RobotJointState: Sendable, Equatable {
     /// `head_joints` carries `[body_yaw, stewart_1 ... stewart_6]` and is the
     /// preferred source; `body_yaw` alone is the fallback for streams that did not
     /// ask for the motor angles.
+    ///
+    /// - Parameter platform: solves the six cranks when the frame carries none.
+    ///   **Leaving them at zero is what draws a head with no robot under it**: the
+    ///   daemon defaults `with_head_joints` to *false*, and a viewer that places the
+    ///   head from `head_pose` then has the linkage standing at its zero
+    ///   configuration — 27 mm lower than the pose's own origin, and further still
+    ///   under any rotation. The angles are recoverable from the pose alone, so
+    ///   recover them rather than draw a robot in two places at once.
     public static func resolve(
         _ frame: RobotStateFrame,
-        solver: PassiveJointSolver? = nil
+        solver: PassiveJointSolver? = nil,
+        platform: StewartIK? = nil
     ) -> RobotJointState {
         var state = RobotJointState()
         if let joints = frame.headJoints, joints.count >= 7 {
             state.bodyYaw = joints[0]
             state.stewart = Array(joints[1 ... 6])
-        } else if let bodyYaw = frame.bodyYaw {
-            state.bodyYaw = bodyYaw
+        } else {
+            if let bodyYaw = frame.bodyYaw {
+                state.bodyYaw = bodyYaw
+            }
+            // After body yaw, which the solve subtracts out of the pose.
+            if let platform, let pose = frame.headPose?.transform,
+               let stewart = platform.solve(headPose: pose, bodyYaw: state.bodyYaw)
+            {
+                state.stewart = stewart
+            }
         }
         if let antennas = frame.antennas, antennas.count >= 2 {
             // The stream reports (right, left), but the URDF's antenna joints are

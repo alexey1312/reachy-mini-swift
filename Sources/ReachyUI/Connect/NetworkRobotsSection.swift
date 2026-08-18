@@ -2,8 +2,9 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// The `This network` segment: everything the sweep and Bonjour between them can
-/// find, and the copy explaining why the list may be empty.
+/// The list at the top of the `Local` segment: everything the sweep and Bonjour
+/// between them can find, and the copy explaining why the list may be empty. The
+/// address field its footer points at is `ManualAddressSection`, directly below.
 ///
 /// Robots that answered a handshake before are listed whether or not Bonjour finds
 /// them — mDNS does not reach every network, and an absent robot is worth showing
@@ -64,7 +65,7 @@ struct NetworkRobotsSection: View {
             // The gate's own orientation copy, which used to sit above every section
             // on the screen. It only ever described this one — a robot reached
             // through Hugging Face is not on this Wi-Fi, and a typed address is not
-            // waiting to appear — so it belongs under this segment and nowhere else.
+            // waiting to appear — so it belongs under this list and nowhere else.
             VStack(alignment: .leading, spacing: Space.sm) {
                 Text(.reachy("Your Reachy Mini appears below once it is powered on and joined to this Wi-Fi network."))
                 if isSearching {
