@@ -109,7 +109,7 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ```bash
 ./bin/mise run build          # Debug build (piped through xcsift)
 ./bin/mise run build:app      # Build the ReachyMini app target (generates first)
-./bin/mise run build:app:ios  # Same, for iOS — the only task that compiles the widget
+./bin/mise run build:app:ios  # Same, for iOS — the only task that compiles the widget's controls
 ./bin/mise run device         # Build, install and launch on the connected iPhone
 ./bin/mise run test           # All tests, parallel
 ./bin/mise run test:filter T  # Filter tests
@@ -137,12 +137,18 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 
 `build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it in a
 job of its own, so app-target breakage no longer reaches `main` unnoticed.
-**`build:app` builds for macOS, where `ReachyWidget` does not exist** — the extension is `destinations: [.iPhone,
-.iPad]` and `Project.swift` embeds it behind `condition: .when([.ios])`, so a macOS destination compiles none of its
-sources and reports success over a widget that does not build. That is how `missing return` in
+**`build:app` now compiles `ReachyWidget`, but only the half the Mac can run.** The extension is
+`destinations: [.iPhone, .iPad, .mac]` and the app embeds it unconditionally, so a macOS build produces
+`ReachyMini.app/Contents/PlugIns/ReachyWidget.appex` and the two reading widgets in it. The nine Control Centre
+controls stay `#if os(iOS)` — `ControlWidget` is `@available(iOS 18.0, macOS 26.0, …)` and this app deploys to
+macOS 15 — and so do the three `accessory*` families, which are `@available(macOS, unavailable)`. **So the old trap
+survives in a narrower form**: a macOS build still reports success over code it never compiled, and that code is now
+`RobotPowerControls`, `RobotActivityControls` and `RobotSoundControls`. That is how `missing return` in
 `ReachyAppsWidget.swift` reached `main` in #7. `build:app:ios` (`-destination 'generic/platform=iOS'`, unsigned) is
-what covers it, and CI runs both — in two jobs split by platform, `App Build (macOS)` and `App Build (iOS + widget)`,
-each doing its Debug and Release configuration back to back.
+still the only task that compiles the controls, and CI runs both — in two jobs split by platform, `App Build (macOS)`
+and `App Build (iOS + widget)`, each doing its Debug and Release configuration back to back. To tell the two apart at
+the artifact level, read the debug dylib: `nm …/ReachyWidget.debug.dylib | grep WakeRobotControl` answers on iOS and
+is silent on macOS.
 **The standard macOS runner is three M1 cores**, measured rather than assumed: `macos-15` reports 3 cores / 7 GiB /
 `Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
 resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is

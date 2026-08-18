@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- A macOS app extension has to be sandboxed; an iOS one carries no such key,
+	     which is why this is a second file rather than one shared dictionary. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.alexey1312.ReachyMini</string>
+	</array>
+	<!-- Not only for reading the snapshot. `RobotWidgetView` and `RobotAppsWidgetView`
+	     draw `Button(intent:)`, and an interactive widget button runs its intent in
+	     *this* process — which then reaches the robot over plain HTTP on the LAN.
+	     Without this key the sandbox refuses that connection before it leaves, so the
+	     button does nothing and reports nothing: the silent shape that
+	     `.claude/rules/networking.md` records for `network.server` and WebRTC.
+	     `network.server` is not needed here — no ICE, so nothing inbound. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

@@ -33,6 +33,32 @@ reverse.
     never grows a shared mapping from a domain state onto a tone. A tile is tinted, weighted and badged already, so a
     fourth green signal would make the grid a status board; a popover row has none of those, and the caption is the
     only thing naming which app holds the robot.
+- **The widget extension now has a Mac destination, and it carries only half of itself there.** `ReachyWidget` is
+  `destinations: [.iPhone, .iPad, .mac]`, so a macOS build embeds
+  `ReachyMini.app/Contents/PlugIns/ReachyWidget.appex` and the Mac gets `RobotStatusWidget` and `ReachyAppsWidget`.
+  Two things stay behind, and neither is a preference:
+  - **The nine Control Centre controls are `#if os(iOS)`.** `ControlWidget` is _not_ iOS-only any more —
+    the SDK says `@available(iOS 18.0, macOS 26.0, watchOS 26.0)` — but this app deploys to macOS 15, so the
+    ceiling is the deployment target. Raise it to 26 and they can return behind an availability check rather than a
+    platform check. Issue #60 predates that and still calls the type iOS-only.
+  - **The three `accessory*` families are `@available(macOS, unavailable)`.** They are Lock Screen and StandBy
+    surfaces the Mac does not have, so naming one in `supportedFamilies` fails the Mac build outright.
+    `RobotStatusWidget.supportedFamilies` builds the list up rather than writing one literal, because **`#if` is not
+    legal inside a container literal** — it fails as "expected expression in container literal", which reads as a
+    typo rather than as a grammar rule.
+  - **The entitlements became two files.** A macOS app extension must be sandboxed, and
+    `com.apple.security.app-sandbox` is a macOS-only key that fails an iOS build against any provisioning profile —
+    the same split, and the same reason, the app target already documents. The Mac file **does** carry
+    `com.apple.security.network.client`, and the tempting reasoning against it is wrong: the extension does more than
+    read the snapshot, because `RobotWidgetView` and `RobotAppsWidgetView` draw `Button(intent:)` and an interactive
+    widget button runs its intent in _this_ process, which then reaches the robot over plain HTTP. Without the key the
+    sandbox refuses that connection before it leaves — the button does nothing and says nothing, the same silent shape
+    `.claude/rules/networking.md` records for `network.server` and WebRTC. No `network.server`: no ICE here, so
+    nothing arrives unsolicited.
+  - **What this does not prove.** A local build signs nothing (`CODE_SIGNING_ALLOWED=NO`), and there is no macOS
+    provisioning profile for `com.alexey1312.ReachyMini.Widget` — only for the app. The App Group itself is already
+    registered on the Mac side, so what is missing is the widget's own Mac profile, which Xcode mints only with an
+    Apple ID signed in. Until then the Mac widget is compiled and embedded but never installed or rendered.
 - `AppRowLabel` takes an `AppRowLayout` preset rather than loose numbers, and a `ReachyStatusLabel` already built.
   Each caller keeps its own mapping from a domain state onto a `StatusTone`, so this target never grows a rule about
   what "running" should look like — `RunningAppCaption` owns that for the app, `RobotAppTileView.statusTone` for the

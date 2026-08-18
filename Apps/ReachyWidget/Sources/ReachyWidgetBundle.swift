@@ -9,8 +9,15 @@ import WidgetKit
 @main
 struct ReachyWidgetBundle: WidgetBundle {
     var body: some Widget {
-        readings
-        commands
+        #if os(iOS)
+            readings
+            commands
+        #else
+            // The Mac gets the two readings and none of the buttons; the reason is
+            // in `RobotPowerControls`, and it is the deployment target rather than
+            // the platform.
+            readings
+        #endif
     }
 
     /// The two that draw something the robot said.
@@ -20,18 +27,21 @@ struct ReachyWidgetBundle: WidgetBundle {
         ReachyAppsWidget()
     }
 
-    /// The buttons, in the order Control Centre's gallery lists them: power, then what
-    /// the robot is doing, then what it is playing.
-    @WidgetBundleBuilder
-    private var commands: some Widget {
-        WakeRobotControl()
-        SleepRobotControl()
-        PowerOffRobotControl()
-        StopMoveControl()
-        StopRobotAppControl()
-        PlayMoveControl()
-        ToggleRobotAppControl()
-        PlaySoundControl()
-        StopSoundControl()
-    }
+    #if os(iOS)
+        /// The buttons, in the order Control Centre's gallery lists them: power, then what
+        /// the robot is doing, then what it is playing. iOS only — `RobotPowerControls`
+        /// says why.
+        @WidgetBundleBuilder
+        private var commands: some Widget {
+            WakeRobotControl()
+            SleepRobotControl()
+            PowerOffRobotControl()
+            StopMoveControl()
+            StopRobotAppControl()
+            PlayMoveControl()
+            ToggleRobotAppControl()
+            PlaySoundControl()
+            StopSoundControl()
+        }
+    #endif
 }

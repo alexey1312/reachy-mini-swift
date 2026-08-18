@@ -82,10 +82,15 @@ struct MenuBarModelTests {
     func aFailedCommandIsReported() async throws {
         let suite = suiteName()
         let message = "The robot took too long to answer."
+        // Stamped with the model's clock, not the wall clock. `fail(message:)`
+        // defaults `at:` to `Date()`, and this suite reads at a fixed instant in
+        // 2027 — so a real-time stamp lands months outside `failureWindow`, the
+        // failure correctly expires, and the popover shows "Awake" instead.
+        let stamp = now
         try RobotSnapshotStore(defaults: store(suite)).write(awakeSnapshot())
         let model = try makeModel(suite: suite) { _ in
             if let defaults = UserDefaults(suiteName: suite) {
-                RobotPowerTransitionStore(defaults: defaults).fail(message: message)
+                RobotPowerTransitionStore(defaults: defaults).fail(message: message, at: stamp)
             }
             throw CancellationError()
         }
