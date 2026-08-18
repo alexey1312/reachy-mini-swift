@@ -7,6 +7,65 @@ reverse.
   so a view the app and the widget both render belongs in this target: `AppArtwork` and `AppArtworkTile` first,
   `AppRowLabel` after it. The alternative is two copies that drift the first time one of them is edited — which is
   exactly what the dock strip and the launcher tile had become.
+- **The macOS menu bar is the third surface, and it reads storage rather than a session.** `MenuBarContent`,
+  `MenuBarContentView` and `MenuBarModel` are the popover behind `MenuBarExtra`; only the _scene_ is macOS-specific
+  and it lives in the app target. `MenuBarContent` composes `RobotWidgetContent` and `RobotAppsWidgetContent` and
+  **decides nothing** — the awake/asleep asymmetry, the staleness gloss, the tile states and the notice precedence are
+  already decided next door, and restating any of them is how the popover and the widget start disagreeing on the same
+  Mac. The one new piece is `refreshDates`, the deduplicated union of both halves: both file the running app's expiry,
+  so without it the model wakes twice for one boundary.
+  - **It reads the App Group stores because a session's lifetime is a window's.** `RobotSession` is `@State` inside
+    `ReachyRootView`, so it exists only while a window does — and the whole point of a menu bar item is to still be
+    there once the window is closed. Hoisting the session to the `App` would hold a 10 s sweep, a 3 s poll and a
+    WebSocket open with nothing on screen. Nothing is lost: the session writes those same stores whenever a window is
+    open, and when none is, `RobotWidgetContent` already says "Last seen …" rather than guessing.
+  - **`MenuBarModel` is the timeline a `MenuBarExtra` does not have.** It re-reads on four triggers — the popover
+    appearing, the app becoming active, a command returning, and each moment `MenuBarContent.refreshDates` files —
+    and **nothing polls**: with no transition pending and the reading settled into stale there is no later moment to
+    schedule, so it goes idle. Its `robot:` seam exists because `RobotIntentTarget.knownRobot` reads `KnownRobots.all`
+    from a static that takes no injected defaults, so a model given a throwaway suite would still be told there is no
+    robot.
+  - **It has no error slot, and none is missing.** Every command writes its own failure to the transition store before
+    it throws, and `RobotWidgetContent` renders that as the detail line with the button still on it — so the refresh on
+    the way out _is_ the report, in the words the widget already uses. `isBusy` covers the window before the pending
+    caption lands, since the marker is written inside the command's own prologue.
+  - **"Running" is `.active` here and `.idle` on a tile, and that is the rule rather than an exception.** This target
+    never grows a shared mapping from a domain state onto a tone. A tile is tinted, weighted and badged already, so a
+    fourth green signal would make the grid a status board; a popover row has none of those, and the caption is the
+    only thing naming which app holds the robot.
+- **The widget extension now has a Mac destination, and it carries only half of itself there.** `ReachyWidget` is
+  `destinations: [.iPhone, .iPad, .mac]`, so a macOS build embeds
+  `ReachyMini.app/Contents/PlugIns/ReachyWidget.appex` and the Mac gets `RobotStatusWidget` and `ReachyAppsWidget`.
+  Two things stay behind, and neither is a preference:
+  - **The nine Control Centre controls are `#if os(iOS)`.** `ControlWidget` is _not_ iOS-only any more —
+    the SDK says `@available(iOS 18.0, macOS 26.0, watchOS 26.0)` — but this app deploys to macOS 15, so the
+    ceiling is the deployment target. Raise it to 26 and they can return behind an availability check rather than a
+    platform check. Issue #60 predates that and still calls the type iOS-only.
+  - **The three `accessory*` families are `@available(macOS, unavailable)`.** They are Lock Screen and StandBy
+    surfaces the Mac does not have, so naming one in `supportedFamilies` fails the Mac build outright.
+    `RobotStatusWidget.supportedFamilies` builds the list up rather than writing one literal, because **`#if` is not
+    legal inside a container literal** — it fails as "expected expression in container literal", which reads as a
+    typo rather than as a grammar rule.
+  - **The entitlements became two files.** A macOS app extension must be sandboxed, and
+    `com.apple.security.app-sandbox` is a macOS-only key that fails an iOS build against any provisioning profile —
+    the same split, and the same reason, the app target already documents. The Mac file **does** carry
+    `com.apple.security.network.client`, and the tempting reasoning against it is wrong: the extension does more than
+    read the snapshot, because `RobotWidgetView` and `RobotAppsWidgetView` draw `Button(intent:)` and an interactive
+    widget button runs its intent in _this_ process, which then reaches the robot over plain HTTP. Without the key the
+    sandbox refuses that connection before it leaves — the button does nothing and says nothing, the same silent shape
+    `.claude/rules/networking.md` records for `network.server` and WebRTC. No `network.server`: no ICE here, so
+    nothing arrives unsolicited.
+  - **It signs, installs and registers — measured, not assumed.** The mise tasks pass `CODE_SIGNING_ALLOWED=NO`, so
+    they prove compilation and embedding only. A signed build needs `DEVELOPMENT_TEAM` **and**
+    `CODE_SIGN_STYLE=Automatic` (a Tuist project sets neither, and without the style every target fails as "requires
+    a provisioning profile", including ones whose profiles already exist). With both, Xcode mints
+    `Mac Team Provisioning Profile: com.alexey1312.ReachyMini.Widget` on demand — **the App Group needs no manual
+    macOS registration**, because the App ID already carries it from iOS. The signed appex came out with
+    `app-sandbox`, the group and `network.client`, and `pluginkit -m -p com.apple.widgetkit-extension` then lists
+    `com.alexey1312.ReachyMini.Widget`. Check entitlements with
+    `codesign -d --entitlements :- <path>.appex | plutil -p -`, never by the exit code.
+  - **Still unmeasured: how it looks.** No reference image covers a Mac widget or the menu bar item — the suite
+    renders views, never a desktop — so the Mac gallery and the popover's AppKit chrome are a device check.
 - `AppRowLabel` takes an `AppRowLayout` preset rather than loose numbers, and a `ReachyStatusLabel` already built.
   Each caller keeps its own mapping from a domain state onto a `StatusTone`, so this target never grows a rule about
   what "running" should look like — `RunningAppCaption` owns that for the app, `RobotAppTileView.statusTone` for the

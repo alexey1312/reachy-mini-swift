@@ -114,4 +114,13 @@ public enum Metrics {
     /// height, and says why a constant there was wrong. iOS supplies its own sheet
     /// geometry and never reads this.
     public static let sheetWidth: CGFloat = 600
+    /// How wide the macOS menu bar popover is, for the reason `sheetWidth` exists.
+    ///
+    /// A `VStack` of flexible rows offers AppKit no ideal width, so a `MenuBarExtra`
+    /// in the `.window` style lays itself out cramped and truncates rather than
+    /// asking again. **A declared axis rather than a measurement** — wide enough for
+    /// an app row (artwork, title and its caption) beside the status line above it.
+    /// Only the width: the popover's height is whatever its rows come to, and
+    /// pinning that would clip a robot with a long notice under its list.
+    public static let menuBarPopoverWidth: CGFloat = 320
 }

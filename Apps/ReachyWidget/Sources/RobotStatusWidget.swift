@@ -28,9 +28,13 @@ struct RobotStatusProvider: TimelineProvider {
     private func layout(for family: WidgetFamily) -> RobotWidgetView.Layout {
         switch family {
         case .systemSmall: .compact
-        case .accessoryCircular: .circular
-        case .accessoryRectangular: .rectangular
-        case .accessoryInline: .inline
+        // The three accessory families are `@available(macOS, unavailable)`, so
+        // naming them at all fails the Mac build rather than falling through.
+        #if os(iOS)
+            case .accessoryCircular: .circular
+            case .accessoryRectangular: .rectangular
+            case .accessoryInline: .inline
+        #endif
         default: .wide
         }
     }
@@ -82,6 +86,17 @@ struct RobotStatusProvider: TimelineProvider {
 }
 
 struct RobotStatusWidget: Widget {
+    /// Built up rather than written as one literal, because `#if` is not legal
+    /// inside a container literal — it fails as "expected expression in container
+    /// literal", which reads as a typo rather than as a grammar rule.
+    private static var supportedFamilies: [WidgetFamily] {
+        var families: [WidgetFamily] = [.systemSmall, .systemMedium]
+        #if os(iOS)
+            families += [.accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #endif
+        return families
+    }
+
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: ReachyWidgetKind.status, provider: RobotStatusProvider()) { entry in
             RobotWidgetView(content: entry.content, layout: entry.layout)
@@ -103,16 +118,12 @@ struct RobotStatusWidget: Widget {
         .configurationDisplayName("Hey Reachy Status")
         .description("Your robot's last known state.")
         // The three accessory families put the robot on the Lock Screen and in
-        // StandBy, which is where a reading nobody has to unlock for belongs.
+        // StandBy, which is where a reading nobody has to unlock for belongs. The
+        // Mac has neither surface and the SDK says so, so it gets the two system
+        // families only.
         // Nothing here is under snapshot cover: previews render `RobotWidgetView`
         // directly, so this list is exercised by installing the widget and by
         // nothing else.
-        .supportedFamilies([
-            .systemSmall,
-            .systemMedium,
-            .accessoryCircular,
-            .accessoryRectangular,
-            .accessoryInline,
-        ])
+        .supportedFamilies(Self.supportedFamilies)
     }
 }

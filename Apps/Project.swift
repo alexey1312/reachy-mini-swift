@@ -167,9 +167,9 @@ let project = Project(
                 // ones; the shortcuts provider that exposes them to Siri has to be
                 // in this bundle.
                 .package(product: "ReachyWidgetUI"),
-                // iOS only, and conditional so the macOS build of this app does not
-                // try to embed an extension that has no macOS destination.
-                .target(name: "ReachyWidget", condition: .when([.ios])),
+                // No longer conditional: the extension has a Mac destination, so the
+                // macOS app embeds it and the Mac gets the two reading widgets.
+                .target(name: "ReachyWidget"),
             ],
             // Two files rather than one generated dictionary: the macOS build is
             // sandboxed and hardened for Developer ID, and those keys are
@@ -198,10 +198,10 @@ let project = Project(
         // process woken for a moment does not link WebRTC and RealityKit.
         .target(
             name: "ReachyWidget",
-            destinations: [.iPhone, .iPad],
+            destinations: [.iPhone, .iPad, .mac],
             product: .appExtension,
             bundleId: "com.alexey1312.ReachyMini.Widget",
-            deploymentTargets: .iOS("18.0"),
+            deploymentTargets: .multiplatform(iOS: "18.0", macOS: "15.0"),
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": .string("Hey Reachy"),
                 "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
@@ -230,9 +230,6 @@ let project = Project(
                 ]),
             ]),
             sources: ["ReachyWidget/Sources/**"],
-            entitlements: .dictionary([
-                "com.apple.security.application-groups": .array([.string(appGroup)]),
-            ]),
             dependencies: [
                 .package(product: "ReachyKit"),
                 .package(product: "ReachyWidgetUI"),
@@ -241,7 +238,16 @@ let project = Project(
                 // their titles with `.reachy(_:)`.
                 .package(product: "ReachyDesign"),
             ],
-            settings: .settings(base: ["SWIFT_VERSION": "6.0"])
+            // Two files rather than the one generated dictionary this used to carry,
+            // for the reason the app target states: a macOS app extension must be
+            // sandboxed, and `com.apple.security.app-sandbox` is a macOS-only key
+            // that fails an iOS build against any provisioning profile.
+            settings: .settings(base: [
+                "SWIFT_VERSION": "6.0",
+                "CODE_SIGN_ENTITLEMENTS": "ReachyWidget/Entitlements/ReachyWidget-iOS.entitlements",
+                "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]":
+                    "ReachyWidget/Entitlements/ReachyWidget-macOS.entitlements",
+            ])
         ),
         // Smoke tests: the one thing snapshots cannot see is the app binary itself
         // booting. iOS-only — XCUITest on macOS needs Accessibility permission on
