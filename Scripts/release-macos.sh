@@ -65,7 +65,8 @@ if [ "$wants_developer_id" = true ] && [ "$notarize" = true ]; then
   require_asc_key
 fi
 
-BUILD_NUMBER="$(git rev-list --count HEAD)"
+BUILD_NUMBER="$(build_number)"
+echo "Archiving build $BUILD_NUMBER." >&2
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-macOS.xcarchive
 EXPORT_DIR=Apps/DerivedData/Export/macOS
 

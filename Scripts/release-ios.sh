@@ -7,8 +7,8 @@
 # Signing and uploading go through the Xcode account, not the App Store Connect
 # API key — see release-env.sh for the measurement behind that.
 #
-# The build number is the commit count: monotonic, reproducible, and never
-# stored in the repository — so releasing does not require a version-bump
+# The build number is the commit count, computed and checked by
+# release-env.sh's build_number() — so releasing does not require a version-bump
 # commit for anything but MARKETING_VERSION.
 set -euo pipefail
 
@@ -28,7 +28,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-BUILD_NUMBER="$(git rev-list --count HEAD)"
+BUILD_NUMBER="$(build_number)"
+echo "Archiving build $BUILD_NUMBER." >&2
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-iOS.xcarchive
 
 set -o pipefail
