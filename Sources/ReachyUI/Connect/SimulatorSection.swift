@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The way in to a robot that is not there.
 ///
-/// **A segment of its own rather than a row under "This network", and the
+/// **A segment of its own rather than a row under "Local", and the
 /// neighbour is why.** `LocalDaemonSection` offers the daemon running on this very
 /// Mac — a Lite robot plugged in, or upstream's Python simulator under `--sim`.
 /// Both of those are a real daemon at an address, discovered by probing loopback.

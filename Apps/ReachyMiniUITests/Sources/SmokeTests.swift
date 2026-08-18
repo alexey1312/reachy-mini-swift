@@ -14,24 +14,28 @@ final class SmokeTests: XCTestCase {
     /// Tier 1, CI: launched frozen (`--reachy-smoke`, no Bonjour and no sockets)
     /// the connect gate stands, all three route segments answer, and the
     /// Bluetooth way out is offered.
+    ///
+    /// The address field is asserted on the `Local` segment rather than behind one
+    /// of its own — it moved under the robot list when the segments were shortened,
+    /// which is the sort of change only this test and a reference image can see.
     func testColdLaunchShowsConnectGate() {
         let app = XCUIApplication()
         app.launchArguments += ["--reachy-smoke"]
         app.launch()
 
-        let manual = app.buttons["Manual"]
-        XCTAssertTrue(manual.waitForExistence(timeout: 30), "connect gate did not appear")
-        manual.tap()
+        let local = app.buttons["Local"]
+        XCTAssertTrue(local.waitForExistence(timeout: 30), "connect gate did not appear")
         XCTAssertTrue(app.textFields["host, host:port, or IP"].waitForExistence(timeout: 5))
 
-        app.buttons["Hugging Face"].tap()
-        app.buttons["This network"].tap()
+        app.buttons["HF"].tap()
+        app.buttons["Simulator"].tap()
+        local.tap()
         XCTAssertTrue(app.buttons["Set up a new robot over Bluetooth"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.state, .runningForeground)
     }
 
-    /// Tier 2, local: the whole user path against a live simulated daemon —
-    /// manual address, connect, and a tap through every tab. Gated on
+    /// Tier 2, local: the whole user path against a live simulated daemon — a typed
+    /// address, connect, and a tap through every tab. Gated on
     /// REACHY_SMOKE_HOST the way SimulatorIntegrationTests is on REACHY_SIM_HOST:
     /// a plain run skips it, `mise run test:smoke:sim` provides the host.
     func testConnectsToSimDaemonAndWalksTheTabs() throws {
@@ -48,9 +52,7 @@ final class SmokeTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let manual = app.buttons["Manual"]
-        XCTAssertTrue(manual.waitForExistence(timeout: 30), "connect gate did not appear")
-        manual.tap()
+        XCTAssertTrue(app.buttons["Local"].waitForExistence(timeout: 30), "connect gate did not appear")
 
         let field = app.textFields["host, host:port, or IP"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))

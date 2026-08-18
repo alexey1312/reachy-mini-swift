@@ -340,6 +340,15 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `ConnectionScreen.privacySection`, outside the route segments, for the reason `setUpSection` is: it used
   to sit in `NetworkRobotsSection`, where only one of the three routes could show it, while the manual
   address — where a blocked user goes next — failed just as silently.
+- **The gate has three segments and it had four; the typed address is not one of them.** `Local`, `HF`, `Simulator` —
+  short because four segments of prose truncate on an iPhone, and a segment nobody can read is a segment nobody
+  opens. What went was `Manual`, into the foot of `Local`, and the argument is that it was never a fourth _way_ to
+  reach a robot: it answers the same question the sweep does, and the reader who needs it is the one watching that
+  list stay empty — which is the worst possible moment to send someone hunting through tabs.
+  `NetworkRobotsSection`'s own footer had been saying "or enter its address below" the whole time it was a segment
+  away. Consequences worth knowing before touching either: `ManualAddressSection` keeps its name and its `disabled`,
+  the three `Connection — manual address` previews are now captures of the **default** segment, and
+  `SmokeTests.testColdLaunchShowsConnectGate` queries these labels by name in English.
 - Leaves stay injectable rather than reading the router: `ConnectionScreen.showRemoteRobots` is optional because its
   absence is what hides `YourReachiesSection` in previews. The router is the shell's business.
 - All robot interaction goes through `RobotSession` / `RobotBrowser` from ReachyKit — no direct URLSession here.

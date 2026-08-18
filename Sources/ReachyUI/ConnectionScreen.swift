@@ -15,6 +15,9 @@ import SwiftUI
 ///   cumulative and a child cannot re-enable itself, so one modifier on the form
 ///   would take the Bluetooth button down with everything else — and the sweep it
 ///   waits on runs every 10 s forever when nothing answers.
+///
+/// A typed address is *inside* `local` rather than a segment of its own, and
+/// `ConnectRoute` carries why.
 struct ConnectionScreen: View {
     let session: RobotSession
     let progress: ConnectProgressModel
@@ -60,7 +63,7 @@ struct ConnectionScreen: View {
         knownRobots: KnownRobotsModel? = nil,
         sweep: CandidateSweep? = nil,
         localDaemon: LocalDaemonModel? = nil,
-        route: ConnectRoute = .network,
+        route: ConnectRoute = .local,
         showRemoteRobots: (() -> Void)? = nil,
         showPermissions: (() -> Void)? = nil
     ) {
@@ -153,7 +156,7 @@ struct ConnectionScreen: View {
     private var form: some View {
         Form {
             switch route {
-            case .network:
+            case .local:
                 if showsLocalDaemon, let localDaemon {
                     LocalDaemonSection(model: localDaemon, connect: connectManually)
                         .disabled(!session.phase.acceptsConnectionChoice)
@@ -168,6 +171,11 @@ struct ConnectionScreen: View {
                     resolving: resolving
                 )
                 .disabled(!session.phase.acceptsConnectionChoice)
+                // Under the list rather than a segment away, which is where its own
+                // footer has always pointed: the reader who needs it is the one
+                // watching that list stay empty.
+                ManualAddressSection(input: $manualInput, connect: connectManually)
+                    .disabled(!session.phase.acceptsConnectionChoice)
             case .account:
                 // The one segment with no `disabled` on it, which is what its own
                 // doc comment has always claimed. A robot reached through Hugging
@@ -177,9 +185,6 @@ struct ConnectionScreen: View {
                 // made the only way to a remote robot go dead under a finger on a
                 // beat the reader cannot see.
                 YourReachiesSection(show: showRemoteRobots)
-            case .manual:
-                ManualAddressSection(input: $manualInput, connect: connectManually)
-                    .disabled(!session.phase.acceptsConnectionChoice)
             case .simulator:
                 SimulatorSection(
                     isConnecting: !session.phase.acceptsConnectionChoice,
@@ -195,10 +200,11 @@ struct ConnectionScreen: View {
 
     /// Outside the segments, for the same reason `setUpSection` is: a refused Local
     /// Network permission breaks *every* route, and the banner used to live inside
-    /// `NetworkRobotsSection` where only one of the three could show it. Someone
-    /// blocked from discovery reaches for the manual address next — the one place the
-    /// explanation was invisible, while a typed address failed just as silently,
-    /// because the permission gates plain HTTP to the LAN and not only Bonjour.
+    /// `NetworkRobotsSection` where only one of them could show it. Someone blocked
+    /// from discovery reaches for the address field next — which was a segment away
+    /// at the time, and is now the section directly below, but either way it failed
+    /// just as silently, because the permission gates plain HTTP to the LAN and not
+    /// only Bonjour.
     ///
     /// The heartbeat question this screen's `AGENTS.md` insists on: nothing here keys
     /// off `session.phase` or `lastError`, so nothing mounts and unmounts on the 10 s
