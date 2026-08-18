@@ -27,14 +27,29 @@ struct ManualAddressSection: View {
             }
             .disabled(address == nil)
         } footer: {
-            Label(
-                .reachy(
-                    // swiftlint:disable:next line_length
-                    "The daemon uses unencrypted HTTP without authentication. Connect only on a trusted private network."
-                ),
-                systemImage: "lock.open.trianglebadge.exclamationmark"
-            )
-            .foregroundStyle(Tone.warning.style)
+            VStack(alignment: .leading, spacing: Space.sm) {
+                // The one thing a typed address cannot tell you it got wrong. A Lite
+                // robot and the simulator are the same daemon running on somebody's
+                // computer, and `--fastapi-host` defaults to `127.0.0.1` for both —
+                // it is only `0.0.0.0` under `--wireless-version`. So the socket is
+                // bound to that computer's loopback and a phone on the same Wi-Fi is
+                // refused by the kernel before FastAPI is ever reached: same subnet,
+                // nothing to do with the network, and no error that says so.
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "A Lite robot or a simulator is reached at the address of the computer running its daemon — and only if that daemon was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone."
+                    )
+                )
+                Label(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "The daemon uses unencrypted HTTP without authentication. Connect only on a trusted private network."
+                    ),
+                    systemImage: "lock.open.trianglebadge.exclamationmark"
+                )
+                .foregroundStyle(Tone.warning.style)
+            }
         }
     }
 }

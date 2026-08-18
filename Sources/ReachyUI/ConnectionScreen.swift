@@ -44,6 +44,9 @@ struct ConnectionScreen: View {
     /// evaluated in a nonisolated context, and both models are main-actor isolated.
     @State private var knownRobots: KnownRobotsModel?
     @State private var sweep: CandidateSweep?
+    /// Resolved in `onAppear` for the same reason the two above are: it is
+    /// main-actor isolated, and a defaulted argument is evaluated nonisolated.
+    @State private var localDaemon: LocalDaemonModel?
 
     init(
         session: RobotSession,
@@ -52,6 +55,7 @@ struct ConnectionScreen: View {
         manualInput: String? = nil,
         knownRobots: KnownRobotsModel? = nil,
         sweep: CandidateSweep? = nil,
+        localDaemon: LocalDaemonModel? = nil,
         route: ConnectRoute = .network,
         showRemoteRobots: (() -> Void)? = nil,
         showPermissions: (() -> Void)? = nil
@@ -65,6 +69,7 @@ struct ConnectionScreen: View {
         _awaitedHardwareID = State(initialValue: KnownRobots.pendingProvisionedHardwareID)
         _knownRobots = State(initialValue: knownRobots)
         _sweep = State(initialValue: sweep)
+        _localDaemon = State(initialValue: localDaemon)
         _route = State(initialValue: route)
     }
 
@@ -97,6 +102,7 @@ struct ConnectionScreen: View {
             sweep?.stop()
             browser.stop()
             knownRobots?.stop()
+            localDaemon?.stop()
         }
     }
 
@@ -117,10 +123,37 @@ struct ConnectionScreen: View {
         .groupedPageBackground()
     }
 
+    /// Whether to offer the daemon running on this very machine.
+    ///
+    /// A compile-time answer read as a runtime flag, which is `FloatingViewportModifier
+    /// .hasTabBar`'s shape and is here for two reasons. `LocalDaemonSection` then
+    /// compiles on every platform, so its three states can be captured on the iOS
+    /// simulator the snapshot suite runs on — and a `#if` inside a `Form`'s builder
+    /// has no precedent in this target, while this does.
+    ///
+    /// macOS only, and deliberately **not** `targetEnvironment(simulator)` even
+    /// though `CandidateSweep.enqueueInitialCandidates()` pairs the two when seeding
+    /// loopback. That suite runs on a simulator, so including it would put a row
+    /// into every `Connection —` reference that a real iPhone never draws, and a
+    /// reference is evidence about the shipping app or it is worse than nothing.
+    /// The phone's half of the same information is `ManualAddressSection`'s footer;
+    /// what stays uncovered is this mount point, and only this mount point.
+    private var showsLocalDaemon: Bool {
+        #if os(macOS)
+            true
+        #else
+            false
+        #endif
+    }
+
     private var form: some View {
         Form {
             switch route {
             case .network:
+                if showsLocalDaemon, let localDaemon {
+                    LocalDaemonSection(model: localDaemon, connect: connectManually)
+                        .disabled(!session.phase.acceptsConnectionChoice)
+                }
                 NetworkRobotsSection(
                     session: session,
                     browser: browser,
@@ -231,6 +264,11 @@ struct ConnectionScreen: View {
         let sweep = sweep ?? CandidateSweep(session: session)
         self.sweep = sweep
         sweep.start()
+        if showsLocalDaemon {
+            let localDaemon = localDaemon ?? LocalDaemonModel()
+            self.localDaemon = localDaemon
+            localDaemon.start()
+        }
         // Only the very first launch, and never as a gate: a robot already on the
         // network is found without any of this, and the button below reopens it.
         if KnownRobots.lastAddress == nil, !KnownRobots.hasCompletedOnboarding {

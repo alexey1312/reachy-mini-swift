@@ -226,51 +226,6 @@
         static let preview = WiFiStatus(mode: .wlan, connected: "Home", known: ["Home", "Cafe", "Hotspot"])
     }
 
-    public extension Components.Schemas.DaemonStatus {
-        /// Built by decoding JSON rather than through the generated memberwise initialiser: the
-        /// `backend_status` payload is a `oneOf` whose Swift shape changes whenever the spec is
-        /// refreshed, while the daemon's own wire format is the stable thing to pin a fixture to.
-        static func preview(
-            state: Components.Schemas.DaemonState = .running,
-            motorMode: Components.Schemas.MotorControlMode = .enabled,
-            error: String? = nil,
-            wirelessVersion: Bool = true,
-            simulationEnabled: Bool = false,
-            controlLoop: ControlLoopStats? = nil
-        ) -> Components.Schemas.DaemonStatus {
-            let backend = state == .running
-                ? """
-                {"ready": true, "motor_control_mode": "\(motorMode.rawValue)",
-                 "last_alive": null, "control_loop_stats": \(Self.previewLoopJSON(controlLoop))}
-                """
-                : "null"
-            let errorField = error.map { "\"error\": \"\($0)\"," } ?? ""
-            let json = """
-            {"robot_name": "Reachy Mini", "state": "\(state.rawValue)",
-             "wireless_version": \(wirelessVersion), "desktop_app_daemon": false,
-             "simulation_enabled": \(simulationEnabled), "mockup_sim_enabled": false,
-             \(errorField)
-             "backend_status": \(backend)}
-            """
-            // swiftlint:disable:next force_try
-            return try! JSONCodec.daemon.decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
-        }
-
-        /// Written back out as the daemon writes it — one key per measurement,
-        /// absent rather than null when it has none — so a fixture cannot describe a
-        /// payload the robot could not send.
-        private static func previewLoopJSON(_ stats: ControlLoopStats?) -> String {
-            guard let stats else { return "{}" }
-            let fields: [String?] = [
-                stats.frequencyHz.map { "\"mean_control_loop_frequency\": \($0)" },
-                stats.maxIntervalSeconds.map { "\"max_control_loop_interval\": \($0)" },
-                stats.errorCount.map { "\"nb_error\": \($0)" },
-                stats.motorController.map { "\"motor_controller\": \"\($0)\"" },
-            ]
-            return "{\(fields.compactMap(\.self).joined(separator: ", "))}"
-        }
-    }
-
     public extension RobotSession.MovePlayback {
         static func preview(
             move: String,

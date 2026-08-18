@@ -59,6 +59,18 @@ import SwiftUI
     PreviewScene.robotScreen(.preview(phase: .connected(RobotIdentity()), status: nil, address: nil))
 }
 
+// The Model row is the app's one positive statement about which kind of robot answered. A Lite
+// unit and a simulator both run their daemon on a computer rather than on the robot, and both are
+// `wireless_version: false` — what separates them is `simulation_enabled`, which is the whole of
+// `RobotSession.flavour`.
+#Preview("Robot — Lite robot") {
+    PreviewScene.robotScreen(.preview(status: .preview(wirelessVersion: false)))
+}
+
+#Preview("Robot — simulator") {
+    PreviewScene.robotScreen(.preview(status: .preview(wirelessVersion: false, simulationEnabled: true)))
+}
+
 // Over the relay the connection is named rather than addressed, and only the moves are gone: the
 // recorded-move library is HTTP-only, while the joystick and the journal both ride the data
 // channel. Before this, all three vanished together for want of an address.

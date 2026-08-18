@@ -109,6 +109,22 @@ enum PreviewScene {
         .preview()
     }
 
+    /// The local-daemon row on its own.
+    ///
+    /// Standalone rather than through `connection(_:)`, and that is the only way it
+    /// can be captured at all: the section is mounted under `#if os(macOS)` — see
+    /// `ConnectionScreen.form` for why it is not also `targetEnvironment(simulator)`
+    /// — while the snapshot suite runs on an iOS simulator. The component itself
+    /// carries no `#if`, so its three states render here exactly as macOS draws
+    /// them; what no reference covers is the mount point.
+    static func localDaemonSection(_ status: LocalDaemonModel.Status) -> some View {
+        Form {
+            LocalDaemonSection(model: .preview(status), connect: { _ in })
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     static func audioSection(_ model: AudioSettingsModel? = nil, header: String? = "Audio") -> some View {
         Form {
             AudioSettingsSection(session: .preview(), header: header, model: model ?? .preview())

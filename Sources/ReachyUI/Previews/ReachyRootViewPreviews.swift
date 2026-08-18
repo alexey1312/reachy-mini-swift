@@ -136,12 +136,16 @@ import SwiftUI
     )
 }
 
-// A wired robot reports no camera, so the viewport offers no switcher and shows the 3D model alone.
+// A daemon that reports no camera offers no switcher and shows the 3D model alone. **A wired robot
+// is not that case** — the comment here used to say it was, and `hasCamera` used to agree: a Lite
+// unit has a Raspberry Pi Camera v3 and its daemon names it `"lite"`. What genuinely leaves
+// `camera_specs_name` empty is `--no-media`, a camera that failed to enumerate, or a media server
+// that did not come up, so that is what this preview now says.
 // Captured on the Live tab: that is the only place the flag changes anything, and on the robot tab
 // this preview was byte-identical to `Root — connected` and verified nothing.
 #Preview("Root — no camera") {
     PreviewScene.root(
-        .preview(status: .preview(wirelessVersion: false)),
+        .preview(status: .preview(cameraSpecsName: "")),
         viewport: .preview(sceneModel: .preview(.buildingScene)),
         tab: .live
     )

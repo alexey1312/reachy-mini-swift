@@ -115,9 +115,36 @@ struct RobotScreen: View {
         }
     }
 
+    /// Which kind of robot answered — and the one positive statement about it
+    /// anywhere in the app.
+    ///
+    /// Until this row existed a Lite robot and a simulator announced themselves only
+    /// by what was *missing*: `supportsWirelessFeatures` takes the Wi-Fi and update
+    /// cards away, `canPerformMaintenance` takes the maintenance one, and nothing
+    /// said why. Absence is a bad way to learn a fact.
+    ///
+    /// **Absent over the relay**, which is the one flavour that would repeat itself:
+    /// the Connection row two lines down already reads "Hugging Face relay", and a
+    /// second row saying the same words under a different label teaches nothing.
+    /// `DaemonFlavourCaption` still names that case — a total mapping is what keeps
+    /// the decision here rather than scattered — and `Robot — over the relay` is what
+    /// captures the row's absence, along with `Robot — nothing reported`, whose
+    /// session has no status at all. A reference for the row's presence alone could
+    /// tell neither from a row that is always there.
+    @ViewBuilder
+    private var modelRow: some View {
+        if let flavour = session.flavour, flavour != .remote {
+            LabeledContent(
+                .reachy("Model"),
+                value: String(localized: DaemonFlavourCaption.text(for: flavour))
+            )
+        }
+    }
+
     private var statusSection: some View {
         Section(.reachy("Robot")) {
             LabeledContent(.reachy("Name"), value: identity?.name ?? "—")
+            modelRow
             LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
             LabeledContent(.reachy("Connection"), value: session.link.displayString)
             if let status = session.lastStatus {

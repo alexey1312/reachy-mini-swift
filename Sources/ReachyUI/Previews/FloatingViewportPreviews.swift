@@ -31,13 +31,15 @@ import SwiftUI
     )
 }
 
-// A wired robot reports no camera, so the window shows the 3D pane with no switcher
-// on it at all — the same rule the Live tab's picker follows.
+// A daemon reporting no camera shows the 3D pane with no switcher on it at all —
+// the same rule the Live tab's picker follows. It used to be spelled
+// `wirelessVersion: false`, which is a *wired* robot rather than a camera-less one;
+// see `Root — no camera` for why those are not the same thing.
 #Preview("Floating viewport — no camera", traits: .sizeThatFitsLayout) {
     PreviewScene.floatingViewport(
         .preview(.floating(.bottomLeading)),
         viewport: .preview(sceneModel: .preview(.buildingScene)),
-        session: .preview(status: .preview(wirelessVersion: false))
+        session: .preview(status: .preview(cameraSpecsName: ""))
     )
 }
 

@@ -8,9 +8,17 @@ import SwiftUI
     PreviewScene.settings(.preview())
 }
 
-// A Lite robot mounts neither `/wifi/*` nor `/update/*`, so both cards are gone.
+// A Lite robot mounts neither `/wifi/*` nor `/update/*`, so both cards are gone —
+// and the footer now says why, which is the half that used to be missing. An
+// absence with no reason attached is `MaintenanceCard`'s rule applied to a screen.
 #Preview("Settings — Lite robot") {
     PreviewScene.settings(.preview(status: .preview(wirelessVersion: false)))
+}
+
+// The same absence for a different reason, and the sentence differs accordingly:
+// a simulated robot has no Wi-Fi to configure rather than a Wi-Fi somewhere else.
+#Preview("Settings — simulator") {
+    PreviewScene.settings(.preview(status: .preview(wirelessVersion: false, simulationEnabled: true)))
 }
 
 // `/api/daemon/robot-name` postdates 1.9.0, so the field is greyed out and the footer

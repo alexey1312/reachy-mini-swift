@@ -39,15 +39,42 @@ public extension RobotSession {
             .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
-    /// A wired unit has no camera at all, so the UI hides video rather than
-    /// offering something that can only fail.
+    /// Whether the daemon has a camera to stream, taken from the one field that
+    /// says so rather than inferred from which robot it is.
     ///
-    /// Over the relay the question is already settled: the peer connection that
-    /// carries the commands is the one carrying the video, so there is a camera
-    /// by construction. `wirelessVersion` cannot answer it there — it is reported
-    /// `false` on purpose, to keep `/wifi/*` and `/update/*` closed.
+    /// **This used to read `wirelessVersion`, on the belief that "a wired unit has
+    /// no camera at all". The daemon's own source says otherwise**, in four places:
+    /// `media/camera_constants.py` defines `ReachyMiniLiteCamSpecs` with
+    /// `name = "lite"` and its own resolutions and calibration; `device_detection.py`
+    /// matches the camera by display name (`Reachy`, `Arducam_12MP`, `imx708`) and
+    /// carries a `Darwin` branch returning an `avfvideosrc` index, which exists for
+    /// no reason but a daemon running on somebody's Mac; `daemon.py` builds the
+    /// media server under `if not no_media:` and branches media on nothing else —
+    /// `wireless_version` reaches it but changes only whether `wlan_ip` is
+    /// published; and `/api/camera/specs` depends on `get_daemon` with no guard at
+    /// all. Pollen's own hardware datasheet lists a Raspberry Pi Camera v3 on the
+    /// Lite controller board. So a Lite owner was shown no video for a camera they
+    /// have.
+    ///
+    /// `camera_specs_name` is the honest signal and was already arriving undecoded:
+    /// `Daemon` assigns it exactly once, `self._status.camera_specs_name =
+    /// self._media_server.camera_specs.name`, and only if the media server was
+    /// built. No camera, `--no-media`, or a media server that failed to come up all
+    /// leave it at the schema's empty default. It also covers the simulator for
+    /// free — MuJoCo reports `"mujoco"` — which is what `simulationEnabled` was
+    /// doing here.
+    ///
+    /// Over the relay the question is settled before any of that: the peer
+    /// connection carrying the commands is the one carrying the video, so there is
+    /// a camera by construction, and `RemoteRobotConnection` synthesises a status
+    /// that reports no camera name at all.
+    ///
+    /// Not consulted: `media_released`. A released media server still names its
+    /// camera, and offering video while an app holds it would fail — but that is a
+    /// transient the UI does not model anywhere yet, and reading it here alone
+    /// would be half an answer.
     var hasCamera: Bool {
-        isRemote || lastStatus?.wirelessVersion == true || lastStatus?.simulationEnabled == true
+        isRemote || lastStatus?.cameraSpecsName?.isEmpty == false
     }
 
     /// The 3D model is built from URDF and STL served over `/api/kinematics/*`,

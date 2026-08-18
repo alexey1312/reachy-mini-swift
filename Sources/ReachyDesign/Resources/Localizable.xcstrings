@@ -30,6 +30,64 @@
         }
       }
     },
+    "A Lite robot or a simulator is reached at the address of the computer running its daemon — and only if that daemon was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Lite-Roboter oder ein Simulator wird unter der Adresse des Computers erreicht, auf dem sein Daemon läuft — und nur, wenn dieser Daemon mit --fastapi-host 0.0.0.0 gestartet wurde. Standardmäßig nimmt er Verbindungen nur von diesem Computer an."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A un robot Lite o a un simulador se llega por la dirección del ordenador que ejecuta su daemon, y solo si ese daemon se inició con --fastapi-host 0.0.0.0. De forma predeterminada solo acepta conexiones desde ese mismo ordenador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot Lite ou un simulateur s’atteint à l’adresse de l’ordinateur qui fait tourner son daemon — et seulement si ce daemon a été lancé avec --fastapi-host 0.0.0.0. Par défaut, il n’accepte les connexions que depuis cet ordinateur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "К роботу Lite или симулятору обращаются по адресу компьютера, на котором работает их демон, — и только если демон запущен с --fastapi-host 0.0.0.0. По умолчанию он принимает подключения лишь с этого компьютера."
+          }
+        }
+      }
+    },
+    "A daemon is running here. This is how a Lite robot and the simulator are reached.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier läuft ein Daemon. So werden ein Lite-Roboter und der Simulator erreicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí se está ejecutando un daemon. Así se llega a un robot Lite y al simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un daemon tourne ici. C’est ainsi qu’on atteint un robot Lite et le simulateur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь запущен демон. Именно так подключаются робот Lite и симулятор."
+          }
+        }
+      }
+    },
     "A move is running on the robot": {
       "extractionState": "manual",
       "localizations": {
@@ -171,6 +229,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрипт ничего не отвечает — обработчик робота падает при кодировании собственного ответа. Что произошло, видно в журнале."
+          }
+        }
+      }
+    },
+    "A simulated robot has no Wi-Fi, no software of its own to update and nothing to maintain — those belong to the computer running the simulator.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein simulierter Roboter hat kein WLAN, keine eigene Software zum Aktualisieren und nichts zu warten — das gehört zum Computer, auf dem der Simulator läuft."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot simulado no tiene Wi-Fi, ni software propio que actualizar, ni nada que mantener: eso corresponde al ordenador que ejecuta el simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot simulé n’a pas de Wi-Fi, pas de logiciel propre à mettre à jour et rien à entretenir — tout cela relève de l’ordinateur qui fait tourner le simulateur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У симулированного робота нет ни Wi-Fi, ни собственной прошивки для обновления, ни того, что нужно обслуживать, — всё это относится к компьютеру с симулятором."
           }
         }
       }
@@ -4873,6 +4960,35 @@
         }
       }
     },
+    "Hugging Face relay": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging-Face-Relay"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relé de Hugging Face"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relais Hugging Face"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ретранслятор Hugging Face"
+          }
+        }
+      }
+    },
     "Hugging Face session expired": {
       "extractionState": "manual",
       "localizations": {
@@ -5449,6 +5565,296 @@
           "stringUnit": {
             "state": "translated",
             "value": "Собственная точка доступа"
+          }
+        }
+      }
+    },
+    "Lite": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        }
+      }
+    },
+    "Lite robot or simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite-Roboter oder Simulator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot Lite o simulador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot Lite ou simulateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот Lite или симулятор"
+          }
+        }
+      }
+    },
+    "Looking for a daemon on this computer…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche nach einem Daemon auf diesem Computer…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando un daemon en este ordenador…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche d’un daemon sur cet ordinateur…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ищем демона на этом компьютере…"
+          }
+        }
+      }
+    },
+    "Model": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modell"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модель"
+          }
+        }
+      }
+    },
+    "Nothing is serving on this computer. A Lite robot is driven by the daemon on the computer it is plugged into, and the simulator is that same daemon with no robot — start one and it appears here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Computer antwortet nichts. Ein Lite-Roboter wird vom Daemon auf dem Computer gesteuert, an dem er angeschlossen ist, und der Simulator ist derselbe Daemon ohne Roboter — starte einen, und er erscheint hier."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada responde en este ordenador. Un robot Lite lo gobierna el daemon del ordenador al que está conectado, y el simulador es ese mismo daemon sin robot: inicia uno y aparecerá aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ne répond sur cet ordinateur. Un robot Lite est piloté par le daemon de l’ordinateur auquel il est branché, et le simulateur est ce même daemon sans robot — lancez-en un et il apparaîtra ici."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом компьютере ничего не отвечает. Роботом Lite управляет демон на компьютере, к которому он подключён, а симулятор — тот же демон без робота: запустите его, и он появится здесь."
+          }
+        }
+      }
+    },
+    "On this computer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Computer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este ordenador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur cet ordinateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом компьютере"
+          }
+        }
+      }
+    },
+    "Simulation": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Симуляция"
+          }
+        }
+      }
+    },
+    "Simulation (no physics)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation (ohne Physik)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulación (sin física)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation (sans physique)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Симуляция (без физики)"
+          }
+        }
+      }
+    },
+    "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Daemon dieses Roboters läuft auf dem Computer, an dem er angeschlossen ist — WLAN, Software-Updates und Wartung gehören daher zu diesem Computer und nicht hierher."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El daemon de este robot se ejecuta en el ordenador al que está conectado, así que su Wi-Fi, sus actualizaciones de software y su mantenimiento corresponden a ese ordenador y no a esta pantalla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le daemon de ce robot tourne sur l’ordinateur auquel il est branché : son Wi-Fi, ses mises à jour logicielles et sa maintenance relèvent donc de cet ordinateur, pas d’ici."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Демон этого робота работает на компьютере, к которому робот подключён, поэтому его Wi-Fi, обновления и обслуживание относятся к тому компьютеру, а не к этому экрану."
+          }
+        }
+      }
+    },
+    "Wireless": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
           }
         }
       }

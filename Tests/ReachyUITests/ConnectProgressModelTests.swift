@@ -49,7 +49,7 @@ struct ConnectProgressModelTests {
 
         let elapsed = await ContinuousClock().measure {
             model.observe(.connecting(.checkingBackend(identity)))
-            await waitUntil("the second stage is shown") {
+            await waitUntil("the second stage is shown", poll: .milliseconds(5)) {
                 model.displayed == .connecting(.checkingBackend(identity))
             }
         }
@@ -69,10 +69,10 @@ struct ConnectProgressModelTests {
         model.observe(.connecting(.checkingBackend(identity)))
         model.observe(.connected(identity))
 
-        await waitUntil("the middle stage is shown") {
+        await waitUntil("the middle stage is shown", poll: .milliseconds(5)) {
             model.displayed == .connecting(.checkingBackend(identity))
         }
-        await waitUntil("the attempt finishes") { model.displayed == .connected(identity) }
+        await waitUntil("the attempt finishes", poll: .milliseconds(5)) { model.displayed == .connected(identity) }
     }
 
     @Test("the gate is held past the final frame and then released")
@@ -81,13 +81,15 @@ struct ConnectProgressModelTests {
         model.observe(.connecting(.handshaking))
         model.observe(.connected(identity))
 
-        await waitUntil("the connected frame is shown") { model.displayed == .connected(identity) }
+        await waitUntil("the connected frame is shown", poll: .milliseconds(5)) {
+            model.displayed == .connected(identity)
+        }
         // The bug this catches is subtle and was in the first draft: releasing the
         // gate on the same tick the checkmarks are drawn means the root replaces the
         // gate before a single frame renders them.
         #expect(model.holdsGate)
 
-        await waitUntil("the gate is released") { model.holdsGate == false }
+        await waitUntil("the gate is released", poll: .milliseconds(5)) { model.holdsGate == false }
     }
 
     @Test("the final frame is held even after the previous dwell elapsed")
@@ -102,9 +104,11 @@ struct ConnectProgressModelTests {
         model.observe(.connected(identity))
 
         #expect(model.holdsGate)
-        await waitUntil("the connected frame is shown") { model.displayed == .connected(identity) }
+        await waitUntil("the connected frame is shown", poll: .milliseconds(5)) {
+            model.displayed == .connected(identity)
+        }
         #expect(model.holdsGate)
-        await waitUntil("the final frame is released") { model.holdsGate == false }
+        await waitUntil("the final frame is released", poll: .milliseconds(5)) { model.holdsGate == false }
     }
 
     @Test("a phase arriving during the trailing dwell is still shown")
@@ -113,7 +117,7 @@ struct ConnectProgressModelTests {
         model.observe(.connecting(.handshaking))
         model.observe(.connecting(.checkingBackend(identity)))
 
-        await waitUntil("the second stage is shown") {
+        await waitUntil("the second stage is shown", poll: .milliseconds(5)) {
             model.displayed == .connecting(.checkingBackend(identity))
         }
         // The drain is now inside its trailing dwell: the queue is empty but the
@@ -123,8 +127,10 @@ struct ConnectProgressModelTests {
         // with the gate showing "checking backend" over a connected robot.
         model.observe(.connected(identity))
 
-        await waitUntil("the connected frame is shown") { model.displayed == .connected(identity) }
-        await waitUntil("the gate is released") { model.holdsGate == false }
+        await waitUntil("the connected frame is shown", poll: .milliseconds(5)) {
+            model.displayed == .connected(identity)
+        }
+        await waitUntil("the gate is released", poll: .milliseconds(5)) { model.holdsGate == false }
     }
 
     @Test("a failure is shown without waiting and drops what was queued")
@@ -170,30 +176,10 @@ struct ConnectProgressModelTests {
         let elapsed = await ContinuousClock().measure {
             model.observe(.connecting(.checkingBackend(identity)))
             model.observe(.connected(identity))
-            await waitUntil("the gate is released") { model.holdsGate == false }
+            await waitUntil("the gate is released", poll: .milliseconds(5)) { model.holdsGate == false }
         }
 
         #expect(model.displayed == .connected(identity))
         #expect(elapsed < .seconds(1))
     }
-}
-
-/// `@MainActor` unlike the copies beside it: every condition here closes over a
-/// main-actor model, and a nonisolated parameter makes that closure a value being
-/// sent across actors — `sending value of non-Sendable type '() -> Bool'`.
-@MainActor
-private func waitUntil(
-    _ description: String,
-    timeout: Duration = .seconds(10),
-    _ condition: () -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
-) async {
-    let deadline = ContinuousClock.now.advanced(by: timeout)
-    while ContinuousClock.now < deadline {
-        if condition() {
-            return
-        }
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }
