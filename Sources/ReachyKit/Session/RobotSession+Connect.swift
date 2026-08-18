@@ -33,10 +33,26 @@ public extension RobotSession {
     /// relay, and by the time it gets here it is already talking to the robot.
     @discardableResult
     func connect(using client: any RobotAPIClient) async -> Bool {
-        // Picking a robot off the remote list is as explicit as typing an address.
+        await connect(client, over: .remote)
+    }
+
+    /// Connects to a simulator running inside this process.
+    ///
+    /// Separate from `connect(using:)` rather than a defaulted parameter on it,
+    /// because the link is the whole difference and a default would let a caller
+    /// pick the wrong one by saying nothing. What follows from `.remote` is a
+    /// camera the simulator does not have and a caption naming a relay it never
+    /// touched — see `Link.simulated`.
+    @discardableResult
+    func connect(simulating client: any RobotAPIClient) async -> Bool {
+        await connect(client, over: .simulated)
+    }
+
+    private func connect(_ client: any RobotAPIClient, over link: Link) async -> Bool {
+        // Picking a robot off a list is as explicit as typing an address.
         automaticConnectionAllowed = true
-        let attemptID = beginAttempt(over: .remote)
-        return await settle(client: client, link: .remote, attemptID: attemptID, automatically: false)
+        let attemptID = beginAttempt(over: link)
+        return await settle(client: client, link: link, attemptID: attemptID, automatically: false)
     }
 
     private func beginAttempt(over link: Link) -> UUID {

@@ -24,6 +24,7 @@ enum ConnectionLinkCaption {
         case .none: "—"
         case let .lan(address): address.displayString
         case .remote: String(localized: .reachy("Hugging Face relay"))
+        case .simulated: String(localized: .reachy("Simulator"))
         }
     }
 }

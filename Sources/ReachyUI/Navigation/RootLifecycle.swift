@@ -207,7 +207,11 @@ enum RootViewportTarget {
         switch session.link {
         case let .lan(address): return .lan(address)
         case .remote: return remoteLink.map { .remote($0.camera) }
-        case .none: return nil
+        // Nil until there is a simulator to draw. A simulated session's scene is
+        // built from the client itself rather than from an address — it is the
+        // thing serving the geometry and the state stream — so this case is
+        // completed where that client lands, not here.
+        case .none, .simulated: return nil
         }
     }
 }

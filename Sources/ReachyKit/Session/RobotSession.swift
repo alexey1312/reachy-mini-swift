@@ -25,6 +25,16 @@ public final class RobotSession {
         case none
         case lan(RobotAddress)
         case remote
+        /// No robot at all: a simulator running inside this process.
+        ///
+        /// **Not `.remote`, and the difference is not cosmetic.** `isRemote` is
+        /// `link == .remote`, `hasCamera` reads `isRemote` first and `flavour`
+        /// answers `.remote` before it looks at the status at all — so a simulator
+        /// arriving through `connect(using:)` would be handed a camera tab over
+        /// nothing and captioned "Hugging Face relay". Nor `.lan`: there is no
+        /// address, which is what keeps it out of `KnownRobots` and out of the
+        /// screens that dial one.
+        case simulated
     }
 
     /// Where a connection attempt currently stands. Split out of `.connecting`

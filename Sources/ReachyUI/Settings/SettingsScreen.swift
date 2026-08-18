@@ -67,7 +67,8 @@ struct SettingsScreen: View {
     private var isConnectedOverLAN: Bool {
         switch session.link {
         case .lan: true
-        case .none, .remote: false
+        // A simulator proves less than either: it never asked for the network.
+        case .none, .remote, .simulated: false
         }
     }
 
