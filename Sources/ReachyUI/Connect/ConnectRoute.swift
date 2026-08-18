@@ -15,6 +15,9 @@ enum ConnectRoute: String, CaseIterable, Identifiable {
     /// Robots linked to the reader's Hugging Face account, wherever they are.
     case account
     case manual
+    /// A robot that is not there at all. Last, because it is the answer for a
+    /// reader who has no robot rather than one who cannot find theirs.
+    case simulator
 
     var id: String {
         rawValue
@@ -25,6 +28,7 @@ enum ConnectRoute: String, CaseIterable, Identifiable {
         case .network: .reachy("This network")
         case .account: .reachy("Hugging Face")
         case .manual: .reachy("Manual")
+        case .simulator: .reachy("Simulator")
         }
     }
 }

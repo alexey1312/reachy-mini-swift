@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachySimulator
 import SwiftUI
 
 /// The three ways to reach a robot, one segment each, under a rail that says how
@@ -47,6 +48,9 @@ struct ConnectionScreen: View {
     /// Resolved in `onAppear` for the same reason the two above are: it is
     /// main-actor isolated, and a defaulted argument is evaluated nonisolated.
     @State private var localDaemon: LocalDaemonModel?
+    /// Only a packaging failure can set this, and it is not `session.robotError`:
+    /// nothing was asked of a robot, so nothing about the robot went wrong.
+    @State private var simulatorError: String?
 
     init(
         session: RobotSession,
@@ -176,6 +180,11 @@ struct ConnectionScreen: View {
             case .manual:
                 ManualAddressSection(input: $manualInput, connect: connectManually)
                     .disabled(!session.phase.acceptsConnectionChoice)
+            case .simulator:
+                SimulatorSection(
+                    isConnecting: !session.phase.acceptsConnectionChoice,
+                    connect: connectToSimulator
+                )
             }
             setUpSection
             privacySection
@@ -224,10 +233,21 @@ struct ConnectionScreen: View {
     /// `Could not connect to the server` about an address nobody chose, under a list
     /// that already reads "Searching…" with two paragraphs explaining it.
     @ViewBuilder
+    @ViewBuilder
     private var errorSection: some View {
         if let error = session.robotError, !session.automaticConnectionAllowed {
             Section {
                 Text(error)
+                    .font(Typography.consoleLine)
+                    .foregroundStyle(Tone.danger.style)
+            }
+        }
+        // Separate from the robot's own error, and shown regardless of
+        // `automaticConnectionAllowed`: nothing was asked of a robot here, so
+        // nothing about a robot is being retried.
+        if let simulatorError {
+            Section {
+                Text(simulatorError)
                     .font(Typography.consoleLine)
                     .foregroundStyle(Tone.danger.style)
             }
@@ -289,6 +309,22 @@ struct ConnectionScreen: View {
     private func connectManually(to address: RobotAddress) {
         sweep?.standDown()
         Task { await session.connect(to: address) }
+    }
+
+    /// Nothing to sweep for and nothing to resolve — the robot is built here.
+    ///
+    /// A simulator that cannot be built means the bundled description did not
+    /// parse, which `BundledRobotGeometryTests` rules out at build time. Reported
+    /// rather than crashed, because a resource is a packaging fact and the reader
+    /// can still reach every other route on this screen.
+    private func connectToSimulator() {
+        sweep?.standDown()
+        guard let client = SimulatedRobotClient() else {
+            simulatorError = String(localized: .reachy("The simulator's robot description could not be read."))
+            return
+        }
+        simulatorError = nil
+        Task { await session.connect(simulating: client) }
     }
 
     private func connect(to service: RobotBrowser.DiscoveredService) {

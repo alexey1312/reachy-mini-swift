@@ -96,7 +96,7 @@ let package = Package(
             // purpose: the widget target must stay clear of ReachyMedia.
             dependencies: [
                 "HuggingFaceAuth", "ReachyDesign", "ReachyJSON", "ReachyKit", "ReachyMedia", "ReachyScene",
-                "ReachySSH", "ReachyWidgetUI",
+                "ReachySimulator", "ReachySSH", "ReachyWidgetUI",
             ],
             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
@@ -182,8 +182,11 @@ let package = Package(
             // a remote session instead of always building its own, and that
             // ownership is what its tests have to assert on. `ReachyWidgetUI` for
             // the two entity types `ReachyEntityIndex` stamps — named explicitly
-            // rather than leaned on as a transitive import of `ReachyUI`.
-            dependencies: ["ReachyUI", "ReachyKit", "ReachyMedia", "ReachyWidgetUI", "HuggingFaceAuth"]
+            // rather than leaned on as a transitive import of `ReachyUI`, and
+            // `ReachySimulator` for the client a simulated viewport source carries.
+            dependencies: [
+                "ReachyUI", "ReachyKit", "ReachyMedia", "ReachySimulator", "ReachyWidgetUI", "HuggingFaceAuth",
+            ]
         ),
         .testTarget(
             name: "ReachyWidgetUITests",

@@ -204,6 +204,35 @@
         }
       }
     },
+    "A robot drawn from its own description, with no hardware and no physics. The joystick moves it, and the 3D model follows exactly as it would over the network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Roboter, gezeichnet aus seiner eigenen Beschreibung, ohne Hardware und ohne Physik. Der Joystick bewegt ihn, und das 3D-Modell folgt genau so, wie es über das Netzwerk täte."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot dibujado a partir de su propia descripción, sin hardware ni física. El joystick lo mueve, y el modelo 3D lo sigue exactamente como lo haría a través de la red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot dessiné à partir de sa propre description, sans matériel ni physique. Le joystick le déplace, et le modèle 3D suit exactement comme il le ferait sur le réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот, нарисованный по его собственному описанию, без железа и без физики. Джойстик его двигает, и 3D-модель следует за ним ровно так же, как по сети."
+          }
+        }
+      }
+    },
     "A script answers nothing — the robot's handler crashes encoding its own reply. Watch the journal for what happened.": {
       "extractionState": "manual",
       "localizations": {
@@ -5830,6 +5859,35 @@
         }
       }
     },
+    "Start the simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulator starten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar el simulador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le simulateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить симулятор"
+          }
+        }
+      }
+    },
     "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
       "extractionState": "manual",
       "localizations": {
@@ -5855,6 +5913,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демон этого робота работает на компьютере, к которому робот подключён, поэтому его Wi-Fi, обновления и обслуживание относятся к тому компьютеру, а не к этому экрану."
+          }
+        }
+      }
+    },
+    "The simulator's robot description could not be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Roboterbeschreibung des Simulators konnte nicht gelesen werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer la descripción del robot del simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La description du robot du simulateur n'a pas pu être lue."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать описание робота для симулятора."
+          }
+        }
+      }
+    },
+    "There is no camera, no app store and no Wi-Fi — those belong to a machine that is not there.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es gibt keine Kamera, keinen App-Store und kein WLAN — die gehören zu einer Maschine, die nicht da ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay cámara, ni tienda de aplicaciones, ni Wi-Fi: pertenecen a una máquina que no está ahí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n'y a ni caméra, ni magasin d'applications, ni Wi-Fi — tout cela appartient à une machine qui n'est pas là."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет ни камеры, ни магазина приложений, ни Wi-Fi — всё это принадлежит машине, которой нет."
           }
         }
       }

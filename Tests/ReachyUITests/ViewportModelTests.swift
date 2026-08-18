@@ -1,5 +1,6 @@
 import ReachyKit
 import ReachyMedia
+import ReachySimulator
 @testable import ReachyUI
 import Testing
 
@@ -10,6 +11,12 @@ struct ViewportModelTests {
 
     private var lan: ViewportModel.Source {
         .lan(address)
+    }
+
+    /// The simulator serves its own geometry and publishes its own state stream, so
+    /// the source carries the object itself rather than an address.
+    private func simulated() throws -> ViewportModel.Source {
+        try .simulated(#require(SimulatedRobotClient(tick: .seconds(30))))
     }
 
     /// Attaching alone starts nothing — the viewport has to be on screen first.
@@ -34,6 +41,30 @@ struct ViewportModelTests {
 
         model.attach(to: .lan(RobotAddress(host: "127.0.0.2")))
         #expect(model.sceneModel !== scene)
+        model.detach()
+    }
+
+    /// **The point of the whole track, in one assertion.** A simulated session has
+    /// no address, so before the seam it could not have a moving 3D model however
+    /// completely it answered everything else.
+    @Test("a simulated source draws a scene and lands on it")
+    func simulatedSourceDrawsAScene() throws {
+        let model = ViewportModel()
+        let source = try simulated()
+        model.setActive(true)
+
+        model.attach(to: source)
+
+        #expect(model.offersScene)
+        // Landed on the model rather than the camera: there is nothing to point one
+        // at, and an empty pane would be a worse first frame.
+        #expect(model.content == .scene)
+        #expect(model.sceneModel != nil)
+        #expect(model.cameraSession == nil)
+        #expect(model.sceneUnavailableReason == nil)
+        // No address, so no second socket for the direction-of-arrival badge —
+        // which is right: there are no microphones either.
+        #expect(model.hearing == nil)
         model.detach()
     }
 

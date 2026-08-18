@@ -2,6 +2,7 @@ import CoreSpotlight
 import HuggingFaceAuth
 import ReachyKit
 import ReachyMedia
+import ReachySimulator
 import SwiftUI
 
 /// Every effect the root runs, in one place.
@@ -207,11 +208,11 @@ enum RootViewportTarget {
         switch session.link {
         case let .lan(address): return .lan(address)
         case .remote: return remoteLink.map { .remote($0.camera) }
-        // Nil until there is a simulator to draw. A simulated session's scene is
-        // built from the client itself rather than from an address — it is the
-        // thing serving the geometry and the state stream — so this case is
-        // completed where that client lands, not here.
-        case .none, .simulated: return nil
+        // The client itself is the source: it serves the geometry out of the app's
+        // bundle and publishes the state stream, so there is no address to carry
+        // and nothing else to look it up from.
+        case .simulated: return session.capability(SimulatedRobotClient.self).map { .simulated($0) }
+        case .none: return nil
         }
     }
 }

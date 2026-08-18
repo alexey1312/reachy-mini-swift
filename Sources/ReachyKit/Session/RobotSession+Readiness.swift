@@ -77,11 +77,17 @@ public extension RobotSession {
         isRemote || lastStatus?.cameraSpecsName?.isEmpty == false
     }
 
-    /// The 3D model is built from URDF and STL served over `/api/kinematics/*`,
-    /// which is exactly what a relay session cannot reach — the one feature ADR
-    /// 0003 gives up outright.
+    /// The 3D model is built from URDF and STL, which a relay session cannot reach
+    /// — the one feature ADR 0003 gives up outright.
+    ///
+    /// On the link rather than on `address != nil`, because a simulator has no
+    /// address and serves both out of its own bundle. The relay is the case this
+    /// excludes, and it is excluded by name.
     var canRenderScene: Bool {
-        address != nil
+        switch link {
+        case .lan, .simulated: true
+        case .none, .remote: false
+        }
     }
 
     /// Recorded moves are `/api/move/play/*` and the dataset index beside them,

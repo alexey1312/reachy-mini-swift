@@ -125,6 +125,14 @@ enum PreviewScene {
         .preview()
     }
 
+    static func simulatorSection(isConnecting: Bool = false) -> some View {
+        Form {
+            SimulatorSection(isConnecting: isConnecting, connect: {})
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     static func audioSection(_ model: AudioSettingsModel? = nil, header: String? = "Audio") -> some View {
         Form {
             AudioSettingsSection(session: .preview(), header: header, model: model ?? .preview())

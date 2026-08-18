@@ -3,6 +3,7 @@ import ReachyDesign
 import ReachyKit
 import ReachyMedia
 import ReachyScene
+import ReachySimulator
 
 /// Owns the two live views of the robot — the 3D model and the camera — and
 /// guarantees that only one of them is running.
@@ -45,6 +46,13 @@ final class ViewportModel {
         /// and carrying the robot's commands, so this model borrows it and must
         /// never stop it. There is no HTTP API here, so there is no scene.
         case remote(CameraSession)
+        /// A simulator in this very process. It is its own geometry server and its
+        /// own state stream, so the scene needs nothing but the object; there is no
+        /// camera, because there is nothing to point one at.
+        ///
+        /// Concrete rather than a pair of existentials: there is exactly one
+        /// simulator type, and a class compares by identity the way `.remote` does.
+        case simulated(SimulatedRobotClient)
     }
 
     private(set) var content: Content = .scene
@@ -82,13 +90,12 @@ final class ViewportModel {
         }
     }
 
-    /// Only the LAN path has a 3D model at all, so the switcher is not what
-    /// decides whether to offer one — the source is.
+    /// Which sources have a 3D model at all: the switcher is not what decides
+    /// whether to offer one — the source is. Only the relay has none.
     var offersScene: Bool {
-        if case .lan = source {
-            true
-        } else {
-            false
+        switch source {
+        case .lan, .simulated: true
+        case .remote, nil: false
         }
     }
 
@@ -109,10 +116,13 @@ final class ViewportModel {
         guard self.source != source else { return }
         detach()
         self.source = source
-        // Nothing to switch to over the relay, and landing on an empty 3D tab
-        // would be a worse first frame than the video that is already arriving.
-        if case .remote = source {
-            content = .camera
+        // Each source has one content it can actually show first: the relay has
+        // only video, and a simulator has only the model. Landing on the other
+        // would be an empty pane in both directions.
+        switch source {
+        case .remote: content = .camera
+        case .simulated: content = .scene
+        case .lan: break
         }
         activate()
     }
@@ -171,6 +181,16 @@ final class ViewportModel {
             // back to 3D does not re-download the robot's description.
             sceneModel?.pauseStream()
             startCamera(at: address)
+        case let (.scene, .simulated(client)):
+            stopCamera()
+            startSimulatedScene(client)
+        case (.camera, .simulated):
+            // Unreachable in practice and stated rather than assumed: a simulator
+            // reports no `camera_specs_name`, so `session.hasCamera` is false and
+            // `ViewportOptions.offered` never puts `.camera` in the switcher. The
+            // arm exists because a source change must not be able to land here
+            // silently.
+            break
         case let (.camera, .remote(session)):
             // Already running — `RemoteRobotLink` started it, and it is the same
             // connection the commands are on. Adopted, never started or stopped.
@@ -200,6 +220,17 @@ final class ViewportModel {
 
     private func stopHearing() {
         hearing?.stop()
+    }
+
+    private func startSimulatedScene(_ client: SimulatedRobotClient) {
+        if sceneModel == nil {
+            // One object for both roles: it serves the geometry out of the app's
+            // bundle and publishes the state stream itself, which is the whole
+            // reason the `RobotStateStreaming` seam exists.
+            sceneModel = RobotSceneModel(stream: client, client: client)
+        }
+        sceneModel?.start()
+        sceneModel?.resumeStream()
     }
 
     private func startScene(at address: RobotAddress) {
@@ -249,6 +280,7 @@ extension ViewportModel.Source: Equatable {
         switch (lhs, rhs) {
         case let (.lan(lhs), .lan(rhs)): lhs == rhs
         case let (.remote(lhs), .remote(rhs)): lhs === rhs
+        case let (.simulated(lhs), .simulated(rhs)): lhs === rhs
         default: false
         }
     }
