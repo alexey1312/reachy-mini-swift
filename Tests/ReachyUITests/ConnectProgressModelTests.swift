@@ -178,9 +178,10 @@ struct ConnectProgressModelTests {
     }
 }
 
-/// `@MainActor` unlike the copies beside it: every condition here closes over a
-/// main-actor model, and a nonisolated parameter makes that closure a value being
-/// sent across actors — `sending value of non-Sendable type '() -> Bool'`.
+/// The one suite that does not share `waitUntil`, and the poll interval is why: these
+/// assertions are about `dwell`, so they need a finer grain than the shared helper's
+/// 20 ms. Everything else about it is identical — including `@MainActor`, without which
+/// each call site fails as `sending value of non-Sendable type '() -> Bool'`.
 @MainActor
 private func waitUntil(
     _ description: String,

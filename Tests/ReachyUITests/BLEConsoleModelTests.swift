@@ -97,22 +97,3 @@ struct BLEConsoleModelTests {
         #expect(model.log.entries.map(\.text) == ["first", "second"])
     }
 }
-
-/// Polls rather than sleeping: the suites are `@MainActor` and a loaded runner starves
-/// them, so a fixed wait before an assertion is a flake in waiting (rule 7).
-@MainActor
-private func waitUntil(
-    _ description: String,
-    timeout: Duration = .seconds(10),
-    _ condition: () -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
-) async {
-    let deadline = ContinuousClock.now.advanced(by: timeout)
-    while ContinuousClock.now < deadline {
-        if condition() {
-            return
-        }
-        try? await Task.sleep(for: .milliseconds(20))
-    }
-    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
-}

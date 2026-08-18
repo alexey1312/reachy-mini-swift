@@ -53,25 +53,3 @@ struct LocalDaemonModelTests {
         #expect(LocalDaemonModel.loopback.port == RobotAddress.defaultPort)
     }
 }
-
-/// Project rule 7: poll the condition, never sleep a fixed span before asserting.
-///
-/// The third private copy in this target, after `KnownRobotsModelTests` and
-/// `PresenceModelTests`. Left private rather than lifted into `ReachyTestSupport`
-/// because that target does not link swift-testing and `Issue.record` is what makes
-/// a timeout a failure rather than a hang — hoisting it is its own change.
-private func waitUntil(
-    _ description: String,
-    timeout: Duration = .seconds(10),
-    _ condition: () -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
-) async {
-    let deadline = ContinuousClock.now.advanced(by: timeout)
-    while ContinuousClock.now < deadline {
-        if condition() {
-            return
-        }
-        try? await Task.sleep(for: .milliseconds(20))
-    }
-    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
-}
