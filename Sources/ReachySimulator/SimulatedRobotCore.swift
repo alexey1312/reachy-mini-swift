@@ -10,10 +10,17 @@ import simd
 /// Everything that could be a value is one, because the arithmetic is the part
 /// worth testing and a socket around it proves nothing about it.
 public struct SimulatedRobotCore: Sendable {
-    /// Where the robot is now.
+    /// Where the robot is now. Always a pose the platform can hold — see
+    /// ``held(_:)``.
     public private(set) var pose: TeleopTarget
-    /// Where it has been told to go, after the daemon's own clamps.
+    /// Where it has been told to go, after the daemon's own clamps. Not clamped to
+    /// the workspace: a robot told to go somewhere it cannot reach was still told,
+    /// and the pose is what stops at the edge.
     public private(set) var goal: TeleopTarget
+    /// Set when the walk has run into the edge of the workspace and stopped moving.
+    /// Only ``isSettled`` reads it, and that is the whole point: a move whose goal
+    /// the platform cannot reach would otherwise hold the slot for ever.
+    private var isBlocked = false
 
     private let geometry: StewartGeometry
     private let ik: StewartIK
@@ -39,6 +46,7 @@ public struct SimulatedRobotCore: Sendable {
     /// Takes a target the way the daemon does, clamps included.
     public mutating func aim(at target: TeleopTarget) {
         goal = Self.clamped(target)
+        isBlocked = false
     }
 
     /// Walks the pose toward the goal.
@@ -49,13 +57,28 @@ public struct SimulatedRobotCore: Sendable {
     /// own answer to that question is the one the joystick was tuned against.
     public mutating func advance(by seconds: Double) {
         guard seconds > 0 else { return }
-        pose = slew.next(current: pose, goal: goal, dt: .seconds(seconds))
+        let stepped = slew.next(current: pose, goal: goal, dt: .seconds(seconds))
+        // Named for what it is rather than `held`, which `redundantSelf` would strip
+        // the `self.` off and leave calling a `TeleopTarget`.
+        let reached = held(stepped)
+        // Blocked, not merely clamped: sliding along the edge is still movement, and
+        // a walk that is still travelling has not arrived. The threshold sits an
+        // order below the smallest step the slew takes on its way into `isSettled`'s
+        // own 1e-4 — at dt = 20 ms an error of 1e-4 still moves ~2·10⁻⁵ per tick.
+        isBlocked = reached != stepped && Self.axisDifference(reached, pose) < Self.stallThreshold
+        pose = reached
     }
 
     /// Whether the pose has arrived. What ends a "move": the daemon drops a move's
     /// UUID the instant its coroutine ends, and here the coroutine is the walk.
+    ///
+    /// A walk stopped at the workspace edge counts as arrived. It has to: the goal
+    /// is what the robot was told, unreachable targets are ordinary — the height
+    /// slider alone runs past the platform's 23 mm of lift — and a move that never
+    /// settles is a move slot held for ever, which the session polls and reports as
+    /// a robot permanently dancing.
     public var isSettled: Bool {
-        Self.axisDifference(pose, goal) < 1e-4
+        Self.axisDifference(pose, goal) < 1e-4 || isBlocked
     }
 
     static func axisDifference(_ lhs: TeleopTarget, _ rhs: TeleopTarget) -> Double {
@@ -98,6 +121,74 @@ public struct SimulatedRobotCore: Sendable {
         )
         clamped.bodyYaw = min(max(clamped.bodyYaw, -maxBodyYaw), maxBodyYaw)
         return clamped
+    }
+
+    /// The nearest pose along the way in from `target` that the platform can hold.
+    ///
+    /// **The bug this exists for is a head that comes off the robot.** The daemon's
+    /// clamps say nothing about the Stewart platform's reach, and the controller's
+    /// own sliders run past it — +30 mm of height against 23 mm of lift, and far
+    /// less than that with any roll on top, because the workspace is coupled and
+    /// not a box. A pose outside it left `StewartIK` with no answer, so a frame
+    /// carried no `head_joints`, every crank fell back to zero, and the viewer drew
+    /// the head where the pose said with the linkage standing at its zero
+    /// configuration underneath: the shell open, the rods pointing at nothing.
+    /// A real robot cannot do that — what it reports is where its motors are — so
+    /// the simulator must not either.
+    ///
+    /// Interpolation is toward the platform at rest rather than per axis, for the
+    /// same reason: the reachable set is **not** convex — the head reaches +23 mm
+    /// with no rotation and 40° of roll with no lift, and neither halfway point is
+    /// reachable — so clamping z against a fixed range would be wrong at every
+    /// other angle. Rest is deep inside it, so the way in from anywhere crosses the
+    /// boundary exactly once and a bisection finds it.
+    func held(_ target: TeleopTarget) -> TeleopTarget {
+        guard !canHold(target) else { return target }
+        var (unreachable, reachable) = (1.0, 0.0)
+        for _ in 0 ..< Self.reachSteps {
+            let middle = (reachable + unreachable) / 2
+            if canHold(Self.leaning(target, towardRest: middle)) {
+                reachable = middle
+            } else {
+                unreachable = middle
+            }
+        }
+        return Self.leaning(target, towardRest: reachable)
+    }
+
+    /// How many halvings the search above spends.
+    ///
+    /// Twenty rather than the ten that would place the head accurately enough to
+    /// look right, because ``advance(by:)`` reads *changes* in the answer: two
+    /// consecutive ticks land on the same boundary from slightly different targets,
+    /// so the search's own resolution is noise on the movement it measures. At
+    /// 2⁻²⁰ of a 30 mm command that noise is 30 nm, two orders under
+    /// ``stallThreshold``; at 2⁻¹⁴ it would be 2 µm and swamp it.
+    private static let reachSteps = 20
+
+    /// Below this a step counts as no movement at all. See ``advance(by:)``.
+    private static let stallThreshold = 1e-6
+
+    /// A solve that lands inside every crank's limit. The body's own yaw is not
+    /// part of the question — it is a joint of its own, already clamped above.
+    private func canHold(_ target: TeleopTarget) -> Bool {
+        ik.canHold(headPose: Self.headPose(of: target), bodyYaw: target.bodyYaw)
+    }
+
+    /// `target` with the head's offsets scaled toward the platform's rest pose:
+    /// 1 is the target itself, 0 the head sitting square on a body that keeps
+    /// whatever yaw it was given. Yaw leans toward `bodyYaw` rather than toward
+    /// zero because that is what the platform sees — the daemon hands it
+    /// `yaw − body_yaw`, so a head square to its own body is what "at rest" means.
+    static func leaning(_ target: TeleopTarget, towardRest fraction: Double) -> TeleopTarget {
+        var leaning = target
+        leaning.x = target.x * fraction
+        leaning.y = target.y * fraction
+        leaning.z = target.z * fraction
+        leaning.roll = target.roll * fraction
+        leaning.pitch = target.pitch * fraction
+        leaning.yaw = target.bodyYaw + (target.yaw - target.bodyYaw) * fraction
+        return leaning
     }
 
     /// To `[-π, π]`, the range the daemon says angles must arrive in.
@@ -147,9 +238,13 @@ public struct SimulatedRobotCore: Sendable {
     /// The pose as the daemon reports it: base frame, height offset already taken
     /// out, which is the frame `StewartIK` and `PassiveJointSolver` both expect.
     func headPoseMatrix() -> simd_double4x4 {
+        Self.headPose(of: pose)
+    }
+
+    static func headPose(of target: TeleopTarget) -> simd_double4x4 {
         RigidTransform.transform(
-            translation: SIMD3(pose.x, pose.y, pose.z),
-            rpy: SIMD3(pose.roll, pose.pitch, pose.yaw)
+            translation: SIMD3(target.x, target.y, target.z),
+            rpy: SIMD3(target.roll, target.pitch, target.yaw)
         )
     }
 

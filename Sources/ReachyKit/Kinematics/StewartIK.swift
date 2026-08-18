@@ -62,6 +62,20 @@ public struct StewartIK: Sendable {
         return angles
     }
 
+    /// Whether the platform can actually **hold** this pose: a solve that lands
+    /// inside every crank's own limit.
+    ///
+    /// Not the same question as `solve(headPose:bodyYaw:) != nil`, which is the
+    /// rods' reach alone: on the shipped description a head lifted straight up
+    /// solves to 24.3 mm and the cranks run out of travel at 23.1, so between the
+    /// two the answer is a set of angles no motor will ever take. That is the
+    /// question a caller with a pose to *draw* is really asking — the linkage will
+    /// never be seen there, whatever the arithmetic says about the rods.
+    public func canHold(headPose: simd_double4x4, bodyYaw: Double) -> Bool {
+        guard let angles = solve(headPose: headPose, bodyYaw: bodyYaw) else { return false }
+        return zip(angles, geometry.motorLimits).allSatisfy { angle, limit in limit.contains(angle) }
+    }
+
     private func solveLeg(_ leg: Int, pose: simd_double4x4) -> Double? {
         let mount = Self.mount(leg, pose: pose, geometry: geometry)
         // In the motor's own frame the crank tip is (arm·cos θ, arm·sin θ, 0), which

@@ -68,3 +68,24 @@ measured and nothing else.
 and the default engine never does — `RobotJointState.resolve` solves them client-side. `doa` is nil because there
 are no microphones, and `DirectionOfArrivalModel` already reads a null reading as "no array". `state` on the update
 is nil because a producer that is not a socket has no `FullState`; both consumers read `frame`.
+
+**The pose is bounded by what the platform can hold, and the goal is not.** `aim` keeps the daemon's clamps and
+nothing more — a robot told to go somewhere unreachable was still told — while every pose `advance` produces goes
+through `held(_:)`, which walks the head's own offsets back toward rest until `StewartIK.canHold` answers yes. The
+bug it exists for is a **head that comes off the robot**: the controller's height slider runs to 30 mm against the
+platform's 23, `StewartIK` had no answer past that, the frame therefore carried no `head_joints`, and the viewer
+posed all six cranks at zero under a head placed from `head_pose` — the shell open, the rods pointing at nothing.
+A real robot cannot report such a pose, because what it reports is where its motors are.
+
+- **The reachable set is not convex, so the walk back is toward rest and never per axis.** The head reaches +23 mm
+  with no rotation and 40° of roll with no lift, and _neither halfway point is reachable_ — measured against the
+  bundled description, and the reason a `z` slider clamped to a fixed range would be wrong at every other angle.
+  Rest is deep inside the set, so the way in from anywhere crosses the boundary once and a bisection finds it.
+- **`isSettled` had to learn about the edge.** A walk that stops there has arrived as far as it is going, and
+  without that a goal past the workspace is a move slot held for ever — which the session polls and reports as a
+  robot permanently dancing. `advance` sets `isBlocked` when the clamp engaged _and_ the pose stopped moving, which
+  is why the bisection runs 20 halvings rather than the ten the picture needs: its own resolution is noise on the
+  movement it is being asked to measure.
+- **`canHold` is the motors' question, not the rods'.** Straight up, the solve answers to 24.3 mm and the cranks run
+  out of travel at 23.1 — between the two lies a set of angles no motor will take. `StewartGeometry.motorLimits`
+  carries the URDF's own skewed limits for it.

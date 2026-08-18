@@ -190,4 +190,35 @@ struct StewartIKTests {
 
         #expect(ik.solve(headPose: pose(z: geometry.restHeadPoseZ + 0.060), bodyYaw: 0) == nil)
     }
+
+    /// The URDF's own numbers, and they are skewed by design — `stewart_1` reaches
+    /// +80° but only −48°, `stewart_2` the mirror image. That skew is what lets the
+    /// platform idle at the ±35.9° the commanded neutral puts it at, so a
+    /// derivation that lost it (or symmetrised it) would report the rest pose as
+    /// out of range.
+    @Test("motor limits come off the description, skew and all")
+    func motorLimitsAreTheDescriptions() throws {
+        let (_, geometry) = try solver()
+
+        #expect(geometry.motorLimits.count == StewartGeometry.legCount)
+        let lower = geometry.motorLimits.map { ($0.lowerBound * 180 / .pi).rounded() }
+        let upper = geometry.motorLimits.map { ($0.upperBound * 180 / .pi).rounded() }
+        #expect(lower == [-48, -80, -48, -80, -70, -80])
+        #expect(upper == [80, 70, 80, 48, 80, 48])
+    }
+
+    /// **The gap `canHold` exists for.** Between 23.1 mm and 24.3 mm of lift the
+    /// rods still close — the algebra has an answer — and every crank is past its
+    /// limit, so the platform is nowhere near able to hold the pose. A viewer that
+    /// asked only whether the solve succeeded would draw a robot standing in a
+    /// configuration its motors refuse.
+    @Test("a pose the rods reach but the cranks cannot is not held")
+    func reachIsNotTheSameAsHolding() throws {
+        let (ik, _) = try solver()
+
+        #expect(ik.solve(headPose: pose(z: 0.0235), bodyYaw: 0) != nil)
+        #expect(ik.canHold(headPose: pose(z: 0.0235), bodyYaw: 0) == false)
+        #expect(ik.canHold(headPose: pose(z: 0.020), bodyYaw: 0))
+        #expect(ik.canHold(headPose: pose(z: 0), bodyYaw: 0))
+    }
 }

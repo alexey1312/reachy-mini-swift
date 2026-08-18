@@ -46,6 +46,10 @@ public final class RobotSceneModel {
     private let cache: GeometryCache
     private var graph: RobotSceneGraph?
     private var solver: PassiveJointSolver?
+    /// Fills in the six cranks for a stream that carries no `head_joints`. Without
+    /// it such a frame poses the linkage at zero under a head placed from the pose,
+    /// which draws the head off the robot — see `RobotJointState.resolve`.
+    private var platform: StewartIK?
     private var geometryTask: Task<Void, Never>?
     private var streamTask: Task<Void, Never>?
     private var lastPublishedFrameAt: Date?
@@ -131,6 +135,7 @@ public final class RobotSceneModel {
         // point at a height the head is not drawn at.
         let stewart = StewartGeometry(urdf: geometry.urdf)
         solver = stewart.map(PassiveJointSolver.init)
+        platform = stewart.map(StewartIK.init)
         let graph = RobotSceneGraph(urdf: geometry.urdf, meshes: meshes, geometry: stewart)
         // A rebuild replaces the robot rather than stacking a second one on the
         // same container (the lighting rig stays — it is added once, in init).
@@ -162,7 +167,13 @@ public final class RobotSceneModel {
     /// SwiftUI: at 20 Hz that would invalidate the view on every frame.
     private func consume(_ update: StateStreamUpdate) {
         guard let frame = update.frame else { return }
-        graph?.apply(RobotJointState.resolve(frame, solver: solvesPassiveJoints ? solver : nil))
+        graph?.apply(
+            RobotJointState.resolve(
+                frame,
+                solver: solvesPassiveJoints ? solver : nil,
+                platform: platform
+            )
+        )
         if placesHeadDirectly {
             graph?.applyHeadPose(frame.headPose?.transform)
         }

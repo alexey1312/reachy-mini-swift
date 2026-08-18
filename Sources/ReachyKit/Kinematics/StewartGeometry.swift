@@ -22,6 +22,16 @@ public struct StewartGeometry: Sendable {
     /// every leg — leg 2's mount is rotated.
     public let rodDirections: [SIMD3<Double>]
     public let armLength: Double
+    /// How far each crank may actually turn, read off the `stewart_i` joints.
+    ///
+    /// **Skewed, and the skew is the mechanism rather than an artefact**:
+    /// `stewart_1` reaches +80° but only −48°, `stewart_2` the mirror image, which
+    /// is what lets the platform idle at the ±35.9° `head_pose` zero puts it at.
+    /// A solve that lands outside one of these is a pose the robot cannot hold —
+    /// `StewartIK.canHold(headPose:bodyYaw:)` is the question, and the answer is
+    /// not the same as the rods' own reach: straight up, the solve answers to
+    /// 24.3 mm of lift and the cranks run out of travel at 23.1.
+    public let motorLimits: [ClosedRange<Double>]
     /// Rod length per leg, derived at the configuration where the linkage is
     /// actually **assembled** — every joint at zero, the head at its URDF rest
     /// height. There the five closing pairs meet to within a micrometre, which is
@@ -80,6 +90,7 @@ public struct StewartGeometry: Sendable {
         var rodDirections: [SIMD3<Double>] = []
         var branchPositions: [SIMD3<Double>] = []
         var passiveOffsets: [SIMD3<Double>] = []
+        var motorLimits: [ClosedRange<Double>] = []
         var armLength: Double?
 
         for leg in 1 ... Self.legCount {
@@ -96,6 +107,9 @@ public struct StewartGeometry: Sendable {
             motorFrames.append(horn * crankRise)
             rodDirections.append(rod)
             branchPositions.append(branch)
+            // A revolute joint always carries one; the fallback is a full turn, so a
+            // description that omitted it constrains nothing rather than everything.
+            motorLimits.append(motor.limit ?? (-.pi ... .pi))
             armLength = armLength ?? simd_length(SIMD2(wrist.origin.xyz.x, wrist.origin.xyz.y))
         }
 
@@ -125,6 +139,7 @@ public struct StewartGeometry: Sendable {
         self.passiveOffsets = passiveOffsets
         self.rodDirections = rodDirections
         self.armLength = armLength
+        self.motorLimits = motorLimits
         self.headToDrawnLink = headToDrawnLink
     }
 
