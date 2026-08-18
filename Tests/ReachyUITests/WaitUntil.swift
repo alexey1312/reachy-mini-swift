@@ -11,16 +11,24 @@ import Testing
 /// and `@section` errors out of the swift-testing macro expansions on top. None of
 /// those name this function.
 ///
-/// One copy, and that is the point. Three byte-identical `private` ones stood in
-/// `KnownRobotsModelTests`, `PresenceModelTests` and `BLEConsoleModelTests`, and a
-/// fourth written by hand from a `grep` that began at the `func` line dropped the
-/// attribute sitting one line above it. CI is what found that.
-/// `ConnectProgressModelTests` keeps a copy of its own on purpose: its assertions are
-/// about `dwell`, so it polls every 5 ms rather than 20.
+/// One copy, and that is the point. Four near-identical `private` ones stood in this
+/// target — `KnownRobotsModelTests`, `PresenceModelTests`, `BLEConsoleModelTests`,
+/// `ConnectProgressModelTests` — and a fifth written by hand from a `grep` that began
+/// at the `func` line dropped the attribute sitting one line above it. CI is what
+/// found that.
+///
+/// **`private` at file scope does not buy a namespace**: two top-level functions with
+/// the same name and signature are a redeclaration whichever access level they carry,
+/// so leaving one copy behind fails as `invalid redeclaration of
+/// 'waitUntil(_:timeout:_:sourceLocation:)'` rather than shadowing quietly. That is why
+/// `poll` is a parameter — `ConnectProgressModelTests` is the one suite that needs a
+/// finer grain, because its assertions measure `dwell` against a `ContinuousClock` and
+/// a 20 ms step would put up to 20 ms of overshoot into a 120 ms budget.
 @MainActor
 func waitUntil(
     _ description: String,
     timeout: Duration = .seconds(10),
+    poll: Duration = .milliseconds(20),
     _ condition: () -> Bool,
     sourceLocation: SourceLocation = #_sourceLocation
 ) async {
@@ -29,7 +37,7 @@ func waitUntil(
         if condition() {
             return
         }
-        try? await Task.sleep(for: .milliseconds(20))
+        try? await Task.sleep(for: poll)
     }
     Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }
