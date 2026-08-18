@@ -7,6 +7,32 @@ reverse.
   so a view the app and the widget both render belongs in this target: `AppArtwork` and `AppArtworkTile` first,
   `AppRowLabel` after it. The alternative is two copies that drift the first time one of them is edited — which is
   exactly what the dock strip and the launcher tile had become.
+- **The macOS menu bar is the third surface, and it reads storage rather than a session.** `MenuBarContent`,
+  `MenuBarContentView` and `MenuBarModel` are the popover behind `MenuBarExtra`; only the _scene_ is macOS-specific
+  and it lives in the app target. `MenuBarContent` composes `RobotWidgetContent` and `RobotAppsWidgetContent` and
+  **decides nothing** — the awake/asleep asymmetry, the staleness gloss, the tile states and the notice precedence are
+  already decided next door, and restating any of them is how the popover and the widget start disagreeing on the same
+  Mac. The one new piece is `refreshDates`, the deduplicated union of both halves: both file the running app's expiry,
+  so without it the model wakes twice for one boundary.
+  - **It reads the App Group stores because a session's lifetime is a window's.** `RobotSession` is `@State` inside
+    `ReachyRootView`, so it exists only while a window does — and the whole point of a menu bar item is to still be
+    there once the window is closed. Hoisting the session to the `App` would hold a 10 s sweep, a 3 s poll and a
+    WebSocket open with nothing on screen. Nothing is lost: the session writes those same stores whenever a window is
+    open, and when none is, `RobotWidgetContent` already says "Last seen …" rather than guessing.
+  - **`MenuBarModel` is the timeline a `MenuBarExtra` does not have.** It re-reads on four triggers — the popover
+    appearing, the app becoming active, a command returning, and each moment `MenuBarContent.refreshDates` files —
+    and **nothing polls**: with no transition pending and the reading settled into stale there is no later moment to
+    schedule, so it goes idle. Its `robot:` seam exists because `RobotIntentTarget.knownRobot` reads `KnownRobots.all`
+    from a static that takes no injected defaults, so a model given a throwaway suite would still be told there is no
+    robot.
+  - **It has no error slot, and none is missing.** Every command writes its own failure to the transition store before
+    it throws, and `RobotWidgetContent` renders that as the detail line with the button still on it — so the refresh on
+    the way out _is_ the report, in the words the widget already uses. `isBusy` covers the window before the pending
+    caption lands, since the marker is written inside the command's own prologue.
+  - **"Running" is `.active` here and `.idle` on a tile, and that is the rule rather than an exception.** This target
+    never grows a shared mapping from a domain state onto a tone. A tile is tinted, weighted and badged already, so a
+    fourth green signal would make the grid a status board; a popover row has none of those, and the caption is the
+    only thing naming which app holds the robot.
 - `AppRowLabel` takes an `AppRowLayout` preset rather than loose numbers, and a `ReachyStatusLabel` already built.
   Each caller keeps its own mapping from a domain state onto a `StatusTone`, so this target never grows a rule about
   what "running" should look like — `RunningAppCaption` owns that for the app, `RobotAppTileView.statusTone` for the

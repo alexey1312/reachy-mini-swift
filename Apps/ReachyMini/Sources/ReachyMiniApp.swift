@@ -42,5 +42,13 @@ struct ReachyMiniApp: App {
         #if os(macOS)
         .defaultSize(Metrics.window)
         #endif
+
+        // The robot in the menu bar. A second scene rather than anything inside the
+        // window, because the point of it is to still be there once the window is
+        // closed — which is also why it reads the App Group stores instead of the
+        // session, whose lifetime is the window's.
+        #if os(macOS)
+            ReachyMenuBarScene()
+        #endif
     }
 }
