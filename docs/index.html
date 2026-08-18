@@ -9,7 +9,8 @@ title: Control your Reachy Mini
     <h1>Hey Reachy</h1>
     <p class="lede">
       Joystick teleop, the robot's camera and two-way audio, a live 3D twin, recorded moves, a soundboard and the
-      robot app store — for the Reachy Mini Wireless on your desk.
+      robot app store — for the Reachy Mini on your desk. Wireless, Lite, or no robot at all: the app carries a
+      simulator of its own.
     </p>
     <p class="cta-row">
       <a class="cta" href="https://apps.apple.com/app/hey-reachy/id6799644194">Download on the Mac App Store</a>
@@ -24,11 +25,19 @@ title: Control your Reachy Mini
 
 <section class="band band-notice">
   <div class="wrap">
-    <h2>You need a robot</h2>
+    <h2>Which robots it talks to</h2>
     <p>
-      Hey Reachy talks to a <a href="https://www.pollen-robotics.com">Reachy Mini Wireless</a> on your network.
-      Without one the app stops at its Connect screen, because every feature lives behind a live session with the
-      robot's own daemon. There is no demo mode and no account to create.
+      A <a href="https://www.pollen-robotics.com">Reachy Mini Wireless</a> on your network is what Hey Reachy is for:
+      its daemon runs on the robot itself, and every feature here is behind a live session with it. A
+      <strong>Lite</strong> robot — the one plugged into a computer — connects to the same app, minus the few things
+      that belong to that computer rather than to the robot: its Wi-Fi, its software updates and its caches. Pollen
+      has not reworked the daemon for Lite yet, so expect that half to keep moving.
+    </p>
+    <p>
+      <strong>And you can look around without a robot at all.</strong> The Connect screen's third choice starts a
+      simulator the app carries with it — the robot's own shape, moved by the same maths, on iPhone, iPad and Mac,
+      with nothing to install. It has no camera, no app store and no Wi-Fi, because those belong to a machine that is
+      not there. There is still no account to create.
     </p>
   </div>
 </section>
@@ -39,8 +48,16 @@ title: Control your Reachy Mini
     <li>
       <h3>Connect and discover</h3>
       <p>
-        Bonjour discovery, manual addresses, IPv6 and automatic reconnect. Robots are identified by hardware id, never
+        Bonjour discovery, typed addresses, IPv6 and automatic reconnect. Robots are identified by hardware id, never
         by IP — the same robot at a new address is still the same robot.
+      </p>
+    </li>
+    <li>
+      <h3>A robot that is not there</h3>
+      <p>
+        A simulator inside the app, on every platform, with no daemon and nothing to install. The joystick moves it
+        and the 3D model follows exactly as it would over the network — because it is the same code either side of
+        the wire.
       </p>
     </li>
     <li>
@@ -224,14 +241,16 @@ title: Control your Reachy Mini
 <section class="wrap" id="developers">
   <h2>For developers</h2>
   <p>
-    Hey Reachy is Apache-2.0 and built on eight public Swift packages — transport and domain, WebRTC media, a
-    RealityKit scene, the design tokens, the widget layer, SFTP, Hugging Face auth, and the UI that composes them.
-    <code>ReachyKit</code> is the only one a robot strictly needs, and the only one that pulls in no UI framework.
+    Hey Reachy is Apache-2.0 and built on nine public Swift packages — transport and domain, WebRTC media, a
+    RealityKit scene, a robot simulator, the design tokens, the widget layer, SFTP, Hugging Face auth, and the UI
+    that composes them. <code>ReachyKit</code> is the only one a robot strictly needs, and the only one that pulls in
+    no UI framework.
   </p>
   <pre><code>.package(url: "https://github.com/alexey1312/reachy-mini-swift.git", branch: "main"),</code></pre>
   <p>
     The daemon's OpenAPI spec is committed in the repository, the whole suite runs against a MuJoCo simulator with no
-    hardware attached, and every SwiftUI preview is a recorded snapshot test.
+    hardware attached — or against the client's own, which needs no daemon either — and every SwiftUI preview is a
+    recorded snapshot test.
   </p>
   <p>
     <a class="more" href="https://github.com/alexey1312/reachy-mini-swift">Source on GitHub</a> ·
