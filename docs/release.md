@@ -54,7 +54,8 @@ generated notes. Credentials never enter the repository or CI.
 ## Each release
 
 1. Bump `MARKETING_VERSION` in `Apps/Project.swift` (bare semver, e.g. `0.2.0`)
-   and land it on `main`. Build numbers are the commit count — nothing to bump.
+   and land it on `main`. Build numbers are the commit count — nothing to bump,
+   but release from a full clone (see “The build number”).
 2. Tag and push; the tag triggers the GitHub release with git-cliff notes:
 
    ```bash
@@ -96,6 +97,31 @@ uploading; `mise run release:macos -- --no-notarize` stops the Developer ID
 channel after the signed export, and `--no-upload` makes the App Store channel
 leave a `.pkg` in `Export/macOS/AppStore` instead of uploading it. Each flag
 belongs to one channel and is ignored by the other.
+
+### The build number
+
+`CFBundleVersion` is the commit count, computed by `build_number()` in
+`Scripts/release-env.sh` and passed to both archives as
+`CURRENT_PROJECT_VERSION`. Nothing about it is stored in the repository, which is
+why a release bumps `MARKETING_VERSION` and nothing else.
+
+**It reads the clone, not the project, and that is its one failure mode.**
+`git rev-list --count HEAD` counts _reachable_ commits, so a shallow clone answers
+with its own depth: an archive built from a `--depth 11` checkout carried
+`CFBundleVersion 11` against the 143 App Store Connect already had, and the upload
+died on ITMS-90061 after the whole thing had been compiled, signed and sent. The
+archive itself is not wrong — the number is only wrong against a number that lives
+on the server, so neither the build nor the export can see it.
+
+So `build_number()` deepens a shallow clone before counting (`git fetch
+--unshallow`), and refuses to hand back a count at or below `BUILD_NUMBER_FLOOR`,
+the highest build App Store Connect has accepted. Both refusals happen before
+`xcodebuild` starts. `mise run asc -- builds list --app 6799644194` is what says
+what has actually been uploaded; raise the floor only if a build ever lands with a
+number the commit count does not reach.
+
+`REACHY_BUILD_NUMBER=<n>` overrides the whole computation, for the recovery case
+where neither the history nor the floor is what you want.
 
 ### When `-exportArchive` fails
 
