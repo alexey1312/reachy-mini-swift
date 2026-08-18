@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "ReachyKit", targets: ["ReachyKit"]),
         .library(name: "ReachyMedia", targets: ["ReachyMedia"]),
         .library(name: "ReachyScene", targets: ["ReachyScene"]),
+        .library(name: "ReachySimulator", targets: ["ReachySimulator"]),
         .library(name: "ReachySSH", targets: ["ReachySSH"]),
         .library(name: "ReachyUI", targets: ["ReachyUI"]),
         .library(name: "ReachyWidgetUI", targets: ["ReachyWidgetUI"]),
@@ -112,6 +113,21 @@ let package = Package(
             dependencies: ["ReachyDesign", "ReachyJSON", "ReachyKit"],
             exclude: ["AGENTS.md", "CLAUDE.md", "Previews"]
         ),
+        // A robot that is not there: upstream's own description and meshes, carried
+        // rather than fetched, so `RobotGeometryProvider` builds the same scene over
+        // no network at all. Foundation only — serving two files needs nothing else,
+        // and the target that will eventually speak `RobotAPIClient` can take the
+        // dependency when it has a reason to.
+        //
+        // Its own target rather than a corner of `ReachyKit` for the reason
+        // `ReachySSH` is one: the widget extension links `ReachyWidgetUI`, which
+        // links `ReachyKit`, and 9 MiB of geometry has no business in a process
+        // woken for a moment to draw two lines of text.
+        .target(
+            name: "ReachySimulator",
+            exclude: ["AGENTS.md", "CLAUDE.md"],
+            resources: [.process("Resources")]
+        ),
         // Not a product: stubs for the test targets only, in a plain target because
         // one test target cannot import another's sources.
         .target(name: "ReachyTestSupport"),
@@ -129,7 +145,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ReachyKitTests",
-            dependencies: ["ReachyKit", "ReachyTestSupport"],
+            // `ReachySimulator` for its bundled description alone: `RealURDFTests`
+            // was gated on an environment variable pointing at a file pulled off a
+            // daemon by hand, so it ran nowhere. The vendored URDF is that file.
+            dependencies: ["ReachyKit", "ReachySimulator", "ReachyTestSupport"],
             resources: [
                 .copy("Fixtures"),
             ]
@@ -137,6 +156,13 @@ let package = Package(
         .testTarget(
             name: "ReachySceneTests",
             dependencies: ["ReachyScene", "ReachyKit"]
+        ),
+        .testTarget(
+            name: "ReachySimulatorTests",
+            // `ReachyKit` because the assertion worth making is that the *app's own*
+            // parsers read what is bundled: `URDFParser` and `STLDecoder`, not a
+            // second reader written for the test.
+            dependencies: ["ReachySimulator", "ReachyKit"]
         ),
         .testTarget(
             name: "ReachySSHTests",

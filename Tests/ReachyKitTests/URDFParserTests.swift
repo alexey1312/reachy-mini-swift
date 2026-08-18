@@ -1,5 +1,6 @@
 import Foundation
 @testable import ReachyKit
+import ReachySimulator
 import simd
 import Testing
 
@@ -177,18 +178,25 @@ struct URDFParserTests {
     }
 }
 
-/// Validates the parser against a real robot description without committing one:
-/// Pollen's URDF is their asset, and this client deliberately ships no robot
-/// geometry. Point `REACHY_URDF_FIXTURE` at a file pulled from a daemon
-/// (`GET /api/kinematics/urdf`) to run these.
-@Suite(
-    "URDF parser against a real description",
-    .enabled(if: ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"] != nil)
-)
+/// Validates the parser against a real robot description.
+///
+/// **These ran nowhere until `ReachySimulator` landed.** The suite was gated on
+/// `REACHY_URDF_FIXTURE` because this client shipped no robot geometry — every
+/// assertion below was written against a file someone had pulled off a daemon by
+/// hand, and then skipped on every machine that had not. The simulator carries
+/// upstream's description precisely so a session with no robot can draw one, and
+/// the same file answers this suite.
+///
+/// The environment variable still wins where it is set: pointed at
+/// `GET /api/kinematics/urdf` from a live daemon, it is what would catch upstream
+/// changing the shape the viewer assumes before the bundled copy is refreshed.
+@Suite("URDF parser against a real description")
 struct RealURDFTests {
     private func loadDocument() throws -> URDFDocument {
-        let path = try #require(ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"])
-        return try URDFParser.parse(Data(contentsOf: URL(fileURLWithPath: path)))
+        if let path = ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"] {
+            return try URDFParser.parse(Data(contentsOf: URL(fileURLWithPath: path)))
+        }
+        return try URDFParser.parse(BundledRobotGeometry().urdf())
     }
 
     @Test("the Reachy Mini tree has the shape the viewer assumes")
