@@ -157,18 +157,26 @@ struct StewartIKTests {
 
     // MARK: - The edges
 
-    /// Identity on the wire is **not** the robot at rest — it is the platform
-    /// jacked up by the daemon's 27 mm offset, which every crank has to reach for.
-    /// Worth pinning: a simulator that idles here rather than at `restHeadPoseZ`
-    /// would sit visibly high and never look wrong enough to investigate.
-    @Test("pose zero is the platform raised, not the robot at rest")
-    func poseZeroIsNotTheRestPose() throws {
+    /// **Where a robot actually idles, and it is not the URDF's zero.** The client's
+    /// neutral is `TeleopTarget()` and `gotoNeutral` sends `z: 0`, which the daemon
+    /// solves 27 mm above the modelled zero — putting every crank at ±35.9°.
+    ///
+    /// That reads as suspicious until the joint limits are checked, and then it is
+    /// the confirmation: the URDF gives `stewart_1` −48°…+80° and `stewart_2`
+    /// −80°…+70°, skewed in exactly the alternating directions the solve produces.
+    /// The mechanism is built to sit here, so `restHeadPoseZ` is a modelling datum
+    /// for measuring rods and not a pose anything should idle at.
+    @Test("the commanded neutral puts the cranks at ±35.9°, within skewed limits")
+    func commandedNeutralIsNotTheModelledZero() throws {
         let (ik, _) = try solver()
 
         let angles = try #require(ik.solve(headPose: pose(z: 0), bodyYaw: 0))
 
         for (leg, angle) in degrees(angles).enumerated() {
             #expect(abs(abs(angle) - 35.9) < 0.05, "leg \(leg + 1) is \(angle)°")
+            // Odd legs swing positive, even legs negative — the direction each
+            // joint's limit allows the most of.
+            #expect((leg.isMultiple(of: 2) ? angle : -angle) > 0, "leg \(leg + 1) swings the wrong way")
         }
     }
 

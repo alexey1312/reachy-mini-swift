@@ -125,6 +125,11 @@ let package = Package(
         // woken for a moment to draw two lines of text.
         .target(
             name: "ReachySimulator",
+            // `ReachyKit` for the frame it publishes and the kinematics it runs —
+            // `StewartIK`, `TargetSlewLimiter` and `RobotStateFrame` are all the
+            // real client's, so the simulator cannot drift from what a robot does
+            // by reimplementing any of them.
+            dependencies: ["ReachyKit"],
             exclude: ["AGENTS.md", "CLAUDE.md"],
             resources: [.process("Resources")]
         ),

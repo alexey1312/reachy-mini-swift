@@ -46,3 +46,25 @@ viewport draws, so that is the 31% to drop if `mise run inspect:bundle` ever say
 afford this. Dropping them means the description names meshes the bundle lacks, so
 `BundledRobotGeometry.Failure.missingAsset` would have to become a rendering decision rather than a
 packaging error — do not start there.
+
+## The core, and where a robot actually idles
+
+`SimulatedRobotCore` is a value: a pose, a goal, and the arithmetic between them. `SimulatedRobot` is one loop
+around it that advances the pose and lets each subscription sample at its own rate — `.visualization` asks for
+20 Hz and `.hearing` for 5, and neither may advance the model twice.
+
+Nothing here reimplements the client's own kinematics. `StewartIK` produces the six motor angles,
+`TargetSlewLimiter` smooths the approach — the same limiter the app uses on what it _sends_ a robot, so the way a
+head arrives at a target is the answer the joystick was already tuned against — and `RobotStateFrame` is the frame
+a socket would have carried. A simulator with its own copy of any of them would drift from the robot silently.
+
+**It idles at zeros, and that is not the URDF's zero configuration.** The client's neutral is `TeleopTarget()` and
+`gotoNeutral` sends `z: 0`; the daemon solves that 27 mm above the modelled zero, putting the six cranks at ±35.9°.
+The URDF's own limits are skewed the same way — `stewart_1` reaches +80° but only −48°, `stewart_2` the mirror
+image — so the mechanism is built to sit there. `StewartGeometry.restHeadPoseZ` (−0.02743) is where rod lengths are
+measured and nothing else.
+
+**Three absences are answers, not gaps.** `passive_joints` is nil because only a Placo-backed daemon computes them
+and the default engine never does — `RobotJointState.resolve` solves them client-side. `doa` is nil because there
+are no microphones, and `DirectionOfArrivalModel` already reads a null reading as "no array". `state` on the update
+is nil because a producer that is not a socket has no `FullState`; both consumers read `frame`.

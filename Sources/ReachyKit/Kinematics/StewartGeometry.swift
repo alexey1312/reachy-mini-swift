@@ -61,10 +61,16 @@ public struct StewartGeometry: Sendable {
     public static let legCount = 6
     public static let passiveChainCount = 7
 
-    /// What the wire carries when the robot is at rest: the head's rest height with
-    /// the daemon's offset taken off, which is −0.02743 rather than zero. A
-    /// simulator's idle pose, and the pose every "does nothing" assertion is made
-    /// against.
+    /// The wire value of the URDF's zero configuration — where `rodLengths` is
+    /// measured — which is −0.02743 rather than zero.
+    ///
+    /// **Not the pose a robot idles at, and the difference is the point.** The
+    /// client's neutral is `TeleopTarget()`, all zeros, and `gotoNeutral` sends
+    /// `z: 0`; the daemon solves that at 27 mm higher than the modelled zero, which
+    /// puts the six cranks at ±35.9°. That is not an artefact — the URDF's own
+    /// limits are skewed the same way, `stewart_1` reaching +80° but only −48° and
+    /// `stewart_2` the mirror image, so the mechanism is built to sit there. This
+    /// value is a modelling datum for deriving rod lengths, nothing more.
     public var restHeadPoseZ: Double {
         headRestHeight - headHeightOffset
     }
