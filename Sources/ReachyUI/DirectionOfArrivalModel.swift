@@ -75,25 +75,23 @@ final class DirectionOfArrivalModel {
     /// quiet room is not a retraction.
     private(set) var isSupported = false
 
-    private let address: RobotAddress?
+    private let stream: (any RobotStateStreaming)?
     private let now: @Sendable () -> Date
     private var streamTask: Task<Void, Never>?
 
     /// `nil` for an inert model, which is what a preview injects and what a relay
     /// session gets.
-    init(address: RobotAddress?, now: @escaping @Sendable () -> Date = { Date() }) {
-        self.address = address
+    init(stream: (any RobotStateStreaming)?, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.stream = stream
         self.now = now
     }
 
     /// Idempotent, so a SwiftUI redraw cannot open a second socket.
     func start() {
-        guard streamTask == nil, let address else { return }
-        var configuration = StateStreamClient.Configuration()
-        configuration.options = .hearing
-        guard let client = try? StateStreamClient(address: address, configuration: configuration) else { return }
+        guard streamTask == nil, let stream else { return }
+        let updates = stream.updates(.hearing)
         streamTask = Task { [weak self] in
-            for await update in client.updates() {
+            for await update in updates {
                 guard let self else { break }
                 consume(update)
             }
@@ -147,9 +145,9 @@ final class DirectionOfArrivalModel {
         /// are `private(set)`, so this has to live in the same file.
         ///
         /// Constructing the model is inert on its own — `start()` is what reaches the
-        /// robot, and an address-less model cannot even do that.
+        /// robot, and a model with no stream cannot even do that.
         static func preview(_ heard: Heard?, isSupported: Bool = true) -> DirectionOfArrivalModel {
-            let model = DirectionOfArrivalModel(address: nil)
+            let model = DirectionOfArrivalModel(stream: nil)
             model.isSupported = isSupported
             model.lastHeard = heard
             return model

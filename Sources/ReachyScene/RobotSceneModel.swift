@@ -37,7 +37,11 @@ public final class RobotSceneModel {
     /// the solver is contributing.
     public var solvesPassiveJoints = true
 
-    private let address: RobotAddress
+    /// `nil` for an inert model — what a preview injects, and what any session
+    /// without a live stream would get. `startStreaming()` is the only thing that
+    /// reads it, so an inert model builds and renders its geometry and simply never
+    /// moves.
+    private let stream: (any RobotStateStreaming)?
     private let client: any RobotAPIClient
     private let cache: GeometryCache
     private var graph: RobotSceneGraph?
@@ -46,8 +50,12 @@ public final class RobotSceneModel {
     private var streamTask: Task<Void, Never>?
     private var lastPublishedFrameAt: Date?
 
-    public init(address: RobotAddress, client: any RobotAPIClient, cache: GeometryCache = .default) {
-        self.address = address
+    public init(
+        stream: (any RobotStateStreaming)?,
+        client: any RobotAPIClient,
+        cache: GeometryCache = .default
+    ) {
+        self.stream = stream
         self.client = client
         self.cache = cache
         container.addChild(RobotSceneLighting.makeRig())
@@ -137,15 +145,13 @@ public final class RobotSceneModel {
     }
 
     private func startStreaming() {
-        guard streamTask == nil else { return }
-        var configuration = StateStreamClient.Configuration()
-        configuration.options = .visualization
-        guard let client = try? StateStreamClient(address: address, configuration: configuration) else {
-            phase = .failed("Could not open the state stream")
-            return
-        }
+        guard streamTask == nil, let stream else { return }
+        // The stream was handed over already open-able: whether the address could
+        // carry a socket at all was settled where the model was built, so there is
+        // no failure to report from here any more.
+        let updates = stream.updates(.visualization)
         streamTask = Task { [weak self] in
-            for await update in client.updates() {
+            for await update in updates {
                 guard let self else { break }
                 consume(update)
             }
@@ -180,10 +186,7 @@ public final class RobotSceneModel {
         /// `phase` and `lastFrameAt` are `private(set)`, so this has to live in the same file.
         /// Constructing the model is inert on its own — `start()` is what reaches the robot.
         static func preview(_ phase: Phase, lastFrameAt: Date? = nil) -> RobotSceneModel {
-            let model = RobotSceneModel(
-                address: RobotAddress(host: "192.168.1.42"),
-                client: PreviewRobotClient()
-            )
+            let model = RobotSceneModel(stream: nil, client: PreviewRobotClient())
             model.phase = phase
             model.lastFrameAt = lastFrameAt
             return model

@@ -177,18 +177,12 @@ struct URDFParserTests {
     }
 }
 
-/// Validates the parser against a real robot description without committing one:
-/// Pollen's URDF is their asset, and this client deliberately ships no robot
-/// geometry. Point `REACHY_URDF_FIXTURE` at a file pulled from a daemon
-/// (`GET /api/kinematics/urdf`) to run these.
-@Suite(
-    "URDF parser against a real description",
-    .enabled(if: ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"] != nil)
-)
+/// Validates the parser against a real robot description — see
+/// `RobotDescriptionFixture` for why this suite ran nowhere until one was bundled.
+@Suite("URDF parser against a real description")
 struct RealURDFTests {
     private func loadDocument() throws -> URDFDocument {
-        let path = try #require(ProcessInfo.processInfo.environment["REACHY_URDF_FIXTURE"])
-        return try URDFParser.parse(Data(contentsOf: URL(fileURLWithPath: path)))
+        try RobotDescriptionFixture.document()
     }
 
     @Test("the Reachy Mini tree has the shape the viewer assumes")

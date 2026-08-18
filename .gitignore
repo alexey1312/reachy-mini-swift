@@ -27,6 +27,10 @@ mise.local.toml
 .venv-sim/
 .venv-sim-placo/
 CLAUDE.local.md
+# Left behind whenever a Scripts/*.py is imported as a module rather than run —
+# which is how a new key gets spliced into the string catalogue through
+# check-catalogue.py's own `emit`.
+__pycache__/
 
 # macOS
 .DS_Store

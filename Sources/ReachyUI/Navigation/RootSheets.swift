@@ -70,8 +70,9 @@ struct RootSheets: ViewModifier {
         switch session.link {
         case .lan: true
         // A relay session proves nothing about the local network, and `.none` proves
-        // less — which is the case this sheet is reachable from the gate for.
-        case .none, .remote: false
+        // less — which is the case this sheet is reachable from the gate for. A
+        // simulator never asked for the network at all.
+        case .none, .remote, .simulated: false
         }
     }
 }

@@ -146,7 +146,7 @@ struct RobotScreen: View {
             LabeledContent(.reachy("Name"), value: identity?.name ?? "—")
             modelRow
             LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
-            LabeledContent(.reachy("Connection"), value: session.link.displayString)
+            LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
             if let status = session.lastStatus {
                 LabeledContent(
                     .reachy("Daemon state"),

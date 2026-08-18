@@ -53,9 +53,9 @@ struct DirectionOfArrivalModelTests {
 
     // MARK: - What the model holds
 
-    @Test("a model with no address opens nothing and holds nothing")
-    func staysInertWithoutAnAddress() {
-        let model = DirectionOfArrivalModel(address: nil)
+    @Test("a model with no stream opens nothing and holds nothing")
+    func staysInertWithoutAStream() {
+        let model = DirectionOfArrivalModel(stream: nil)
 
         model.start()
 

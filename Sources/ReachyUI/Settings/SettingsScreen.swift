@@ -67,7 +67,8 @@ struct SettingsScreen: View {
     private var isConnectedOverLAN: Bool {
         switch session.link {
         case .lan: true
-        case .none, .remote: false
+        // A simulator proves less than either: it never asked for the network.
+        case .none, .remote, .simulated: false
         }
     }
 
@@ -98,7 +99,7 @@ struct SettingsScreen: View {
                     .foregroundStyle(.red)
             }
             LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
-            LabeledContent(.reachy("Connection"), value: session.link.displayString)
+            LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
             if let hardwareID = identity?.hardwareID {
                 LabeledContent(.reachy("Hardware ID"), value: hardwareID)
                     .font(.body.monospaced())

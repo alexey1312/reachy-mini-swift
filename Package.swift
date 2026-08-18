@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "ReachyKit", targets: ["ReachyKit"]),
         .library(name: "ReachyMedia", targets: ["ReachyMedia"]),
         .library(name: "ReachyScene", targets: ["ReachyScene"]),
+        .library(name: "ReachySimulator", targets: ["ReachySimulator"]),
         .library(name: "ReachySSH", targets: ["ReachySSH"]),
         .library(name: "ReachyUI", targets: ["ReachyUI"]),
         .library(name: "ReachyWidgetUI", targets: ["ReachyWidgetUI"]),
@@ -95,7 +96,7 @@ let package = Package(
             // purpose: the widget target must stay clear of ReachyMedia.
             dependencies: [
                 "HuggingFaceAuth", "ReachyDesign", "ReachyJSON", "ReachyKit", "ReachyMedia", "ReachyScene",
-                "ReachySSH", "ReachyWidgetUI",
+                "ReachySimulator", "ReachySSH", "ReachyWidgetUI",
             ],
             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
@@ -111,6 +112,29 @@ let package = Package(
             name: "ReachyWidgetUI",
             dependencies: ["ReachyDesign", "ReachyJSON", "ReachyKit"],
             exclude: ["AGENTS.md", "CLAUDE.md", "Previews"]
+        ),
+        // A robot that is not there: upstream's own description and meshes, carried
+        // rather than fetched, so `RobotGeometryProvider` builds the same scene over
+        // no network at all. Foundation only — serving two files needs nothing else,
+        // and the target that will eventually speak `RobotAPIClient` can take the
+        // dependency when it has a reason to.
+        //
+        // Its own target rather than a corner of `ReachyKit` for the reason
+        // `ReachySSH` is one: the widget extension links `ReachyWidgetUI`, which
+        // links `ReachyKit`, and 9 MiB of geometry has no business in a process
+        // woken for a moment to draw two lines of text.
+        .target(
+            name: "ReachySimulator",
+            // `ReachyKit` for the frame it publishes and the kinematics it runs —
+            // `StewartIK`, `TargetSlewLimiter` and `RobotStateFrame` are all the
+            // real client's, so the simulator cannot drift from what a robot does
+            // by reimplementing any of them.
+            // `ReachyJSON` for the one payload it has to build rather than read:
+            // the daemon status, which rule 11 says goes through `JSONCodec.daemon`
+            // like every other thing the robot would have said.
+            dependencies: ["ReachyJSON", "ReachyKit"],
+            exclude: ["AGENTS.md", "CLAUDE.md"],
+            resources: [.process("Resources")]
         ),
         // Not a product: stubs for the test targets only, in a plain target because
         // one test target cannot import another's sources.
@@ -129,7 +153,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ReachyKitTests",
-            dependencies: ["ReachyKit", "ReachyTestSupport"],
+            // `ReachySimulator` for its bundled description alone: `RealURDFTests`
+            // was gated on an environment variable pointing at a file pulled off a
+            // daemon by hand, so it ran nowhere. The vendored URDF is that file.
+            dependencies: ["ReachyKit", "ReachySimulator", "ReachyTestSupport"],
             resources: [
                 .copy("Fixtures"),
             ]
@@ -137,6 +164,13 @@ let package = Package(
         .testTarget(
             name: "ReachySceneTests",
             dependencies: ["ReachyScene", "ReachyKit"]
+        ),
+        .testTarget(
+            name: "ReachySimulatorTests",
+            // `ReachyKit` because the assertion worth making is that the *app's own*
+            // parsers read what is bundled: `URDFParser` and `STLDecoder`, not a
+            // second reader written for the test.
+            dependencies: ["ReachySimulator", "ReachyKit"]
         ),
         .testTarget(
             name: "ReachySSHTests",
@@ -148,8 +182,11 @@ let package = Package(
             // a remote session instead of always building its own, and that
             // ownership is what its tests have to assert on. `ReachyWidgetUI` for
             // the two entity types `ReachyEntityIndex` stamps — named explicitly
-            // rather than leaned on as a transitive import of `ReachyUI`.
-            dependencies: ["ReachyUI", "ReachyKit", "ReachyMedia", "ReachyWidgetUI", "HuggingFaceAuth"]
+            // rather than leaned on as a transitive import of `ReachyUI`, and
+            // `ReachySimulator` for the client a simulated viewport source carries.
+            dependencies: [
+                "ReachyUI", "ReachyKit", "ReachyMedia", "ReachySimulator", "ReachyWidgetUI", "HuggingFaceAuth",
+            ]
         ),
         .testTarget(
             name: "ReachyWidgetUITests",

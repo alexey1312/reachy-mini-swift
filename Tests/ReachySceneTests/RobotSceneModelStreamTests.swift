@@ -52,14 +52,57 @@ private final class SceneStubClient: RobotAPIClient, @unchecked Sendable {
     }
 }
 
+/// Records what the model asked for and yields nothing.
+///
+/// Never finishing is the point: a real stream stays open until its consumer
+/// cancels, and these assertions are about *who* gets asked and with which
+/// options — the seam's whole reason for existing — rather than about what
+/// arrives. `AsyncStream` ends its iterator on cancellation, so `stop()` still
+/// unwinds the task.
+private final class StubStateStream: RobotStateStreaming, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _requested: [StateStreamOptions] = []
+    private var continuations: [AsyncStream<StateStreamUpdate>.Continuation] = []
+
+    var requested: [StateStreamOptions] {
+        lock.withLock { _requested }
+    }
+
+    /// `makeStream` and a lock outside it, rather than `AsyncStream { continuation
+    /// in … }` with the locking inside: a closure nested in that builder which
+    /// captures the escaping continuation sends `ClosureLifetimeFixup` into a walk
+    /// it does not return from — twenty minutes of one core and no diagnostic. The
+    /// root `CLAUDE.md` carries the write-up.
+    func updates(_ options: StateStreamOptions) -> AsyncStream<StateStreamUpdate> {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: StateStreamUpdate.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        lock.withLock {
+            _requested.append(options)
+            continuations.append(continuation)
+        }
+        return stream
+    }
+
+    func yield(_ frame: RobotStateFrame) {
+        for continuation in lock.withLock({ continuations }) {
+            continuation.yield(StateStreamUpdate(frame: frame))
+        }
+    }
+}
+
 @MainActor
 @Suite("Robot scene stream lifecycle")
 struct RobotSceneModelStreamTests {
-    private func makeModel(_ client: SceneStubClient) -> RobotSceneModel {
+    private func makeModel(
+        _ client: SceneStubClient,
+        stream: (any RobotStateStreaming)? = nil
+    ) -> RobotSceneModel {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("ReachySceneStreamTests/\(UUID().uuidString)", isDirectory: true)
         return RobotSceneModel(
-            address: .init(host: "127.0.0.1"),
+            stream: stream,
             client: client,
             cache: GeometryCache(root: root)
         )
@@ -102,6 +145,59 @@ struct RobotSceneModelStreamTests {
         // re-fetch the description and re-frame the camera from scratch.
         #expect(client.urdfRequests == 1)
         #expect(model.camera === camera)
+        model.stop()
+    }
+
+    /// The seam itself: the model streams from whatever supplier it was handed,
+    /// and asks it for the visualisation frames rather than the daemon's defaults.
+    /// Before this it built a `StateStreamClient` from an address it kept for no
+    /// other purpose, which is why a session without an address could not have a
+    /// moving robot.
+    @Test("the scene subscribes to the supplied stream, and again after a resume")
+    func subscribesToTheInjectedStream() async {
+        let stream = StubStateStream()
+        let model = makeModel(SceneStubClient(), stream: stream)
+
+        model.start()
+        await waitUntil(model.phase == .ready)
+        #expect(stream.requested == [.visualization])
+
+        model.pauseStream()
+        model.resumeStream()
+        await waitUntil(stream.requested.count == 2)
+        #expect(stream.requested == [.visualization, .visualization])
+        model.stop()
+    }
+
+    /// What the seam is *for*, and what could not be written before frames became
+    /// constructible outside `ReachyKit`: a frame that never touched a socket
+    /// drives the model exactly as a robot's would.
+    @Test("a frame from the supplied stream reaches the model")
+    func consumesASuppliedFrame() async {
+        let stream = StubStateStream()
+        let model = makeModel(SceneStubClient(), stream: stream)
+
+        model.start()
+        await waitUntil(model.phase == .ready)
+        #expect(model.lastFrameAt == nil)
+
+        stream.yield(RobotStateFrame(bodyYaw: 0.5, headJoints: [0.5, 0, 0, 0, 0, 0, 0]))
+
+        await waitUntil(model.lastFrameAt != nil)
+        #expect(model.lastFrameAt != nil)
+        model.stop()
+    }
+
+    /// A model with no stream is the preview's shape, and it must still build.
+    @Test("a model with no stream renders its geometry and never subscribes")
+    func staysInertWithoutAStream() async {
+        let model = makeModel(SceneStubClient())
+
+        model.start()
+        await waitUntil(model.phase == .ready)
+
+        #expect(model.phase == .ready)
+        #expect(model.lastFrameAt == nil)
         model.stop()
     }
 }
