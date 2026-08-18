@@ -25,10 +25,13 @@ struct SimulatedRobotClientTests {
     /// and drops the slot before anything can read it. Waits on the state stream
     /// rather than on a duration, and picks `z` because 0.05 m/s is the slowest
     /// axis the limiter has, which makes the walk back the widest window on offer.
+    /// The threshold sits under the platform's own 23 mm of lift — `held(_:)` in
+    /// `SimulatedRobotCore` clamps a pure-z target there, so the goal of 0.05 is
+    /// unreachable on purpose and 0.04 would wait forever.
     private func moveAwayFromNeutral(_ client: SimulatedRobotClient) async {
         await client.makeTeleopChannel().send(TeleopTarget(z: 0.05))
         for await update in client.updates(.visualization) {
-            if let z = update.frame?.headPose?.transform?.translation.z, z > 0.04 {
+            if let z = update.frame?.headPose?.transform?.translation.z, z > 0.02 {
                 break
             }
         }
