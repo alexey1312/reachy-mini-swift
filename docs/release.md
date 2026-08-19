@@ -154,6 +154,32 @@ mise run asc -- publish testflight --app 6799644194 --platform IOS \
 A macOS `.pkg` is not a zip, so `asc` cannot read the version out of it: that one
 also needs `--version` and `--build-number` (the commit count) spelled out.
 
+### When the notary answers `Invalid`
+
+`xcrun notarytool log <submission-id>` is the only place the reason lives — the
+task itself stops at "The staple and validate action failed! Error 65", which is
+the symptom of a missing ticket and says nothing about why there is none.
+
+0.4.0 failed there on `The executable does not have the hardened runtime
+enabled`, once per architecture, over
+`ReachyMini.app/Contents/PlugIns/ReachyWidget.appex/Contents/MacOS/ReachyWidget`.
+The app target has carried `ENABLE_HARDENED_RUNTIME[sdk=macosx*]` since the first
+Developer ID build; the widget was iOS-only until it gained a `.mac` destination,
+so the Mac build embedded an extension nothing had asked to sign that way. **The
+notary reads every executable in the bundle**, so each new embedded target needs
+the setting of its own — nothing local catches it, because the export succeeds and
+`codesign --verify` passes.
+
+### `asc validate` cannot answer while another platform sits in review
+
+A version in review holds the second, editable app info, so the app carries two —
+and `validate` has no `--app-info` flag to disambiguate them. It stops on
+`failed to fetch age rating declaration: multiple app infos found` before it
+checks anything else. `metadata push` takes the flag and is unaffected. What
+`validate` would have read is checkable by hand: `asc apps info list` for the age
+rating, `asc screenshots list --version-localization <id>` for the images App
+Store Connect carried into the new version.
+
 ## The store listing
 
 The App Store copy lives in this repository, at `metadata/` — `app-info/en-US.json`
