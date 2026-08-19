@@ -49,4 +49,37 @@ public extension View {
             self
         }
     }
+
+    /// Collapses a bottom search field into a button until the reader uses it.
+    ///
+    /// The member is `.minimize`, not `.minimized` — Apple's own documentation for
+    /// `searchToolbarBehavior(_:)` shows the latter in its example, and it does not
+    /// compile.
+    @ViewBuilder
+    func reachyMinimizedSearchToolbar() -> some View {
+        #if os(iOS)
+            if #available(iOS 26.0, *) {
+                searchToolbarBehavior(.minimize)
+            } else {
+                self
+            }
+        #else
+            self
+        #endif
+    }
+}
+
+/// A fixed gap between two groups of toolbar items.
+///
+/// A `ToolbarContentBuilder` accepts an `if #available` with no `else`, so below
+/// the floor this contributes nothing at all — which is the right fallback: the
+/// items simply sit together, the way they did before the divider existed.
+public struct ReachyToolbarSpacer: ToolbarContent {
+    public init() {}
+
+    public var body: some ToolbarContent {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ToolbarSpacer(.fixed)
+        }
+    }
 }
