@@ -48,11 +48,16 @@ enum DesignGallery {
     static let typography: [(name: String, font: Font)] = [
         ("screenTitle", Typography.screenTitle),
         ("rowTitle", Typography.rowTitle),
+        ("rowTitleCompact", Typography.rowTitleCompact),
+        ("tileTitle", Typography.tileTitle),
+        ("subtitle", Typography.subtitle),
         ("detail", Typography.detail),
         ("status", Typography.status),
         ("statusCompact", Typography.statusCompact),
         ("console", Typography.console),
         ("consoleLine", Typography.consoleLine),
+        ("consoleLineCompact", Typography.consoleLineCompact),
+        ("footer", Typography.footer),
     ]
 
     /// A switch rather than `String(describing:)`, so a case added to any of these

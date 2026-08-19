@@ -144,7 +144,7 @@ public struct RobotWidgetView: View {
     /// The one accessory family with room for a state *and* its reason, which is
     /// what makes it the Smart Stack's row rather than a badge.
     private var rectangularBody: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Space.xxs) {
             Label(content.title, systemImage: content.symbolName)
                 .font(Typography.rowTitle)
                 .widgetAccentable()

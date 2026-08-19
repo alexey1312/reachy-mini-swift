@@ -42,7 +42,7 @@ public struct RobotAppsWidgetView: View {
                 }
                 if let footnote = content.footnote {
                     Text(footnote)
-                        .font(.caption2)
+                        .font(Typography.statusCompact)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -54,11 +54,12 @@ public struct RobotAppsWidgetView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "square.grid.2x2")
+                // Optical: empty-state artwork, sized against the tile and not its caption.
                 .font(.title2)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
             Text(content.notice.message ?? "")
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
         }
@@ -67,7 +68,7 @@ public struct RobotAppsWidgetView: View {
 
     private func noticeRow(_ message: String) -> some View {
         Text(content.notice.invitesTheApp ? String(localized: .reachy("\(message) Tap to open.")) : message)
-            .font(.caption2)
+            .font(Typography.statusCompact)
             .foregroundStyle(.secondary)
             .lineLimit(2)
     }
@@ -103,6 +104,7 @@ struct RobotAppTileView: View {
         ) {
             badge
         }
+        // Optical: a widget tile pays for every point; 6 is what fits two rows.
         .padding(6)
         // Fills the row the grid gives it, so two tiles on a small widget divide
         // the height between them instead of stacking at the top over a void.
@@ -122,17 +124,22 @@ struct RobotAppTileView: View {
     @ViewBuilder
     private var badge: some View {
         switch tile.state {
-        case .running: badgeSymbol("stop.fill", background: .black.opacity(0.45))
-        case .failed: badgeSymbol("exclamationmark", background: .red)
+        // A scrim rather than a tone: it darkens the artwork under it so the glyph
+        // reads, which is not something any of the five roles means.
+        case .running: badgeSymbol("stop.fill", background: AnyShapeStyle(.black.opacity(0.45)))
+        case .failed: badgeSymbol("exclamationmark", background: Tone.danger.style)
         default: EmptyView()
         }
     }
 
-    private func badgeSymbol(_ name: String, background: Color) -> some View {
+    private func badgeSymbol(_ name: String, background: AnyShapeStyle) -> some View {
         Image(systemName: name)
+            // Optical: the glyph is what sizes the badge disc drawn around it.
             .font(.caption2)
+            // Pinned against a fill this view owns, the way `ConnectRail` pins its
+            // own: both badge backgrounds carry white in either appearance.
             .foregroundStyle(.white)
-            .padding(4)
+            .padding(Space.xs)
             .background(background, in: Circle())
     }
 
@@ -159,8 +166,8 @@ struct RobotAppTileView: View {
 
     private var background: AnyShapeStyle {
         switch tile.state {
-        case .running: AnyShapeStyle(.tint.opacity(0.18))
-        case .failed: AnyShapeStyle(.red.opacity(0.12))
+        case .running: AnyShapeStyle(Tone.brand.style.opacity(0.18))
+        case .failed: AnyShapeStyle(Tone.danger.style.opacity(0.12))
         default: AnyShapeStyle(.fill.quaternary)
         }
     }

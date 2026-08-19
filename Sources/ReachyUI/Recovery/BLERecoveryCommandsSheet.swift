@@ -52,7 +52,7 @@ struct BLERecoveryCommandsSheet: View {
                 .reachy("Five-character code"),
                 text: Binding(get: { model.pinInput }, set: { model.pinInput = $0 })
             )
-            .font(.body.monospaced())
+            .font(Typography.console)
             .autocorrectionDisabled()
             #if os(iOS)
                 .keyboardType(.asciiCapable)
@@ -64,7 +64,7 @@ struct BLERecoveryCommandsSheet: View {
                 .frame(maxWidth: .infinity)
                 .disabled(!model.canSubmitPIN)
             if let error = model.errorMessage {
-                Text(error).font(.callout).foregroundStyle(.red)
+                Text(error).font(Typography.detail).foregroundStyle(Tone.danger.style)
             }
         } header: {
             Text(.reachy("Code"))
@@ -134,11 +134,11 @@ struct BLERecoveryScriptRow: View {
 
     var body: some View {
         Label {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(script.name)
-                    .font(.body.monospaced())
+                    .font(Typography.console)
                 Text(script.summary)
-                    .font(.footnote)
+                    .font(Typography.footer)
                     .foregroundStyle(.secondary)
             }
         } icon: {

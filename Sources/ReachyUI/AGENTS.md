@@ -406,6 +406,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   every phase except `.streaming`, which is the one phase `status` is empty in). `LiveTab` still declines
   `ignoresSafeArea`, and the reason survived the change — an overlay is bounded by what it is applied to, so a
   full-bleed viewport would put the pad under the tab bar.
+  `TeleopPadCluster` owns the shared driver lifecycle; camera and scene provide only their visibility gate and
+  factory. `ViewportContent` forwards the factory to the scene only for simulated sources, where the model is the
+  robot being driven rather than a mirror of a LAN robot.
 - **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
   a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
   `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine
@@ -832,8 +835,8 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   (`SettingsPreviews`, `MovesScreenPreviews`) and capture _placement_ from a state that needs no `.task` at all
   (`Root — relay moves tab`, which renders `MovesUnavailableView`). A blank or half-drawn reference is worse than a
   missing one: it reads as coverage and passes any change.
-- Not covered, deliberately: `SceneViewport` in `.ready` — a bare `RealityView`, which renders nothing meaningful
-  headless, so its overlay phases are what get snapshotted.
+- **`SceneViewport.ready` is captured only with the simulator joystick.** RealityKit itself is blank headless; the
+  image covers the controls, while `ViewportModelTests.onlyTheSimulatorDrivesItsScene` covers the source gate.
 - **Not covered either, and measured rather than assumed: a `confirmationDialog`.** It presents in a context of its
   own that captures as nothing. Recorded twice for `RobotScreen`'s power-off dialog — once with a running app and
   once without, which change the sentence in it — the two references came out **byte-identical**, and identical to

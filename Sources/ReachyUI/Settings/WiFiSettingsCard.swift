@@ -32,8 +32,8 @@ struct WiFiSettingsCard: View {
             if let joinError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(joinError)
-                        .font(.callout)
-                        .foregroundStyle(.orange)
+                        .font(Typography.detail)
+                        .foregroundStyle(Tone.warning.style)
                     Button(.reachy("Clear this error")) {
                         Task { await clearError() }
                     }
@@ -61,8 +61,8 @@ struct WiFiSettingsCard: View {
             }
             if let loadFailure {
                 Text(loadFailure)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
         } header: {
             Text(.reachy("Network"))

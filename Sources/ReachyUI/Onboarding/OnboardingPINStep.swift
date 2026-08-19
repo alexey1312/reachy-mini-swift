@@ -50,13 +50,13 @@ struct OnboardingPINStep: View {
                     ),
                     systemImage: "clock"
                 )
-                .font(.callout)
-                .foregroundStyle(.orange)
+                .font(Typography.detail)
+                .foregroundStyle(Tone.warning.style)
                 .fixedSize(horizontal: false, vertical: true)
             } else if model.attemptsBeforeLockout < BLEPinSession.freeAttempts {
                 OnboardingErrorText(message: model.errorMessage)
                 Text(.reachy("\(model.attemptsBeforeLockout) attempts left before the robot starts making you wait."))
-                    .font(.footnote)
+                    .font(Typography.footer)
                     .foregroundStyle(.secondary)
             } else {
                 OnboardingErrorText(message: model.errorMessage)

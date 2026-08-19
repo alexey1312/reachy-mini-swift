@@ -94,6 +94,8 @@ func reachyAppsPreviewCard(_ content: RobotAppsWidgetContent, size: CGSize) -> s
     RobotAppsWidgetView(content: content)
         .padding()
         .frame(width: size.width, height: size.height)
+        // The system container radius WidgetKit draws around a widget, not one of
+        // ours — the preview stands in for a container this process never sees.
         .background(.background.secondary, in: .rect(cornerRadius: 22))
 }
 

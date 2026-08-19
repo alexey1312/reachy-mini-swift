@@ -9,15 +9,15 @@ struct AsleepBanner: View {
     let session: RobotSession
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .center, spacing: Space.md) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.md) {
                 Image(systemName: "moon.zzz")
-                    .foregroundStyle(.orange)
-                VStack(alignment: .leading, spacing: 4) {
+                    .foregroundStyle(Tone.warning.style)
+                VStack(alignment: .leading, spacing: Space.xs) {
                     Text(title)
-                        .font(.callout.weight(.medium))
+                        .font(Typography.detail.weight(.medium))
                     Text(detail)
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             }

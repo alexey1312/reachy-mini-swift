@@ -19,27 +19,10 @@ struct CameraViewport: View {
     /// and the floating window both want.
     var standDown: TeleopStandDown?
 
-    @State private var driver: TeleopDriver
-    @Environment(\.reachyPreviewMode) private var previewMode
-
-    init(
-        session: CameraSession,
-        makeTeleop: TeleopFactory? = nil,
-        standDown: TeleopStandDown? = nil,
-        driver: TeleopDriver = TeleopDriver()
-    ) {
-        self.session = session
-        self.makeTeleop = makeTeleop
-        self.standDown = standDown
-        _driver = State(initialValue: driver)
-    }
-
     var body: some View {
         CameraVideoView(track: session.videoTrack)
             .overlay(alignment: .center) { status }
             .overlay(alignment: .bottomTrailing) { teleopControls }
-            .onAppear { connectTeleop() }
-            .onDisappear { driver.stop() }
     }
 
     @ViewBuilder
@@ -64,69 +47,19 @@ struct CameraViewport: View {
         }
     }
 
-    /// The pad, and beside it the way back from where the pad can leave you.
-    ///
-    /// Both float over the video rather than in `ViewportView`'s cluster: that
-    /// cluster is built a level up, which does not own this driver and covers the
-    /// 3D scene too, where teleop does not apply. Here they also land under the
-    /// thumb that just turned the robot.
-    ///
-    /// **An overlay, and it used to be a bottom `safeAreaInset`.** An inset is
-    /// subtracted from the video's rectangle, and this one costs a fixed
-    /// 140 + 2 × 16 = 172 pt of *height* — nothing on a portrait iPhone's 874, two
-    /// thirds of a landscape one's 402. With the navigation and tab bars taking
-    /// their own share, the camera was left ~86 pt to letterbox 16:9 into and
-    /// rendered a 145 × 80 pt picture in the middle of an 874 pt screen. Nothing
-    /// moves by drawing it over instead: the pad's own rectangle is
-    /// `bottom − 156 … bottom − 16` either way.
-    ///
-    /// It is the same symptom `CameraVideoView`'s doc comment describes and a
-    /// different cause; that one was the renderer's intrinsic size, and it is
-    /// fixed. Measure the rectangle the video is handed before reaching for it.
+    /// The gate is here rather than in `TeleopPadCluster` because it is the *host*
+    /// that knows whether there is anything to drive: a stream still negotiating
+    /// has no picture to aim at yet, and no factory means this connection carries
+    /// no teleop at all, so the joystick is absent rather than offered inert.
     @ViewBuilder
     private var teleopControls: some View {
-        // No factory means this connection carries no teleop at all, so the
-        // joystick is absent rather than offered inert.
-        if session.phase == .streaming, makeTeleop != nil {
-            HStack(spacing: Space.md) {
-                recenterButton
-                JoystickPad(mapping: driver.mapping) { deflection in
-                    driver.apply(deflection)
-                    standDown?()
-                }
-                .frame(width: 140, height: 140)
-            }
-            .padding()
-            .animation(Motion.stateChange, value: driver.isBodyTurned)
+        if let makeTeleop {
+            TeleopPadCluster(
+                isVisible: session.phase == .streaming,
+                makeTeleop: makeTeleop,
+                standDown: standDown
+            )
         }
-    }
-
-    /// Offered only once the body is actually turned — at neutral there is nothing
-    /// to return from, and this screen has no other readout of where the robot is
-    /// facing, so the button appearing *is* the notice that it has been left off
-    /// centre.
-    ///
-    /// The return is smooth without anything here doing so: `reset()` moves a
-    /// goal, and both transports walk their emitted pose toward it under
-    /// `TargetSlewLimiter`. Easing it a second time on this side would fight the
-    /// pacer that already does it.
-    @ViewBuilder
-    private var recenterButton: some View {
-        if driver.isBodyTurned {
-            Button {
-                driver.reset()
-            } label: {
-                Label(.reachy("Reset to neutral"), systemImage: "arrow.counterclockwise")
-                    .labelStyle(.iconOnly)
-            }
-            .buttonStyle(ViewportControlButtonStyle())
-            .transition(.scale.combined(with: .opacity))
-        }
-    }
-
-    private func connectTeleop() {
-        guard !previewMode, let makeTeleop else { return }
-        try? driver.start(makeTeleop)
     }
 }
 

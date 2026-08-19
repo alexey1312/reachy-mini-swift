@@ -99,6 +99,8 @@ public struct AppArtworkTile: View {
                 } else {
                     Image(systemName: "app.dashed")
                         .font(.system(size: size * IconRatio.symbol))
+                        // Pinned against the gradient this tile owns, not against an
+                        // adaptive backdrop — every artwork colour carries white.
                         .foregroundStyle(.white.opacity(0.9))
                 }
             }

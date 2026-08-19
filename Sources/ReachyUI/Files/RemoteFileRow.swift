@@ -9,7 +9,7 @@ struct RemoteFileRow: View {
     var body: some View {
         HStack(spacing: Space.md) {
             Image(systemName: symbol)
-                .foregroundStyle(file.isDirectory ? AnyShapeStyle(.tint) : Tone.quiet.style)
+                .foregroundStyle(file.isDirectory ? Tone.brand.style : Tone.quiet.style)
                 .frame(width: Space.xl)
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(file.name)

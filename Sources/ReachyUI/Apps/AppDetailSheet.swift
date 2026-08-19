@@ -129,7 +129,7 @@ struct AppDetailSheet: View {
             if let summary = app.summary {
                 Section(.reachy("About")) {
                     Text(summary)
-                        .font(.subheadline)
+                        .font(Typography.subtitle)
                 }
             }
 
@@ -209,7 +209,7 @@ struct AppDetailSheet: View {
                         "The robot stopped answering. The app may still be running — these controls cannot reach it."
                     )
                 )
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
             }
             if let error = status.error {
@@ -217,8 +217,8 @@ struct AppDetailSheet: View {
             }
             if let lastError = runningApp.lastError {
                 Text(lastError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
             processControls(status)
         }
@@ -228,12 +228,12 @@ struct AppDetailSheet: View {
     /// lines here, and on a robot whose journal is not served over the network this
     /// is the only crash output there is.
     private func failureRow(_ error: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Space.xs) {
             Text(.reachy("Last output"))
-                .font(.caption.weight(.semibold))
+                .font(Typography.status.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(error)
-                .font(.caption.monospaced())
+                .font(Typography.consoleLine)
                 .textSelection(.enabled)
         }
     }
@@ -370,30 +370,30 @@ struct JobProgressRow: View {
             }
         case .succeeded:
             Label(.reachy("Done"), systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
         case let .failed(_, reason):
             Label {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
                     Text(.reachy("Failed"))
                     Text(reason)
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Tone.danger.style)
             }
         case .daemonRestarted:
             Label {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
                     Text(.reachy("The robot restarted"))
                     Text(.reachy("It may have finished — check the installed list."))
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             } icon: {
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Tone.warning.style)
             }
         }
     }

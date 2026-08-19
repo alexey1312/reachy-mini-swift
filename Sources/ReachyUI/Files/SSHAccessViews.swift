@@ -94,7 +94,7 @@ struct HostKeyConfirmation: View {
 
             Section {
                 Button(trustTitle, action: onTrust)
-                    .foregroundStyle(isChange ? Tone.danger.style : AnyShapeStyle(.tint))
+                    .foregroundStyle(isChange ? Tone.danger.style : Tone.brand.style)
             }
         }
         .formStyle(.grouped)

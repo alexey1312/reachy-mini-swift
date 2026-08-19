@@ -43,7 +43,7 @@ struct OnboardingNetworkStep: View {
                     "The robot fits only a handful of names into one Bluetooth message and cannot say how many it left out, so a network missing from the list is normal — type it in under \"Other network…\"."
                 )
             )
-            .font(.footnote)
+            .font(Typography.footer)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             Label(
@@ -53,8 +53,8 @@ struct OnboardingNetworkStep: View {
                 ),
                 systemImage: "lock.trianglebadge.exclamationmark"
             )
-            .font(.footnote)
-            .foregroundStyle(.orange)
+            .font(Typography.footer)
+            .foregroundStyle(Tone.warning.style)
             .fixedSize(horizontal: false, vertical: true)
             OnboardingErrorText(message: model.errorMessage)
         } actions: {
@@ -96,9 +96,9 @@ struct OnboardingNetworkStep: View {
     }
 
     private var alreadyConnected: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.sm) {
             Label(.reachy("This robot is already on a network."), systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
             Button(.reachy("Keep it there and finish")) {
                 model.skipNetwork()
             }

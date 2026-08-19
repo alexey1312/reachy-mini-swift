@@ -95,14 +95,14 @@ struct SettingsScreen: View {
             }
             if let renameError {
                 Text(renameError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
             LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
             LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
             if let hardwareID = identity?.hardwareID {
                 LabeledContent(.reachy("Hardware ID"), value: hardwareID)
-                    .font(.body.monospaced())
+                    .font(Typography.console)
             }
         } header: {
             Text(.reachy("Robot"))

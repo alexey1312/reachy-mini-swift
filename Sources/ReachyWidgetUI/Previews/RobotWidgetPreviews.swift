@@ -31,6 +31,8 @@ func robotWidgetPreviewCard(
         // A widget's own size, so the preview shows what the user gets rather than
         // a view stretched over a device.
         .frame(width: size.width, height: size.height)
+        // The system container radius WidgetKit draws around a widget, not one of
+        // ours — the preview stands in for a container this process never sees.
         .background(.background.secondary, in: .rect(cornerRadius: 22))
 }
 

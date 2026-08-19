@@ -241,7 +241,7 @@ private struct SoundRow: View {
             // captured at whatever phase the run reached, which is what makes a
             // reference image move for no reason belonging to the change.
             Image(systemName: isBusy ? "arrow.up.circle" : "play.circle")
-                .foregroundStyle(isBusy ? Tone.quiet.style : AnyShapeStyle(.tint))
+                .foregroundStyle(isBusy ? Tone.quiet.style : Tone.brand.style)
         }
     }
 

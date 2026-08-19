@@ -35,7 +35,7 @@ struct WedgedAppNotice: View {
                 )
             )
         }
-        .font(.caption)
+        .font(Typography.status)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
     }

@@ -28,14 +28,14 @@ struct RobotScreen: View {
             if let warning = session.compatibilityWarning {
                 Section {
                     Label(warning, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Tone.warning.style)
                 }
             }
             if let error = session.robotError {
                 Section {
                     Text(error)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.red)
+                        .font(Typography.consoleLine)
+                        .foregroundStyle(Tone.danger.style)
                 }
             }
             Section {
@@ -109,7 +109,7 @@ struct RobotScreen: View {
     private var roundTrip: some View {
         if let duration = session.lastRoundTrip {
             Text(verbatim: HealthFormat.milliseconds(duration))
-                .font(.caption)
+                .font(Typography.status)
                 .monospacedDigit()
                 .foregroundStyle(HealthLevel.roundTrip(duration).tone.style)
         }
@@ -163,22 +163,22 @@ struct RobotScreen: View {
                 Spacer()
                 if case .unreachable = session.phase {
                     Label(.reachy("Unreachable — reconnecting…"), systemImage: "wifi.exclamationmark")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Tone.warning.style)
                 } else if !session.isBackendRunning {
                     // Reachable but not drivable: claiming a green "Connected" here
                     // is what sent users looking for a network problem they don't have.
                     Label(.reachy("Backend stopped"), systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Tone.warning.style)
                 } else {
                     Label(.reachy("Connected"), systemImage: "checkmark.circle")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Tone.success.style)
                     roundTrip
                 }
             }
             if let fault = session.backendFault {
                 Label(fault, systemImage: "wrench.and.screwdriver")
-                    .foregroundStyle(.orange)
-                    .font(.callout)
+                    .foregroundStyle(Tone.warning.style)
+                    .font(Typography.detail)
             }
             healthLink
         }

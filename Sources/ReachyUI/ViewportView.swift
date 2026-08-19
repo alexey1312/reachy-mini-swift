@@ -248,6 +248,8 @@ enum ViewportStatus {
                 .font(Typography.detail)
                 .foregroundStyle(Tone.quiet.style)
         }
+        // Optical: the card sits over video, and 20 pt is what keeps its text clear
+        // of the rounded corner. Not a rhythm value.
         .padding(20)
         // `Radius.rect` is `.continuous`; this shape used to default to `.circular`,
         // so the reference image moves here. That is the correction, not a
@@ -342,6 +344,7 @@ private struct ViewportControlStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            // Optical: the glyph is sized against the disc, not against a text scale.
             .font(.title3)
             .frame(width: side, height: side)
             .reachySurface(.chrome, in: .circle)

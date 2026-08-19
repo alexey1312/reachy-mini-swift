@@ -61,7 +61,7 @@ struct ControllerScreen: View {
                     }
                     .frame(maxWidth: 280)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, Space.sm)
                 }
                 recordingSection
                 Section(.reachy("Head")) {
@@ -103,8 +103,8 @@ struct ControllerScreen: View {
             if let setupError {
                 Section {
                     Text(setupError)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.red)
+                        .font(Typography.consoleLine)
+                        .foregroundStyle(Tone.danger.style)
                 }
             }
         }
@@ -148,7 +148,7 @@ struct ControllerScreen: View {
             if recorder.isRecording {
                 LabeledContent(.reachy("Recording")) {
                     Text(.reachy("\(recorder.elapsed.formatted(.number.precision(.fractionLength(1)))) s"))
-                        .font(.caption.monospaced())
+                        .font(Typography.consoleLine)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -188,12 +188,12 @@ struct ControllerScreen: View {
         range: ClosedRange<Double>,
         format: SliderFormat
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
                 Text(title)
                 Spacer()
                 Text(formatted(value.wrappedValue, as: format))
-                    .font(.caption.monospaced())
+                    .font(Typography.consoleLine)
                     .foregroundStyle(.secondary)
             }
             Slider(value: value, in: range)

@@ -21,7 +21,7 @@ struct YourReachiesSection: View {
                 } label: {
                     LabeledContent(.reachy("Your Reachies")) {
                         Text(.reachy("Through Hugging Face"))
-                            .font(.caption)
+                            .font(Typography.status)
                             .foregroundStyle(.secondary)
                     }
                 }

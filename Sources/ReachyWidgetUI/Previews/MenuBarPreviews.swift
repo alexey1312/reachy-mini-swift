@@ -18,6 +18,8 @@ import SwiftUI
 /// copies each body into a generated file of its own.
 func menuBarPreviewCard(_ content: MenuBarContent) -> some View {
     MenuBarContentView(content: content) { _ in }
+        // The popover corner AppKit draws around a `MenuBarExtra`, not one of
+        // ours — the preview stands in for chrome this process never sees.
         .background(.background.secondary, in: .rect(cornerRadius: 12))
 }
 

@@ -57,8 +57,8 @@ struct TelepresenceSheet: View {
             }
             if let lastError = presence.lastError {
                 Text(lastError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
         } header: {
             Text(.reachy("Behaviour"))
@@ -79,12 +79,12 @@ struct TelepresenceSheet: View {
     /// dragging across the range would otherwise re-enable tracking at every step.
     private var followStrength: some View {
         @Bindable var presence = presence
-        return VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
                 Text(.reachy("Follow strength"))
                 Spacer()
                 Text(.reachy("\(Int((presence.trackingWeight * 100).rounded()))%"))
-                    .font(.caption.monospaced())
+                    .font(Typography.consoleLine)
                     .foregroundStyle(.secondary)
             }
             Slider(value: $presence.trackingWeight, in: PresenceModel.weightRange, step: 0.05) { editing in
@@ -92,7 +92,7 @@ struct TelepresenceSheet: View {
                 Task { await presence.commitTrackingWeight(session: session) }
             }
             Text(.reachy("Lower means the head follows less of the way. The switch above is what stops it."))
-                .font(.caption2)
+                .font(Typography.statusCompact)
                 .foregroundStyle(.tertiary)
         }
     }

@@ -140,8 +140,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   or launch flashes another colour; `ReachyThemeTests.accentColorMatchesFallback` parses the hand-edited JSON the
   same way `catalogueMatchesConstants` parses the generated one, so a drift between the two is now a test failure
   rather than a launch flash nobody notices until a device shows it.
-- **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
-  not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
+- **Shared surfaces name a role; one-off native values stay at their caller.** Use
+  `.reachySurface(.chrome, in: .capsule)` instead of repeating a material recipe. A semantic `Font` or platform API
+  used once needs no facade; promote it when a second independent consumer appears.
 - **A backdrop under a bar is not automatically a `.scrim`, and the difference is whether anything passes under it.**
   A scrim carries glass, glass renders a light surface whatever is behind it, and a footer at the bottom of a sheet
   where the step fits on one screen is backing nothing at all — so it reads as a grey strip stuck to the bottom of the

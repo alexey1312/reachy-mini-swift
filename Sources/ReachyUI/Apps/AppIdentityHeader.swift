@@ -15,12 +15,12 @@ struct AppIdentityHeader: View {
     var body: some View {
         HStack(spacing: 14) {
             AppArtworkTile(app: app, size: artworkSize)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Space.xs) {
                 Text(app.title)
                     .font(.title3.weight(.semibold))
                 if let author = app.author {
                     Text(author)
-                        .font(.subheadline)
+                        .font(Typography.subtitle)
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 10) {
@@ -34,11 +34,11 @@ struct AppIdentityHeader: View {
                         Label(.reachy("\(likes)"), systemImage: "heart.fill")
                     }
                 }
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Space.xs)
     }
 }

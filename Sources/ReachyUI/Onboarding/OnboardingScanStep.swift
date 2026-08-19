@@ -101,7 +101,7 @@ struct OnboardingScanStep: View {
                         ProgressView()
                     } else {
                         Text(.reachy("\(robot.rssi) dBm"))
-                            .font(.caption.monospaced())
+                            .font(Typography.consoleLine)
                     }
                 } label: {
                     Label(robot.name, systemImage: "dot.radiowaves.left.and.right")

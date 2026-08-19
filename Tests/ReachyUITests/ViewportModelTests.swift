@@ -182,6 +182,29 @@ struct ViewportModelTests {
         #expect(model.sceneModel == nil)
     }
 
+    /// The pad over the 3D model is the simulator's alone. Every other source's
+    /// scene mirrors the state stream, and a joystick there would drive a picture
+    /// the camera — one segment away — would not agree with.
+    @Test("only a simulated source carries a joystick over its scene")
+    func onlyTheSimulatorDrivesItsScene() throws {
+        let model = ViewportModel()
+        model.setActive(true)
+
+        #expect(!model.offersSceneTeleop)
+
+        model.attach(to: lan)
+        #expect(!model.offersSceneTeleop)
+
+        model.attach(to: .remote(.preview(.streaming)))
+        #expect(!model.offersSceneTeleop)
+
+        try model.attach(to: simulated())
+        #expect(model.offersSceneTeleop)
+
+        model.detach()
+        #expect(!model.offersSceneTeleop)
+    }
+
     @Test("a local source offers the scene and names no reason not to")
     func localOffersTheScene() {
         let model = ViewportModel()

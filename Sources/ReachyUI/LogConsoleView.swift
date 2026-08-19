@@ -95,6 +95,7 @@ struct LogConsoleView: View {
         .font(Typography.status)
         .foregroundStyle(Tone.quiet.style)
         .padding(.horizontal, Space.md)
+        // Optical: a one-line strip, tightened past the grid so it reads as chrome.
         .padding(.vertical, 6)
         .reachyScrim(ignoringSafeArea: .bottom)
     }
@@ -123,7 +124,7 @@ struct LogConsoleView: View {
             Text(entry.message)
                 .foregroundStyle(Self.color(for: entry.level))
         }
-        .font(.caption2.monospaced())
+        .font(Typography.consoleLineCompact)
         .textSelection(.enabled)
         .contextMenu {
             Button(.reachy("Copy line"), systemImage: "doc.on.doc") { Clipboard.copy(entry.text) }

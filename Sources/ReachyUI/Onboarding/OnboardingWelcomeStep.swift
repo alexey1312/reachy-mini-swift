@@ -42,7 +42,7 @@ struct OnboardingWelcomeStep: View {
                     .reachy("The next screen turns on Bluetooth scanning, so iOS will ask for permission."),
                     systemImage: "info.circle"
                 )
-                .font(.footnote)
+                .font(Typography.footer)
                 .foregroundStyle(.secondary)
             }
         } actions: {
@@ -56,10 +56,10 @@ struct OnboardingWelcomeStep: View {
 
     private func requirement(_ title: String, detail: String, icon: String) -> some View {
         Label {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(title)
                 Text(detail)
-                    .font(.footnote)
+                    .font(Typography.footer)
                     .foregroundStyle(.secondary)
             }
         } icon: {

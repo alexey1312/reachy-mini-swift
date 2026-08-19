@@ -472,15 +472,24 @@ environment keys are written out by hand — swiftformat's `environmentEntry` ru
    Layout stays direction-relative too: `leading`/`trailing`, never `left`/`right`, and the mirroring SF Symbols
    (`chevron.forward`, `arrow.up.forward.square`) rather than the absolute ones, so a right-to-left language needs no
    second pass. `JoystickPad` keeps `.left`/`.right` on purpose — those are the robot's directions, not the reader's.
-10. **A visual change names a token or a role, never a literal, a material or an OS version.** `Space.lg`,
-    `Radius.rect(.lg)`, `Typography.detail`, `Tone.danger`, `.reachySurface(.chrome, in: .capsule)` — not
-    `padding(16)`, not `RoundedRectangle(cornerRadius: 16)` (whose default corner style is `.circular` where every
-    token is `.continuous`), not `.background(.regularMaterial)`. Every `if #available` for glass lives in
-    `ReachyDesign` and nowhere else. Optical adjustments stay literals on purpose — a 1 pt gap in the dock is not
-    rhythm. **Glass gets measured, never reasoned about**: it is invisible headless, renders its content vibrantly so
-    colour collapses to black, blanks the entire capture under `.buttonStyle(.glass)`, and stays light in a dark
-    reference. Each was found by re-recording and is written up with its measurement in
-    `Sources/ReachyDesign/AGENTS.md`; add the next one the same way.
+10. **A repeated visual value names a token or role; a one-off stays native and local.** Add a token at the second
+    independent consumer, not when one component gains a second host. Existing roles may be composed with native
+    modifiers (`Typography.detail.weight(.medium)`) instead of multiplying aliases. Optical literals carry a short
+    reason when their value is otherwise surprising.
+
+    Shared surface and chrome behavior belongs in `ReachyDesign`; a one-off platform API keeps its availability
+    check beside its caller and moves only when another caller needs the same behavior. Glass still gets measured on
+    device: it is invisible headless, renders content vibrantly, and stays light in dark references.
+
+    After visual work, run the narrow greps below. Name the directories — a bare `Apps` walks into DerivedData:
+
+    ```bash
+    set -- Sources/ReachyUI Sources/ReachyWidgetUI Sources/ReachyDesign Apps/ReachyMini Apps/ReachyWidget
+    grep -rn --include='*.swift' -B1 '\.font(\.' "$@"            # raw fonts
+    grep -rn --include='*.swift' -B1 -E '\.(foregroundStyle|tint|fill|background)\(\s*\.(red|orange|green|white|black)' "$@"
+    grep -rn --include='*.swift' -E '\.padding\((\.[a-z]+, )?[0-9]+\)|spacing: [0-9]+' "$@"
+    ```
+
 11. **JSON goes through `JSONCodec`.** `.daemon` for what the robot said, `.web` for Hugging Face, `.stored` for what
     this app wrote — and `.stored` may not change without a schema bump, because records from shipped builds are on
     disk. A `JSONDecoder()` under `Sources/` outside `ReachyJSON` is a SwiftLint error; the rule does not reach

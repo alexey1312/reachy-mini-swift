@@ -38,8 +38,8 @@ struct MaintenanceCard: View {
             )
             if let lastError = model.lastError {
                 Text(lastError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
         } header: {
             Text(.reachy("Maintenance"))
@@ -79,7 +79,7 @@ struct MaintenanceCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             Text(description)
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
             HStack {
                 Button(role: .destructive) {
@@ -101,7 +101,7 @@ struct MaintenanceCard: View {
             ProgressView().controlSize(.small)
         } else if model.finished == action {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
                 .accessibilityLabel(.reachy("Done"))
         }
     }

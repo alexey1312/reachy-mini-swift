@@ -51,9 +51,9 @@ struct BLEConsoleScreen: View {
                         Button {
                             Task { await model.connect(to: robot.id) }
                         } label: {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: Space.xxs) {
                                 LabeledContent(robot.name) {
-                                    Text(.reachy("\(robot.rssi) dBm")).font(.caption.monospaced())
+                                    Text(.reachy("\(robot.rssi) dBm")).font(Typography.consoleLine)
                                 }
                                 advertisementCaption(for: robot)
                             }
@@ -81,7 +81,7 @@ struct BLEConsoleScreen: View {
             }
             if let error = model.errorMessage {
                 Section {
-                    Text(error).font(.callout).foregroundStyle(.red)
+                    Text(error).font(Typography.detail).foregroundStyle(Tone.danger.style)
                 }
             }
         }
@@ -138,18 +138,18 @@ struct BLEConsoleScreen: View {
     private func advertisementCaption(for robot: BLEPeripheralSnapshot) -> some View {
         if let advert = robot.advertisement {
             Text(verbatim: "\(advert.address) · \(advert.hardwareIDPrefix)…")
-                .font(.caption2.monospaced())
+                .font(Typography.consoleLineCompact)
                 .foregroundStyle(.secondary)
         } else if let raw = robot.manufacturerData {
             Text(verbatim: raw.map { String(format: "%02x", $0) }.joined())
-                .font(.caption2.monospaced())
+                .font(Typography.consoleLineCompact)
                 .foregroundStyle(.tertiary)
                 .lineLimit(2)
         }
     }
 
     private var notices: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.sm) {
             // Not a footnote. The robot slices its buffer well past what one Bluetooth
             // read can carry and throws away what it handed over, so lines genuinely
             // disappear here and nowhere else.
@@ -160,14 +160,15 @@ struct BLEConsoleScreen: View {
                 ),
                 systemImage: "exclamationmark.triangle"
             )
-            .font(.caption)
-            .foregroundStyle(.orange)
+            .font(Typography.status)
+            .foregroundStyle(Tone.warning.style)
             if model.journalFailure != nil {
                 Divider()
                 journalStopped
             }
         }
         .padding(.horizontal)
+        // Optical: a one-line strip, tightened past the grid so it reads as chrome.
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .reachyScrim(ignoringSafeArea: .top)
@@ -179,13 +180,13 @@ struct BLEConsoleScreen: View {
     private var journalStopped: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(.reachy("The robot stopped sending its log."))
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             Button(.reachy("Start again")) {
                 model.restartJournal()
             }
-            .font(.caption)
+            .font(Typography.status)
             .buttonStyle(.borderless)
         }
     }
