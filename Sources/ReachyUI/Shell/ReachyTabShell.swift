@@ -84,7 +84,7 @@ struct ReachyTabShell: View {
             }
             Tab(value: ReachyRouter.Tab.moves) {
                 docked {
-                    MovesTab(session: session, router: router)
+                    MovesTab(session: session, router: router, presence: presence)
                 }
             } label: {
                 Label(.reachy("Moves"), systemImage: "music.note")

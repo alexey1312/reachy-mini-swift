@@ -12,14 +12,20 @@ import UniformTypeIdentifiers
 struct SoundboardScreen: View {
     let session: RobotSession
 
+    /// The shell's instance, handed down rather than made here. It is a record of what
+    /// this app asked for and nothing reads it back from the robot, so a second copy
+    /// would disagree with the Presence sheet's switch forever.
+    let presence: PresenceModel
+
     @State private var model: SoundboardModel
     @State private var isImporting = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
     /// `nil` rather than a defaulted value, for the reason every screen here does it:
     /// a default argument is evaluated nonisolated, and this model is `@MainActor`.
-    init(session: RobotSession, model: SoundboardModel? = nil) {
+    init(session: RobotSession, presence: PresenceModel, model: SoundboardModel? = nil) {
         self.session = session
+        self.presence = presence
         _model = State(initialValue: model ?? SoundboardModel())
     }
 
@@ -31,7 +37,9 @@ struct SoundboardScreen: View {
                 }
             }
             resendSection
+            presenceSection
             soundsSection
+            stopSection
             if let lastError = model.lastError {
                 Section {
                     Text(lastError)
@@ -73,6 +81,7 @@ struct SoundboardScreen: View {
                 Text(model.confirmationMessage(for: confirming))
             }
         }
+        .refreshable { await model.load(session: session) }
         .task {
             guard !previewMode else { return }
             await model.load(session: session)
@@ -94,9 +103,44 @@ struct SoundboardScreen: View {
                 .contextMenu { actions(for: row) }
             }
         } footer: {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(.reachy("The robot keeps these in temporary storage and forgets them when it restarts."))
-                Text(.reachy("“Move while speaking” in the live view makes the head move to whatever is playing."))
+            Text(.reachy("The robot keeps these in temporary storage and forgets them when it restarts."))
+        }
+    }
+
+    /// The same switch the Presence sheet carries, on the screen where the sound it
+    /// moves to is played. Reaching it used to mean leaving for the Live tab and a
+    /// glyph in the viewport chrome, three moves from the tap that starts the sound.
+    @ViewBuilder
+    private var presenceSection: some View {
+        if session.canControlPresence {
+            Section {
+                MoveWhileSpeakingToggle(session: session, presence: presence)
+                if let lastError = presence.lastError {
+                    Text(lastError)
+                        .font(Typography.status)
+                        .foregroundStyle(Tone.danger.style)
+                }
+            } footer: {
+                Text(.reachy("The robot does not report these, so they show what this app last asked for."))
+            }
+        }
+    }
+
+    /// A row rather than the glyph it was in the toolbar. No route reports whether a
+    /// sound is playing, so this control can never show a result; a word at least says
+    /// what it does. It sits behind `get_backend` with the taps above it — `stop_sound`
+    /// has nothing to answer but 503 without one, and the banner at the top of the
+    /// screen is already the reason.
+    @ViewBuilder
+    private var stopSection: some View {
+        if session.canManageSounds {
+            Section {
+                Button {
+                    Task { await model.stop(session: session) }
+                } label: {
+                    Label(.reachy("Stop the sound"), systemImage: "stop.circle")
+                }
+                .disabled(!session.isBackendRunning)
             }
         }
     }
@@ -131,25 +175,6 @@ struct SoundboardScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem {
-            Button {
-                Task { await model.load(session: session) }
-            } label: {
-                Label(.reachy("Refresh"), systemImage: "arrow.clockwise")
-            }
-            .disabled(model.loading || model.busy != nil)
-        }
-        ToolbarItem {
-            // Always available, and deliberately not conditional on anything: no route
-            // reports whether a sound is playing, so a Stop that came and went would be
-            // guessing. Sending it over silence is free.
-            Button {
-                Task { await model.stop(session: session) }
-            } label: {
-                Label(.reachy("Stop the sound"), systemImage: "stop.circle")
-            }
-            .disabled(!session.canManageSounds)
-        }
         ToolbarItem {
             Button {
                 isImporting = true

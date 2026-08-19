@@ -69,3 +69,9 @@ import SwiftUI
         model: .preview(error: "Unsupported or invalid audio file (HTTP 400)")
     )
 }
+
+// The switch this screen borrows from the Presence sheet, on. Every other capture here
+// has it off, so nothing else shows what the row looks like once the head is moving.
+#Preview("Sounds — moving while speaking") {
+    PreviewScene.soundboard(.preview(), presence: .preview(wobbling: true))
+}

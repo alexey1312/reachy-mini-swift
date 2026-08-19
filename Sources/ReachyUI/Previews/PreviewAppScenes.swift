@@ -138,10 +138,15 @@ extension PreviewScene {
 extension PreviewScene {
     static func soundboard(
         _ session: RobotSession,
-        model: SoundboardModel? = nil
+        model: SoundboardModel? = nil,
+        presence: PresenceModel? = nil
     ) -> some View {
         NavigationHost {
-            SoundboardScreen(session: session, model: model ?? .preview())
+            SoundboardScreen(
+                session: session,
+                presence: presence ?? .preview(),
+                model: model ?? .preview()
+            )
         }
         .preview()
     }
