@@ -475,12 +475,45 @@ environment keys are written out by hand — swiftformat's `environmentEntry` ru
 10. **A visual change names a token or a role, never a literal, a material or an OS version.** `Space.lg`,
     `Radius.rect(.lg)`, `Typography.detail`, `Tone.danger`, `.reachySurface(.chrome, in: .capsule)` — not
     `padding(16)`, not `RoundedRectangle(cornerRadius: 16)` (whose default corner style is `.circular` where every
-    token is `.continuous`), not `.background(.regularMaterial)`. Every `if #available` for glass lives in
-    `ReachyDesign` and nowhere else. Optical adjustments stay literals on purpose — a 1 pt gap in the dock is not
-    rhythm. **Glass gets measured, never reasoned about**: it is invisible headless, renders its content vibrantly so
-    colour collapses to black, blanks the entire capture under `.buttonStyle(.glass)`, and stays light in a dark
-    reference. Each was found by re-recording and is written up with its measurement in
-    `Sources/ReachyDesign/AGENTS.md`; add the next one the same way.
+    token is `.continuous`), not `.background(.regularMaterial)`. Optical adjustments stay literals on purpose — a
+    1 pt gap in the dock is not rhythm. **Glass gets measured, never reasoned about**: it is invisible headless,
+    renders its content vibrantly so colour collapses to black, blanks the entire capture under
+    `.buttonStyle(.glass)`, and stays light in a dark reference. Each was found by re-recording and is written up
+    with its measurement in `Sources/ReachyDesign/AGENTS.md`; add the next one the same way.
+
+    **Every `#available` lives in `ReachyDesign`, and the word is chrome rather than glass.** This read "every
+    `if #available` for glass" for five releases and so waved through the only two that ever leaked —
+    `ToolbarSpacer` in `LogConsoleView` and `searchToolbarBehavior` in `AppStoreScreen`, neither of them glass, both
+    of them iOS 26 chrome. `ReachyToolbarSpacer` and `reachyMinimizedSearchToolbar()` are where they live now, and
+    the rule is checked rather than remembered: the `availability_in_design_system` custom rule in `.swiftlint.yml`
+    fails `mise run lint` on an `#available` under `Sources/` or `Apps/` outside that module. It carries no
+    `match_kinds`, so it reads comments too — deliberately, because a rule that silently never fires is worse than
+    one that over-reports, which is the trade `Scripts/check-catalogue.py` makes for the same reason.
+
+    **A literal that stays carries a one-line reason.** Not decoration: a bare literal is indistinguishable from an
+    oversight, both to the next reader and to the greps below, so the comment is what makes "this was decided"
+    legible. Nine glyph sizes and four paddings survive the sweep on those terms — a glyph sized against the disc it
+    sits in, a one-line strip tightened past the grid.
+
+    **When no role fits, add the role — do not settle for the literal.** `Typography` was eight roles short when
+    this was first swept, so roughly fifteen call sites were reaching for `.footnote` and `.subheadline` _correctly_:
+    the token set was the gap, not the discipline. A role costs one constant and one row in
+    `DesignGallery.typography`, and that row is the only reference image the addition moves.
+
+    **The rule was unenforced for five releases and 160 sites accumulated under it** — 86 raw fonts, 49 hardcoded
+    tones, 25 off-grid rhythm values. Run these after any visual work; every line that comes back must be one with a
+    reason above it:
+
+    ```bash
+    grep -rn --include='*.swift' -B1 '\.font(\.' Sources Apps            # raw fonts
+    grep -rn --include='*.swift' -B1 -E '\.(foregroundStyle|tint|fill|background)\(\s*\.(red|orange|green|white|black)' Sources Apps
+    grep -rn --include='*.swift' -E '\.padding\((\.[a-z]+, )?[0-9]+\)|spacing: [0-9]+' Sources Apps
+    ```
+
+    **A `Tone` bypassed on one branch of a ternary is the tell to look for**, because it type-checks and reads fine:
+    three sites spelled `isBusy ? Tone.quiet.style : AnyShapeStyle(.tint)`, naming the role on one side and reaching
+    past it on the other. `Tone.brand.style` _is_ `AnyShapeStyle(.tint)`, so nothing rendered differently and nothing
+    could have caught it but reading the line.
 11. **JSON goes through `JSONCodec`.** `.daemon` for what the robot said, `.web` for Hugging Face, `.stored` for what
     this app wrote — and `.stored` may not change without a schema bump, because records from shipped builds are on
     disk. A `JSONDecoder()` under `Sources/` outside `ReachyJSON` is a SwiftLint error; the rule does not reach
