@@ -6,12 +6,22 @@ import SwiftUI
 struct MovesScreen: View {
     let session: RobotSession
 
+    /// Not used here: forwarded to `SoundboardScreen`, for the reason `MovesTab`'s
+    /// copy explains.
+    let presence: PresenceModel
+
     @State private var model: MovesModel
     @State private var recorder: MoveRecorderModel
     @Environment(\.reachyPreviewMode) private var previewMode
 
-    init(session: RobotSession, model: MovesModel? = nil, recorder: MoveRecorderModel? = nil) {
+    init(
+        session: RobotSession,
+        presence: PresenceModel,
+        model: MovesModel? = nil,
+        recorder: MoveRecorderModel? = nil
+    ) {
         self.session = session
+        self.presence = presence
         // Not a default argument: it has to be built *from* `session` so the
         // libraries the disk cache warmed are on the first frame.
         _model = State(initialValue: model ?? MovesModel(session: session))
@@ -140,7 +150,7 @@ struct MovesScreen: View {
         if session.canManageSounds {
             Section {
                 NavigationLink {
-                    SoundboardScreen(session: session)
+                    SoundboardScreen(session: session, presence: presence)
                 } label: {
                     Label(.reachy("Sounds"), systemImage: "music.note.list")
                 }

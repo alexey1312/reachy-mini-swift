@@ -46,9 +46,7 @@ struct TelepresenceSheet: View {
 
     private var behaviourSection: some View {
         Section {
-            Toggle(isOn: wobbling) {
-                Label(.reachy("Move while speaking"), systemImage: "waveform")
-            }
+            MoveWhileSpeakingToggle(session: session, presence: presence)
             Toggle(isOn: tracking) {
                 Label(.reachy("Follow faces"), systemImage: "eye")
             }
@@ -97,15 +95,8 @@ struct TelepresenceSheet: View {
         }
     }
 
-    /// Bindings rather than `$presence.x`: each setter is a call that can be refused,
-    /// and the model writes the flag only once the robot has accepted it.
-    private var wobbling: Binding<Bool> {
-        Binding(
-            get: { presence.isWobbling },
-            set: { value in Task { await presence.setWobbling(value, session: session) } }
-        )
-    }
-
+    /// A binding rather than `$presence.isTracking`: the setter is a call that can be
+    /// refused, and the model writes the flag only once the robot has accepted it.
     private var tracking: Binding<Bool> {
         Binding(
             get: { presence.isTracking },

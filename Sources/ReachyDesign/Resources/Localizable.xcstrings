@@ -17168,35 +17168,6 @@
           }
         }
       }
-    },
-    "“Move while speaking” in the live view makes the head move to whatever is playing.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Beim Sprechen bewegen“ in der Live-Ansicht lässt den Kopf sich zu allem bewegen, was gerade läuft."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«Moverse al hablar» en la vista en directo hace que la cabeza se mueva con lo que esté sonando."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "« Bouger en parlant » dans la vue en direct fait bouger la tête au rythme de ce qui est joué."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«Двигаться при разговоре» в прямом просмотре заставляет голову двигаться под то, что играет."
-          }
-        }
-      }
     }
   },
   "version": "1.0"

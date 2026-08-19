@@ -294,7 +294,18 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     robot whose motors were never enabled, which is why `AsleepBanner` appears here off `!isBackendRunning` rather than
     off `!isAwake` as it does on the Moves screen.
   - **Nothing on this screen claims a sound is playing**, because no route reports it. The caption says a sound _was_
-    played, and Stop is unconditional — sending it over silence is free, and claiming to know would not be.
+    played, and Stop is a row with a word on it rather than a toolbar glyph — a control that can never show a result
+    should at least say what it does. It is gated on `isBackendRunning` like the taps above it, `stop_sound` sitting
+    behind `get_backend` with nothing but a 503 to answer without one.
+  - **The wobbling switch is on two screens and shares one model.** `MoveWhileSpeakingToggle` is drawn here and in
+    `TelepresenceSheet`, and the `PresenceModel` behind it comes down from `ReachyTabShell` through `MovesTab` and
+    `MovesScreen` as a plain `let`. Nothing reads the state back from the robot, so a second instance would disagree
+    with the first forever — this is the same reason the shell owns it in the first place. The footer here is the
+    sheet's own sentence, reused rather than reworded.
+  - **Refresh is `.refreshable`, not a toolbar item.** The button it replaced could not show its own work: after the
+    first listing `isContentLoading` is false by definition, and a LAN round trip takes tens of milliseconds, so a tap
+    drew no frame at all. The system's pull gesture at least has a spinner. macOS has no such gesture and the `.task`
+    covers it there, as it does on the files and remote-robots screens.
   - **Three things here are deliberately uncovered by any reference**, each for a reason already written up elsewhere in
     this file: the `fileImporter` sheet and the delete `confirmationDialog` both capture as nothing, and the two
     `ControlWidget`s are WidgetKit, which the snapshot suite never exercises. The confirmation _copy_ is model-adjacent

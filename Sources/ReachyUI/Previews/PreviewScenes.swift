@@ -86,7 +86,7 @@ enum PreviewScene {
         recorder: MoveRecorderModel? = nil
     ) -> some View {
         NavigationHost {
-            MovesScreen(session: session, model: model ?? .preview(), recorder: recorder)
+            MovesScreen(session: session, presence: .preview(), model: model ?? .preview(), recorder: recorder)
         }
         .preview()
     }
