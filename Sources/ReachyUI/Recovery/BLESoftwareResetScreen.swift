@@ -92,7 +92,7 @@ struct BLESoftwareResetScreen: View {
         }
         Section {
             TextField(.reachy("Hardware ID"), text: $typedID)
-                .font(.body.monospaced())
+                .font(Typography.console)
                 .autocorrectionDisabled()
             #if os(iOS)
                 .textInputAutocapitalization(.never)
@@ -102,14 +102,14 @@ struct BLESoftwareResetScreen: View {
         } footer: {
             if let hardwareID = model.hardwareID {
                 Text(.reachy("Type \(hardwareID) — this robot's id, shown so you are erasing the one in front of you."))
-                    .font(.caption.monospaced())
+                    .font(Typography.consoleLine)
             } else {
                 Text(.reachy("This robot did not report a hardware id, so it cannot be confirmed. Do not continue."))
             }
         }
         Section {
             SecureField(.reachy("Robot's code"), text: $code)
-                .font(.body.monospaced())
+                .font(Typography.console)
         } header: {
             Text(.reachy("Confirm it is you"))
         } footer: {
@@ -132,7 +132,7 @@ struct BLESoftwareResetScreen: View {
             }
             .disabled(!gatesPassed || (countdown ?? Self.arming) > 0)
             if let error = model.errorMessage {
-                Text(error).font(.callout).foregroundStyle(.red)
+                Text(error).font(Typography.detail).foregroundStyle(Tone.danger.style)
             }
         }
     }
@@ -145,8 +145,8 @@ struct BLESoftwareResetScreen: View {
             }
             LabeledContent(.reachy("Bluetooth")) {
                 switch stillAnswering {
-                case true: Text(.reachy("answering")).foregroundStyle(.green)
-                case false: Text(.reachy("no answer")).foregroundStyle(.orange)
+                case true: Text(.reachy("answering")).foregroundStyle(Tone.success.style)
+                case false: Text(.reachy("no answer")).foregroundStyle(Tone.warning.style)
                 case nil: ProgressView()
                 }
             }
@@ -156,7 +156,7 @@ struct BLESoftwareResetScreen: View {
                     "The Bluetooth service is a separate unit and stays up throughout, so this only says the robot is still there. Progress shows up in the journal when the daemon comes back."
                 )
             )
-            .font(.footnote)
+            .font(Typography.footer)
             .foregroundStyle(.secondary)
         }
         .task {
@@ -194,8 +194,9 @@ struct BLESoftwareResetScreen: View {
 
 private struct BulletLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
             configuration.icon
+                // Optical: a bullet dot rather than text — 5 pt is the dot's diameter.
                 .font(.system(size: 5))
                 .foregroundStyle(.secondary)
             configuration.title

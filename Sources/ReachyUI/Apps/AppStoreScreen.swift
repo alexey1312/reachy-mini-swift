@@ -53,8 +53,8 @@ struct AppStoreScreen: View {
             if let lastError = model.lastError, !model.isContentLoading {
                 Section {
                     Text(lastError)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        .font(Typography.status)
+                        .foregroundStyle(Tone.danger.style)
                 }
             }
 
@@ -103,7 +103,7 @@ struct AppStoreScreen: View {
         // No running-app inset here any more: the dock is mounted on the root
         // `TabView`, below the tab bar, and is on screen for every tab. A second
         // copy on this one would be the same control twice.
-        .minimizedSearchToolbar()
+        .reachyMinimizedSearchToolbar()
         .toolbar {
             filterMenu
             Button {
@@ -219,42 +219,20 @@ struct AppStoreScreen: View {
     /// take it back from here — saying so beats a disabled button with no reason.
     private var remoteSessionNotice: some View {
         Label {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(.reachy("In use remotely"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(Typography.noticeTitle)
                 Text(
                     model.lockHolder
                         .map { String(localized: .reachy("\($0) is driving this robot over Hugging Face.")) }
                         ?? String(localized: .reachy("Someone is driving this robot over Hugging Face."))
                 )
-                .font(.caption)
+                .font(Typography.status)
                 .foregroundStyle(.secondary)
             }
         } icon: {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .foregroundStyle(.tint)
         }
-    }
-}
-
-private extension View {
-    /// iOS 26 collapses a bottom search field into a button until it is used. The
-    /// deployment floor is iOS 18, so this is opt-in per availability rather than
-    /// a project-wide setting.
-    ///
-    /// The member is `.minimize`, not `.minimized` — Apple's own documentation for
-    /// `searchToolbarBehavior(_:)` shows the latter in its example, and it does not
-    /// compile.
-    @ViewBuilder
-    func minimizedSearchToolbar() -> some View {
-        #if os(iOS)
-            if #available(iOS 26, *) {
-                searchToolbarBehavior(.minimize)
-            } else {
-                self
-            }
-        #else
-            self
-        #endif
     }
 }

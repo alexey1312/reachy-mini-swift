@@ -21,13 +21,13 @@ struct OnboardingHandoffStep: View {
             if let hardwareID = model.session?.hardwareID {
                 LabeledContent(.reachy("Hardware ID")) {
                     Text(hardwareID)
-                        .font(.caption.monospaced())
+                        .font(Typography.consoleLine)
                 }
             }
             if let address = model.session?.robotAddress {
                 LabeledContent(.reachy("Address")) {
                     Text(address)
-                        .font(.caption.monospaced())
+                        .font(Typography.consoleLine)
                 }
             }
             Label(
@@ -36,14 +36,14 @@ struct OnboardingHandoffStep: View {
                 ),
                 systemImage: "wifi.router"
             )
-            .font(.footnote)
+            .font(Typography.footer)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             Label(
                 .reachy("You can give the robot a name in Settings once it is connected."),
                 systemImage: "tag"
             )
-            .font(.footnote)
+            .font(Typography.footer)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         } actions: {

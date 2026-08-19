@@ -46,8 +46,8 @@ struct AudioSettingsSection: View {
             }
             if let errorMessage = model.errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
         } header: {
             if let header {
@@ -67,12 +67,12 @@ struct AudioSettingsSection: View {
         device: AudioLevel?,
         commit: @escaping () async -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
                 Label(title, systemImage: systemImage)
                 Spacer()
                 Text(.reachy("\(Int(value.wrappedValue.rounded()))%"))
-                    .font(.caption.monospaced())
+                    .font(Typography.consoleLine)
                     .foregroundStyle(.secondary)
             }
             // The daemon reaches the robot's audio through one named sink or
@@ -85,7 +85,7 @@ struct AudioSettingsSection: View {
             // level alone, and a line reading " · " would be worse than none.
             if let name = device?.device, let platform = device?.platform {
                 Text(.reachy("\(name) · \(platform)"))
-                    .font(.caption2)
+                    .font(Typography.statusCompact)
                     .foregroundStyle(.tertiary)
             }
         }

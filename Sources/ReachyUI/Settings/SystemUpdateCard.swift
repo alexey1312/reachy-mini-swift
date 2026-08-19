@@ -66,10 +66,10 @@ struct SystemUpdateCard: View {
             Label(.reachy("Checking for updates…"), systemImage: "arrow.triangle.2.circlepath")
         case let .upToDate(current):
             Label(.reachy("Up to date — \(current)"), systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
         case let .robotOffline(current):
             Label(.reachy("\(current) — the robot can't reach the internet"), systemImage: "wifi.exclamationmark")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Tone.warning.style)
         case let .available(current, latest):
             LabeledContent(.reachy("Update available")) { Text(.reachy("\(current) → \(latest)")).monospaced() }
         case .installing:
@@ -78,10 +78,10 @@ struct SystemUpdateCard: View {
             Label(.reachy("The robot is restarting…"), systemImage: "arrow.clockwise")
         case let .finished(version):
             Label(.reachy("Updated to \(version)."), systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
         case let .failed(message):
             Label(message, systemImage: "xmark.octagon")
-                .foregroundStyle(.red)
+                .foregroundStyle(Tone.danger.style)
         }
     }
 

@@ -43,7 +43,7 @@ struct YourReachiesScreen<SignIn: View>: View {
             if let lastRefreshError = model.lastRefreshError {
                 Section {
                     Text(lastRefreshError)
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -133,31 +133,33 @@ struct RemoteRobotRow: View {
     let robot: CentralRobot
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Space.md) {
             Image(systemName: "app.connected.to.app.below.fill")
+                // Optical: row artwork, sized against the column it sits in.
                 .font(.title2)
                 // Erased because the two branches are different `ShapeStyle`
                 // types, and a ternary needs one.
                 .foregroundStyle(robot.isBusy ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 .frame(width: 32)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(robot.displayName)
-                    .font(.headline)
+                    .font(Typography.rowTitle)
                     .foregroundStyle(robot.isBusy ? .secondary : .primary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             }
             Spacer()
             if !robot.isBusy {
                 Image(systemName: "chevron.forward")
+                    // Optical: a disclosure chevron, weighted to match the system's own.
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Space.xs)
     }
 }
 

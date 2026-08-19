@@ -68,7 +68,7 @@ struct MoveActivityBar: View {
         .reachyButton(.prominent)
         .buttonBorderShape(.capsule)
         .controlSize(.large)
-        .tint(.red)
+        .tint(Tone.danger.style)
         .disabled(isStopping)
     }
 

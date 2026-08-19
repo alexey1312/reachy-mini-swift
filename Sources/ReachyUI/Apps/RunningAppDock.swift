@@ -335,7 +335,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton(.prominent)
         .buttonBorderShape(.circle)
-        .tint(.red)
+        .tint(Tone.danger.style)
         .disabled(!canAct)
     }
 

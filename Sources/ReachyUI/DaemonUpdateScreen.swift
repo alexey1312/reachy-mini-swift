@@ -30,7 +30,7 @@ struct DaemonUpdateScreen: View {
         Form {
             Section {
                 Label(.reachy("This robot needs a software update"), systemImage: "arrow.down.circle")
-                    .font(.headline)
+                    .font(Typography.rowTitle)
                 LabeledContent(.reachy("Robot runs"), value: requirement.reported)
                 LabeledContent(.reachy("This app needs"), value: requirement.minimum)
             } footer: {
@@ -104,13 +104,13 @@ struct DaemonUpdateScreen: View {
                 .reachy("The robot is on \(current), the newest release available to it."),
                 systemImage: "exclamationmark.triangle"
             )
-            .foregroundStyle(.orange)
+            .foregroundStyle(Tone.warning.style)
         case let .robotOffline(current):
             Label(
                 .reachy("The robot (\(current)) can't reach the internet, so it can't download an update."),
                 systemImage: "wifi.exclamationmark"
             )
-            .foregroundStyle(.orange)
+            .foregroundStyle(Tone.warning.style)
         case let .available(current, latest):
             LabeledContent(.reachy("Available")) { Text(.reachy("\(current) → \(latest)")).monospaced() }
         case .installing:
@@ -119,10 +119,10 @@ struct DaemonUpdateScreen: View {
             Label(.reachy("The robot is restarting…"), systemImage: "arrow.clockwise")
         case let .finished(version):
             Label(.reachy("Updated to \(version)."), systemImage: "checkmark.circle")
-                .foregroundStyle(.green)
+                .foregroundStyle(Tone.success.style)
         case let .failed(message):
             Label(message, systemImage: "xmark.octagon")
-                .foregroundStyle(.red)
+                .foregroundStyle(Tone.danger.style)
         }
     }
 

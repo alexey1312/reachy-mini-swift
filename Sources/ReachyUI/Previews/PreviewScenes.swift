@@ -243,6 +243,7 @@ enum PreviewScene {
     static func pane(@ViewBuilder _ content: () -> some View) -> some View {
         content()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The letterbox a camera pane sits in, not a design colour.
             .background(.black)
             .preview()
     }

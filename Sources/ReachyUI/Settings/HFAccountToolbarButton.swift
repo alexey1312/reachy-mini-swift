@@ -53,8 +53,9 @@ struct HFAccountToolbarButton: View {
             HFAvatar(username: username ?? "?", size: Self.glyphSize)
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "exclamationmark.circle.fill")
+                        // Optical: sized against the avatar it is pinned to, not against the text.
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Tone.warning.style)
                         .background(.background, in: .circle)
                 }
         }

@@ -68,9 +68,9 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.lg) {
                 Text(title)
-                    .font(.title2.bold())
+                    .font(Typography.stepTitle)
                 Text(message)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -80,7 +80,7 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             .padding()
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 8) {
+            VStack(spacing: Space.sm) {
                 actions()
             }
             .padding()
@@ -120,8 +120,8 @@ struct OnboardingErrorText: View {
     var body: some View {
         if let message {
             Label(message, systemImage: "exclamationmark.triangle")
-                .font(.callout)
-                .foregroundStyle(.red)
+                .font(Typography.detail)
+                .foregroundStyle(Tone.danger.style)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

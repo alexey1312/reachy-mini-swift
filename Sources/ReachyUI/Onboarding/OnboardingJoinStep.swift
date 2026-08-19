@@ -21,7 +21,7 @@ struct OnboardingJoinStep: View {
                 }
             case .joined:
                 Label(.reachy("Connected"), systemImage: "checkmark.circle")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Tone.success.style)
             case .gaveUp:
                 Label(
                     .reachy(
@@ -94,7 +94,7 @@ struct OnboardingJoinStep: View {
                     "Bluetooth link: \(session.singlePacketWriteLength) bytes per message, \(session.attributeWriteLength) before iOS splits it"
                 )
             )
-            .font(.caption.monospaced())
+            .font(Typography.consoleLine)
             .foregroundStyle(.secondary)
         }
     }

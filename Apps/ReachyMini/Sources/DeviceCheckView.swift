@@ -42,12 +42,12 @@ struct DeviceCheckView: View {
         Section(.reachy("Discovery (Bonjour)")) {
             ForEach(Array(discovery.browserStates.sorted(by: { $0.key < $1.key })), id: \.key) { type, state in
                 LabeledContent(type) {
-                    Text(state).font(.caption.monospaced())
+                    Text(state).font(Typography.consoleLine)
                 }
             }
             if discovery.permissionLooksDenied {
                 Label(.reachy("Local Network permission denied"), systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Tone.danger.style)
                 PrivacySettingsButton(pane: .localNetwork)
             }
             if discovery.services.isEmpty {
@@ -55,7 +55,7 @@ struct DeviceCheckView: View {
             }
             ForEach(discovery.services) { service in
                 LabeledContent(service.name) {
-                    Text(service.type).font(.caption.monospaced())
+                    Text(service.type).font(Typography.consoleLine)
                 }
             }
             Button(.reachy("Restart discovery")) { discovery.start() }
@@ -74,12 +74,12 @@ struct DeviceCheckView: View {
                 Task { await model.connect() }
             }
             if let summary = model.handshakeSummary {
-                Text(summary).font(.caption.monospaced())
+                Text(summary).font(Typography.consoleLine)
             }
             if let error = model.lastError {
                 Text(error)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.red)
+                    .font(Typography.consoleLine)
+                    .foregroundStyle(Tone.danger.style)
             }
         }
     }
@@ -98,9 +98,9 @@ struct DeviceCheckView: View {
                     .reachy("Invalid frames: \(model.invalidFrameCount)"),
                     systemImage: "exclamationmark.triangle"
                 )
-                .foregroundStyle(.orange)
+                .foregroundStyle(Tone.warning.style)
                 if let failure = model.streamDiagnostics.lastFailureDescription {
-                    Text(failure).font(.caption.monospaced())
+                    Text(failure).font(Typography.consoleLine)
                 }
             }
         }

@@ -39,18 +39,18 @@ struct AppStoreRow: View {
                             .accessibilityLabel(.reachy("Private"))
                     }
                 }
-                .font(.caption)
+                .font(Typography.status)
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.subheadline)
+                        .font(Typography.subtitle)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
 
                 if let footnote {
                     Text(footnote)
-                        .font(.caption)
+                        .font(Typography.status)
                         .foregroundStyle(.secondary)
                 }
             }

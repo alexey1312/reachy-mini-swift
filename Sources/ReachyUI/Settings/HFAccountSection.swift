@@ -43,8 +43,8 @@ struct HFAccountSection: View {
             }
             if let errorText = model.errorText {
                 Text(errorText)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
             signInControls
         } header: {
@@ -79,7 +79,7 @@ struct HFAccountSection: View {
             )
         case let .failed(reason):
             Label(reason, systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Tone.warning.style)
         }
     }
 
@@ -89,7 +89,7 @@ struct HFAccountSection: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(username)
                 Text(caption)
-                    .font(.caption)
+                    .font(Typography.status)
                     .foregroundStyle(.secondary)
             }
         }
@@ -154,8 +154,8 @@ struct HFAccountSection: View {
             }
             if let linkError {
                 Text(linkError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
             }
             if robotAccount?.isLoggedIn == true {
                 Button(.reachy("Unlink this robot"), role: .destructive) {

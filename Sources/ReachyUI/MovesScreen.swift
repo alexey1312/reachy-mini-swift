@@ -64,8 +64,8 @@ struct MovesScreen: View {
             if let lastError = model.lastError, !model.isContentLoading {
                 Section {
                     Text(lastError)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.red)
+                        .font(Typography.consoleLine)
+                        .foregroundStyle(Tone.danger.style)
                 }
             }
         }
@@ -111,7 +111,7 @@ struct MovesScreen: View {
                     } label: {
                         LabeledContent(recording.name) {
                             Text(.reachy("\(Self.seconds(recording.duration)) s"))
-                                .font(.caption.monospaced())
+                                .font(Typography.consoleLine)
                                 .foregroundStyle(.secondary)
                         }
                     }
