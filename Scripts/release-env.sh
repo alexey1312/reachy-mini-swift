@@ -105,7 +105,7 @@ EOF
 # The floor is the highest build App Store Connect has accepted. It needs raising
 # only if a build is ever uploaded with a number the commit count does not reach —
 # `mise run asc -- builds list --app 6799644194` is what says otherwise.
-BUILD_NUMBER_FLOOR=143
+BUILD_NUMBER_FLOOR=150
 
 # Echoes the CFBundleVersion to archive with. REACHY_BUILD_NUMBER overrides the
 # whole computation, for the recovery case where neither history nor floor is what
