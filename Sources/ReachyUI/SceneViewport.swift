@@ -2,14 +2,60 @@ import ReachyDesign
 import ReachyScene
 import SwiftUI
 
-/// The 3D robot inside the viewport. Read-only: it mirrors the state stream and
-/// never sends a command.
+/// The 3D robot inside the viewport.
+///
+/// It mirrors the state stream, and against a real robot that is all it does. The
+/// simulator is the exception it now carries a joystick for: there the model *is*
+/// the robot, so driving it here is driving the thing itself rather than nudging
+/// a picture that the camera would then disagree with. `ViewportContent` is what
+/// decides which of the two this is; see `ViewportModel.offersSceneTeleop`.
 struct SceneViewport: View {
     let model: RobotSceneModel
+    /// `nil` hides the joystick outright rather than showing one that cannot move
+    /// anything — which is every source but the simulator.
+    var makeTeleop: TeleopFactory?
+    /// Travels beside `makeTeleop` and is `nil` in the same places.
+    var standDown: TeleopStandDown?
+
+    @State private var driver: TeleopDriver
+    @Environment(\.reachyPreviewMode) private var previewMode
+
+    init(
+        model: RobotSceneModel,
+        makeTeleop: TeleopFactory? = nil,
+        standDown: TeleopStandDown? = nil,
+        driver: TeleopDriver = TeleopDriver()
+    ) {
+        self.model = model
+        self.makeTeleop = makeTeleop
+        self.standDown = standDown
+        _driver = State(initialValue: driver)
+    }
 
     var body: some View {
         RobotSceneView(model: model)
             .overlay(alignment: .center) { status }
+            .overlay(alignment: .bottomTrailing) { teleopControls }
+            .onAppear { connectTeleop() }
+            .onDisappear { driver.stop() }
+    }
+
+    /// Gated on `.ready` for the reason the camera gates on `.streaming`: until the
+    /// meshes are down there is no robot on screen to aim at, and the pad would sit
+    /// over a progress bar.
+    ///
+    /// The pad claims its own circle with `.contentShape`, so the orbit drag that
+    /// `RobotSceneView` reads still works everywhere outside it.
+    @ViewBuilder
+    private var teleopControls: some View {
+        if model.phase == .ready, makeTeleop != nil {
+            TeleopPadCluster(driver: driver, standDown: standDown)
+        }
+    }
+
+    private func connectTeleop() {
+        guard !previewMode, let makeTeleop else { return }
+        try? driver.start(makeTeleop)
     }
 
     @ViewBuilder

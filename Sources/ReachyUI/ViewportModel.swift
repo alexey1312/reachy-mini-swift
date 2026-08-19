@@ -99,6 +99,21 @@ final class ViewportModel {
         }
     }
 
+    /// Whether the joystick belongs over the 3D model as well as over the camera.
+    ///
+    /// Only the simulator, and the reason is what the model *is* there: the
+    /// simulator is its own robot, so the scene is the thing being driven rather
+    /// than a picture of it. A LAN robot's scene mirrors the state stream, and a
+    /// pad over it would move a model while the camera — the view a person checks
+    /// the robot against — sits behind another segment. That one keeps its
+    /// joystick over the video, where the two agree.
+    var offersSceneTeleop: Bool {
+        switch source {
+        case .simulated: true
+        case .lan, .remote, nil: false
+        }
+    }
+
     /// Why there is no 3D model, where there is a reason rather than a wait.
     var sceneUnavailableReason: String? {
         guard case .remote = source else { return nil }
