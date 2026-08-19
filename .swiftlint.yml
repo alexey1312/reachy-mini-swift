@@ -52,13 +52,3 @@ custom_rules:
     excluded: ".*/ReachyJSON/JSONCodec\\.swift"
     message: "Use JSONCodec.daemon / .web / .stored — see docs/adr/0004-one-json-codec.md"
     severity: error
-  availability_in_design_system:
-    name: "Availability fork outside ReachyDesign"
-    # No match_kinds on purpose: `#available` is not reliably classified, and a rule
-    # that silently never fires is worse than one that over-reports into a comment.
-    # It is the same trade Scripts/check-catalogue.py documents.
-    regex: '#available'
-    included: ".*/(Sources|Apps)/.*\\.swift"
-    excluded: ".*/ReachyDesign/.*"
-    message: "Wrap the iOS 26 / macOS 26 chrome in ReachyDesign — see AGENTS.md rule 10"
-    severity: error

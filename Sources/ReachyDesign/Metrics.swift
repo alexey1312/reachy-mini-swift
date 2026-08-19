@@ -9,9 +9,6 @@ public enum Metrics {
     /// Telegram's `minimizedNavigationHeight` — the running-app strip.
     public static let dockStrip: CGFloat = 56
     public static let joystickKnob: CGFloat = 56
-    /// The pad the knob travels in — over the camera and, in the simulator,
-    /// over the 3D model. Fixed by the thumb rather than by what is under it.
-    public static let joystickPad: CGFloat = 140
     /// A store row's artwork, and the smaller tile the dock and the widget draw.
     public static let artwork: CGFloat = 52
     public static let artworkCompact: CGFloat = 30

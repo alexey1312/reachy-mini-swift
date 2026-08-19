@@ -24,7 +24,7 @@ struct OnboardingPINStep: View {
         ) {
             TextField(.reachy("Code"), text: Binding(get: { model.pinInput }, set: { model.pinInput = $0 }))
                 .textFieldStyle(.roundedBorder)
-                .font(Typography.code)
+                .font(.title3.monospaced())
                 .autocorrectionDisabled()
                 .focused($focused)
             #if os(iOS)

@@ -17,7 +17,7 @@ struct AppIdentityHeader: View {
             AppArtworkTile(app: app, size: artworkSize)
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(app.title)
-                    .font(Typography.identityTitle)
+                    .font(.title3.weight(.semibold))
                 if let author = app.author {
                     Text(author)
                         .font(Typography.subtitle)

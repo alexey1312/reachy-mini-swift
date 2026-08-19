@@ -15,7 +15,7 @@ struct AsleepBanner: View {
                     .foregroundStyle(Tone.warning.style)
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text(title)
-                        .font(Typography.bannerTitle)
+                        .font(Typography.detail.weight(.medium))
                     Text(detail)
                         .font(Typography.status)
                         .foregroundStyle(.secondary)

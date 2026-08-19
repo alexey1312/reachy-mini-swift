@@ -47,18 +47,13 @@ enum DesignGallery {
 
     static let typography: [(name: String, font: Font)] = [
         ("screenTitle", Typography.screenTitle),
-        ("stepTitle", Typography.stepTitle),
         ("rowTitle", Typography.rowTitle),
         ("rowTitleCompact", Typography.rowTitleCompact),
         ("tileTitle", Typography.tileTitle),
-        ("identityTitle", Typography.identityTitle),
         ("subtitle", Typography.subtitle),
-        ("noticeTitle", Typography.noticeTitle),
-        ("bannerTitle", Typography.bannerTitle),
         ("detail", Typography.detail),
         ("status", Typography.status),
         ("statusCompact", Typography.statusCompact),
-        ("code", Typography.code),
         ("console", Typography.console),
         ("consoleLine", Typography.consoleLine),
         ("consoleLineCompact", Typography.consoleLineCompact),

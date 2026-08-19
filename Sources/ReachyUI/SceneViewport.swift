@@ -17,27 +17,10 @@ struct SceneViewport: View {
     /// Travels beside `makeTeleop` and is `nil` in the same places.
     var standDown: TeleopStandDown?
 
-    @State private var driver: TeleopDriver
-    @Environment(\.reachyPreviewMode) private var previewMode
-
-    init(
-        model: RobotSceneModel,
-        makeTeleop: TeleopFactory? = nil,
-        standDown: TeleopStandDown? = nil,
-        driver: TeleopDriver = TeleopDriver()
-    ) {
-        self.model = model
-        self.makeTeleop = makeTeleop
-        self.standDown = standDown
-        _driver = State(initialValue: driver)
-    }
-
     var body: some View {
         RobotSceneView(model: model)
             .overlay(alignment: .center) { status }
             .overlay(alignment: .bottomTrailing) { teleopControls }
-            .onAppear { connectTeleop() }
-            .onDisappear { driver.stop() }
     }
 
     /// Gated on `.ready` for the reason the camera gates on `.streaming`: until the
@@ -48,14 +31,13 @@ struct SceneViewport: View {
     /// `RobotSceneView` reads still works everywhere outside it.
     @ViewBuilder
     private var teleopControls: some View {
-        if model.phase == .ready, makeTeleop != nil {
-            TeleopPadCluster(driver: driver, standDown: standDown)
+        if let makeTeleop {
+            TeleopPadCluster(
+                isVisible: model.phase == .ready,
+                makeTeleop: makeTeleop,
+                standDown: standDown
+            )
         }
-    }
-
-    private func connectTeleop() {
-        guard !previewMode, let makeTeleop else { return }
-        try? driver.start(makeTeleop)
     }
 
     @ViewBuilder

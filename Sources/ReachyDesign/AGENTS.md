@@ -140,8 +140,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   or launch flashes another colour; `ReachyThemeTests.accentColorMatchesFallback` parses the hand-edited JSON the
   same way `catalogueMatchesConstants` parses the generated one, so a drift between the two is now a test failure
   rather than a launch flash nobody notices until a device shows it.
-- **A call site names a role, never a material, a glass or an OS version.** `.reachySurface(.chrome, in: .capsule)`,
-  not `.background(.regularMaterial, in: Capsule())`. The availability fork lives in one file.
+- **Shared surfaces name a role; one-off native values stay at their caller.** Use
+  `.reachySurface(.chrome, in: .capsule)` instead of repeating a material recipe. A semantic `Font` or platform API
+  used once needs no facade; promote it when a second independent consumer appears.
 - **A backdrop under a bar is not automatically a `.scrim`, and the difference is whether anything passes under it.**
   A scrim carries glass, glass renders a light surface whatever is behind it, and a footer at the bottom of a sheet
   where the step fits on one screen is backing nothing at all — so it reads as a grey strip stuck to the bottom of the
@@ -387,37 +388,6 @@ not an interpolation at all: `OnboardingScanStep` **concatenates** two catalogue
 `"its own reachy-mini-ap network…"`) to dodge a line-length warning. Both halves are translated so their join is
 grammatical in all four languages, and the trailing space on the first half is load-bearing. Prefer merging them into
 one key over adding a fifth of these.
-
-## The conformance sweep, and what it found
-
-Every call site under `Sources/ReachyUI`, `Sources/ReachyWidgetUI` and `Apps/` now names a role. The sweep moved
-**160 sites across 49 files and exactly one reference image** — `Design — typography`, which gained the ten rows
-below. That number is the point: every mapping was value-identical (`Typography.status` _is_ `.caption`,
-`Tone.danger.style` _is_ `AnyShapeStyle(.red)`), so a second mover would have been a bug in the sweep rather than a
-design change. Read the next one the same way.
-
-What the sweep actually turned up, none of which was indiscipline:
-
-- **The token set was short before the call sites were wrong.** Eight roles did not exist — `stepTitle`,
-  `identityTitle`, `subtitle`, `noticeTitle`, `bannerTitle`, `code`, `consoleLineCompact`, `footer` — so ~15 sites
-  were reaching for a literal because there was nothing to reach for. Add the role; do not annotate the literal.
-  A new role is one constant plus one row in `DesignGallery.typography`, and the gallery is not exhaustive of its
-  own accord: `rowTitleCompact` and `tileTitle` had been absent from it since they were written.
-- **`subtitle` and `rowTitleCompact` are both `.subheadline`, and that is not a duplicate to collapse.** Two
-  meanings sharing one value today is what lets either move alone tomorrow; a token system that deduplicated by
-  value would be a palette with extra steps.
-- **The two `#available` leaks were chrome, not glass** — `ToolbarSpacer` and `searchToolbarBehavior` — which is
-  why the root rule now says chrome and why `.swiftlint.yml` checks it. `ReachyToolbarSpacer` is the shape a
-  `ToolbarContent` facade takes: `ToolbarContentBuilder` accepts an `if #available` with **no `else`**, so it
-  contributes nothing below the floor rather than needing a fallback nobody wants.
-- **`Tone` was bypassed on one branch of three ternaries** (`isBusy ? Tone.quiet.style : AnyShapeStyle(.tint)`).
-  Value-identical, so it rendered correctly and no reference could catch it. Reading the line is the only check.
-- **A token earns itself at the second call site.** `Metrics.joystickPad` did not exist while the pad hung over the
-  camera alone; it was a literal `140` in one place, which is correct. It became a token the moment the simulator's
-  scene mounted the same cluster.
-- **`Space` rule 2 held under pressure and is worth restating**: 4/8/12/16 adopt, the odd values do not. The sweep
-  left 1, 3, 5, 6, 10, 14 and 20 alone. Rounding `10 → 12` would have moved reference images with no design reason,
-  which is the whole failure mode a rhythm sweep invites.
 
 ## Applying a role — what happened
 

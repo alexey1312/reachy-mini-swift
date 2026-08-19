@@ -103,7 +103,7 @@ struct AppStoreScreen: View {
         // No running-app inset here any more: the dock is mounted on the root
         // `TabView`, below the tab bar, and is on screen for every tab. A second
         // copy on this one would be the same control twice.
-        .reachyMinimizedSearchToolbar()
+        .minimizedSearchToolbar()
         .toolbar {
             filterMenu
             Button {
@@ -221,7 +221,7 @@ struct AppStoreScreen: View {
         Label {
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(.reachy("In use remotely"))
-                    .font(Typography.noticeTitle)
+                    .font(Typography.subtitle.weight(.semibold))
                 Text(
                     model.lockHolder
                         .map { String(localized: .reachy("\($0) is driving this robot over Hugging Face.")) }
@@ -234,5 +234,20 @@ struct AppStoreScreen: View {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .foregroundStyle(.tint)
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func minimizedSearchToolbar() -> some View {
+        #if os(iOS)
+            if #available(iOS 26.0, *) {
+                searchToolbarBehavior(.minimize)
+            } else {
+                self
+            }
+        #else
+            self
+        #endif
     }
 }

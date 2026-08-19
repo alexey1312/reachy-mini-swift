@@ -19,27 +19,10 @@ struct CameraViewport: View {
     /// and the floating window both want.
     var standDown: TeleopStandDown?
 
-    @State private var driver: TeleopDriver
-    @Environment(\.reachyPreviewMode) private var previewMode
-
-    init(
-        session: CameraSession,
-        makeTeleop: TeleopFactory? = nil,
-        standDown: TeleopStandDown? = nil,
-        driver: TeleopDriver = TeleopDriver()
-    ) {
-        self.session = session
-        self.makeTeleop = makeTeleop
-        self.standDown = standDown
-        _driver = State(initialValue: driver)
-    }
-
     var body: some View {
         CameraVideoView(track: session.videoTrack)
             .overlay(alignment: .center) { status }
             .overlay(alignment: .bottomTrailing) { teleopControls }
-            .onAppear { connectTeleop() }
-            .onDisappear { driver.stop() }
     }
 
     @ViewBuilder
@@ -70,14 +53,13 @@ struct CameraViewport: View {
     /// no teleop at all, so the joystick is absent rather than offered inert.
     @ViewBuilder
     private var teleopControls: some View {
-        if session.phase == .streaming, makeTeleop != nil {
-            TeleopPadCluster(driver: driver, standDown: standDown)
+        if let makeTeleop {
+            TeleopPadCluster(
+                isVisible: session.phase == .streaming,
+                makeTeleop: makeTeleop,
+                standDown: standDown
+            )
         }
-    }
-
-    private func connectTeleop() {
-        guard !previewMode, let makeTeleop else { return }
-        try? driver.start(makeTeleop)
     }
 }
 

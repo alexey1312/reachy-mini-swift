@@ -84,23 +84,45 @@ struct ViewportContent: View {
 /// different cause; that one was the renderer's intrinsic size, and it is fixed.
 /// Measure the rectangle the picture is handed before reaching for it.
 struct TeleopPadCluster: View {
-    let driver: TeleopDriver
+    let isVisible: Bool
+    let makeTeleop: TeleopFactory
     /// Called on the pad's first deflection, so the robot's own head behaviours let
     /// go before this one starts driving. `nil` leaves them alone, which is what a
     /// preview and the floating window both want.
     var standDown: TeleopStandDown?
 
+    @State private var driver: TeleopDriver
+    @Environment(\.reachyPreviewMode) private var previewMode
+
+    init(
+        isVisible: Bool,
+        makeTeleop: @escaping TeleopFactory,
+        standDown: TeleopStandDown? = nil,
+        driver: TeleopDriver = TeleopDriver()
+    ) {
+        self.isVisible = isVisible
+        self.makeTeleop = makeTeleop
+        self.standDown = standDown
+        _driver = State(initialValue: driver)
+    }
+
     var body: some View {
-        HStack(spacing: Space.md) {
-            recenterButton
-            JoystickPad(mapping: driver.mapping) { deflection in
-                driver.apply(deflection)
-                standDown?()
+        ZStack {
+            if isVisible {
+                HStack(spacing: Space.md) {
+                    recenterButton
+                    JoystickPad(mapping: driver.mapping) { deflection in
+                        driver.apply(deflection)
+                        standDown?()
+                    }
+                    .frame(width: 140, height: 140)
+                }
+                .padding()
+                .animation(Motion.stateChange, value: driver.isBodyTurned)
             }
-            .frame(width: Metrics.joystickPad, height: Metrics.joystickPad)
         }
-        .padding()
-        .animation(Motion.stateChange, value: driver.isBodyTurned)
+        .onAppear { connectTeleop() }
+        .onDisappear { driver.stop() }
     }
 
     /// Offered only once the body is actually turned — at neutral there is nothing
@@ -124,6 +146,11 @@ struct TeleopPadCluster: View {
             .buttonStyle(ViewportControlButtonStyle())
             .transition(.scale.combined(with: .opacity))
         }
+    }
+
+    private func connectTeleop() {
+        guard !previewMode else { return }
+        try? driver.start(makeTeleop)
     }
 }
 

@@ -70,7 +70,7 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
                 Text(title)
-                    .font(Typography.stepTitle)
+                    .font(Typography.screenTitle.bold())
                 Text(message)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

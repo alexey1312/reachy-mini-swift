@@ -406,20 +406,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   every phase except `.streaming`, which is the one phase `status` is empty in). `LiveTab` still declines
   `ignoresSafeArea`, and the reason survived the change — an overlay is bounded by what it is applied to, so a
   full-bleed viewport would put the pad under the tab bar.
-  **That cluster is `TeleopPadCluster` now and two renderers mount it**, which is what makes the arithmetic above
-  worth keeping in one place rather than restating per host. The hosts keep their own gate — the camera's is
-  `.streaming`, the scene's is `.ready` — because only a host knows whether there is yet a picture to aim at.
-- **A parameter that reaches one branch of a `switch` and not the other is invisible, and this is where it hid.**
-  `ViewportContent` took `makeTeleop`/`standDown` and forwarded them into `.camera` alone, so the simulator — whose
-  only content _is_ the scene — showed a 3D robot with no way to drive it, and the joystick was a tab away on
-  `ControllerScreen`, covering the model the user was trying to watch. Nothing was broken and nothing failed: the
-  parameter was declared, passed and used, just not on every path. The scene branch is fed now, gated on
-  `ViewportModel.offersSceneTeleop`.
-  **The gate belongs in `ViewportContent` and not at the call sites.** One factory feeds both branches, so a
-  `LiveTab` that withheld it from a LAN robot would take that robot's _camera_ joystick away along with the scene's.
-  **And it is the simulator alone on purpose**: there the model is the robot, so driving it drives the thing itself,
-  while a LAN robot's scene mirrors the state stream and a pad over it would move a picture the camera — one segment
-  away — would not agree with.
+  `TeleopPadCluster` owns the shared driver lifecycle; camera and scene provide only their visibility gate and
+  factory. `ViewportContent` forwards the factory to the scene only for simulated sources, where the model is the
+  robot being driven rather than a mirror of a LAN robot.
 - **Every `.sheet` in this target ends its content with `reachySheet()`, and a new one owes the same line.** On macOS
   a sheet is laid out at its content's ideal size, and every sheet here is a `Form` or a `ScrollView` under a
   `NavigationStack` — none of which has an ideal width — so AppKit picks something cramped and clips. There are nine
@@ -846,17 +835,8 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   (`SettingsPreviews`, `MovesScreenPreviews`) and capture _placement_ from a state that needs no `.task` at all
   (`Root — relay moves tab`, which renders `MovesUnavailableView`). A blank or half-drawn reference is worse than a
   missing one: it reads as coverage and passes any change.
-- **`SceneViewport` in `.ready` was on the not-covered list and is half off it now.** The scene itself still renders
-  nothing meaningful headless — a bare `RealityView` — so the phase is captured only where it grows chrome of its
-  own, which is the simulator's joystick (`Scene — simulator joystick`). That is the same trade
-  `CameraViewport.streaming` makes below: the picture is blank and the controls over it are the point. Against every
-  other source `.ready` draws no overlay and stays uncaptured, and its overlay phases are what get snapshotted.
-- **The gate that decides which of those two it is has no reference, on purpose.** `ViewportModel.offersSceneTeleop`
-  is what withholds the factory from a LAN robot's scene, and an image cannot tell "the gate passed" from "the
-  factory was handed straight in" — both render the same pad over the same blank scene. It is covered by
-  `ViewportModelTests.onlyTheSimulatorDrivesItsScene` instead, which was checked by mutating the branch to admit
-  `.lan` and watching it go red. A preview there would cost `ReachySimulator` in the snapshot target's
-  `testable_imports` and certify nothing the unit test does not.
+- **`SceneViewport.ready` is captured only with the simulator joystick.** RealityKit itself is blank headless; the
+  image covers the controls, while `ViewportModelTests.onlyTheSimulatorDrivesItsScene` covers the source gate.
 - **Not covered either, and measured rather than assumed: a `confirmationDialog`.** It presents in a context of its
   own that captures as nothing. Recorded twice for `RobotScreen`'s power-off dialog — once with a running app and
   once without, which change the sentence in it — the two references came out **byte-identical**, and identical to

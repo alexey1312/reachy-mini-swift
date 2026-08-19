@@ -151,7 +151,9 @@ struct LogConsoleView: View {
                 model.paused.toggle()
             }
         }
-        ReachyToolbarSpacer()
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ToolbarSpacer(.fixed)
+        }
         ToolbarItemGroup {
             ShareLink(item: model.export(address: source), preview: SharePreview(.reachy("Log"))) {
                 Label(.reachy("Export"), systemImage: "square.and.arrow.up")

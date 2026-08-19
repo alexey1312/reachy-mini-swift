@@ -34,12 +34,15 @@ import SwiftUI
 
 #Preview("Camera — body turned") {
     PreviewScene.pane {
-        CameraViewport(
-            session: .preview(.streaming),
-            makeTeleop: PreviewScene.teleopFactory,
-            // `yaw` follows `bodyYaw`: head yaw is world-frame, so a turned body with
-            // `yaw: 0` is a head left staring at the room rather than down its own torso.
-            driver: TeleopDriver(target: .init(yaw: 1.2, bodyYaw: 1.2))
-        )
+        CameraViewport(session: .preview(.streaming))
+            .overlay(alignment: .bottomTrailing) {
+                TeleopPadCluster(
+                    isVisible: true,
+                    makeTeleop: PreviewScene.teleopFactory,
+                    // `yaw` follows `bodyYaw`: head yaw is world-frame, so a turned body with
+                    // `yaw: 0` is a head left staring at the room rather than down its own torso.
+                    driver: TeleopDriver(target: .init(yaw: 1.2, bodyYaw: 1.2))
+                )
+            }
     }
 }
