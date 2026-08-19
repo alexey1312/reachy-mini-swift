@@ -502,13 +502,20 @@ environment keys are written out by hand — swiftformat's `environmentEntry` ru
 
     **The rule was unenforced for five releases and 160 sites accumulated under it** — 86 raw fonts, 49 hardcoded
     tones, 25 off-grid rhythm values. Run these after any visual work; every line that comes back must be one with a
-    reason above it:
+    reason above it. **Name the directories** — a bare `Apps` walks into `Apps/DerivedData` and returns hundreds of
+    hits from vendored checkouts, which is the same trap the lint task spells out its path list to avoid:
 
     ```bash
-    grep -rn --include='*.swift' -B1 '\.font(\.' Sources Apps            # raw fonts
-    grep -rn --include='*.swift' -B1 -E '\.(foregroundStyle|tint|fill|background)\(\s*\.(red|orange|green|white|black)' Sources Apps
-    grep -rn --include='*.swift' -E '\.padding\((\.[a-z]+, )?[0-9]+\)|spacing: [0-9]+' Sources Apps
+    # `set --` rather than a variable: zsh does not word-split an unquoted `$UI`,
+    # so the paths would arrive as one directory name and every grep would miss.
+    set -- Sources/ReachyUI Sources/ReachyWidgetUI Sources/ReachyDesign Apps/ReachyMini Apps/ReachyWidget
+    grep -rn --include='*.swift' -B1 '\.font(\.' "$@"            # raw fonts
+    grep -rn --include='*.swift' -B1 -E '\.(foregroundStyle|tint|fill|background)\(\s*\.(red|orange|green|white|black)' "$@"
+    grep -rn --include='*.swift' -E '\.padding\((\.[a-z]+, )?[0-9]+\)|spacing: [0-9]+' "$@"
     ```
+
+    As of the first sweep those return 8 fonts and 4 tones, every one of them carrying its reason, plus a handful of
+    doc comments naming the modifier. A line without a comment above it is the thing to fix.
 
     **A `Tone` bypassed on one branch of a ternary is the tell to look for**, because it type-checks and reads fine:
     three sites spelled `isBusy ? Tone.quiet.style : AnyShapeStyle(.tint)`, naming the role on one side and reaching
