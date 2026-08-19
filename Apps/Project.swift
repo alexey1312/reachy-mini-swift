@@ -247,6 +247,9 @@ let project = Project(
                 "CODE_SIGN_ENTITLEMENTS": "ReachyWidget/Entitlements/ReachyWidget-iOS.entitlements",
                 "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]":
                     "ReachyWidget/Entitlements/ReachyWidget-macOS.entitlements",
+                // The notary reads every executable in the bundle, not only the app's,
+                // so an extension needs this as much as its host — see the app target.
+                "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
             ])
         ),
         // Smoke tests: the one thing snapshots cannot see is the app binary itself
