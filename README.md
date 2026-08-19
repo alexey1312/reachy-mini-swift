@@ -55,9 +55,10 @@ developer side of the same project.
   a brokered WebRTC data channel, the daemon's port is never exposed.
 - **Files** — an SFTP browser for the robot's filesystem.
 - **At home on Apple platforms** — status and apps widgets on the Home Screen, and the status one on the Lock Screen
-  and in StandBy as well; wake and sleep from the widget itself; Control Center controls for power, for a move or an
-  app you pick yourself, for a sound, and for stopping whatever is running, each reaching the Lock Screen and the
-  Action button too; Siri / App Intents (wake, sleep, power off, launch any installed app, play a recorded move, and
+  and in StandBy as well; the same two reach a Mac, where the robot also sits in the menu bar: awake or asleep, one
+  button to change it, and the installed apps underneath; wake and sleep from the widget itself; Control Center
+  controls on iPhone and iPad for power, for a move or an app you pick yourself, for a sound, and for stopping
+  whatever is running, each reaching the Lock Screen and the Action button too; Siri / App Intents (wake, sleep, power off, launch any installed app, play a recorded move, and
   ask whether the robot is awake or what is running on it), each of which can name the robot it addresses, so two
   Reachys on one desk are told apart; the app's destinations in Spotlight; Home Screen quick actions; German,
   Spanish, French and Russian beside English.
@@ -228,7 +229,7 @@ and network resilience; joystick teleop; recorded moves; the daemon log console;
 the WebRTC camera with two-way audio; the 3D viewer; the State screen; the robot app store over the daemon's job
 socket; Hugging Face sign-in (public OAuth client with PKCE, token in the Keychain), private Spaces and remote access
 through the relay; the SFTP file browser; Bluetooth onboarding and recovery; Home Screen, Lock Screen and StandBy
-widgets, Control Center controls, Siri shortcuts, Spotlight and quick actions.
+widgets, the Mac's menu bar item, Control Center controls, Siri shortcuts, Spotlight and quick actions.
 
 Open, and stated honestly:
 
