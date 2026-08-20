@@ -123,6 +123,23 @@ number the commit count does not reach.
 `REACHY_BUILD_NUMBER=<n>` overrides the whole computation, for the recovery case
 where neither the history nor the floor is what you want.
 
+**Xcode Cloud's iOS numbers run ahead of this one, and that is the one thing to
+check before an iOS release.** It archives every push to `main` at the commit
+count _plus_ `CI_BUILD_NUMBER`, so App Store Connect's highest iOS build is
+normally higher than the commit count `release:ios` would compute — and the
+archive is compiled, signed and sent before ITMS-90061 says so. Read the number
+first and pass it, or raise `BUILD_NUMBER_FLOOR` to it:
+
+```bash
+mise run asc -- builds list --app 6799644194
+REACHY_BUILD_NUMBER=<last + 1> mise run release:ios
+```
+
+Most iOS releases do not need `release:ios` at all — the tagged commit is on
+`main`, so Xcode Cloud has already built and uploaded it, and what is left is
+submitting that build. `release:ios` stays the path for anything the cloud did
+not build.
+
 ### When `-exportArchive` fails
 
 Two failures land on the same step and have nothing to do with each other.
@@ -367,13 +384,52 @@ cannot manage provisioning profiles.
 The CLI also ships 23 agent skills (`asc install-skills`, pinned to a reviewed
 commit) covering TestFlight, metadata, submissions and signing.
 
-## Xcode Cloud (optional, continuous TestFlight)
+## Xcode Cloud (continuous TestFlight, iOS only)
 
 `Apps/ci_scripts/ci_post_clone.sh` makes a generated project buildable on
 Xcode Cloud: it installs the pinned tools through the committed `bin/mise`
-bootstrap, generates the workspace, and stamps `CI_BUILD_NUMBER` in as the
-build number. Signing there is managed by Apple — no certificates leave the
-account — and TestFlight distribution is a post-action checkbox. The setup
-quirks (create the workflow from a local Xcode, start the build counter above
-the last local upload, Git LFS is unsupported so never build the snapshot
-scheme there) are commented at the top of the script.
+bootstrap and generates the workspace. Signing there is managed by Apple — no
+certificates leave the account — and TestFlight distribution is a post-action
+checkbox. The workflow itself lives in App Store Connect; the two scripts under
+`Apps/ci_scripts/` are the whole of what this repository can review.
+
+**It archives iOS and nothing else, and the script refuses a macOS action.**
+`release:macos` archives once and exports that archive twice — the notarized
+Developer ID zip _and_ the Mac App Store `.pkg`, which is the table above. Xcode
+Cloud can only ever produce the second of those, because the notary needs the
+App Store Connect key that deliberately never enters CI. So a macOS action there
+spends ~28 minutes minting a second copy of half a local release, from a second
+build-number counter. That is how build 24 failed: iOS archived green and macOS
+died at _Prepare Build for App Store Connect_.
+
+**The build number is the commit count plus `CI_BUILD_NUMBER`**, not
+`CI_BUILD_NUMBER` alone. Xcode Cloud's counter starts at 1 while local releases
+upload `git rev-list --count HEAD` (above), so on its own it archives underneath
+every build App Store Connect already holds for the version — rejected 28 minutes
+in, at the export, with nothing in the build pointing at the cause. The sum is
+above every local build by construction, ascending on both axes, and never
+_equal_ to the local number for the same commit, so there is no start-build-number
+to keep in step by hand any more. `build_number()` in `Scripts/release-env.sh`
+does the counting, which is also what deepens Xcode Cloud's shallow clone before
+counting it; `REACHY_BUILD_NUMBER` overrides the whole computation and can be set
+as an Xcode Cloud environment variable.
+
+**`TUIST_CACHE_ENABLED=false` is exported before generating**, because
+`Apps/Tuist.swift` reads it at generation time and defaults it to true. The Xcode
+compilation cache answers only through the LaunchAgent `tuist setup cache`
+starts, and Xcode Cloud has none — no tuist.dev session, and `bootstrap.sh` never
+runs there. Without the variable the generated project carries `COMPILATION_CACHE_*`
+with nothing behind them and every compile task waits out a CAS socket deadline.
+The tell in the log is `CAS error: deadlineExceeded(… No such file or directory
+(errno: 2))` beside `swift compiler caching requires explicit module build`.
+
+**`ci_post_xcodebuild.sh` runs `Scripts/check-appintents-metadata.sh` against the
+archive**, the same guard `release:ios` and `release:macos` run. It was the one
+artifact path without it, and it is the one that ships to a _public_ TestFlight —
+exactly where the 0.1.1 regression (green archive, no actions in the Shortcuts
+app) would land unseen.
+
+The remaining setup quirks — create the workflow from a local Xcode with the
+generated workspace open, and never add the snapshot scheme because Git LFS is
+unsupported there, so the references arrive as pointer stubs — are commented at
+the top of the script.

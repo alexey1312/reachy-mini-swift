@@ -89,9 +89,12 @@ final class RunningAppModel {
     ///
     /// Everything about the conversation is written in
     /// `RunningAppModel+Conversation.swift` — this file is at SwiftLint's length
-    /// limit — so these are `internal(set)` rather than `private(set)`. Stored
-    /// properties cannot live in an extension, which is the whole of the reason.
-    internal(set) var conversationTurn: ConversationTurn?
+    /// limit — so these three keep a module-wide setter rather than a
+    /// `private(set)` one, which does not reach across files. Stored properties
+    /// cannot live in an extension, which is the whole of the reason. Spelling
+    /// that as `internal(set)` is what the compiler calls redundant: the setter
+    /// of an internal property already is.
+    var conversationTurn: ConversationTurn?
     /// What this dock last asked the robot's microphone to be.
     ///
     /// Remembered rather than read: `conversation.mic` is a command, and
@@ -99,14 +102,14 @@ final class RunningAppModel {
     /// So this is right until something other than this dock mutes the app — which
     /// nothing else in this app does, and only the app's own web UI could.
     ///
-    /// `internal(set)` rather than `private(set)`: the two controls live in
+    /// Deliberately not `private(set)`: the two controls live in
     /// `RunningAppModel+Conversation.swift`, because this file is at SwiftLint's
     /// length limit, and `private(set)` does not reach across files.
-    internal(set) var isMicrophoneMuted = false
+    var isMicrophoneMuted = false
     /// Cleared for good once the app answers `-32601`. A build without these methods
     /// cannot grow them mid-session, and a control that always fails is worse than
     /// no control.
-    internal(set) var offersConversationControls = true
+    var offersConversationControls = true
 
     private let configuration: Configuration
     let conversationTurns: ConversationTurns

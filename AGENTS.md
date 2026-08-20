@@ -196,6 +196,24 @@ else outright. **The step order inside that action is load-bearing**: `Apps/Tuis
 _at generation_, so a cache service started after `tuist generate` is a service the project was never told about —
 the socket comes up, the step reports success, and nothing is cached. Generation stays last for the same reason the
 SourcePackages restore comes first.
+**GitHub Actions is not the only CI, and the other one is not in this repository.** An Xcode Cloud workflow named
+`Hey Reachy | TestFlight (Public)` archives `main` and uploads it; its definition lives in App Store Connect and only
+`Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here. It archives **iOS only**, and
+`ci_post_clone.sh` exits non-zero on `CI_PRODUCT_PLATFORM = macOS` to keep it that way: `release:macos` archives once
+and exports that archive twice, and the half Xcode Cloud can produce (the App Store `.pkg`) is the half the local run
+already made — the notarized Developer ID zip needs a key that never enters CI, so a macOS action there is 28 minutes
+spent duplicating half a release. Three things had to be fixed there and each reads as something else. The build
+number is now the commit count **plus** `CI_BUILD_NUMBER`, because Xcode Cloud's counter starts at 1 while local
+releases upload `git rev-list --count HEAD`: on its own it archives underneath every build App Store Connect already
+holds and is rejected at _Prepare Build for App Store Connect_, 28 minutes in, over a number that lives on the server
+where neither the build nor the export can see it. The stamping `sed` now verifies its own substitution, because it
+rewrites a literal `tuist` happens to emit and a no-op ships `CFBundleVersion 1` silently. And `TUIST_CACHE_ENABLED`
+is exported `false` **before** `mise run project`, for the reason the step order above gives — with
+`COMPILATION_CACHE_*` baked in and no cache service anywhere, every compile task waits out a CAS socket deadline; the
+tell is `CAS error: deadlineExceeded(… No such file or directory (errno: 2))` next to `swift compiler caching
+requires explicit module build`, and an archive that takes twice as long as it should. `ci_post_xcodebuild.sh` runs
+`Scripts/check-appintents-metadata.sh` against `$CI_ARCHIVE_PATH`: every other artifact path already did, and this is
+the one that ships to a public TestFlight.
 `test:filter` matches type names (`RobotSessionAudioTests`), not `@Suite` display names.
 `Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
 queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
