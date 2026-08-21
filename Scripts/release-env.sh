@@ -105,6 +105,13 @@ EOF
 # The floor is the highest build App Store Connect has accepted. It needs raising
 # only if a build is ever uploaded with a number the commit count does not reach —
 # `mise run asc -- builds list --app 6799644194` is what says otherwise.
+#
+# **Xcode Cloud is exactly that case, for iOS.** It archives every push to main and
+# stamps the commit count *plus* CI_BUILD_NUMBER (Apps/ci_scripts/ci_post_clone.sh),
+# so its numbers run ahead of this one and a plain `release:ios` from a later commit
+# can still land underneath them. Raise the floor to the last iOS build before
+# releasing iOS by hand, or pass REACHY_BUILD_NUMBER — the alternative is finding out
+# from ITMS-90061 after the archive has been compiled, signed and sent.
 BUILD_NUMBER_FLOOR=150
 
 # Echoes the CFBundleVersion to archive with. REACHY_BUILD_NUMBER overrides the
