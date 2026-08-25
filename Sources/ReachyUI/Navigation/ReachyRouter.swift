@@ -12,7 +12,9 @@ import SwiftUI
 @MainActor
 @Observable
 final class ReachyRouter {
-    enum Tab: Hashable {
+    /// The raw values are the Handoff wire spelling (`ReachyHandoff`), so they may not
+    /// be renamed without breaking a continuation from an older build.
+    enum Tab: String, Hashable, CaseIterable {
         case robot
         case live
         case moves
