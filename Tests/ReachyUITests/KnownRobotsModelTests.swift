@@ -58,4 +58,24 @@ struct KnownRobotsModelTests {
         #expect(model.entries.isEmpty)
         #expect(store.all.isEmpty)
     }
+
+    @Test("a robot written to the store while polling appears without a restart")
+    func pollPicksUpAMirroredWrite() async throws {
+        // The iCloud mirror writes into the store behind the model's back; the poll's
+        // re-read is what surfaces it, so this drives the store, not the model.
+        let store = try makeStore()
+        let model = KnownRobotsModel(store: store, interval: .milliseconds(20)) { _ in true }
+        model.start()
+
+        store.remember(
+            identity: RobotIdentity(hardwareID: "hw-2", name: "synced"),
+            address: RobotAddress(host: "10.0.0.10"),
+            at: Date(timeIntervalSince1970: 200)
+        )
+
+        await waitUntil("the synced robot appears") {
+            model.entries.contains { $0.robot.key == "hw-2" }
+        }
+        model.stop()
+    }
 }

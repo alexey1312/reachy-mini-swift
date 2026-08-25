@@ -51,7 +51,7 @@ struct RootLifecycle: ViewModifier {
                 await ReachyEntityIndex.indexIfNeeded(robotID: connectedRobotID)
             }
             .task(id: scenePhase) {
-                await noticeEndedMove()
+                await sceneActivated()
             }
             // `initial: true` because a cold launch fills the inbox in
             // `scene(_:willConnectTo:)`, before this body has ever run.
@@ -110,8 +110,12 @@ struct RootLifecycle: ViewModifier {
     ///
     /// A body of its own only because the guard costs `body` its last point of
     /// cyclomatic budget; `runQuickAction` is here for the same reason.
-    private func noticeEndedMove() async {
+    ///
+    /// The iCloud nudge shares the trigger: KVS syncs on its own schedule, and scene
+    /// activation is the one moment the app can ask it to hurry.
+    private func sceneActivated() async {
         guard !previewMode, scenePhase == .active else { return }
+        CloudSettingsMirror.shared?.synchronize()
         await session.refreshMoveActivity()
     }
 

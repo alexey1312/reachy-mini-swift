@@ -24,7 +24,12 @@ generated notes. Credentials never enter the repository or CI.
    (`com.alexey1312.ReachyMini`, `.Widget`), but the
    `group.com.alexey1312.ReachyMini` capability must be added by hand in
    Xcode's Signing & Capabilities, once per App ID (app and widget separately,
-   iOS and macOS separately). `xcodebuild` cannot create it.
+   iOS and macOS separately). `xcodebuild` cannot create it. The iCloud
+   key-value storage capability (iCloud → Key-value storage) is the same kind of
+   step: add it by hand for the app's App IDs only (iOS and macOS separately,
+   never the widget). Without it `NSUbiquitousKeyValueStore` quietly does
+   nothing, so robots and the theme stop following the user between devices and
+   no error says why.
 
 3. **App Store Connect app record** — My Apps → New App:
    - Name: **Hey Reachy**; if taken, fall back to “Hey Reachy — robot remote”.
