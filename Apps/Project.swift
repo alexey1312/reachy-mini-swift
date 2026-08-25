@@ -142,6 +142,10 @@ let project = Project(
                 // line and settles the question. `Navigation/SpotlightIndex.swift`.
                 "NSUserActivityTypes": .array([
                     .string("com.apple.corespotlightitem"),
+                    // `ReachyHandoff.activityType` — the session Handoff between
+                    // devices. The pair can drift and no test can see it; the
+                    // symptom is a Handoff badge that never appears.
+                    .string("com.alexey1312.ReachyMini.session"),
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],

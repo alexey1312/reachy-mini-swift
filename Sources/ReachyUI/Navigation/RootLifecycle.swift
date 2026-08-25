@@ -94,6 +94,15 @@ struct RootLifecycle: ViewModifier {
                 guard let link = ReachySpotlightIndex.destination(for: activity) else { return }
                 follow(link)
             }
+            // Advertised only while a robot is connected — an activity pointing at nothing
+            // is Dock noise. SwiftUI re-runs the closure on tab and phase changes, so the
+            // advertisement tracks both without extra wiring.
+            .userActivity(ReachyHandoff.activityType, isActive: connectedRobotID != nil) { activity in
+                publishHandoff(into: activity)
+            }
+            .onContinueUserActivity(ReachyHandoff.activityType) { activity in
+                continueHandoff(activity)
+            }
             .widgetReload(session: session, isPreview: previewMode)
     }
 
@@ -117,6 +126,27 @@ struct RootLifecycle: ViewModifier {
         guard !previewMode, scenePhase == .active else { return }
         CloudSettingsMirror.shared?.synchronize()
         await session.refreshMoveActivity()
+    }
+
+    /// The receive rules live on `ReachyHandoff`. The router outlives the gate/shell
+    /// fork, so a tab set while the gate is up survives until the sweep connects. A body
+    /// of its own for the reason `sceneActivated` is one: `body` has no cyclomatic
+    /// budget left for the guard.
+    private func continueHandoff(_ activity: NSUserActivity) {
+        guard let payload = ReachyHandoff.payload(for: activity) else { return }
+        router.tab = payload.tab
+    }
+
+    /// The advertised activity: the selected tab, on the robot the shell is showing.
+    /// `.unreachable` still advertises — the shell is up, and the receiving device may
+    /// be the one that can reach the robot.
+    private func publishHandoff(into activity: NSUserActivity) {
+        switch session.phase {
+        case let .connected(identity), let .unreachable(identity):
+            ReachyHandoff.publish(tab: router.tab, identity: identity, into: activity)
+        case .idle, .connecting:
+            break
+        }
     }
 
     /// What makes the entity index re-check itself, in one `Equatable` value.
