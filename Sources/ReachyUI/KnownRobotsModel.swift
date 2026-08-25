@@ -51,6 +51,9 @@ final class KnownRobotsModel {
         guard pollTask == nil else { return }
         pollTask = Task { @MainActor in
             while !Task.isCancelled {
+                // The iCloud mirror has no callback into this model, so the poll re-reads
+                // the store — a robot synced from another device appears within one interval.
+                reload()
                 await probeAll()
                 try? await Task.sleep(for: interval)
             }

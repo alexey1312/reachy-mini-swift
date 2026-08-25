@@ -1,7 +1,9 @@
 import AppIntents
 import ReachyDesign
+import ReachyKit
 import ReachyUI
 import SwiftUI
+import WidgetKit
 
 @main
 struct ReachyMiniApp: App {
@@ -21,6 +23,24 @@ struct ReachyMiniApp: App {
         // from this app: an Xcode install registers the shortcuts itself, which is
         // how the gap stayed invisible on every development build.
         ReachyShortcuts.updateAppShortcutParameters()
+        // Skipped in the smoke run, off the same argument `reachyPreviewMode` below reads:
+        // a UI test must not pull the developer's iCloud state into its fixture.
+        if !ProcessInfo.processInfo.arguments.contains("--reachy-smoke") {
+            let mirror = CloudSettingsMirror(
+                defaults: KnownRobots.defaults,
+                cloud: NSUbiquitousKeyValueStore.default,
+                keys: [KnownRobotStore.knownRobotsKey, ThemeStore.key],
+                onDidApplyExternalChange: {
+                    // The widget reads the same suite in its own process; a theme or robot
+                    // that arrived from another device needs the same nudge the picker gives.
+                    #if !os(macOS)
+                        WidgetCenter.shared.reloadAllTimelines()
+                    #endif
+                }
+            )
+            mirror.start()
+            CloudSettingsMirror.shared = mirror
+        }
     }
 
     var body: some Scene {
