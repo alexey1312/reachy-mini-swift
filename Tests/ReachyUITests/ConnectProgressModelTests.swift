@@ -10,10 +10,12 @@ import Testing
 /// value alone passes either way, and the bug — a dwell that silently stopped
 /// holding — would sail through with nothing but `test_time` quietly shrunk.
 ///
-/// So spans are measured on a `ContinuousClock` and bounded an order of magnitude
-/// apart: tens of milliseconds against hundreds. A loaded runner cannot cross that.
-/// Each bound below was checked by mutating the branch it covers and watching the
-/// test go red before being trusted.
+/// So spans are measured on a `ContinuousClock`. A floor stays in milliseconds:
+/// load only stretches a span, so it cannot fall under its floor. A ceiling
+/// separates seconds from tens of seconds — the `expectTimeout` ratio — because a
+/// loaded 3-core CI runner stretched a 100 ms walk to 1.47 s, and hundreds of
+/// milliseconds of spacing left no headroom. Each bound below was checked by
+/// mutating the branch it covers and watching the test go red before being trusted.
 @MainActor
 @Suite("ConnectProgressModel", .timeLimit(.minutes(1)))
 struct ConnectProgressModelTests {
@@ -147,7 +149,7 @@ struct ConnectProgressModelTests {
         // `displayed` yet either, and `holdsGate` is still set. Measured against the
         // mutant — `showsWithoutWaiting` returning false — which turns two of the
         // three red.
-        #expect(elapsed < .milliseconds(100))
+        #expect(elapsed < .seconds(5))
         #expect(model.displayed == failure)
         #expect(model.holdsGate == false)
     }
@@ -167,10 +169,10 @@ struct ConnectProgressModelTests {
 
     @Test("the ceiling releases the gate however much was queued behind it")
     func maxHoldBoundsTheWholeWalk() async {
-        // Seconds against milliseconds leave enough room for a loaded runner while
-        // still proving the sleep itself is capped by the ceiling. Sleeping the full
-        // dwell here takes two seconds and fails the bound below.
-        let model = ConnectProgressModel(dwell: .seconds(2), maxHold: .milliseconds(100))
+        // A loaded runner stretched this walk to 1.47 s, so the bound is 5 s and
+        // the dwell 30 s: the mutant that sleeps the full dwell fails the bound
+        // and `waitUntil`'s own 10 s deadline both.
+        let model = ConnectProgressModel(dwell: .seconds(30), maxHold: .milliseconds(100))
         model.observe(.connecting(.handshaking))
 
         let elapsed = await ContinuousClock().measure {
@@ -180,6 +182,6 @@ struct ConnectProgressModelTests {
         }
 
         #expect(model.displayed == .connected(identity))
-        #expect(elapsed < .seconds(1))
+        #expect(elapsed < .seconds(5))
     }
 }
