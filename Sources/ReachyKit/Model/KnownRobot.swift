@@ -29,7 +29,8 @@ public struct KnownRobot: Codable, Hashable, Sendable, Identifiable {
 /// `.standard` is a single table they would otherwise fight over. Production goes through
 /// `KnownRobots`, which wraps `.standard`.
 public struct KnownRobotStore {
-    static let knownRobotsKey = "ReachyKit.knownRobots"
+    /// Public because the app target names it when it starts the iCloud mirror.
+    public static let knownRobotsKey = "ReachyKit.knownRobots"
     static let lastAddressKey = "ReachyKit.lastAddress"
 
     private let defaults: UserDefaults
