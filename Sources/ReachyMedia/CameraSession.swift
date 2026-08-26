@@ -1,14 +1,7 @@
 import Foundation
 import Observation
-import OSLog
 import ReachyKit
 @preconcurrency import WebRTC
-
-// iOS only: the audio *session* is an iOS concept, and asking to record moved to
-// `MicrophonePermission`, which carries the cross-platform fork now.
-#if os(iOS)
-    import AVFAudio
-#endif
 
 /// Owns one WebRTC session to the robot: consumes `CameraSignalingClient`
 /// events, answers the robot's offer, and exposes the remote video track plus
@@ -30,6 +23,12 @@ public final class CameraSession {
     public private(set) var phase: Phase = .connecting
     public private(set) var videoTrack: RTCVideoTrack?
     public private(set) var isMicEnabled = false
+
+    /// Whether `start()` has run and `stop()` has not — what "the camera is
+    /// still up" means to the audio handover when a call ends over it.
+    var isRunning: Bool {
+        eventsTask != nil
+    }
 
     /// What the OS says about recording. Published because a refusal used to be
     /// swallowed here: `setMicEnabled(true)` returned early and wrote nothing, so the
@@ -66,10 +65,7 @@ public final class CameraSession {
     /// `deinit` may not call — a stored property it may.
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
-    /// The deactivation still in flight, if any — see `deactivateAudioSession()`.
-    private var audioDeactivationTask: Task<Void, Never>?
 
-    private static let log = Logger(subsystem: "com.alexey1312.ReachyMini", category: "CameraSession")
     private struct LocalCandidate {
         var sdp: String
         var sdpMLineIndex: Int32
@@ -111,9 +107,7 @@ public final class CameraSession {
         dataChannel.close()
         let signaling = signaling
         Task { await signaling.disconnect() }
-        #if os(iOS)
-            Task { await Self.releaseAudioSession() }
-        #endif
+        Task { @MainActor in MediaAudioSession.shared.cameraSessionStopped() }
     }
 
     public func start() {
@@ -121,7 +115,7 @@ public final class CameraSession {
         // Read before anyone can tap, so a mic already refused in Settings shows as
         // refused rather than as an ordinary muted button waiting to be pressed.
         refreshMicPermission()
-        configureAudioSession()
+        MediaAudioSession.shared.cameraSessionStarted()
         // `weak self`: `handle` captures the session, so a strong capture keeps
         // `self → eventsTask → self` alive for as long as the signaling stream
         // runs — an owner that drops the session without `stop()` would leak it
@@ -141,7 +135,7 @@ public final class CameraSession {
         eventsTask = nil
         teardownPeer()
         dataChannel.close()
-        deactivateAudioSession()
+        MediaAudioSession.shared.cameraSessionStopped()
         phase = .connecting
         let signaling = signaling
         Task { await signaling.disconnect() } // best-effort endSession; ws close also suffices
@@ -326,53 +320,6 @@ public final class CameraSession {
     private static var noConstraints: RTCMediaConstraints {
         RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
     }
-
-    private func configureAudioSession() {
-        #if os(iOS)
-            // A stop() a moment ago may still be retrying deactivation; left
-            // running, it would deactivate the session this start just opened.
-            audioDeactivationTask?.cancel()
-            audioDeactivationTask = nil
-            let session = AVAudioSession.sharedInstance()
-            try? session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
-            try? session.setActive(true)
-        #endif
-    }
-
-    /// The mirror `stop()` owes `configureAudioSession()`: leaving the camera
-    /// used to keep the app holding a record-category session — other apps'
-    /// audio stayed ducked and the OS went on treating this one as a recorder.
-    /// `.notifyOthersOnDeactivation` is what lets them resume.
-    private func deactivateAudioSession() {
-        #if os(iOS)
-            audioDeactivationTask?.cancel()
-            audioDeactivationTask = Task { await Self.releaseAudioSession() }
-        #endif
-    }
-
-    #if os(iOS)
-        /// `setActive(false)` races WebRTC's own audio unit, which
-        /// `peerConnection.close()` winds down on its background thread after
-        /// `stop()` has already returned — deactivating immediately commonly
-        /// fails "session is busy", and a `try?` there made the release silently
-        /// not happen. So: retry briefly, and log when the OS still refuses,
-        /// because a swallowed failure looks exactly like the ducked-audio bug
-        /// this method exists to end.
-        private static func releaseAudioSession() async {
-            for _ in 0 ..< 5 {
-                do {
-                    try AVAudioSession.sharedInstance().setActive(
-                        false,
-                        options: [.notifyOthersOnDeactivation]
-                    )
-                    return
-                } catch {
-                    guard await (try? Task.sleep(for: .milliseconds(200))) != nil else { return }
-                }
-            }
-            log.warning("Audio session would not deactivate; other apps' audio may stay ducked")
-        }
-    #endif
 }
 
 #if DEBUG

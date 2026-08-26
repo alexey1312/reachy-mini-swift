@@ -17,6 +17,9 @@ struct ReachyTabShell: View {
     let runningApp: RunningAppModel
     let router: ReachyRouter
     let remoteLink: RemoteRobotLink?
+    /// Owned by the root — a call outlives the shell's tabs the way the
+    /// viewport does — and read here by the two viewport hosts.
+    let call: RobotCallController
     let findRobot: () -> Void
 
     /// The store's two models live here rather than inside the Apps tab because the
@@ -45,6 +48,7 @@ struct ReachyTabShell: View {
         runningApp: RunningAppModel,
         router: ReachyRouter,
         remoteLink: RemoteRobotLink?,
+        call: RobotCallController,
         findRobot: @escaping () -> Void
     ) {
         self.session = session
@@ -53,6 +57,7 @@ struct ReachyTabShell: View {
         self.runningApp = runningApp
         self.router = router
         self.remoteLink = remoteLink
+        self.call = call
         self.findRobot = findRobot
         _store = State(initialValue: AppStoreModel(session: session))
         _install = State(initialValue: AppInstallModel(session: session))
@@ -76,7 +81,8 @@ struct ReachyTabShell: View {
                         floating: floating,
                         router: router,
                         remoteLink: remoteLink,
-                        presence: presence
+                        presence: presence,
+                        call: call
                     )
                 }
             } label: {
@@ -143,7 +149,8 @@ struct ReachyTabShell: View {
             model: floating,
             viewport: viewport,
             session: session,
-            presence: presence
+            presence: presence,
+            call: call
         )
         // Not mounted in the gate: with no connection `RunningAppModel.canPoll` is
         // false and the dock draws nothing, so the polling should die with the shell

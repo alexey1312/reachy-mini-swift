@@ -71,6 +71,9 @@ struct CameraViewport: View {
 /// blocked state is now a different button — it says so, and it goes somewhere.
 struct CameraMicButton: View {
     let session: CameraSession
+    /// Frames the unmute as a system call (issue #78). `nil` — previews and
+    /// macOS today — keeps the direct toggle this button always had.
+    var call: RobotCallController?
 
     @Environment(\.reachyPreviewMode) private var previewMode
     @Environment(\.scenePhase) private var scenePhase
@@ -97,6 +100,8 @@ struct CameraMicButton: View {
     private func act() {
         if isBlocked {
             PrivacySettingsLink.open(.microphone)
+        } else if let call {
+            call.toggleMic(for: session)
         } else {
             session.setMicEnabled(!session.isMicEnabled)
         }

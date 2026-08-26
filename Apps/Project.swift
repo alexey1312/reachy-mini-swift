@@ -103,6 +103,13 @@ let project = Project(
                     "Talk to people near your Reachy Mini through its speaker."
                 ),
                 "UILaunchScreen": .dictionary([:]),
+                // A call framed through LiveCommunicationKit keeps the WebRTC
+                // session's audio running when the app leaves the foreground —
+                // without this the OS suspends the process mid-call (#78). No
+                // `voip`: that mode is for receiving calls via PushKit, and the
+                // robot is only ever called, never calling. macOS ignores the
+                // UIKit key, the way it ignores `UILaunchScreen` above.
+                "UIBackgroundModes": .array([.string("audio")]),
                 // The UIScene lifecycle is a launch requirement under the iOS 27
                 // SDK, and SwiftUI's `App` being scene-based is not the same as
                 // this app *declaring* it — Tuist's `.extendingDefault` does not
@@ -146,6 +153,10 @@ let project = Project(
                     // devices. The pair can drift and no test can see it; the
                     // symptom is a Handoff badge that never appears.
                     .string("com.alexey1312.ReachyMini.session"),
+                    // `CallActivity.activityType` — a Phone-app Recents redial
+                    // relaunches the app under this type. Copied, never retyped;
+                    // `CallProjectLockstepTests` holds the pair together.
+                    .string("INStartCallIntent"),
                 ]),
             ]),
             sources: ["ReachyMini/Sources/**"],

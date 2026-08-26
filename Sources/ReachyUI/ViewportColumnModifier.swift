@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyMedia
 import SwiftUI
 
 extension View {
@@ -22,14 +23,16 @@ extension View {
         model: FloatingViewportModel,
         viewport: ViewportModel,
         session: RobotSession,
-        presence: PresenceModel
+        presence: PresenceModel,
+        call: RobotCallController
     ) -> some View {
         modifier(
             ViewportColumnModifier(
                 model: model,
                 viewport: viewport,
                 session: session,
-                presence: presence
+                presence: presence,
+                call: call
             )
         )
     }
@@ -40,6 +43,7 @@ private struct ViewportColumnModifier: ViewModifier {
     let viewport: ViewportModel
     let session: RobotSession
     let presence: PresenceModel
+    let call: RobotCallController
 
     /// The same question `FloatingViewportModifier` asks of the window, and for the
     /// same reason: the model holds what is rendered, and before it has attached
@@ -99,7 +103,8 @@ private struct ViewportColumnModifier: ViewModifier {
                 makeTeleop: makeTeleop,
                 robotSession: session,
                 presence: presence,
-                dismiss: { model.setEnabled(false) }
+                dismiss: { model.setEnabled(false) },
+                call: call
             )
         } else {
             Color.clear

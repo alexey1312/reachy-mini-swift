@@ -97,10 +97,10 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   build 2>&1 | xcsift
 '''
 
-# The macOS build above cannot see ReachyWidget: the extension is iOS-only and
-# Project.swift embeds it with `condition: .when([.ios])`, so under `platform=macOS`
-# it is not built at all. `generic/platform=iOS` compiles it without needing a
-# device, a simulator or a signing identity.
+# The macOS build above compiles ReachyWidget too, but only the half the Mac can
+# run: the extension is embedded unconditionally now, and the nine Control Centre
+# controls stay `#if os(iOS)`. `generic/platform=iOS` is what compiles them,
+# without needing a device, a simulator or a signing identity.
 [tasks."build:app:ios"]
 description = "Build the ReachyMini app and its widget extension (iOS, unsigned)"
 depends = ["project"]

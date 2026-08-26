@@ -39,6 +39,11 @@ public struct ReachyRootView<Developer: View>: View {
     /// Held for as long as the remote session is: dropping it would close the peer
     /// connection the session is talking over.
     @State private var remoteLink: RemoteRobotLink?
+    /// Frames the two-way session as a system call (issue #78). Owned here
+    /// because a call outlives tab changes and the shell itself — its keep-alive
+    /// is read by the lifecycle, which is above the shell. Constructing it is
+    /// inert: the LiveCommunicationKit manager only exists from the first call.
+    @State private var call: RobotCallController
     /// What the gate's rail is showing. Owned here rather than by the gate because
     /// the fork below is what destroys the gate, and this is what defers that fork.
     @State private var progress: ConnectProgressModel
@@ -62,9 +67,11 @@ public struct ReachyRootView<Developer: View>: View {
         tab: ReachyRouter.Tab = .robot,
         remoteLink: RemoteRobotLink? = nil,
         progress: ConnectProgressModel? = nil,
+        call: RobotCallController? = nil,
         @ViewBuilder developer: () -> Developer
     ) {
         _session = State(initialValue: session)
+        _call = State(initialValue: call ?? RobotCallController())
         _progress = State(initialValue: progress ?? ConnectProgressModel(initialPhase: session.phase))
         _viewport = State(initialValue: viewport)
         _floating = State(initialValue: floating ?? FloatingViewportModel())
@@ -105,6 +112,7 @@ public struct ReachyRootView<Developer: View>: View {
                     runningApp: runningApp,
                     router: router,
                     remoteLink: remoteLink,
+                    call: call,
                     findRobot: findRobotButtonTapped
                 )
             } else {
@@ -138,7 +146,17 @@ public struct ReachyRootView<Developer: View>: View {
                 remoteRobots: remoteRobots,
                 runningApp: runningApp,
                 router: router,
+                call: call,
                 remoteLink: $remoteLink
+            )
+        )
+        .modifier(
+            RootCallLifecycle(
+                session: session,
+                viewport: viewport,
+                router: router,
+                call: call,
+                remoteLink: remoteLink
             )
         )
     }

@@ -17,12 +17,15 @@ import ReachyWidgetUI
 /// shows up as "Siri stopped hearing that phrase" months later — count before
 /// adding.
 ///
-/// **`PlaySoundIntent` and `StopSoundIntent` are the first two to be turned away by
-/// that**, and it was a decision rather than an oversight: displacing a working phrase
-/// for a new one is a trade nobody asked for. They stay discoverable in the Shortcuts
-/// app, reachable from Spotlight as `SoundEntity` rows, and available as Control Centre
-/// buttons — everything but the spoken form. Whichever of the ten below is judged least
-/// used is where a sound phrase would go.
+/// **`PlaySoundIntent`, `StopSoundIntent` and `ToggleRobotAppIntent` are the three
+/// turned away by that**, and each was a decision rather than an oversight: displacing
+/// a working phrase for a new one is a trade nobody asked for. The two sound intents
+/// stay discoverable in the Shortcuts app, reachable from Spotlight as `SoundEntity`
+/// rows, and available as Control Centre buttons — everything but the spoken form.
+/// `ToggleRobotAppIntent` gave its slot to `CallRobotIntent` (#78): its spoken form
+/// duplicated the Start/Stop pair above it, while its real home — the Control Centre
+/// toggle button — is untouched. Whichever of the ten below is judged least used is
+/// where the next phrase would go.
 ///
 /// `\(.applicationName)` is `CFBundleDisplayName`, so every phrase below reads
 /// "… Hey Reachy". `INAlternativeAppNames` in `Project.swift` adds "Reachy" beside
@@ -75,22 +78,15 @@ struct ReachyShortcuts: AppShortcutsProvider {
             shortTitle: "Stop app",
             systemImageName: "stop.circle"
         )
+        // "Call the robot" is what opening the camera and unmuting is; the
+        // phrase lands in `CallRequestInbox` and `RootCallLifecycle` does the
+        // rest (#78). This is the one shortcut whose intent lives in the app
+        // target rather than in `ReachyWidgetUI` — its own header says why.
         AppShortcut(
-            intent: ToggleRobotAppIntent(),
-            phrases: ["Toggle \(\.$app) on \(.applicationName)"],
-            shortTitle: "Start or stop app",
-            systemImageName: "playpause.circle",
-            parameterPresentation: AppShortcutParameterPresentation(
-                for: \.$app,
-                summary: Summary("Start or stop \(\.$app)"),
-                optionsCollections: {
-                    AppShortcutOptionsCollection(
-                        RobotAppQuery(),
-                        title: "Apps",
-                        systemImageName: "square.grid.2x2"
-                    )
-                }
-            )
+            intent: CallRobotIntent(),
+            phrases: ["Call \(.applicationName)"],
+            shortTitle: "Call",
+            systemImageName: "video.fill"
         )
         // The move slot is filled from `MoveEntityQuery`, which reads the cached
         // index and never the robot — so unlike the app phrases above, this one has
