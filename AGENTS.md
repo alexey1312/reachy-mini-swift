@@ -524,8 +524,11 @@ Consult `.claude/rules/` when working in the matching area:
 | `.claude/rules/daemon-api.md` | Endpoints, WebSockets, timeouts, jobs    |
 | `.claude/rules/networking.md` | Discovery, ATS, Local Network permission |
 
-Per-target notes live beside the code: `Sources/{ReachyKit,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI}/AGENTS.md`
-(`CLAUDE.md` is a symlink to it). **`ReachyDesign/AGENTS.md` is the design system's entire rulebook** — the tokens,
+Per-target notes live beside the code:
+`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI}/AGENTS.md`
+(`CLAUDE.md` is a symlink to it). **`ReachyMedia/AGENTS.md` owns the audio-session handover and the
+LiveCommunicationKit call framing (#78)** — read it before touching `AVAudioSession`, `RTCAudioSession`
+or anything named `Call*`. **`ReachyDesign/AGENTS.md` is the design system's entire rulebook** — the tokens,
 the `SurfaceRole` facade, the four things glass does headless, what a dark reference proves and what it does not, and
 the localization catalogue. Read it before any visual change, not after one moved a reference.
 Background reading: `docs/adr/` for accepted decisions, `docs/research/webrtc.md` for 8443 signaling quirks.

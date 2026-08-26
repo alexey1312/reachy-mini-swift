@@ -21,6 +21,8 @@ struct LiveTab: View {
     /// takes the head. Anything that unmounts a reader must not take the record with
     /// it, and the column unmounts this whole tab.
     let presence: PresenceModel
+    /// Owned by the root; the viewport's mic button routes through it.
+    let call: RobotCallController
 
     var body: some View {
         @Bindable var router = router
@@ -113,7 +115,8 @@ struct LiveTab: View {
                     offersCamera: session.hasCamera,
                     makeTeleop: makeTeleop,
                     robotSession: session,
-                    presence: presence
+                    presence: presence,
+                    call: call
                 )
             } else if floating.hasTabBar {
                 // The shell builds all five tabs at once, so this body runs while

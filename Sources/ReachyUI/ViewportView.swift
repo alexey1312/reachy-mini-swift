@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyMedia
 import SwiftUI
 
 /// Opens a teleop stream on demand — a WebSocket on the LAN, the session's own
@@ -52,6 +53,9 @@ struct ViewportView: View {
     /// is beside. That is the same complaint the floating window's menu answered, in a
     /// second place — and the answer is the same shape, a control on the object itself.
     var dismiss: (() -> Void)?
+    /// Frames the mic button's unmute as a system call. `nil` in previews, which
+    /// keeps every existing capture and call site unchanged.
+    var call: RobotCallController?
 
     @State private var showsPresence = false
 
@@ -161,7 +165,7 @@ struct ViewportView: View {
             }
         case .camera:
             if let session = model.cameraSession {
-                CameraMicButton(session: session)
+                CameraMicButton(session: session, call: call)
             }
         }
     }

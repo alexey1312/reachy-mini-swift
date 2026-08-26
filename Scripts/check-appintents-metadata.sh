@@ -58,6 +58,10 @@ REQUIRED_APP_ACTIONS = [
     # green.
     "PlaySoundIntent",
     "StopSoundIntent",
+    # The one intent extracted from the app target's own sources rather than
+    # from ReachyWidgetUI: it opens the app (`openAppWhenRun`), which errors in
+    # an appex, so it must never move into the library the extension links.
+    "CallRobotIntent",
 ]
 REQUIRED_APPEX_ACTIONS = [
     "RobotAppsConfigurationIntent",

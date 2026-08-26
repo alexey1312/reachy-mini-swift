@@ -8,8 +8,11 @@ import SwiftUI
 /// domain value onto words and a tone, never the other way round — the same reason
 /// `DaemonStateCaption` and `RunningAppCaption` sit beside their screens.
 ///
-/// There is no camera. The robot's camera arrives over WebRTC and this app never opens
-/// a local one, which is why `Apps/Project.swift` declares no `NSCameraUsageDescription`.
+/// There is no camera row. The robot's camera arrives over WebRTC and this app never
+/// opens a local one — `Apps/Project.swift` does declare `NSCameraUsageDescription`,
+/// but only because App Store validation (ITMS-90683) demands one for the capture
+/// APIs the WebRTC binary merely references; no prompt can ever fire, so there is
+/// nothing here to report.
 enum PermissionKind: CaseIterable, Hashable, Sendable {
     case bluetooth
     case localNetwork

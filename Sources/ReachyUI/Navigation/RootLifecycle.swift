@@ -5,10 +5,12 @@ import ReachyMedia
 import ReachySimulator
 import SwiftUI
 
-/// Every effect the root runs, in one place.
+/// Every effect the root runs, in one place — except the call framing's, which
+/// have a modifier of their own (`RootCallLifecycle`): this body spent its last
+/// point of cyclomatic budget long ago.
 ///
 /// Applied with `.modifier(_:)` rather than through a `View` extension like its
-/// neighbours: the cluster needs seven collaborators, and a helper taking seven
+/// neighbours: the cluster needs eight collaborators, and a helper taking eight
 /// arguments is a SwiftLint violation while a memberwise initialiser is not.
 struct RootLifecycle: ViewModifier {
     let session: RobotSession
@@ -18,6 +20,8 @@ struct RootLifecycle: ViewModifier {
     let remoteRobots: YourReachiesModel
     let runningApp: RunningAppModel
     let router: ReachyRouter
+    /// Read for one bit: an active call keeps the stream alive off-screen.
+    let call: RobotCallController
     @Binding var remoteLink: RemoteRobotLink?
 
     /// A `let` with a value, so it stays out of the memberwise initialiser and the
@@ -202,8 +206,17 @@ struct RootLifecycle: ViewModifier {
     /// and its tab at the edge is what turns it off: `isStreaming` is false the
     /// moment the window is docked, and false on a regular width, where there is no
     /// window at all.
+    ///
+    /// An active call is the one exception to "looked at": it holds the stream
+    /// through tab changes and backgrounding, because a call that dies when the
+    /// phone locks is not a call (issue #78). The robot gates still apply — a
+    /// robot put to sleep ends the call rather than the call keeping it awake.
     private var viewportIsOnScreen: Bool {
-        guard scenePhase == .active, viewportTarget != nil, session.isAwake else { return false }
+        guard viewportTarget != nil, session.isAwake else { return false }
+        if call.hasActiveCall {
+            return true
+        }
+        guard scenePhase == .active else { return false }
         return router.tab == .live || floating.isStreaming
     }
 

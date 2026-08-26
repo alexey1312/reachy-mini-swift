@@ -71,7 +71,8 @@ let package = Package(
             dependencies: [
                 "ReachyKit",
                 .product(name: "WebRTC", package: "WebRTC"),
-            ]
+            ],
+            exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
         .target(
             name: "ReachyScene",
