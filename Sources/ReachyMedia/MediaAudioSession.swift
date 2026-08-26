@@ -101,30 +101,32 @@ final class MediaAudioSession {
 
     // MARK: - Call lifecycle (from RobotCallController)
 
-    /// A call is about to be reported: from here until the call ends the system
-    /// owns activation, so any in-flight transition of the app's is stale.
-    func callWillStart() {
-        #if os(iOS)
+    // The whole block is iOS-only, not just the bodies: `AVAudioSession` in a
+    // *signature* is what does not compile on macOS — the camera methods above
+    // fork inside because `CameraSession` calls them from cross-platform code,
+    // while everything below has exactly one caller and it is `#if os(iOS)`
+    // itself.
+    #if os(iOS)
+        /// A call is about to be reported: from here until the call ends the
+        /// system owns activation, so any in-flight transition of the app's is
+        /// stale.
+        func callWillStart() {
             transitionTask?.cancel()
             transitionTask = nil
             owner = .call
-        #endif
-    }
+        }
 
-    /// The system activated the call's audio session — hand it to WebRTC.
-    func callDidActivate(_ session: AVAudioSession) {
-        #if os(iOS)
+        /// The system activated the call's audio session — hand it to WebRTC.
+        func callDidActivate(_ session: AVAudioSession) {
             let rtc = RTCAudioSession.sharedInstance()
             rtc.audioSessionDidActivate(session)
             rtc.isAudioEnabled = true
-        #endif
-    }
+        }
 
-    /// The call ended and the system deactivated its session. A camera session
-    /// still running goes back to app ownership (the passive-viewing shape);
-    /// otherwise audio winds down entirely.
-    func callDidDeactivate(_ session: AVAudioSession, cameraStillRunning: Bool) {
-        #if os(iOS)
+        /// The call ended and the system deactivated its session. A camera
+        /// session still running goes back to app ownership (the
+        /// passive-viewing shape); otherwise audio winds down entirely.
+        func callDidDeactivate(_ session: AVAudioSession, cameraStillRunning: Bool) {
             RTCAudioSession.sharedInstance().audioSessionDidDeactivate(session)
             guard owner == .call else { return }
             if cameraStillRunning {
@@ -135,8 +137,8 @@ final class MediaAudioSession {
                 RTCAudioSession.sharedInstance().isAudioEnabled = false
                 owner = .nobody
             }
-        #endif
-    }
+        }
+    #endif
 
     #if os(iOS)
         /// `setActive(false)` races WebRTC's own audio unit, which winds down on
