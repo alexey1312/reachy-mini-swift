@@ -10,6 +10,7 @@ import Observation
 #if os(iOS)
     @preconcurrency import AVFAudio
     @preconcurrency import LiveCommunicationKit
+    import OSLog
     import UIKit
 #endif
 
@@ -61,6 +62,16 @@ public final class RobotCallController {
             if let activeCall, activeCall.robotID != id {
                 run(lifecycle.handle(.sessionBecameIneligible(.remoteEnded)))
             }
+            // Warm the manager the moment a real robot connects, not at the
+            // first tap: Apple's guidance is to create it early in the app's
+            // life, and creating it inside the tap's own start raced the
+            // system's registration on a device. This path never runs from
+            // previews or the storybook — `RootCallLifecycle` only calls
+            // `robotChanged` outside preview mode — so the snapshot-safety
+            // argument for laziness survives intact.
+            if id != nil, manager == nil {
+                _ = ensureManager()
+            }
         #endif
     }
 
@@ -99,6 +110,12 @@ public final class RobotCallController {
     }
 
     #if os(iOS)
+        /// The whole start chain logs here, because it shipped once with every
+        /// failure swallowed: the system refused the start, nothing was
+        /// written anywhere, and the mic button read as dead. Read it in
+        /// Console with subsystem `com.alexey1312.ReachyMini`.
+        private static let log = Logger(subsystem: "com.alexey1312.ReachyMini", category: "RobotCall")
+
         @ObservationIgnored private var lifecycle = CallLifecycle()
         @ObservationIgnored private var manager: ConversationManager?
         @ObservationIgnored private var delegateAdapter: ConversationDelegateAdapter?
@@ -159,6 +176,7 @@ public final class RobotCallController {
             Task { @MainActor in
                 let permission = await MicrophonePermission.request()
                 guard permission == .granted else {
+                    Self.log.notice("Start abandoned: microphone permission refused")
                     // Surfaces the existing blocked-button state on the viewport.
                     session?.refreshMicPermission()
                     run(lifecycle.handle(.micPermissionDenied))
@@ -170,6 +188,7 @@ public final class RobotCallController {
 
         private func performStart() async {
             guard let robotID = currentRobotID else {
+                Self.log.error("Start failed: no connected robot identity to call")
                 run(lifecycle.handle(.startFailed))
                 return
             }
@@ -178,9 +197,14 @@ public final class RobotCallController {
             pendingRobot = ActiveCall(robotID: robotID, robotName: currentRobotName)
             let handle = Handle(type: .generic, value: robotID, displayName: currentRobotName)
             let action = StartConversationAction(conversationUUID: uuid, handles: [handle], isVideo: true)
+            Self.log.debug("Performing StartConversationAction \(uuid, privacy: .public)")
             do {
                 try await ensureManager().perform([action])
             } catch {
+                Self.log.error("""
+                The system refused the start: \(String(describing: error), privacy: .public) — \
+                falling back to the bare microphone
+                """)
                 run(lifecycle.handle(.startFailed))
             }
         }
@@ -189,7 +213,13 @@ public final class RobotCallController {
             guard let uuid = conversationUUID else { return }
             let action = MuteConversationAction(conversationUUID: uuid, isMuted: isMuted)
             Task { @MainActor in
-                try? await ensureManager().perform([action])
+                do {
+                    try await ensureManager().perform([action])
+                } catch {
+                    Self.log.warning(
+                        "Mute action refused: \(String(describing: error), privacy: .public)"
+                    )
+                }
             }
         }
 
@@ -212,9 +242,7 @@ public final class RobotCallController {
             case is EndConversationAction:
                 lifecycle.handle(.performedEnd)
             default:
-                // Join/merge/pause never arrive for an outgoing-only app; refuse
-                // anything unrecognised rather than leave it to time out.
-                [.failPendingAction]
+                refuseUnexpected(action)
             }
             run(effects)
             if lifecycle.state == .active, activeCall == nil {
@@ -226,7 +254,19 @@ public final class RobotCallController {
             pendingSystemAction = nil
         }
 
+        /// Join/merge/pause never arrive for an outgoing-only app; refuse
+        /// anything unrecognised rather than leave it to time out.
+        private func refuseUnexpected(_ action: ConversationAction) -> [CallLifecycle.Effect] {
+            Self.log.warning(
+                "Refusing unexpected action \(String(describing: type(of: action)), privacy: .public)"
+            )
+            return [.failPendingAction]
+        }
+
         fileprivate func handleTimeout(of action: ConversationAction) {
+            Self.log.error(
+                "Action timed out: \(String(describing: type(of: action)), privacy: .public)"
+            )
             if action is StartConversationAction {
                 run(lifecycle.handle(.startFailed))
             }
@@ -234,6 +274,7 @@ public final class RobotCallController {
         }
 
         fileprivate func handleManagerReset() {
+            Self.log.warning("Conversation manager reset")
             run(lifecycle.handle(.managerReset))
         }
 

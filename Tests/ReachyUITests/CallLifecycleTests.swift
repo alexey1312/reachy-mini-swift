@@ -56,12 +56,26 @@ struct CallLifecycleTests {
         #expect(lifecycle.state == .idle)
     }
 
-    @Test("a failed perform abandons the start quietly")
-    func startFailureAbandons() {
+    /// The regression this pins shipped: the system refused the start, the
+    /// chain swallowed it, and the mic button read as dead. A refused framing
+    /// opens the bare microphone instead — permission was already granted by
+    /// the time a start can fail this way.
+    @Test("a start the system refused falls back to the bare microphone")
+    func startFailureFallsBackToTheBareMicrophone() {
         var lifecycle = CallLifecycle()
         _ = lifecycle.handle(.unmuteTapped)
 
-        #expect(lifecycle.handle(.startFailed) == [])
+        #expect(lifecycle.handle(.startFailed) == [.applyMic(true)])
+        #expect(lifecycle.state == .idle)
+    }
+
+    @Test("the bare-microphone fallback still mutes on the next tap")
+    func fallbackMicStillMutes() {
+        var lifecycle = CallLifecycle()
+        _ = lifecycle.handle(.unmuteTapped)
+        _ = lifecycle.handle(.startFailed)
+
+        #expect(lifecycle.handle(.muteTapped) == [.applyMic(false)])
         #expect(lifecycle.state == .idle)
     }
 

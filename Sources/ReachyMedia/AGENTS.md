@@ -20,16 +20,26 @@ integration is three types with one direction of trust:
 - `CallLifecycle` is a pure reducer holding **every decision** — when a call starts (the user
   unmutes; passive viewing is never a call), what mute means inside one (an ordinary in-call mute,
   never an ending), and what each ending owes. The invariant every path holds: the microphone is
-  live only while a call is active. `CallLifecycleTests` is the whole table; change the reducer
-  and the test in the same commit or not at all.
+  live only while a call is active — with one deliberate exception: **a start the system refused
+  opens the bare microphone anyway** (`startFailed`). The framing is garnish and the mic is the
+  meal; this shipped the other way once, and a refused start read as a dead button.
+  `CallLifecycleTests` is the whole table; change the reducer and the test in the same commit or
+  not at all.
 - `RobotCallController` is the thin adapter over `ConversationManager`, **untested by design** the
   way `WebRTCDataChannel` is: the framework only stands up on a device. Its `ConversationManager`
-  is created lazily on the first start — previews, the snapshot suite and the storybook all
-  construct the view tree that owns this controller, and registering with the system's call
-  service from a snapshot run is the class of side effect `CameraSession.deinit`'s guard exists to
-  prevent. Never `invalidate()` it; `reportNewIncomingConversation` is never called (outgoing
-  only, so no ringtone, no PushKit, no `voip` background mode — `audio` in `Apps/Project.swift`
-  is what keeps a backgrounded call alive).
+  is created when the first robot connects (`robotChanged` with a non-nil id) — early per Apple's
+  guidance, because creating it inside the first tap's own start raced the system's registration
+  on a device; still never from previews, the snapshot suite or the storybook, because
+  `RootCallLifecycle` only calls `robotChanged` outside preview mode, and registering with the
+  system's call service from a snapshot run is the class of side effect `CameraSession.deinit`'s
+  guard exists to prevent. Never `invalidate()` it; `reportNewIncomingConversation` is never
+  called (outgoing only, so no ringtone, no PushKit, no `voip` background mode — `audio` in
+  `Apps/Project.swift` is what keeps a backgrounded call alive).
+- **Every failure in the start chain logs** to subsystem `com.alexey1312.ReachyMini`, category
+  `RobotCall` — permission refused, no robot identity, `perform` throwing, action timeouts,
+  unexpected actions, manager resets. "The mic button does nothing" is diagnosed by reading that
+  category in Console.app with the device attached; it shipped once with every one of those paths
+  silent, which is why this bullet exists.
 - **The `#if os(iOS)` is a platform fork, not a version gate.** LiveCommunicationKit is
   `@available(macOS, unavailable)` outright — no macOS floor bump brings it back, unlike the
   Control Centre widgets' fork. The public surface is cross-platform so no caller carries an

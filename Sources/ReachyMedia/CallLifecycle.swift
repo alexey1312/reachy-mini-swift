@@ -13,7 +13,10 @@ import Foundation
 /// from a manager reset. Passive viewing is never a call.
 ///
 /// The invariant every path holds: **the microphone is live only while a call
-/// is active.** Each ending effect list carries `.applyMic(false)`.
+/// is active.** Each ending effect list carries `.applyMic(false)`. The one
+/// deliberate exception is a start the *system* refused (`startFailed`): the
+/// framing is garnish and the microphone is the meal, so the mic opens bare —
+/// see that case for the reasoning.
 struct CallLifecycle: Equatable, Sendable {
     enum State: Equatable, Sendable {
         case idle
@@ -95,7 +98,8 @@ struct CallLifecycle: Equatable, Sendable {
         switch event {
         case .unmuteTapped: unmuteTapped()
         case .muteTapped: muteTapped()
-        case .micPermissionDenied, .startFailed: startAbandoned()
+        case .micPermissionDenied: startAbandoned()
+        case .startFailed: startFailed()
         case .performedStart: performedStart()
         case let .performedMute(isMuted): performedMute(isMuted: isMuted)
         case .performedEnd: performedEnd()
@@ -104,13 +108,26 @@ struct CallLifecycle: Equatable, Sendable {
         }
     }
 
-    /// The start never happened — the permission was refused or the perform
-    /// threw. Nothing was reported and the mic was never opened, so there is
-    /// nothing to undo.
+    /// The permission was refused: the start never happened, nothing was
+    /// reported, and the mic must stay shut — there is nothing to undo.
     private mutating func startAbandoned() -> [Effect] {
         guard state == .starting else { return [] }
         state = .idle
         return []
+    }
+
+    /// The *system* refused or lost the start — `perform` threw, the action
+    /// timed out, or no robot identity was known. Permission is already
+    /// granted by the time a start can fail this way, so the microphone opens
+    /// bare: the user asked to talk to the robot, and a button that silently
+    /// does nothing because the call *framing* was refused is the bug this
+    /// case exists to end (shipped once — the whole chain swallowed failures
+    /// and the tap read as dead). The controller logs the reason; a later
+    /// unmute simply tries the framing again.
+    private mutating func startFailed() -> [Effect] {
+        guard state == .starting else { return [] }
+        state = .idle
+        return [.applyMic(true)]
     }
 
     private mutating func performedStart() -> [Effect] {
