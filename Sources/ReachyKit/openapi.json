@@ -2272,7 +2272,7 @@
   "/api/state/doa": {
    "get": {
     "summary": "Get Doa",
-    "description": "Get the Direction of Arrival from the microphone array.\n\nReturns the angle in radians (0=left, π/2=front, π=right) and speech detection status.\nReturns None if the audio device is not available.",
+    "description": "Get the Direction of Arrival from the microphone array.\n\nReturns the angle in radians (0=left, π/2=front, π=right) and speech detection status.\nReturns None if the audio device is not available or no reading has\nlanded yet (the first one lands within ~100 ms of the first request).",
     "operationId": "get_doa_api_state_doa_get",
     "responses": {
      "200": {
@@ -2280,7 +2280,26 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/DoAInfo"
+         "$ref": "#/components/schemas/DoaSnapshot"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/state/imu": {
+   "get": {
+    "summary": "Get Imu",
+    "description": "Get the latest IMU reading (accelerometer, gyroscope, quaternion, temperature).\n\nAccelerations are in m/s², angular rates in rad/s, the quaternion is\nw-first and the temperature in °C.\nReturns None on versions without an IMU (Lite, simulation) or when the\ncached reading has gone stale.",
+    "operationId": "get_imu_api_state_imu_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImuData"
         }
        }
       }
@@ -2402,6 +2421,16 @@
        "type": "boolean",
        "default": false,
        "title": "With Doa"
+      }
+     },
+     {
+      "name": "with_imu",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "With Imu"
       }
      },
      {
@@ -2943,7 +2972,7 @@
     "title": "DaemonStatus",
     "description": "Status of the Reachy Mini daemon."
    },
-   "DoAInfo": {
+   "DoaSnapshot": {
     "properties": {
      "angle": {
       "type": "number",
@@ -2959,8 +2988,8 @@
      "angle",
      "speech_detected"
     ],
-    "title": "DoAInfo",
-    "description": "Direction of Arrival info from the microphone array."
+    "title": "DoaSnapshot",
+    "description": "Sound Direction of Arrival reading (ReSpeaker mic array).\n\n``angle`` is in radians: 0 = left, π/2 = front, π = right."
    },
    "EnableTrackingRequest": {
     "properties": {
@@ -3109,7 +3138,10 @@
       "type": "array"
      },
      "doa": {
-      "$ref": "#/components/schemas/DoAInfo"
+      "$ref": "#/components/schemas/DoaSnapshot"
+     },
+     "imu": {
+      "$ref": "#/components/schemas/ImuData"
      }
     },
     "type": "object",
@@ -3202,6 +3234,44 @@
     },
     "type": "object",
     "title": "HTTPValidationError"
+   },
+   "ImuData": {
+    "properties": {
+     "accelerometer": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Accelerometer"
+     },
+     "gyroscope": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Gyroscope"
+     },
+     "quaternion": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Quaternion"
+     },
+     "temperature": {
+      "type": "number",
+      "title": "Temperature"
+     }
+    },
+    "type": "object",
+    "required": [
+     "accelerometer",
+     "gyroscope",
+     "quaternion",
+     "temperature"
+    ],
+    "title": "ImuData",
+    "description": "IMU sensor reading (BMI088, wireless version only).\n\nThe payload half of :class:`ImuDataMsg`, reused wherever the reading\nis carried without the legacy WS discriminator (state snapshots,\nREST replies)."
    },
    "InterpolationTechnique": {
     "type": "string",

@@ -24,7 +24,11 @@ public enum DaemonCompatibility: Equatable, Sendable {
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
 public enum DaemonCompatibilityPolicy {
     public static let minimumVersion = "1.9.0"
-    public static let testedVersion = "1.9.0"
+    /// Raised to 1.10.0 against a Wireless unit on that daemon. The spec diff was
+    /// additive but for one rename: `DoAInfo` became `DoaSnapshot` with the same two
+    /// fields, so no generated type any caller names actually moved. `/api/state/imu`
+    /// and `FullState.imu` are new, and rule 3 already covers an unread field.
+    public static let testedVersion = "1.10.0"
 
     public static func evaluate(_ reported: String?) -> DaemonCompatibility {
         guard let reported, let current = SemanticVersion(reported),
