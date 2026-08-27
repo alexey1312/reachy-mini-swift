@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import ReachyDesign
 import ReachyKit
@@ -81,6 +82,25 @@ final class ViewportModel {
     /// screen is not a reason to end a session.
     private var ownsCamera = false
     private var isActive = false
+
+    /// How loud this device's voice comes out of the robot, where 1 is unchanged.
+    ///
+    /// **The one control over the loudness a person actually complains about.** The
+    /// daemon applies no software gain and its mixer is already at 100, so the robot
+    /// cannot play a sound louder to match a call — the call has to come down to meet
+    /// the sounds. Stored on the device rather than on the robot, because it scales
+    /// *this* microphone.
+    var callMicVolume: Double = UserDefaults.standard.object(forKey: ViewportModel.micVolumeKey) as? Double ?? 1 {
+        didSet {
+            UserDefaults.standard.set(callMicVolume, forKey: ViewportModel.micVolumeKey)
+            cameraSession?.micVolume = callMicVolume
+        }
+    }
+
+    static let micVolumeKey = "callMicVolume"
+    /// Below 0.1 a voice is gone rather than quiet, and above 2 the encoder clips
+    /// before the robot gets louder. libwebrtc itself accepts 0…10.
+    static let micVolumeRange: ClosedRange<Double> = 0.1 ... 2
 
     var address: RobotAddress? {
         if case let .lan(address) = source {
@@ -210,6 +230,8 @@ final class ViewportModel {
             // Already running — `RemoteRobotLink` started it, and it is the same
             // connection the commands are on. Adopted, never started or stopped.
             cameraSession = session
+            // Adopted, so nothing here built the track — the gain still has to reach it.
+            session.micVolume = callMicVolume
             ownsCamera = false
         }
     }
@@ -271,6 +293,7 @@ final class ViewportModel {
         }
         cameraSession = session
         ownsCamera = true
+        session.micVolume = callMicVolume
         session.start()
     }
 
@@ -318,9 +341,14 @@ extension ViewportModel.Source: Equatable {
             // reference that predates it and none of them moved when it landed. A
             // preview that wants the badge injects a settled model, which is built
             // with no stream and therefore has no socket to open.
-            hearing: DirectionOfArrivalModel? = nil
+            hearing: DirectionOfArrivalModel? = nil,
+            // Always assigned, never left to the stored default: the real one reads
+            // `UserDefaults`, so a preview that took whatever a previous one wrote
+            // would render a different slider on each run.
+            callMicVolume: Double = 1
         ) -> ViewportModel {
             let model = ViewportModel()
+            model.callMicVolume = callMicVolume
             model.content = content
             model.sceneModel = sceneModel
             model.cameraSession = cameraSession

@@ -201,14 +201,19 @@ enum PreviewScene {
 
     /// The sheet that button opens: the robot's audio levels and its two presence
     /// behaviours, reachable without giving up the stream.
+    /// `viewport` is what adds the Call section: without one there is no microphone
+    /// track to scale, so the sheet leaves the slider out rather than showing a dead
+    /// one. Nil by default, so every reference recorded before it is unchanged.
     static func telepresence(
         _ session: RobotSession? = nil,
-        presence: PresenceModel? = nil
+        presence: PresenceModel? = nil,
+        viewport: ViewportModel? = nil
     ) -> some View {
         NavigationHost {
             TelepresenceSheet(
                 session: session ?? .preview(),
                 dismiss: {},
+                viewport: viewport,
                 presence: presence,
                 // Settled, not empty: `AudioSettingsSection`'s `.task` is skipped in
                 // preview mode, so the default model would capture every slider at

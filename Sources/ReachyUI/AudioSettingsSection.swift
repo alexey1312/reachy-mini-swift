@@ -39,6 +39,9 @@ struct AudioSettingsSection: View {
                 ) {
                     await model.commitMicrophone(session: session)
                 }
+                if model.canTuneProfile {
+                    profilePicker
+                }
                 Button(.reachy("Test sound")) {
                     Task { await model.playTestSound(session: session) }
                 }
@@ -58,6 +61,41 @@ struct AudioSettingsSection: View {
             guard !previewMode else { return }
             await model.load(session: session)
         }
+    }
+
+    /// The audio board's profile, named by the room rather than by its registers.
+    ///
+    /// "Custom" appears only for a board that matches no profile, and it cannot be
+    /// selected: it is a state to report, and choosing it would have nothing to write.
+    private var profilePicker: some View {
+        VStack(alignment: .leading, spacing: Space.xxs) {
+            Picker(selection: profileSelection) {
+                ForEach(MicrophoneProfile.allCases) { profile in
+                    Text(MicrophoneProfileCaption.title(for: profile)).tag(Optional(profile))
+                }
+                if model.profile == nil {
+                    Text(MicrophoneProfileCaption.custom).tag(MicrophoneProfile?.none)
+                }
+            } label: {
+                Label(.reachy("Hearing"), systemImage: "waveform")
+            }
+            Text(model.profile.map(MicrophoneProfileCaption.detail) ?? MicrophoneProfileCaption.customDetail)
+                .font(Typography.statusCompact)
+                .foregroundStyle(.tertiary)
+        }
+        .disabled(model.isBusy)
+    }
+
+    /// Writes on selection rather than on a gesture ending, unlike the level sliders:
+    /// a profile is one discrete choice, and it beeps at nobody.
+    private var profileSelection: Binding<MicrophoneProfile?> {
+        Binding(
+            get: { model.profile },
+            set: { selected in
+                guard let selected, selected != model.profile else { return }
+                Task { await model.applyProfile(selected, session: session) }
+            }
+        )
     }
 
     private func level(

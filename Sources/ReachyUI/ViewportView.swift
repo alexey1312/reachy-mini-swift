@@ -70,6 +70,7 @@ struct ViewportView: View {
                         TelepresenceSheet(
                             session: robotSession,
                             dismiss: { showsPresence = false },
+                            viewport: model,
                             presence: presence
                         )
                     }

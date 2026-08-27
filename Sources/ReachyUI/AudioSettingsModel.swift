@@ -15,6 +15,10 @@ final class AudioSettingsModel {
 
     private(set) var speaker: AudioLevel?
     private(set) var microphone: AudioLevel?
+    /// Nil while unread, and nil again for a board somebody tuned by hand — the two
+    /// are told apart by ``canTuneProfile``, which is false until the read succeeds.
+    private(set) var profile: MicrophoneProfile?
+    private(set) var canTuneProfile = false
     private(set) var isLoading = false
     private(set) var isBusy = false
     private(set) var errorMessage: String?
@@ -39,6 +43,7 @@ final class AudioSettingsModel {
             try await adoptMicrophone(session.microphoneVolume())
             errorMessage = nil
             hasLoaded = true
+            await loadProfile(session: session)
         } catch {
             errorMessage.recordDaemonFailure(error)
         }
@@ -55,6 +60,31 @@ final class AudioSettingsModel {
         let percent = Int(microphonePercent.rounded())
         guard percent != microphone?.percent else { return }
         await perform { try await adoptMicrophone(session.setMicrophoneVolume(percent)) }
+    }
+
+    /// Reads the audio board back, after the levels and never with them.
+    ///
+    /// It costs one USB round trip per register — the daemon opens and closes a
+    /// handle for each — and it is the one part of this screen a robot can lack, so a
+    /// failure here leaves the levels working and hides the profile row instead of
+    /// reporting an error over them.
+    private func loadProfile(session: RobotSession) async {
+        guard session.canTuneAudio else { return }
+        do {
+            profile = try await session.microphoneProfile()
+            canTuneProfile = true
+        } catch {
+            canTuneProfile = false
+        }
+    }
+
+    /// - Important: this writes the robot's audio board, not a per-session setting.
+    ///   Every app on the robot hears through the registers it moves.
+    func applyProfile(_ profile: MicrophoneProfile, session: RobotSession) async {
+        await perform {
+            try await session.applyMicrophoneProfile(profile)
+            self.profile = profile
+        }
     }
 
     func playTestSound(session: RobotSession) async {
@@ -95,7 +125,9 @@ final class AudioSettingsModel {
             microphone: AudioLevel? = .previewMicrophone,
             isLoading: Bool = false,
             isBusy: Bool = false,
-            errorMessage: String? = nil
+            errorMessage: String? = nil,
+            profile: MicrophoneProfile? = .standard,
+            canTuneProfile: Bool = true
         ) -> AudioSettingsModel {
             let model = AudioSettingsModel()
             model.speaker = speaker
@@ -105,6 +137,8 @@ final class AudioSettingsModel {
             model.isLoading = isLoading
             model.isBusy = isBusy
             model.errorMessage = errorMessage
+            model.profile = profile
+            model.canTuneProfile = canTuneProfile
             model.hasLoaded = true
             return model
         }

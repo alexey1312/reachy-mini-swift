@@ -76,6 +76,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// quote or newline, which would break out of the multipart header the upload is
     /// carried in rather than being escaped by it.
     case soundNameRejected(name: String)
+    /// The audio board's registers cannot be reached over this connection — the same
+    /// distinction as ``soundboardUnavailable``: `/api/audio/config/*` is a LAN
+    /// surface, and this client carries no data-channel arm for it.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case audioTuningUnavailable
 
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
@@ -114,7 +120,8 @@ public enum ReachyKitError: Error, Sendable, Equatable {
              .backendNotRunning, .daemonBusy, .wirelessFeaturesUnavailable,
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
-             .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected:
+             .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
+             .audioTuningUnavailable:
             nil
         }
     }
@@ -169,6 +176,8 @@ extension ReachyKitError: LocalizedError {
             "The robot is waking up or going to sleep; try again in a moment"
         case .soundboardUnavailable:
             "The robot's sounds cannot be reached over this connection"
+        case .audioTuningUnavailable:
+            "The robot's audio board cannot be reached over this connection"
         case let .soundTooLarge(bytes, limit):
             """
             \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \

@@ -24,6 +24,21 @@ public final class CameraSession {
     public private(set) var videoTrack: RTCVideoTrack?
     public private(set) var isMicEnabled = false
 
+    /// Gain applied to this device's microphone before the robot hears it, where 1 is
+    /// unchanged. libwebrtc takes 0…10 and clamps outside that.
+    ///
+    /// **It exists because the robot has no headroom left.** The daemon applies no
+    /// software gain to anything it plays, and its mixer is already at 100, so a call
+    /// cannot be made quieter or an app's speech louder from that end. What a person
+    /// hears as "the call is much louder than the apps" is the level of the two
+    /// sources: this device's voice arrives compressed and near full scale from the
+    /// system's voice-processing unit, while a sound asset plays at whatever level it
+    /// was recorded — `wake_up.wav` sits 14 dB below `go_sleep.wav`. Lowering this is
+    /// the only control over that difference.
+    public var micVolume: Double = 1 {
+        didSet { micSource?.volume = min(max(micVolume, 0), 10) }
+    }
+
     /// Whether `start()` has run and `stop()` has not — what "the camera is
     /// still up" means to the audio handover when a call ends over it.
     var isRunning: Bool {
@@ -60,6 +75,9 @@ public final class CameraSession {
     private var peerConnection: RTCPeerConnection?
     private var delegateAdapter: PeerConnectionDelegateAdapter?
     private var micTrack: RTCAudioTrack?
+    /// Held so ``micVolume`` can move after the track is attached. The peer owns the
+    /// track; nothing else keeps the source alive.
+    private var micSource: RTCAudioSource?
     /// `@ObservationIgnored` because `deinit` reads it: the macro would turn a
     /// tracked property into a MainActor-isolated accessor, which a nonisolated
     /// `deinit` may not call — a stored property it may.
@@ -278,8 +296,12 @@ public final class CameraSession {
         // from the start. Verified: the OS permission prompt still fires only on
         // the first unmute (WebRTC doesn't start capture for a disabled track).
         let source = Self.factory.audioSource(with: Self.noConstraints)
+        // Re-applied here rather than only in the setter: a renegotiation builds a new
+        // source, and the old one's gain goes with it.
+        source.volume = min(max(micVolume, 0), 10)
         let track = Self.factory.audioTrack(with: source, trackId: "reachy-mic")
         track.isEnabled = isMicEnabled
+        micSource = source
         if let transceiver = peer.transceivers.first(where: { $0.mediaType == .audio }) {
             transceiver.sender.track = track
             transceiver.setDirection(.sendRecv, error: nil)
@@ -312,6 +334,7 @@ public final class CameraSession {
         peerConnection = nil
         delegateAdapter = nil
         micTrack = nil
+        micSource = nil
         videoTrack = nil
         answerSent = false
         pendingLocalCandidates = []

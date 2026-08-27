@@ -36,3 +36,14 @@ import SwiftUI
         presence: .preview()
     )
 }
+
+// The Call section, which appears only with a viewport behind the sheet. It scales
+// this device's voice on the way to the robot — the one control over a call that
+// drowns out everything else the robot plays.
+#Preview("Telepresence — your voice") {
+    PreviewScene.telepresence(presence: .preview(), viewport: .preview())
+}
+
+#Preview("Telepresence — voice turned down") {
+    PreviewScene.telepresence(presence: .preview(), viewport: .preview(callMicVolume: 0.4))
+}

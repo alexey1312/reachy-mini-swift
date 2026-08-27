@@ -28,3 +28,26 @@ import SwiftUI
 #Preview("Audio — sheet variant") {
     PreviewScene.audioSection(.preview(), header: nil)
 }
+
+// The three profiles the picker offers. Each is one set of audio-board registers,
+// and the caption under the row is the only place their difference is legible.
+#Preview("Audio — sensitive profile") {
+    PreviewScene.audioSection(.preview(profile: .sensitive))
+}
+
+#Preview("Audio — noisy profile") {
+    PreviewScene.audioSection(.preview(profile: .noisy))
+}
+
+// A board somebody tuned by hand, over the API or with the XMOS tool. The row
+// reports it and offers the three profiles beside it; it never overwrites silently.
+#Preview("Audio — custom profile") {
+    PreviewScene.audioSection(.preview(profile: nil))
+}
+
+// No audio board answered, or the session is a relay that carries no such route.
+// The levels stay; the profile row is absent rather than disabled, because there is
+// nothing to read back and nothing to write.
+#Preview("Audio — no audio board") {
+    PreviewScene.audioSection(.preview(profile: nil, canTuneProfile: false))
+}

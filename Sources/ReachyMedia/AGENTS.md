@@ -151,6 +151,13 @@ Read it with `xcrun devicectl device sysdiagnose --destination` and a predicate 
 **A silent call is diagnosed by that timeline and by nothing else** — the daemon's own
 "Setting up incoming audio playback" appears whether or not a single sample ever arrives.
 
+**`CameraSession.micVolume` is the only gain anywhere in the call**, and it exists because the
+robot has none. The daemon adds no software gain to any playback path and its mixer is already at
+100, so a robot cannot play its own sounds louder to match a call — the call has to come down. It
+is applied in `attachMicTrack` as well as in the setter, because a renegotiation builds a new
+`RTCAudioSource` and the old one's gain goes with it. Measurements, and why the two sources differ
+by 10–17 dB in the first place, are in `docs/research/audio.md`.
+
 Known edge, accepted: if the system never delivers `didDeactivate` after a call (not observed,
 but the contract does not promise ordering), the owner stays `.call` and a later
 `cameraSessionStopped()` declines to release — the symptom would be ducked audio in other apps

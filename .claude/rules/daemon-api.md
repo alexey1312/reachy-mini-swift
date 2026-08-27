@@ -437,3 +437,19 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   - Out-of-range values come back as 422, so both setters map `.unprocessableContent` explicitly.
   - On `sim-daemon` these routes drive the **host Mac's own** speaker and mic (`platform: Darwin`), not a robot.
     Note the level before testing and restore it after.
+  - **A level is not a gain.** The daemon applies no software gain to anything it plays — a call, a move's music
+    and an app's speech all reach one ALSA sink, and the mixer above is what these routes move. So the robot
+    cannot play one source louder than another, and a call that drowns out the robot's own sounds is a source
+    level rather than a limiter. `CameraSession.micVolume` is the only control over it. See
+    `docs/research/audio.md` for the measurements.
+- **The audio board's own DSP is `GET /api/audio/config/parameter/{name}` and `POST /api/audio/config/apply`.**
+  An XMOS XVF3800 with four microphones, whose gain control, limiter, noise-suppression floors and echo canceller
+  are named registers; `media/audio_control_utils.py` in the daemon holds the map. This is where noise suppression
+  and microphone sensitivity actually live — `/api/volume/microphone/set` moves the ALSA input level and nothing
+  else. `MicrophoneProfile` names three sets of registers; nothing else in this app writes them.
+  - **An integer register cannot be written through this route at all.** The request body is typed `list[float]`,
+    so an `int32` register reaches `struct.pack("i", 1.0)` and throws; the daemon counts a failure and answers
+    `{"applied": false}`, and `verify: false` does not help because the write is what fails. It reads as success,
+    because a readback of an unchanged register answers correctly. Measured register by register on firmware
+    2.1.2 — every integer refused, every float took. `MicrophoneProfileTests` holds the constraint.
+  - A write is global and outlives the session that made it. Whether it outlives a reboot is untested.

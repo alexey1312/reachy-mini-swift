@@ -14,6 +14,9 @@ import SwiftUI
 struct TelepresenceSheet: View {
     let session: RobotSession
     let dismiss: () -> Void
+    /// Absent in previews and wherever no camera is up: without one there is no track
+    /// to scale, and a slider over nothing is worse than no slider.
+    var viewport: ViewportModel?
 
     @State private var presence: PresenceModel
     @State private var audio: AudioSettingsModel
@@ -21,11 +24,13 @@ struct TelepresenceSheet: View {
     init(
         session: RobotSession,
         dismiss: @escaping () -> Void,
+        viewport: ViewportModel? = nil,
         presence: PresenceModel? = nil,
         audio: AudioSettingsModel? = nil
     ) {
         self.session = session
         self.dismiss = dismiss
+        self.viewport = viewport
         _presence = State(initialValue: presence ?? PresenceModel())
         _audio = State(initialValue: audio ?? AudioSettingsModel())
     }
@@ -33,6 +38,9 @@ struct TelepresenceSheet: View {
     var body: some View {
         Form {
             AudioSettingsSection(session: session, model: audio)
+            if let viewport {
+                voiceSection(viewport)
+            }
             if session.canControlPresence {
                 behaviourSection
             }
@@ -41,6 +49,34 @@ struct TelepresenceSheet: View {
         .navigationTitle(.reachy("Presence"))
         .toolbar {
             Button(.reachy("Done"), action: dismiss)
+        }
+    }
+
+    /// How loud this device's voice is when the robot plays it.
+    ///
+    /// It belongs beside the robot's own levels and is not one of them: the robot's
+    /// speaker slider moves everything the robot plays, and this moves one source.
+    /// It is here because the robot has no headroom left — the daemon adds no gain
+    /// and its mixer is already at the top, so a call that drowns out the robot's own
+    /// sounds can only be brought down, never matched.
+    private func voiceSection(_ viewport: ViewportModel) -> some View {
+        @Bindable var viewport = viewport
+        return Section {
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                HStack {
+                    Label(.reachy("Your voice"), systemImage: "person.wave.2")
+                    Spacer()
+                    Text(.reachy("\(Int((viewport.callMicVolume * 100).rounded()))%"))
+                        .font(Typography.consoleLine)
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $viewport.callMicVolume, in: ViewportModel.micVolumeRange, step: 0.05)
+                Text(.reachy("How loud you are when the robot plays your voice. It takes effect at once."))
+                    .font(Typography.statusCompact)
+                    .foregroundStyle(.tertiary)
+            }
+        } header: {
+            Text(.reachy("Call"))
         }
     }
 
