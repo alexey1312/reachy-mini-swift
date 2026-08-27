@@ -173,8 +173,18 @@ mise run asc -- publish testflight --app 6799644194 --platform IOS \
   --wait --test-notes "…" --locale en-US --submit --confirm
 ```
 
-A macOS `.pkg` is not a zip, so `asc` cannot read the version out of it: that one
-also needs `--version` and `--build-number` (the commit count) spelled out.
+A macOS `.pkg` goes through the **same `--ipa` flag** — there is no `--pkg`, and
+naming one stops the command on its own usage text. What the `.pkg` does need is
+`--version` and `--build-number` (the commit count) spelled out, because it is not
+a zip and `asc` cannot read either out of it:
+
+```bash
+mise run asc -- publish testflight --app 6799644194 --platform MAC_OS \
+  --ipa "Apps/DerivedData/Export/macOS/AppStore/Hey Reachy.pkg" \
+  --version 0.4.2 --build-number "$(git rev-list --count HEAD)" \
+  --group c48f6abb-c178-40a2-8747-b6513add766e \
+  --wait --test-notes "…" --locale en-US --submit --confirm
+```
 
 ### When the notary answers `Invalid`
 
