@@ -48,8 +48,14 @@ integration is three types with one direction of trust:
 - **The call history renders `Handle.value` verbatim, and that is the only place a name can go.**
   Not `displayName`, and not a membership update: `Conversation.Update(members:activeRemoteMembers:)`
   was reported on a device and the Recents row went on printing the value. So the handle carries the
-  robot's own name and falls back to `deduplicationKey` only for a robot nobody renamed — a row
-  reading `b68ff6bbe47f0608` names nothing to anybody. The cost is that a Recents redial arrives
+  robot's own name and falls back to `deduplicationKey` — a row reading `b68ff6bbe47f0608` names
+  nothing to anybody, and one was reported from the field. **That fallback is unreachable today, and
+  it is worth knowing why before hunting for it**: `robot_name` is required in the daemon spec, so a
+  LAN handshake names even a robot nobody renamed (`reachy_mini`), and `CentralRobot.displayName`
+  ends in `peerID` rather than in nil. A hardware-id row therefore comes from a build older than
+  this entry, not from a live path. What could bring the fallback back is a spec refresh that makes
+  `robot_name` optional, which is why `RobotConnectionHandshakeTests` holds the property rather than
+  this paragraph alone. The cost is that a Recents redial arrives
   naming the robot by **name** while a donated intent names it by **identity**, which is why
   `CallRequestRouting.decide` takes both and `CallRequestInboxTests` holds each direction.
   `activeCall.robotID` stays the identity throughout (rule 4); only the handle is human-facing.
