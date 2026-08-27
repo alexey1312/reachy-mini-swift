@@ -72,9 +72,21 @@ enum CallRequestRouting {
         case waitForConnection
     }
 
-    static func decide(requestRobotID: String?, connectedRobotID: String?) -> Decision {
+    /// A redial names the robot one of two legitimate ways, which is why this
+    /// takes a name as well. The donated intent carries `deduplicationKey`; a
+    /// Recents row carries whatever `Handle.value` was, and that is the robot's
+    /// **name** — the call history renders the value verbatim, so a hardware id
+    /// there would be a row naming nothing.
+    static func decide(
+        requestRobotID: String?,
+        connectedRobotID: String?,
+        connectedRobotName: String? = nil
+    ) -> Decision {
         guard let connectedRobotID else { return .waitForConnection }
-        guard let requestRobotID, requestRobotID != connectedRobotID else { return .proceed }
+        guard let requestRobotID else { return .proceed }
+        guard requestRobotID != connectedRobotID, requestRobotID != connectedRobotName else {
+            return .proceed
+        }
         return .liveTabOnly
     }
 }

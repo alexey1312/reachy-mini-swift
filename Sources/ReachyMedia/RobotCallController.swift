@@ -239,7 +239,9 @@ public final class RobotCallController {
             let uuid = UUID()
             conversationUUID = uuid
             pendingRobot = ActiveCall(robotID: robotID, robotName: currentRobotName)
-            let handle = Handle(type: .generic, value: robotID, displayName: currentRobotName)
+            // The name, because the call history renders `Handle.value` verbatim
+            // and nothing else — `AGENTS.md` has what else was tried.
+            let handle = Handle(type: .generic, value: currentRobotName ?? robotID, displayName: currentRobotName)
             let action = StartConversationAction(conversationUUID: uuid, handles: [handle], isVideo: true)
             // `.notice`, not `.debug`: the log store drops debug by default, so
             // the one line saying a start was attempted was unreadable in the

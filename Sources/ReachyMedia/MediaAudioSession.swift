@@ -114,27 +114,47 @@ final class MediaAudioSession {
             transitionTask?.cancel()
             transitionTask = nil
             owner = .call
+            // **Take WebRTC's audio unit down on purpose, and this line is the
+            // whole fix.** The system is about to interrupt this session and
+            // activate its own — measured: `Session interrupted, will stop
+            // iounit` lands ~700 ms after the start and `didActivate` ~80 ms
+            // after that. Turning the flag on again in `callDidActivate` only
+            // restarts the unit if it is a *change*, and `cameraSessionStarted`
+            // has already set it `true` for passive listening. Assigning `true`
+            // to a `true` flag restarts nothing, so #111 shipped a call that
+            // was silent in both directions while passive audio worked.
+            RTCAudioSession.sharedInstance().isAudioEnabled = false
+            Self.log.notice("Call starting; audio handed to the system")
         }
 
         /// The system activated the call's audio session — hand it to WebRTC.
+        /// This is where the audio unit comes back up, and it can only do so
+        /// because `callWillStart` took it down first.
         func callDidActivate(_ session: AVAudioSession) {
             let rtc = RTCAudioSession.sharedInstance()
             rtc.audioSessionDidActivate(session)
             rtc.isAudioEnabled = true
+            Self.log.notice("System activated the call's session; audio on")
         }
 
         /// The call ended and the system deactivated its session. A camera
         /// session still running goes back to app ownership (the
         /// passive-viewing shape); otherwise audio winds down entirely.
         func callDidDeactivate(_ session: AVAudioSession, cameraStillRunning: Bool) {
-            RTCAudioSession.sharedInstance().audioSessionDidDeactivate(session)
+            let rtc = RTCAudioSession.sharedInstance()
+            rtc.audioSessionDidDeactivate(session)
+            // Down unconditionally, for the reason `callWillStart` gives: the
+            // reclaim below has to be able to turn it back *on*.
+            rtc.isAudioEnabled = false
+            Self.log.notice(
+                "System deactivated the call's session; camera running: \(cameraStillRunning, privacy: .public)"
+            )
             guard owner == .call else { return }
             if cameraStillRunning {
                 owner = .app
                 transitionTask?.cancel()
                 transitionTask = Task { await Self.reclaimForApp() }
             } else {
-                RTCAudioSession.sharedInstance().isAudioEnabled = false
                 owner = .nobody
             }
         }
@@ -170,6 +190,9 @@ final class MediaAudioSession {
             for _ in 0 ..< 5 {
                 do {
                     try AVAudioSession.sharedInstance().setActive(true)
+                    // Passive listening again: the session is the app's, so the
+                    // audio unit has to be told to come back.
+                    RTCAudioSession.sharedInstance().isAudioEnabled = true
                     return
                 } catch {
                     guard await (try? Task.sleep(for: .milliseconds(200))) != nil else { return }

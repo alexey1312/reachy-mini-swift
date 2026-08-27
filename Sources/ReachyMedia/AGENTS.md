@@ -45,6 +45,14 @@ integration is three types with one direction of trust:
   a question App Review can ask (guideline 2.5.4) — this app really does carry two-way VoIP
   audio, and the justification belongs in App Review Information beside the `network.server` one.
   `CallProjectLockstepTests` holds both modes.
+- **The call history renders `Handle.value` verbatim, and that is the only place a name can go.**
+  Not `displayName`, and not a membership update: `Conversation.Update(members:activeRemoteMembers:)`
+  was reported on a device and the Recents row went on printing the value. So the handle carries the
+  robot's own name and falls back to `deduplicationKey` only for a robot nobody renamed — a row
+  reading `b68ff6bbe47f0608` names nothing to anybody. The cost is that a Recents redial arrives
+  naming the robot by **name** while a donated intent names it by **identity**, which is why
+  `CallRequestRouting.decide` takes both and `CallRequestInboxTests` holds each direction.
+  `activeCall.robotID` stays the identity throughout (rule 4); only the handle is human-facing.
 - **Every step of the start chain logs** to subsystem `com.alexey1312.ReachyMini`, category
   `RobotCall` — the start being attempted, the system performing an action and the state it left
   behind, every ending and its cause, permission refused, no robot identity, `perform` throwing,
@@ -112,6 +120,36 @@ exist, and `isAudioEnabled` is the explicit lever thereafter. The ordering is al
 activate-then-enable. If passive robot audio ever regresses on a device, the recorded fallback is
 to enable manual audio lazily on the first call instead and accept a first-call glitch — measure
 before reaching for it.
+
+**`isAudioEnabled` is a change, not a command — and this is the entry that cost a day.** libwebrtc
+raises and drops its audio unit on the _transition_ of that flag, so assigning `true` to a flag
+already `true` restarts nothing. The recipe every CallKit+WebRTC guide prints
+(`audioSessionDidActivate` then `isAudioEnabled = true` in `didActivate`) assumes the flag is off
+whenever no call is up. **It is not off here**, because `cameraSessionStarted()` turns it on for
+passive listening — the robot is audible with no call at all. Two correct pieces, incompatible
+only together.
+
+What that produced in #111: starting a call made the system interrupt the app's session and stop
+the audio unit, `didActivate` arrived ~80 ms later, the handover assigned `true` to `true`, and
+the call was **silent in both directions** while passive audio had worked a second earlier. So
+`callWillStart()` now sets `isAudioEnabled = false` deliberately, `callDidActivate` turns it back
+on, `callDidDeactivate` drops it again and `reclaimForApp` restores it. Every one of those four
+lines is load-bearing; deleting any leaves a state where the unit never comes back.
+
+The measurement, because no amount of reading the code shows it — the order is the whole proof:
+
+```
+14:12:25.550  Call starting                              (ours)
+14:12:26.280  Session interrupted, will stop iounit      (AURemoteIO)
+14:12:26.280  Stopping AURemoteIO
+14:12:26.356  System activated the call's session        (ours, from didActivate)
+```
+
+Read it with `xcrun devicectl device sysdiagnose --destination` and a predicate on
+`Starting AURemoteIO`/`Stopping AURemoteIO` beside subsystem `com.alexey1312.ReachyMini`; the
+`.notice` lines in `MediaAudioSession` exist to sit next to those and are not decoration.
+**A silent call is diagnosed by that timeline and by nothing else** — the daemon's own
+"Setting up incoming audio playback" appears whether or not a single sample ever arrives.
 
 Known edge, accepted: if the system never delivers `didDeactivate` after a call (not observed,
 but the contract does not promise ordering), the owner stays `.call` and a later

@@ -104,7 +104,8 @@ struct RootCallLifecycle: ViewModifier {
         }
         switch CallRequestRouting.decide(
             requestRobotID: pending.request.robotID,
-            connectedRobotID: connectedIdentity?.deduplicationKey
+            connectedRobotID: connectedIdentity?.deduplicationKey,
+            connectedRobotName: connectedIdentity?.name
         ) {
         case .waitForConnection:
             // Leave it pending; connecting re-fires the trigger and expiry

@@ -69,6 +69,34 @@ struct CallRequestInboxTests {
     /// The receive rule shared with Handoff: an inbound request never
     /// disconnects a live session — and it never unmutes at a robot the user
     /// did not name, so the answer is the Live tab and nothing more.
+    /// A Recents row carries `Handle.value`, and that value is the robot's own
+    /// name so the call history has a word in it rather than a hardware id. The
+    /// redial therefore arrives naming the robot the other way round from a
+    /// donated intent, and must still reach the microphone.
+    @Test("a redial naming the robot by name proceeds")
+    func aNameFromTheCallHistoryProceeds() {
+        let decision = CallRequestRouting.decide(
+            requestRobotID: "reachy_mini",
+            connectedRobotID: "b68ff6bbe47f0608",
+            connectedRobotName: "reachy_mini"
+        )
+
+        #expect(decision == .proceed)
+    }
+
+    /// And a name that belongs to some other robot still must not open a
+    /// microphone at the one that is connected.
+    @Test("a redial naming another robot gets the Live tab only")
+    func anotherRobotsNameStillOnlyOpensTheTab() {
+        let decision = CallRequestRouting.decide(
+            requestRobotID: "kitchen",
+            connectedRobotID: "b68ff6bbe47f0608",
+            connectedRobotName: "reachy_mini"
+        )
+
+        #expect(decision == .liveTabOnly)
+    }
+
     @Test("a different connected robot gets the Live tab and no microphone")
     func mismatchedRobotStopsAtTheLiveTab() {
         let decision = CallRequestRouting.decide(requestRobotID: "reachy-2", connectedRobotID: "reachy-1")
