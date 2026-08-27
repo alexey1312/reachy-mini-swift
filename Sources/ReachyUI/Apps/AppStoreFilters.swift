@@ -132,3 +132,13 @@ extension AppStoreModel {
         }
     }
 }
+
+extension RobotApp {
+    /// Title, name, author and Space id all answer — a user who knows an app by
+    /// its Hub URL should find it by pasting the owner in.
+    func matchesSearch(_ query: String) -> Bool {
+        [title, name, author, spaceID, summary]
+            .compactMap(\.self)
+            .contains { $0.localizedCaseInsensitiveContains(query) }
+    }
+}

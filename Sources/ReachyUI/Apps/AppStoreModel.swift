@@ -42,6 +42,12 @@ final class AppStoreModel {
     private(set) var loading = false
     private(set) var busy = false
     private(set) var lastError: String?
+    /// The robot searches the Hub with the token it stores, and an expired one
+    /// collapses that search to `[]` rather than to an error — the daemon catches
+    /// the 401. A catalogue missing four hundred entries then looks exactly like a
+    /// complete one, which is why Discover has to say so itself.
+    /// Written by `relinkHuggingFace` alone, which lives in a file of its own.
+    var discoverNeedsHFSignIn = false
     /// A successful answer, including `[]`, is different from never having received
     /// the catalogue. That distinction keeps empty and loading states honest.
     private var hasCatalogueResult = false
@@ -102,7 +108,7 @@ final class AppStoreModel {
     var visibleApps: [RobotApp] {
         let apps = switch section {
         case .installed: installed
-        case .discover: catalogue
+        case .discover: discoverNeedsHFSignIn ? [] : catalogue
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let matched = apps.filter { scope.admits($0) && (query.isEmpty || $0.matchesSearch(query)) }
@@ -199,7 +205,7 @@ final class AppStoreModel {
     /// read would wipe the refusal from a Start or a Stop somebody is still
     /// reading. The user's own Refresh is the opposite: they asked, so the answer
     /// is theirs.
-    func load(session: RobotSession, refresh: Bool = false) async {
+    func load(session: RobotSession, refresh: Bool = false, hfToken: @MainActor () async -> String? = { nil }) async {
         let silent = catalogueIsWarmed && !refresh
         let requestID = UUID()
         loadID = requestID
@@ -210,6 +216,10 @@ final class AppStoreModel {
             }
         }
 
+        // Ahead of the catalogue: a token put back afterwards heals nothing until
+        // the next visit.
+        let relinked = await relinkHuggingFace(session: session, token: hfToken)
+
         do {
             // One `list-available` carries the catalogue and the installed list
             // together (`list_all_available_apps`), so the two sections cost one
@@ -218,7 +228,7 @@ final class AppStoreModel {
             // `refresh` is forced over warmed rows: the session holds the same list
             // in memory, so without it this call answers from the cache it was
             // warmed from and the robot is never asked at all.
-            let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed)
+            let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed || relinked)
             guard loadID == requestID, !Task.isCancelled else { return }
             catalogue = apps.filter { !$0.isInstalled }
             installed = apps.filter(\.isInstalled)
@@ -318,16 +328,6 @@ final class AppStoreModel {
     }
 }
 
-private extension RobotApp {
-    /// Title, name, author and Space id all answer — a user who knows an app by
-    /// its Hub URL should find it by pasting the owner in.
-    func matchesSearch(_ query: String) -> Bool {
-        [title, name, author, spaceID, summary]
-            .compactMap(\.self)
-            .contains { $0.localizedCaseInsensitiveContains(query) }
-    }
-}
-
 #if DEBUG
     extension AppStoreModel {
         /// A store parked in one state. Lives here rather than in `Previews/`:
@@ -353,7 +353,8 @@ private extension RobotApp {
             lock: RobotAppLockStatus? = nil,
             loading: Bool = false,
             error: String? = nil,
-            pinned: [String] = []
+            pinned: [String] = [],
+            needsHFSignIn: Bool = false
         ) -> AppStoreModel {
             let model = AppStoreModel(session: session ?? .preview())
             model.section = section
@@ -370,6 +371,7 @@ private extension RobotApp {
             model.lock = lock
             model.loading = loading
             model.lastError = error
+            model.discoverNeedsHFSignIn = needsHFSignIn
             model.hasCatalogueResult = !catalogue.isEmpty || !installed.isEmpty || (!loading && error == nil)
             model.attemptedCatalogueLoad = !loading || model.hasCatalogueResult
             if hasUpdate, let first = installed.first {

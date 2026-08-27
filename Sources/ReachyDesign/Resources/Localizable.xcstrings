@@ -5830,6 +5830,35 @@
         }
       }
     },
+    "Sign in to browse apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmelden, um Apps zu durchsuchen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión para explorar apps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous pour parcourir les apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите, чтобы смотреть приложения"
+          }
+        }
+      }
+    },
     "Simulation": {
       "extractionState": "manual",
       "localizations": {
@@ -5971,6 +6000,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демон этого робота работает на компьютере, к которому робот подключён, поэтому его Wi-Fi, обновления и обслуживание относятся к тому компьютеру, а не к этому экрану."
+          }
+        }
+      }
+    },
+    "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter durchsucht Hugging Face mit Ihrem Konto, und seine Sitzung ist abgelaufen. Installierte Apps funktionieren weiter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot busca en Hugging Face con tu cuenta, y su sesión ha terminado. Las apps instaladas siguen funcionando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot cherche sur Hugging Face avec votre compte, et sa session a expiré. Les apps installées continuent de fonctionner."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот ищет на Hugging Face под вашей учётной записью, и его сессия завершилась. Установленные приложения продолжают работать."
           }
         }
       }

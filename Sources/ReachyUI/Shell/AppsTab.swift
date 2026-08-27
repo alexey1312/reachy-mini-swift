@@ -24,7 +24,8 @@ struct AppsTab: View {
                         session: session,
                         runningApp: runningApp,
                         model: store,
-                        install: install
+                        install: install,
+                        signIn: { router.showsAccount = true }
                     )
                 } else {
                     AppsUnavailableView(isRemote: session.isRemote, findRobot: findRobot)

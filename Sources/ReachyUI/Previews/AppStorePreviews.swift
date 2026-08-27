@@ -25,6 +25,13 @@ import SwiftUI
     )
 }
 
+// An expired Hugging Face session on the robot leaves the daemon answering with
+// the handful of curated apps rather than with an error, so Discover says what is
+// wrong instead of showing a catalogue that is quietly missing most of itself.
+#Preview("Apps — sign-in gate") {
+    PreviewScene.appStore(.preview(), model: .preview(needsHFSignIn: true))
+}
+
 // Chess Coach is third in the daemon's own ordering, so a capture that puts it
 // first is the lift itself — not merely the pin glyph.
 #Preview("Apps — pinned") {

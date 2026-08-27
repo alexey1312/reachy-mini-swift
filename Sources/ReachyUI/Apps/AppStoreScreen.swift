@@ -1,3 +1,4 @@
+import HuggingFaceAuth
 import ReachyDesign
 import ReachyKit
 import ReachyWidgetUI
@@ -10,11 +11,17 @@ struct AppStoreScreen: View {
     /// The dock's model, adopted rather than owned: a row opens the same page the
     /// dock does, and that page carries Restart and Stop.
     let runningApp: RunningAppModel
+    /// Opening the account sheet belongs to the root, which owns it. Discover needs
+    /// it because a robot with no Hugging Face session has no catalogue to show.
+    let signIn: () -> Void
 
     @State private var model: AppStoreModel
     @State private var install: AppInstallModel
     @State private var selected: RobotApp?
     @Environment(\.reachyPreviewMode) private var previewMode
+    /// This app's own session, which is where a replacement token for the robot
+    /// comes from. Optional because a preview host has none.
+    @Environment(HFAccount.self) private var hfAccount: HFAccount?
 
     /// `model` is `nil` rather than a defaulted value: it now needs `session`, and a
     /// default argument cannot read another parameter.
@@ -22,10 +29,12 @@ struct AppStoreScreen: View {
         session: RobotSession,
         runningApp: RunningAppModel,
         model: AppStoreModel? = nil,
-        install: AppInstallModel? = nil
+        install: AppInstallModel? = nil,
+        signIn: @escaping () -> Void = {}
     ) {
         self.session = session
         self.runningApp = runningApp
+        self.signIn = signIn
         _model = State(initialValue: model ?? AppStoreModel(session: session))
         _install = State(initialValue: install ?? AppInstallModel(session: session))
     }
@@ -93,7 +102,9 @@ struct AppStoreScreen: View {
             }
         }
         .overlay {
-            if model.visibleApps.isEmpty, !model.isContentLoading {
+            if model.section == .discover, model.discoverNeedsHFSignIn {
+                signInGate
+            } else if model.visibleApps.isEmpty, !model.isContentLoading {
                 emptyState
             }
         }
@@ -107,7 +118,7 @@ struct AppStoreScreen: View {
         .toolbar {
             filterMenu
             Button {
-                Task { await model.load(session: session, refresh: true) }
+                Task { await reload(refresh: true) }
             } label: {
                 Label(.reachy("Refresh"), systemImage: "arrow.clockwise")
             }
@@ -128,7 +139,33 @@ struct AppStoreScreen: View {
         }
         .task {
             guard !previewMode else { return }
-            await model.load(session: session)
+            await reload()
+        }
+    }
+
+    /// The store reads the robot's Hugging Face session on the way in, so every
+    /// load carries the token that can renew it.
+    private func reload(refresh: Bool = false) async {
+        await model.load(session: session, refresh: refresh) { await hfAccount?.currentToken() }
+    }
+
+    /// Discover with no Hub behind it.
+    ///
+    /// The robot searches Hugging Face with its own token, and an expired one leaves
+    /// the daemon answering with the handful of curated apps instead of the whole
+    /// catalogue. Showing that list would be showing a store that is quietly missing
+    /// most of itself, so the section asks for the sign-in that fixes it. Installed
+    /// apps are untouched — they are on the robot already.
+    private var signInGate: some View {
+        ContentUnavailableView {
+            Label(.reachy("Sign in to browse apps"), systemImage: "person.crop.circle.badge.exclamationmark")
+        } description: {
+            Text(.reachy(
+                // swiftlint:disable:next line_length
+                "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working."
+            ))
+        } actions: {
+            Button(.reachy("Sign in to Hugging Face"), action: signIn)
         }
     }
 
