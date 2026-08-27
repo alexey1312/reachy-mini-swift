@@ -40,6 +40,18 @@ import SwiftUI
     )
 }
 
+// The End button exists only while a call is up, and a call cannot be placed headless —
+// `RobotCallController.preview` is the seam. Without this capture the button's absence
+// from every other camera reference proves nothing about it being conditional.
+#Preview("Viewport — on a call") {
+    let camera = CameraSession.preview(.streaming, micPermission: .granted, isMicEnabled: true)
+    return PreviewScene.viewport(
+        .preview(content: .camera, cameraSession: camera),
+        makeTeleop: PreviewScene.teleopFactory,
+        onCall: true
+    )
+}
+
 // Over the relay the URDF and its meshes are out of reach, so the 3D pane says so once instead of
 // spinning on a download that is never going to start.
 #Preview("Viewport — no 3D over the relay") {

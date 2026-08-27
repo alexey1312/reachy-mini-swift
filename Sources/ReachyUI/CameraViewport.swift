@@ -63,6 +63,27 @@ struct CameraViewport: View {
     }
 }
 
+/// Hangs up. Present only while a call is actually up, beside the microphone
+/// that started it.
+///
+/// **It goes through the system, never straight to the session.** The Lock
+/// Screen's End and this one are one funnel (`EndConversationAction`), so the
+/// two UIs cannot disagree about whether a call is running. That is also why
+/// there is no macOS spelling: no call ever becomes active there, so this never
+/// draws.
+struct CallEndButton: View {
+    let call: RobotCallController
+
+    var body: some View {
+        Button(role: .destructive, action: call.endCall) {
+            Label(.reachy("End call"), systemImage: "phone.down.fill")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(Tone.danger.style)
+        }
+        .buttonStyle(ViewportControlButtonStyle())
+    }
+}
+
 /// Unmutes the client → robot audio uplink. Lives beside the viewport switcher
 /// rather than inside the video, so the floating controls stay in one cluster.
 ///

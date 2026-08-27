@@ -166,6 +166,12 @@ struct ViewportView: View {
         case .camera:
             if let session = model.cameraSession {
                 CameraMicButton(session: session, call: call)
+                // Gated on a live call rather than always offered: with no call
+                // there is nothing to hang up, and a permanent red button beside
+                // the microphone reads as a second, scarier mute.
+                if let call, call.hasActiveCall {
+                    CallEndButton(call: call)
+                }
             }
         }
     }

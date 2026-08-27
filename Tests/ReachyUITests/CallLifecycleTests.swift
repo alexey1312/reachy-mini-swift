@@ -105,6 +105,36 @@ struct CallLifecycleTests {
         #expect(lifecycle.handle(.performedMute(isMuted: true)) == [.failPendingAction])
     }
 
+    /// The app's own End asks the system rather than ending here, so the Lock
+    /// Screen's button and the one beside the microphone stay one funnel. The
+    /// call is still active on the way out — it ends when `performedEnd` lands.
+    @Test("the in-app End routes through the system")
+    func endTappedPerformsTheSystemAction() {
+        var lifecycle = CallLifecycle.active()
+
+        #expect(lifecycle.handle(.endTapped) == [.performEndAction])
+        #expect(lifecycle.state == .active)
+    }
+
+    /// There is no conversation to end before the system has taken the start,
+    /// and no button on screen either — the gate is `activeCall`.
+    @Test("an End before the call is up does nothing")
+    func endTappedWhileStartingDoesNothing() {
+        var lifecycle = CallLifecycle()
+        _ = lifecycle.handle(.unmuteTapped)
+
+        #expect(lifecycle.handle(.endTapped) == [])
+        #expect(lifecycle.state == .starting)
+    }
+
+    @Test("an End with no call does nothing")
+    func endTappedIdleDoesNothing() {
+        var lifecycle = CallLifecycle()
+
+        #expect(lifecycle.handle(.endTapped) == [])
+        #expect(lifecycle.state == .idle)
+    }
+
     /// Fulfilling the end *is* the report for a system-initiated hang-up —
     /// reporting it again would double-end the conversation.
     @Test("the End button mutes, fulfills, and reports nothing")

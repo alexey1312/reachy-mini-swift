@@ -178,7 +178,12 @@ enum PreviewScene {
         // factory is main-actor isolated. That compiles under SwiftPM and fails only
         // in the Xcode targets, minutes into a snapshot run that has already deleted
         // every reference.
-        offersPresence: Bool = true
+        offersPresence: Bool = true,
+        // Whether a call is up, which is what puts the End button in the chrome
+        // row. A `Bool` for the same reason `offersPresence` is one — the
+        // controller's factory is main-actor isolated and a defaulted argument is
+        // evaluated nonisolated.
+        onCall: Bool = false
     ) -> some View {
         ViewportView(
             model: model,
@@ -188,7 +193,8 @@ enum PreviewScene {
             // Built here rather than defaulted for the reason `offersPresence` is a
             // `Bool`: a defaulted argument is evaluated nonisolated and this initialiser
             // is `@MainActor`.
-            presence: PresenceModel()
+            presence: PresenceModel(),
+            call: onCall ? .preview(robotName: "Reachy") : nil
         )
         .preview()
     }

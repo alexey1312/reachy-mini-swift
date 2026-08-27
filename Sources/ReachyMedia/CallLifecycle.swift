@@ -8,9 +8,10 @@ import Foundation
 /// The model the user chose (issue #78): a call *starts* when the microphone is
 /// unmuted — "call the robot" is literally what opening the camera tab and
 /// unmuting is. Muting during a call does not end it (an ordinary in-call
-/// mute); the call ends from the system UI's End button, from the session
-/// becoming ineligible (robot asleep, stream failed, viewport target gone), or
-/// from a manager reset. Passive viewing is never a call.
+/// mute); the call ends from an End button — the system UI's or the app's own,
+/// which are one funnel — from the session becoming ineligible (robot asleep,
+/// stream failed, viewport target gone), or from a manager reset. Passive
+/// viewing is never a call.
 ///
 /// The invariant every path holds: **the microphone is live only while a call
 /// is active.** Each ending effect list carries `.applyMic(false)`. The one
@@ -52,6 +53,8 @@ struct CallLifecycle: Equatable, Sendable {
         /// The system delivered a `MuteConversationAction` (its own UI and the
         /// in-app button arrive identically — one funnel).
         case performedMute(isMuted: Bool)
+        /// The red button beside the microphone, inside the app.
+        case endTapped
         /// The system delivered an `EndConversationAction`.
         case performedEnd
         /// The session under the call went away: robot asleep, stream failed,
@@ -76,6 +79,10 @@ struct CallLifecycle: Equatable, Sendable {
         /// step (`MuteConversationAction`); the change lands via
         /// `performedMute`.
         case performMuteAction(isMuted: Bool)
+        /// Route the in-app End through the system (`EndConversationAction`),
+        /// so the button beside the microphone and the one on the Lock Screen
+        /// are one funnel; the ending itself lands back via `performedEnd`.
+        case performEndAction
         /// Actually flip the microphone track.
         case applyMic(Bool)
         /// Fulfill the system action currently being performed.
@@ -102,6 +109,7 @@ struct CallLifecycle: Equatable, Sendable {
         case .startFailed: startFailed()
         case .performedStart: performedStart()
         case let .performedMute(isMuted): performedMute(isMuted: isMuted)
+        case .endTapped: endTapped()
         case .performedEnd: performedEnd()
         case let .sessionBecameIneligible(cause): becameIneligible(cause)
         case .managerReset: managerReset()
@@ -142,6 +150,19 @@ struct CallLifecycle: Equatable, Sendable {
     private mutating func performedMute(isMuted: Bool) -> [Effect] {
         guard state == .active else { return [.failPendingAction] }
         return [.applyMic(!isMuted), .fulfillPendingAction]
+    }
+
+    /// The app's own End. It asks the *system* rather than ending here, for the
+    /// reason `muteTapped` does: the Lock Screen's button and this one must be
+    /// one funnel, or the two UIs disagree about whether a call is up. The
+    /// ending arrives back as `performedEnd`.
+    ///
+    /// `.starting` is refused rather than queued — there is no conversation for
+    /// the system to end yet, and the button is not on screen in that phase
+    /// (it is gated on `activeCall`, which fills at `.active`).
+    private mutating func endTapped() -> [Effect] {
+        guard state == .active else { return [] }
+        return [.performEndAction]
     }
 
     /// `.starting` accepted too: the system can end a call it is still

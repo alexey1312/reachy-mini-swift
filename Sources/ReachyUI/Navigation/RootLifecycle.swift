@@ -207,13 +207,20 @@ struct RootLifecycle: ViewModifier {
     /// moment the window is docked, and false on a regular width, where there is no
     /// window at all.
     ///
-    /// An active call is the one exception to "looked at": it holds the stream
-    /// through tab changes and backgrounding, because a call that dies when the
-    /// phone locks is not a call (issue #78). The robot gates still apply — a
-    /// robot put to sleep ends the call rather than the call keeping it awake.
+    /// A call is the one exception to "looked at": it holds the stream through
+    /// tab changes and backgrounding, because a call that dies when the phone
+    /// locks is not a call (issue #78). The robot gates still apply — a robot
+    /// put to sleep ends the call rather than the call keeping it awake.
+    ///
+    /// **`keepsSessionAlive`, never `hasActiveCall`.** The latter is only true
+    /// once the system has handed the start back, so the permission ask and the
+    /// callservicesd round trip before it were unguarded — and a suspend in that
+    /// window destroys the `CameraSession` the call is being placed over, which
+    /// is exactly where the first-ever tap lands while the microphone prompt is
+    /// up.
     private var viewportIsOnScreen: Bool {
         guard viewportTarget != nil, session.isAwake else { return false }
-        if call.hasActiveCall {
+        if call.keepsSessionAlive {
             return true
         }
         guard scenePhase == .active else { return false }

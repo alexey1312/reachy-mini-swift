@@ -3,18 +3,23 @@ import Foundation
 import Testing
 
 /// The call framing leans on three hand-kept declarations outside the Swift the
-/// compiler checks: the background mode that keeps call audio alive, the
-/// activity type a Recents redial relaunches under, and the metadata guard's
-/// action list. Each can drift silently — the symptom is a call that dies on
-/// lock, a redial that opens the app onto nothing, or a release shipping with
-/// the intent extracted away — so this suite reads the files the way
-/// `ThemeIconNameTests` reads the icon names.
+/// compiler checks: the background modes a call needs, the activity type a
+/// Recents redial relaunches under, and the metadata guard's action list. Each
+/// can drift silently — the symptom is a call that never starts, a call that
+/// dies on lock, a redial that opens the app onto nothing, or a release
+/// shipping with the intent extracted away — so this suite reads the files the
+/// way `ThemeIconNameTests` reads the icon names.
 @Suite("Call project lockstep")
 struct CallProjectLockstepTests {
-    /// Without `audio` the OS suspends the process mid-call the moment the app
-    /// leaves the foreground; nothing else in the repository declares the key.
-    @Test("the app declares the audio background mode")
-    func declaresTheAudioBackgroundMode() throws {
+    /// Two modes, two different failures, and only one of them is about the
+    /// background. Without `audio` the OS suspends the process mid-call the
+    /// moment the app leaves the foreground. Without `voip` the call never
+    /// starts at all: that key is what entitles the app to perform a call
+    /// transaction, so `ConversationManager.perform` throws `unentitled` and
+    /// the mic button degrades to the bare microphone with nothing on screen
+    /// to say why. Nothing else in the repository declares the key.
+    @Test("the app declares the call background modes")
+    func declaresTheCallBackgroundModes() throws {
         let manifest = try projectManifest()
         let key = "\"UIBackgroundModes\":"
         guard let keyRange = manifest.range(of: key) else {
@@ -23,6 +28,7 @@ struct CallProjectLockstepTests {
         }
         let declaration = manifest[keyRange.upperBound...].prefix(120)
         #expect(declaration.contains("\"audio\""))
+        #expect(declaration.contains("\"voip\""))
     }
 
     /// `CallActivity.activityType` is declared a second time in

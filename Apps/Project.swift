@@ -103,13 +103,18 @@ let project = Project(
                     "Talk to people near your Reachy Mini through its speaker."
                 ),
                 "UILaunchScreen": .dictionary([:]),
-                // A call framed through LiveCommunicationKit keeps the WebRTC
-                // session's audio running when the app leaves the foreground —
-                // without this the OS suspends the process mid-call (#78). No
-                // `voip`: that mode is for receiving calls via PushKit, and the
-                // robot is only ever called, never calling. macOS ignores the
-                // UIKit key, the way it ignores `UILaunchScreen` above.
-                "UIBackgroundModes": .array([.string("audio")]),
+                // Two modes for a call framed through LiveCommunicationKit, and
+                // only one of them is about the background. `audio` keeps the
+                // WebRTC session running when the app leaves the foreground —
+                // without it the OS suspends the process mid-call (#78).
+                // `voip` is what entitles the app to perform a call transaction
+                // at all: without it `ConversationManager.perform` throws
+                // `unentitled` and no call is ever created, which is how #111
+                // shipped. It does *not* bring PushKit with it — nothing here
+                // registers for a VoIP push, and `reportNewIncomingConversation`
+                // is still never called. macOS ignores the UIKit key, the way
+                // it ignores `UILaunchScreen` above.
+                "UIBackgroundModes": .array([.string("audio"), .string("voip")]),
                 // The UIScene lifecycle is a launch requirement under the iOS 27
                 // SDK, and SwiftUI's `App` being scene-based is not the same as
                 // this app *declaring* it — Tuist's `.extendingDefault` does not

@@ -48,10 +48,29 @@ public final class RobotCallController {
         activeCall != nil
     }
 
+    /// True from the tap that asks for the microphone until the call is over —
+    /// the window `hasActiveCall` misses, because `activeCall` fills only once the
+    /// system has handed the start back. Suspending the viewport in that window
+    /// destroys the `CameraSession` the call is placed over; the reasoning is in
+    /// `ReachyMedia/AGENTS.md`. `activeCall` stays the answer to *who* is called.
+    public private(set) var keepsSessionAlive = false
+
     @ObservationIgnored private var currentRobotID: String?
     @ObservationIgnored private var currentRobotName: String?
 
     public init() {}
+
+    #if DEBUG
+        /// A controller that reports an active call without touching the system's
+        /// call service. `activeCall` is otherwise only written from a
+        /// `ConversationManager` callback, which needs a device — so this is the
+        /// only way a preview can capture the End button at all.
+        public static func preview(robotName: String? = nil) -> RobotCallController {
+            let controller = RobotCallController()
+            controller.activeCall = ActiveCall(robotID: "preview-robot", robotName: robotName)
+            return controller
+        }
+    #endif
 
     /// Keeps the controller pointed at the connected robot; a robot change under
     /// an active call ends the call — the far side of it is gone.
@@ -100,6 +119,16 @@ public final class RobotCallController {
         #endif
     }
 
+    /// Ends the call from inside the app — the red button beside the microphone.
+    /// It exists because ending used to belong to the system UI alone, which iOS
+    /// does not draw over the app owning the call; `ReachyMedia/AGENTS.md` has it.
+    public func endCall() {
+        #if os(iOS)
+            run(lifecycle.handle(.endTapped))
+        #endif
+        // No macOS branch: no call ever becomes active there, so nothing draws.
+    }
+
     /// The session under the call went away — robot asleep or disconnected,
     /// stream failed, viewport target gone. `failed` picks the reason the
     /// system shows; a sleeping robot ended the call, it did not fail it.
@@ -143,6 +172,7 @@ public final class RobotCallController {
                     pendingRobot = nil
                 }
             }
+            keepsSessionAlive = lifecycle.state != .idle
         }
 
         private func perform(_ effect: CallLifecycle.Effect) {
@@ -151,6 +181,8 @@ public final class RobotCallController {
                 requestMicPermissionThenStart()
             case let .performMuteAction(isMuted):
                 performMuteAction(isMuted: isMuted)
+            case .performEndAction:
+                performEndAction()
             case let .applyMic(enabled):
                 session?.setMicEnabled(enabled)
             case .fulfillPendingAction:
@@ -161,14 +193,26 @@ public final class RobotCallController {
                 pendingSystemAction = nil
             case .takeAudioOwnership:
                 MediaAudioSession.shared.callWillStart()
+            case .donate:
+                donationCount += 1
+            // One branch for the three reporting effects: a one-case-per-effect
+            // funnel walks into SwiftLint's cyclomatic ceiling as the reducer grows.
+            case .reportStartedConnecting, .reportConnected, .reportEnded:
+                performReport(effect)
+            }
+        }
+
+        private func performReport(_ effect: CallLifecycle.Effect) {
+            switch effect {
             case .reportStartedConnecting:
                 report(.conversationStartedConnecting(Date()))
             case .reportConnected:
                 report(.conversationConnected(Date()))
             case let .reportEnded(cause):
+                Self.log.notice("Ending the call: \(String(describing: cause), privacy: .public)")
                 report(.conversationEnded(Date(), cause == .failed ? .failed : .remoteEnded))
-            case .donate:
-                donationCount += 1
+            default:
+                break
             }
         }
 
@@ -197,7 +241,10 @@ public final class RobotCallController {
             pendingRobot = ActiveCall(robotID: robotID, robotName: currentRobotName)
             let handle = Handle(type: .generic, value: robotID, displayName: currentRobotName)
             let action = StartConversationAction(conversationUUID: uuid, handles: [handle], isVideo: true)
-            Self.log.debug("Performing StartConversationAction \(uuid, privacy: .public)")
+            // `.notice`, not `.debug`: the log store drops debug by default, so
+            // the one line saying a start was attempted was unreadable in the
+            // field report this logging exists for.
+            Self.log.notice("Performing StartConversationAction \(uuid, privacy: .public)")
             do {
                 try await ensureManager().perform([action])
             } catch {
@@ -212,6 +259,7 @@ public final class RobotCallController {
         private func performMuteAction(isMuted: Bool) {
             guard let uuid = conversationUUID else { return }
             let action = MuteConversationAction(conversationUUID: uuid, isMuted: isMuted)
+            Self.log.notice("Requesting mute isMuted=\(isMuted, privacy: .public) on \(uuid, privacy: .public)")
             Task { @MainActor in
                 do {
                     try await ensureManager().perform([action])
@@ -219,6 +267,25 @@ public final class RobotCallController {
                     Self.log.warning(
                         "Mute action refused: \(String(describing: error), privacy: .public)"
                     )
+                }
+            }
+        }
+
+        /// The mirror of `performMuteAction`, and it owes the lesson #112 left
+        /// behind: a refusal that goes nowhere is a button that does nothing.
+        /// If the system will not take the end, close the call here rather than
+        /// leave somebody tapping a dead control.
+        private func performEndAction() {
+            guard let uuid = conversationUUID else { return }
+            let action = EndConversationAction(conversationUUID: uuid)
+            Self.log.notice("Requesting end on \(uuid, privacy: .public)")
+            Task { @MainActor in
+                do {
+                    try await ensureManager().perform([action])
+                } catch {
+                    let reason = String(describing: error)
+                    Self.log.error("The system refused the end: \(reason, privacy: .public); closing locally")
+                    run(lifecycle.handle(.sessionBecameIneligible(.remoteEnded)))
                 }
             }
         }
@@ -232,7 +299,9 @@ public final class RobotCallController {
 
         // MARK: - Delegate arrivals (hopped to the main actor by the adapter)
 
-        fileprivate func handle(action: ConversationAction) {
+        // Package-internal, not `fileprivate`: the adapter is a file of its own now.
+
+        func handle(action: ConversationAction) {
             pendingSystemAction = action
             let effects: [CallLifecycle.Effect] = switch action {
             case is StartConversationAction:
@@ -245,6 +314,11 @@ public final class RobotCallController {
                 refuseUnexpected(action)
             }
             run(effects)
+            // The success path wrote nothing at all, so a call that started and
+            // died seconds later left no trace anywhere.
+            let performed = Self.describe(action)
+            let state = String(describing: lifecycle.state)
+            Self.log.notice("Performed \(performed, privacy: .public); the call is now \(state, privacy: .public)")
             if lifecycle.state == .active, activeCall == nil {
                 activeCall = pendingRobot
             }
@@ -263,26 +337,33 @@ public final class RobotCallController {
             return [.failPendingAction]
         }
 
-        fileprivate func handleTimeout(of action: ConversationAction) {
-            Self.log.error(
-                "Action timed out: \(String(describing: type(of: action)), privacy: .public)"
-            )
+        /// A mute arrives twice per tap; without `isMuted` a duplicate delivery
+        /// and an echo of the app's own request read identically in the log.
+        private static func describe(_ action: ConversationAction) -> String {
+            guard let mute = action as? MuteConversationAction else {
+                return String(describing: type(of: action))
+            }
+            return "MuteConversationAction(isMuted: \(mute.isMuted))"
+        }
+
+        func handleTimeout(of action: ConversationAction) {
+            Self.log.error("Action timed out: \(Self.describe(action), privacy: .public)")
             if action is StartConversationAction {
                 run(lifecycle.handle(.startFailed))
             }
             action.fail()
         }
 
-        fileprivate func handleManagerReset() {
+        func handleManagerReset() {
             Self.log.warning("Conversation manager reset")
             run(lifecycle.handle(.managerReset))
         }
 
-        fileprivate func handleAudioActivated(_ audioSession: AVAudioSession) {
+        func handleAudioActivated(_ audioSession: AVAudioSession) {
             MediaAudioSession.shared.callDidActivate(audioSession)
         }
 
-        fileprivate func handleAudioDeactivated(_ audioSession: AVAudioSession) {
+        func handleAudioDeactivated(_ audioSession: AVAudioSession) {
             MediaAudioSession.shared.callDidDeactivate(
                 audioSession,
                 cameraStillRunning: session?.isRunning ?? false
@@ -315,52 +396,3 @@ public final class RobotCallController {
         }
     #endif
 }
-
-#if os(iOS)
-    /// Hops the manager's callbacks onto the main actor, the way
-    /// `PeerConnectionDelegateAdapter` does for libwebrtc's. `NSObject` so the
-    /// conformance holds whichever object protocol the delegate requires;
-    /// `@unchecked Sendable` because the closures capture framework objects the
-    /// SDK does not annotate.
-    private final class ConversationDelegateAdapter: NSObject, ConversationManagerDelegate, @unchecked Sendable {
-        private weak var owner: RobotCallController?
-
-        init(owner: RobotCallController) {
-            self.owner = owner
-        }
-
-        func conversationManagerDidBegin(_ conversationManager: ConversationManager) {}
-
-        func conversationManagerDidReset(_ conversationManager: ConversationManager) {
-            Task { @MainActor [owner] in owner?.handleManagerReset() }
-        }
-
-        func conversationManager(
-            _ conversationManager: ConversationManager, conversationChanged conversation: Conversation
-        ) {}
-
-        func conversationManager(
-            _ conversationManager: ConversationManager, didActivate audioSession: AVAudioSession
-        ) {
-            Task { @MainActor [owner] in owner?.handleAudioActivated(audioSession) }
-        }
-
-        func conversationManager(
-            _ conversationManager: ConversationManager, didDeactivate audioSession: AVAudioSession
-        ) {
-            Task { @MainActor [owner] in owner?.handleAudioDeactivated(audioSession) }
-        }
-
-        func conversationManager(
-            _ conversationManager: ConversationManager, perform action: ConversationAction
-        ) {
-            Task { @MainActor [owner] in owner?.handle(action: action) }
-        }
-
-        func conversationManager(
-            _ conversationManager: ConversationManager, timedOutPerforming action: ConversationAction
-        ) {
-            Task { @MainActor [owner] in owner?.handleTimeout(of: action) }
-        }
-    }
-#endif
