@@ -1,0 +1,696 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Sources/ReachyKit/Preview/PreviewFixtures.swift
+  - Sources/ReachyKit/Session/CacheMaintenanceClient.swift
+  - Sources/ReachyUI/Apps/AppSettingsScreen.swift
+  - Sources/ReachyUI/Previews/AppSettingsPreviews.swift
+  - Sources/ReachyUI/Previews/PreviewScenes.swift
+  - Sources/ReachyUI/Previews/PreviewSettingsScenes.swift
+  - Sources/ReachyUI/Settings/MaintenanceCard.swift
+  - Sources/ReachyUI/Settings/MaintenanceModel.swift
+  - Tests/ReachyKitTests/RobotSessionAppsTests.swift
+  - Tests/ReachyKitTests/Support/AppsRobotClient.swift
+  - Tests/ReachyUITests/MaintenanceModelTests.swift
+  - Tests/ReachyUITests/RunningAppCaptionTests.swift
+  - Tests/ReachyUITests/RunningAppModelTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Sources/ReachyKit/Preview/PreviewFixtures.swift ===
+@@ -76,6 +76,22 @@
+         }
+     }
+ 
++    /// `SettingsScreen` tests the client for this before drawing the Maintenance
++    /// section, so without the conformance `canPerformMaintenance` is false in
++    /// every preview and the section is missing from `Settings — wireless robot`
++    /// while `Settings — Lite robot` proves nothing about the gate. Both actions
++    /// throw: a preview must never ask a robot to delete anything, and nothing in
++    /// a captured frame taps a button behind a confirmation dialog.
++    extension PreviewRobotClient: CacheMaintenanceClient {
++        public func clearHuggingFaceCache() async throws {
++            throw ReachyKitError.wirelessFeaturesUnavailable
++        }
++
++        public func resetApps() async throws {
++            throw ReachyKitError.wirelessFeaturesUnavailable
++        }
++    }
++
+     /// Accepts targets and does nothing with them.
+     public struct PreviewTeleopChannel: TeleopChannel {
+         public init() {}
+
+
+=== DIFF: Sources/ReachyKit/Session/CacheMaintenanceClient.swift ===
+@@ -53,8 +53,15 @@ public extension RobotSession {
+ 
+     /// Uninstalls every app. See ``CacheMaintenanceClient/resetApps()`` for what
+     /// the daemon does *not* do around it.
++    ///
++    /// Both app caches go with it. They are the same two an install or a remove
++    /// job invalidates, and this deletes the environment every entry in them
++    /// described — a catalogue still marking apps installed would offer Open and
++    /// Remove on rows the robot no longer has.
+     func resetApps() async throws {
+         try await withMaintenanceClient { try await $0.resetApps() }
++        appCatalogueCache = nil
++        installedAppsCache = nil
+     }
+ }
+ 
+
+
+=== DIFF: Sources/ReachyUI/Apps/AppSettingsScreen.swift ===
+@@ -46,9 +46,9 @@ struct AppSettingsScreen: View {
+     var body: some View {
+         content
+             .navigationTitle(.reachy("Settings"))
+-            #if os(iOS)
+-                .navigationBarTitleDisplayMode(.inline)
+-            #endif
++        #if os(iOS)
++            .navigationBarTitleDisplayMode(.inline)
++        #endif
+     }
+ 
+     @ViewBuilder
+@@ -117,11 +117,13 @@ private struct AppSettingsWebView {
+         /// A cancelled navigation is not a failure — it is a load being replaced
+         /// by the next one, and it arrives as `NSURLErrorCancelled`, whose whole
+         /// localized description is the word "cancelled". Printing that under
+-        /// "Settings unavailable" is the same bug `RobotSession.message(for:)`
+-        /// exists to prevent, so the check is by code and never by text.
++        /// "Settings unavailable" is the exact bug `RobotSession.message(for:)`
++        /// exists to prevent, so this goes through it rather than around it:
++        /// `describe` does not filter, and the one log line for a failed call is
++        /// on the other side of that funnel. Recognised by code, never by text.
+         private func report(_ error: any Error) {
+-            guard !RobotSession.isCancellation(error) else { return }
+-            phase?.wrappedValue = .failed(RobotSession.describe(error))
++            guard let message = RobotSession.message(for: error) else { return }
++            phase?.wrappedValue = .failed(message)
+         }
+     }
+ 
+
+
+=== DIFF: Sources/ReachyUI/Previews/AppSettingsPreviews.swift ===
+@@ -10,6 +10,14 @@ import SwiftUI
+ // unrenderable layer is on screen, which is the same reason `SceneViewport` has
+ // no reference for its own `.ready` — and unlike `CameraViewport.streaming`,
+ // this phase grows no chrome of its own to capture over it.
++//
++// Neither reference has a navigation bar in it, and that is the harness rather
++// than the screen: here it is the root of `NavigationHost`'s stack, where an
++// inline title with no toolbar item beside it has nothing to hold the bar open,
++// while the app pushes it out of `RunningAppSheet` and the back button keeps the
++// bar — with the title in it. So the blank strip at the top is neither a missing
++// `navigationTitle` nor proof that one is missing; `Running app — conversation`
++// is the reference that shows the row this is pushed from.
+ 
+ #Preview("App settings — loading") {
+     PreviewScene.appSettings(.loading)
+
+
+=== DIFF: Sources/ReachyUI/Previews/PreviewScenes.swift ===
+@@ -274,144 +274,11 @@ enum PreviewScene {
+         }
+         .preview()
+     }
+-
+-    // MARK: - Settings and updates
+-
+-    static func settings(_ session: RobotSession) -> some View {
+-        NavigationHost {
+-            SettingsScreen(session: session)
+-        }
+-        .preview()
+-    }
+-
+-    static func yourReachies(
+-        _ state: YourReachiesModel.State,
+-        refreshFailure: String? = nil
+-    ) -> some View {
+-        NavigationHost {
+-            YourReachiesScreen(
+-                model: .preview(state, refreshFailure: refreshFailure),
+-                connect: { _ in },
+-                // The real destination: a pushed view costs nothing until it is
+-                // pushed, so the preview carries the one the app pushes rather
+-                // than a placeholder that would hide a broken link.
+-                signIn: { HFSignInScreen(session: .preview(), model: .preview()) }
+-            )
+-        }
+-        .preview()
+-    }
+-
+-    /// The way in that «Your Reachies» pushes. Nothing is connected in this state —
+-    /// that is why the list was empty — so the plain preview client, which does not
+-    /// speak `HFAuthClient`, leaves the account half standing alone.
+-    static func hfSignIn(model: HFSignInModel? = nil) -> some View {
+-        NavigationHost {
+-            HFSignInScreen(session: .preview(), model: model ?? .preview())
+-        }
+-        .preview()
+-    }
+-
+-    /// The account card on its own. The robot half only renders when the session's
+-    /// client speaks `HFAuthClient`, so the preview client is the one that does.
+-    static func hfAccount(
+-        model: HFSignInModel? = nil,
+-        robotAccount: HFAuthStatus? = nil,
+-        relay: RelayStatus? = nil,
+-        linkError: String? = nil
+-    ) -> some View {
+-        Form {
+-            HFAccountSection(
+-                session: .preview(
+-                    client: PreviewHFRobotClient(
+-                        account: robotAccount ?? HFAuthStatus(isLoggedIn: false),
+-                        relay: relay ?? RelayStatus(state: .stopped, isConnected: false)
+-                    )
+-                ),
+-                model: model ?? .preview(),
+-                robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
+-                relay: relay ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
+-                linkError: linkError
+-            )
+-        }
+-        .formStyle(.grouped)
+-        .preview()
+-    }
+-
+-    static func updateCard(_ state: SystemUpdateModel.State, log: [String] = []) -> some View {
+-        Form {
+-            SystemUpdateCard(session: .preview(), model: .preview(state: state, log: log))
+-        }
+-        .formStyle(.grouped)
+-        .preview()
+-    }
+-
+-    /// `runningApp` is the interesting axis: it is what blocks the uninstall, and
+-    /// it belongs to the session rather than to the model, so it is parked there.
+-    ///
+-    /// `nil` rather than `= .preview()`: a defaulted argument whose value is
+-    /// `@MainActor` compiles under SwiftPM and fails in the `Apps/` targets,
+-    /// where it is evaluated nonisolated. The card already builds its own.
+-    static func maintenanceCard(
+-        _ model: MaintenanceModel? = nil,
+-        runningApp: RobotAppStatus? = nil
+-    ) -> some View {
+-        Form {
+-            MaintenanceCard(session: .preview(runningApp: runningApp), model: model)
+-        }
+-        .formStyle(.grouped)
+-        .preview()
+-    }
+-
+-    static func wifiCard(
+-        status: WiFiStatus? = nil,
+-        joinError: String? = nil,
+-        loadFailure: String? = nil
+-    ) -> some View {
+-        Form {
+-            WiFiSettingsCard(
+-                session: .preview(),
+-                status: status,
+-                joinError: joinError,
+-                loadFailure: loadFailure
+-            )
+-        }
+-        .formStyle(.grouped)
+-        .preview()
+-    }
+-
+-    static func daemonUpdate(
+-        _ requirement: DaemonUpdateRequirement,
+-        state: SystemUpdateModel.State = .idle
+-    ) -> some View {
+-        NavigationHost {
+-            DaemonUpdateScreen(
+-                session: .preview(),
+-                requirement: requirement,
+-                model: .preview(state: state)
+-            )
+-        }
+-        .preview()
+-    }
+-
+-    /// The console body on its own. It has three callers with three different sources, so it is
+-    /// worth snapshotting apart from any of them.
+-    static func consoleView(
+-        _ model: LogConsoleModel? = nil,
+-        source: String = "192.168.1.42",
+-        emptyDescription: String = "Daemon logs come from journalctl on the robot.",
+-        failure: String? = nil
+-    ) -> some View {
+-        NavigationHost {
+-            LogConsoleView(
+-                model: model ?? .preview(),
+-                source: source,
+-                emptyDescription: emptyDescription,
+-                failure: failure
+-            )
+-        }
+-        .preview()
+-    }
+ }
+ 
+ // `NavigationHost` and `View.preview()` live in `PreviewHost.swift` — they were
+ // file-private here, which is what stopped the scenes being split across two files.
++// Two are now three: the app store and the dock are in `PreviewAppScenes.swift`,
++// Settings and everything reached from it in `PreviewSettingsScenes.swift`. This
++// file is at the length limit, so the next scene joins one of those or starts a
++// fourth.
+
+
+=== DIFF: Sources/ReachyUI/Previews/PreviewSettingsScenes.swift ===
+@@ -0,0 +1,149 @@
++import HuggingFaceAuth
++import ReachyKit
++@testable import ReachyUI
++import SwiftUI
++
++/// The Settings tab's scenes, and the screens reached from it.
++///
++/// Split out of `PreviewScenes.swift` because that file sat exactly on SwiftLint's
++/// 400-line limit and its enum body on the 300-line one, so the next scene added
++/// anywhere in it failed the lint. `NavigationHost` and `View.preview()` are in
++/// `PreviewHost.swift` rather than file-private here, which is what makes a second
++/// file possible at all — see the note at the foot of `PreviewScenes.swift`.
++@MainActor
++extension PreviewScene {
++    static func settings(_ session: RobotSession) -> some View {
++        NavigationHost {
++            SettingsScreen(session: session)
++        }
++        .preview()
++    }
++
++    static func yourReachies(
++        _ state: YourReachiesModel.State,
++        refreshFailure: String? = nil
++    ) -> some View {
++        NavigationHost {
++            YourReachiesScreen(
++                model: .preview(state, refreshFailure: refreshFailure),
++                connect: { _ in },
++                // The real destination: a pushed view costs nothing until it is
++                // pushed, so the preview carries the one the app pushes rather
++                // than a placeholder that would hide a broken link.
++                signIn: { HFSignInScreen(session: .preview(), model: .preview()) }
++            )
++        }
++        .preview()
++    }
++
++    /// The way in that «Your Reachies» pushes. Nothing is connected in this state —
++    /// that is why the list was empty — so the plain preview client, which does not
++    /// speak `HFAuthClient`, leaves the account half standing alone.
++    static func hfSignIn(model: HFSignInModel? = nil) -> some View {
++        NavigationHost {
++            HFSignInScreen(session: .preview(), model: model ?? .preview())
++        }
++        .preview()
++    }
++
++    /// The account card on its own. The robot half only renders when the session's
++    /// client speaks `HFAuthClient`, so the preview client is the one that does.
++    static func hfAccount(
++        model: HFSignInModel? = nil,
++        robotAccount: HFAuthStatus? = nil,
++        relay: RelayStatus? = nil,
++        linkError: String? = nil
++    ) -> some View {
++        Form {
++            HFAccountSection(
++                session: .preview(
++                    client: PreviewHFRobotClient(
++                        account: robotAccount ?? HFAuthStatus(isLoggedIn: false),
++                        relay: relay ?? RelayStatus(state: .stopped, isConnected: false)
++                    )
++                ),
++                model: model ?? .preview(),
++                robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
++                relay: relay ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
++                linkError: linkError
++            )
++        }
++        .formStyle(.grouped)
++        .preview()
++    }
++
++    static func updateCard(_ state: SystemUpdateModel.State, log: [String] = []) -> some View {
++        Form {
++            SystemUpdateCard(session: .preview(), model: .preview(state: state, log: log))
++        }
++        .formStyle(.grouped)
++        .preview()
++    }
++
++    /// `runningApp` is the interesting axis: it is what blocks the uninstall, and
++    /// it belongs to the session rather than to the model, so it is parked there.
++    ///
++    /// `nil` rather than `= .preview()`: a defaulted argument whose value is
++    /// `@MainActor` compiles under SwiftPM and fails in the `Apps/` targets,
++    /// where it is evaluated nonisolated. The card already builds its own.
++    static func maintenanceCard(
++        _ model: MaintenanceModel? = nil,
++        runningApp: RobotAppStatus? = nil
++    ) -> some View {
++        Form {
++            MaintenanceCard(session: .preview(runningApp: runningApp), model: model)
++        }
++        .formStyle(.grouped)
++        .preview()
++    }
++
++    static func wifiCard(
++        status: WiFiStatus? = nil,
++        joinError: String? = nil,
++        loadFailure: String? = nil
++    ) -> some View {
++        Form {
++            WiFiSettingsCard(
++                session: .preview(),
++                status: status,
++                joinError: joinError,
++                loadFailure: loadFailure
++            )
++        }
++        .formStyle(.grouped)
++        .preview()
++    }
++
++    static func daemonUpdate(
++        _ requirement: DaemonUpdateRequirement,
++        state: SystemUpdateModel.State = .idle
++    ) -> some View {
++        NavigationHost {
++            DaemonUpdateScreen(
++                session: .preview(),
++                requirement: requirement,
++                model: .preview(state: state)
++            )
++        }
++        .preview()
++    }
++
++    /// The console body on its own. It has three callers with three different sources, so it is
++    /// worth snapshotting apart from any of them.
++    static func consoleView(
++        _ model: LogConsoleModel? = nil,
++        source: String = "192.168.1.42",
++        emptyDescription: String = "Daemon logs come from journalctl on the robot.",
++        failure: String? = nil
++    ) -> some View {
++        NavigationHost {
++            LogConsoleView(
++                model: model ?? .preview(),
++                source: source,
++                emptyDescription: emptyDescription,
++                failure: failure
++            )
++        }
++        .preview()
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Settings/MaintenanceCard.swift ===
+@@ -116,7 +116,9 @@ struct MaintenanceCard: View {
+         Binding(
+             get: { model.confirming != nil },
+             set: { presented in
+-                if !presented { model.confirming = nil }
++                if !presented {
++                    model.confirming = nil
++                }
+             }
+         )
+     }
+@@ -141,11 +143,15 @@ struct MaintenanceCard: View {
+             )
+         // `.clearHuggingFaceCache` and nil share this arm: the dialog is only on
+         // screen while `confirming` is set, and the property has to answer anyway.
+-        default:
++        // Spelled out rather than `default`, so a third action is a compile error
++        // here instead of silently inheriting this one's wording.
++        case .clearHuggingFaceCache, .none:
+             Confirmation(
+                 title: .reachy("Clear cached models?"),
+                 // swiftlint:disable:next line_length
+-                message: .reachy("Downloaded model weights are deleted. The robot downloads them again when an app needs them."),
++                message: .reachy(
++                    "Downloaded model weights are deleted. The robot downloads them again when an app needs them."
++                ),
+                 confirm: .reachy("Clear cache")
+             )
+         }
+
+
+=== DIFF: Sources/ReachyUI/Settings/MaintenanceModel.swift ===
+@@ -15,7 +15,9 @@ final class MaintenanceModel {
+         case clearHuggingFaceCache
+         case resetApps
+ 
+-        var id: Self { self }
++        var id: Self {
++            self
++        }
+     }
+ 
+     /// What the confirmation dialog is asking about. Not `private(set)` — the
+
+
+=== DIFF: Tests/ReachyKitTests/RobotSessionAppsTests.swift ===
+@@ -99,6 +99,29 @@ struct RobotSessionAppsTests {
+         #expect(client.installedCalls == 2)
+     }
+ 
++    /// `/cache/reset-apps` is `rmtree` over the venv every installed app lives in,
++    /// so both caches describe apps the robot no longer has — and the store would
++    /// go on offering Open and Remove on those rows. The same invalidation an
++    /// install or a remove job does, for the operation that removes all of them.
++    @Test("uninstalling every app makes both caches stale at once")
++    func resetInvalidatesBothCaches() async throws {
++        let client = AppsRobotClient()
++        let session = try await connected(client)
++
++        _ = try await session.appCatalogue()
++        _ = try await session.installedApps()
++        #expect(client.catalogueCalls == 1)
++        #expect(client.installedCalls == 1)
++
++        try await session.resetApps()
++        _ = try await session.appCatalogue()
++        _ = try await session.installedApps()
++
++        #expect(client.resetAppsCalls == 1)
++        #expect(client.catalogueCalls == 2)
++        #expect(client.installedCalls == 2)
++    }
++
+     /// Thrown, not reported: the store screen owns this message. Leaving it on the
+     /// session is what used to print an Apps failure on the Robot tab.
+     @Test("a daemon that refuses throws instead of writing to the session")
+
+
+=== DIFF: Tests/ReachyKitTests/Support/AppsRobotClient.swift ===
+@@ -8,10 +8,11 @@ import Testing
+ /// Shared rather than private to one suite: what a session writes into the App
+ /// Group is checked from more than one angle, and each angle needs a robot that
+ /// answers `/api/apps/*`.
+-final class AppsRobotClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
++final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceClient, @unchecked Sendable {
+     private let lock = NSLock()
+     private(set) var catalogueCalls = 0
+     private(set) var installedCalls = 0
++    private(set) var resetAppsCalls = 0
+     private(set) var removed: [String] = []
+     private(set) var running: RobotAppStatus?
+     var failsCatalogue = false
+@@ -85,6 +86,15 @@ final class AppsRobotClient: RobotAPIClient, RobotAppsClient, @unchecked Sendabl
+         lock.withLock { running = status }
+     }
+ 
++    /// `/cache/reset-apps` deletes the environment every installed app lives in,
++    /// so a session holding either app cache is holding fiction afterwards. Here
++    /// so `RobotSessionAppsTests` can prove it drops them.
++    func resetApps() async throws {
++        lock.withLock { resetAppsCalls += 1 }
++    }
++
++    func clearHuggingFaceCache() async throws {}
++
+     static func status(name: String, state: String = "running", error: String? = nil) -> RobotAppStatus {
+         let reason = error.map { "\"\($0)\"" } ?? "null"
+         // swiftlint:disable:next force_try
+
+
+=== DIFF: Tests/ReachyUITests/MaintenanceModelTests.swift ===
+@@ -34,12 +34,16 @@ private struct MaintenanceCapableClient: RobotAPIClient, CacheMaintenanceClient
+ 
+     func clearHuggingFaceCache() async throws {
+         recorder.calls.append("clear-hf")
+-        if let failure = recorder.failure { throw failure }
++        if let failure = recorder.failure {
++            throw failure
++        }
+     }
+ 
+     func resetApps() async throws {
+         recorder.calls.append("reset-apps")
+-        if let failure = recorder.failure { throw failure }
++        if let failure = recorder.failure {
++            throw failure
++        }
+     }
+ }
+ 
+@@ -47,7 +51,9 @@ private struct MaintenanceCapableClient: RobotAPIClient, CacheMaintenanceClient
+ @Suite("Robot maintenance", .timeLimit(.minutes(1)))
+ struct MaintenanceModelTests {
+     private struct Refused: Error, LocalizedError {
+-        var errorDescription: String? { "The robot could not delete it." }
++        var errorDescription: String? {
++            "The robot could not delete it."
++        }
+     }
+ 
+     private func session(
+@@ -66,9 +72,11 @@ struct MaintenanceModelTests {
+     func offeredOnlyByAWirelessRobot() {
+         #expect(session().canPerformMaintenance)
+         #expect(!session(wirelessVersion: false).canPerformMaintenance)
+-        // A client that does not speak the protocol at all — every Lite robot and
+-        // every relay session.
+-        #expect(!RobotSession.preview().canPerformMaintenance)
++        // A client that does not speak the protocol at all. `PreviewRobotClient`
++        // is not that client — it conforms on purpose, so the previews of
++        // `SettingsScreen` render the section the gate lets through — and a relay
++        // is the case that reaches this in production.
++        #expect(!RobotSession.preview(client: PreviewRemoteRobotClient()).canPerformMaintenance)
+     }
+ 
+     /// The daemon deletes `/venvs/apps_venv/` without stopping anything first, so
+
+
+=== DIFF: Tests/ReachyUITests/RunningAppCaptionTests.swift ===
+@@ -0,0 +1,61 @@
++import Foundation
++import ReachyKit
++@testable import ReachyUI
++import Testing
++
++/// What the dock and the sheet *say* about a running app, as opposed to when they
++/// say anything at all (`RunningAppModelTests`). Split off because the caption is a
++/// pure mapping over a status and a turn — it needs no model, no session and no
++/// client — and because the two together no longer fit one file.
++@MainActor
++@Suite("Running app caption", .timeLimit(.minutes(1)))
++struct RunningAppCaptionTests {
++    private static let app = RobotApp.previewInstalled[0]
++    private static let conversationApp = RobotApp.previewConversation
++
++    private func status(_ state: RobotAppStatus.State, error: String? = nil) -> RobotAppStatus {
++        RobotAppStatus(app: Self.app, state: state, error: error)
++    }
++
++    @Test("conversation captions use the released semantic vocabulary", arguments: [
++        (ConversationTurn.listening, "Listening…"),
++        (.thinking, "Thinking…"),
++        (.speaking, "Speaking…"),
++        (.ready, "Ready"),
++        (.unknown("waiting_for_tool"), "waiting_for_tool"),
++    ])
++    func semanticCaption(turn: ConversationTurn, caption: String) {
++        let conversation = RobotAppStatus(app: Self.conversationApp, state: .running)
++        #expect(RunningAppCaption.title(of: conversation, conversationTurn: turn) == caption)
++    }
++
++    @Test("process transitions and reachability still take precedence")
++    func processStatePrecedesConversationTurn() {
++        let stopping = RobotAppStatus(app: Self.conversationApp, state: .stopping)
++        let running = RobotAppStatus(app: Self.conversationApp, state: .running)
++
++        #expect(RunningAppCaption.title(of: stopping, conversationTurn: .speaking) == "Stopping…")
++        #expect(RunningAppCaption.title(
++            of: running,
++            conversationTurn: .speaking,
++            isReachable: false
++        ) == "Robot unreachable")
++    }
++
++    /// The daemon's `error` is a stderr tail, so a surface that prints it in full
++    /// must not also substitute it for the state phrase: the reader gets the same
++    /// text twice, and the copy on top is cut off after two lines of traceback.
++    /// Only the dock, which has nowhere else to put it, inlines the crash.
++    @Test("a crash is inlined in the caption and never in the state phrase")
++    func crashStaysOutOfTheStatePhrase() {
++        let tail = """
++        Process exited with code 1
++        Traceback (most recent call last):
++        ModuleNotFoundError: No module named 'cv2'
++        """
++        let crashed = status(.error, error: tail)
++
++        #expect(RunningAppCaption.title(of: crashed) == "Stopped with an error")
++        #expect(RunningAppCaption.description(of: crashed) == tail)
++    }
++}
+
+
+=== DIFF: Tests/ReachyUITests/RunningAppModelTests.swift ===
+@@ -364,46 +364,4 @@ struct RunningAppModelTests {
+ 
+         #expect(model.conversationTurn == nil)
+     }
+-
+-    @Test("conversation captions use the released semantic vocabulary", arguments: [
+-        (ConversationTurn.listening, "Listening…"),
+-        (.thinking, "Thinking…"),
+-        (.speaking, "Speaking…"),
+-        (.ready, "Ready"),
+-        (.unknown("waiting_for_tool"), "waiting_for_tool"),
+-    ])
+-    func semanticCaption(turn: ConversationTurn, caption: String) {
+-        let conversation = RobotAppStatus(app: Self.conversationApp, state: .running)
+-        #expect(RunningAppCaption.title(of: conversation, conversationTurn: turn) == caption)
+-    }
+-
+-    @Test("process transitions and reachability still take precedence")
+-    func processStatePrecedesConversationTurn() {
+-        let stopping = RobotAppStatus(app: Self.conversationApp, state: .stopping)
+-        let running = RobotAppStatus(app: Self.conversationApp, state: .running)
+-
+-        #expect(RunningAppCaption.title(of: stopping, conversationTurn: .speaking) == "Stopping…")
+-        #expect(RunningAppCaption.title(
+-            of: running,
+-            conversationTurn: .speaking,
+-            isReachable: false
+-        ) == "Robot unreachable")
+-    }
+-
+-    /// The daemon's `error` is a stderr tail, so a surface that prints it in full
+-    /// must not also substitute it for the state phrase: the reader gets the same
+-    /// text twice, and the copy on top is cut off after two lines of traceback.
+-    /// Only the dock, which has nowhere else to put it, inlines the crash.
+-    @Test("a crash is inlined in the caption and never in the state phrase")
+-    func crashStaysOutOfTheStatePhrase() {
+-        let tail = """
+-        Process exited with code 1
+-        Traceback (most recent call last):
+-        ModuleNotFoundError: No module named 'cv2'
+-        """
+-        let crashed = status(.error, error: tail)
+-
+-        #expect(RunningAppCaption.title(of: crashed) == "Stopped with an error")
+-        #expect(RunningAppCaption.description(of: crashed) == tail)
+-    }
+ }
+
+
+Investigate per the method in your instructions, then return the findings list.
