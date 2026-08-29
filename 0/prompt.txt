@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b5wujdx0o</task-id>
+<tool-use-id>toolu_01FCKLAKto46g3Ltt9xkFmus</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/b5wujdx0o.output</output-file>
+<status>completed</status>
+<summary>Background command "Diagnostic snapshot run — name what moved" completed (exit code 0)</summary>
+</task-notification>
