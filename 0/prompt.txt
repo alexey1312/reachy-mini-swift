@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>brly05f2w</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-app-store-hf-remote-phase2-0463e5/13da7018-a7c0-4b05-8699-82396e070810/tasks/brly05f2w.output</output-file>
+<status>completed</status>
+<summary>Background command "Build and run all tests for M9 screen" completed (exit code 0)</summary>
+</task-notification>
