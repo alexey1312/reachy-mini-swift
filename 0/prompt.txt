@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b5p85ese2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ac3c8bb8-614c-448a-8f0a-b3c7cdad610d/tasks/b5p85ese2.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-verify both worktree and main checkout paths" completed (exit code 0)</summary>
+</task-notification>
