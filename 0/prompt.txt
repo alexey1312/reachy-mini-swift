@@ -1,0 +1,127 @@
+<task-notification>
+<task-id>ab4b983567a19555e</task-id>
+<tool-use-id>toolu_01Uucw1xUBUn3PhMoCu8qMDb</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/ab4b983567a19555e.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore teleop and scene usage" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Summary
+
+The repo already has the "see the robot while doing something else" feature — `FloatingViewport`, a draggable picture-in-picture window — but it is **gated to compact/tab-bar layouts only** (iPhone). On iPad and macOS (`hasTabBar == false`) every placement collapses to `.inline` and the live view never leaves the Live tab. That's the gap the branch name points at.
+
+---
+
+## 1. Teleop / control screens
+
+**`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/floating-robot-window-tablets-ddf6c1/Sources/ReachyUI/ControllerScreen.swift`** — `struct ControllerScreen: View`, 218 lines, a `Form`:
+- `JoystickPad` (L58-65) — head yaw/pitch, held sideways turns the body
+- Record-a-move section (L137-166)
+- Sliders: Roll, Height (L67-75), Body yaw (L76-83), Antennas L/R (L84-97), "Reset to neutral" (L98-100)
+- `AsleepBanner` when the robot sleeps (L51-55)
+
+**The scene is not shown alongside it.** It is pushed via `NavigationLink` from `LiveTab`'s toolbar (`Shell/LiveTab.swift:41-49`) *inside the Live tab's own `NavigationStack`* — so it covers the viewport. Worse, it is covered but still **live**: `FloatingViewportModel.placement` returns `.inline` whenever `isLiveTabSelected` (`FloatingViewportModel.swift:116-118`), so `LiveTab` renders `ViewportView` underneath (`LiveTab.swift:94-101`) and `RootLifecycle.viewportIsOnScreen` stays true because `router.tab == .live` (`Navigation/RootLifecycle.swift:149-152`). The RealityView/WebRTC stream runs behind a `Form` nobody can see through. That is the strongest concrete case for a side-by-side layout.
+
+Supporting types:
+- `Sources/ReachyUI/TeleopDriver.swift` — `@Observable TeleopDriver`, composes head + body yaw (`worldYaw`), `bodyYawLimit`
+- `Sources/ReachyUI/JoystickPad.swift` / `JoystickMapping.swift` — the pad and its rotation-zone predicate
+- `Sources/ReachyUI/ViewportView.swift:10` `typealias TeleopFactory`, `:15` `typealias TeleopStandDown`
+
+The **second** teleop surface is inside the camera: `CameraViewport.teleopControls` (`CameraViewport.swift:86-102`) hangs `JoystickPad` + a recentre button as a `.bottomTrailing` **overlay** over the video. That one *is* simultaneous with the picture, by design.
+
+---
+
+## 2. Camera / WebRTC (ReachyMedia)
+
+- `Sources/ReachyMedia/CameraVideoView.swift:29` — `public struct CameraVideoView` (`UIViewRepresentable`/`NSViewRepresentable` wrapping `RTCMTLVideoView`); `sizeThatFits` at L81 and L107 (both platforms) is load-bearing — without it the view reports the *stream's* resolution as its intrinsic size.
+- `Sources/ReachyMedia/CameraSession.swift` — `CameraSession` (peer connection, `videoTrack`, `phase`, mic uplink).
+- `Sources/ReachyUI/CameraViewport.swift:12` — `struct CameraViewport`, the only consumer: `CameraVideoView` + centred status overlay + teleop overlay. `CameraMicButton` at L139.
+
+**Can it coexist with the 3D scene? No — by construction.** `ViewportModel` (`ViewportModel.swift:13-237`) owns *both* and guarantees exactly one runs: `activate()` (L152-180) starts one engine and stops/pauses the other; `content: Content` is `.scene | .camera` (L16-37). `ViewportOptions.offered(by:offersCamera:)` (`ViewportContent.swift:58-63`) is what both hosts' switchers render. So "camera *and* scene at once" would need a second `ViewportModel` (and for the scene, a second `RobotSceneModel` — `Sources/ReachyScene/AGENTS.md:6-7`: one `Entity` has one parent, **exactly one live `RealityView` per `RobotSceneModel`**).
+
+---
+
+## 3. UI state / view models owning the scene's presentation
+
+| Type | File:line | Owns |
+|---|---|---|
+| `ViewportModel` | `Sources/ReachyUI/ViewportModel.swift:15` | `content`, `sceneModel`, `cameraSession`, `hearing`, `source` (`.lan`/`.remote`), `setActive(_:)`, `offersScene` |
+| `FloatingViewportModel` | `Sources/ReachyUI/FloatingViewportModel.swift:29` | **The presentation decision.** `placement` (L116-118), `drawn`/`settling` (L123-126), `isInline` (L151-153), `isStreaming` (L157-163), `hasTabBar` (L53), `isLiveTabSelected` (L55), `isEnabled` (L66), `hasBottomAccessory` (L76), drag state |
+| `FloatingViewportModel.Placement` | `Sources/ReachyUI/FloatingViewportPlacement.swift:19-29` | `.inline` / `.floating(Corner)` / `.docked(HorizontalEdge, y:)` |
+| geometry | `Sources/ReachyUI/FloatingViewportGeometry.swift` | pure static placement arithmetic (`centre`, `nearestCorner`, `clamped`, `rubberBanded`, `tabCentre`) |
+| `PresenceModel` | `Sources/ReachyUI/PresenceModel.swift` | robot behaviours; owned by `LiveTab` (`LiveTab.swift:23`) so both joysticks share it |
+| `DirectionOfArrivalModel` | `Sources/ReachyUI/DirectionOfArrivalModel.swift` | badge that outlives the scene/camera switch |
+
+**The single derived formula** (`FloatingViewportModel.swift:117`):
+```swift
+isLiveTabSelected || !hasTabBar || !isEnabled ? .inline : rest
+```
+Four inputs; any one of them forces the viewport back into the Live tab.
+
+**Where the inputs are written:**
+- `hasTabBar` ← `Sources/ReachyUI/FloatingViewportModifier.swift:43-49` + `:78-80` — the target's **only** `horizontalSizeClass` branch; `false` on macOS, `horizontalSizeClass == .compact` otherwise. **This is the line that excludes iPad.**
+- `isLiveTabSelected` ← `Shell/ReachyTabShell.swift:116-118`
+- `hasBottomAccessory` ← `Shell/ReachyTabShell.swift:122-124`
+- `isEnabled` ← `FloatingViewportModel.setEnabled(_:)` (L173-180), from the Live tab toggle
+
+**Mount points (the "one at a time" invariant is structural):**
+- `ViewportView` drawn only at `.inline` — `Shell/LiveTab.swift:94-108` (`else { Color.clear }`)
+- `FloatingViewport` drawn only when `!model.isInline` — `FloatingViewportModifier.swift:64-74`
+- Overlay is applied to the `TabView` — `Shell/ReachyTabShell.swift:125-127`
+- Stream on/off — `Navigation/RootLifecycle.swift:149-152` (`router.tab == .live || floating.isStreaming`)
+- Root owns both models — `Sources/ReachyUI/ReachyRootView.swift:17-21`, passed down at `:101-109` and `:132-143`
+
+**Views:**
+- `Sources/ReachyUI/ViewportView.swift:25` `struct ViewportView` — full-size host, segmented switcher, `SceneOptionsMenu`/`CameraMicButton`, Presence button, DoA badge
+- `Sources/ReachyUI/ViewportContent.swift:12` `struct ViewportContent` — the renderer alone, shared by both hosts
+- `Sources/ReachyUI/FloatingViewport.swift:29` `struct FloatingViewport` — window + docked edge tab as **one** SwiftUI identity; content is `.allowsHitTesting(false)` and gets no `makeTeleop` (L154-174)
+- `Sources/ReachyUI/SceneViewport.swift:7` `struct SceneViewport`, `:43` `SceneOptionsMenu`
+
+Sizes: `Sources/ReachyDesign/Metrics.swift:41` `floatingViewport = 160×112`, `:44` `viewportTab = 44×72`, `:52` `tabBarAllowance = 56`, `:67` `tabAccessoryAllowance = 68`.
+
+---
+
+## 4. User-facing settings for the robot preview / scene
+
+**There is nothing in the Settings screen.** `Sources/ReachyUI/Settings/SettingsScreen.swift` has robot / audio / appearance / privacy / advanced sections only.
+
+The one user-facing control is a **toolbar menu on the Live tab**: `Shell/LiveTab.swift:72-81` — `Menu("Live options", systemImage: "pip")` containing `Toggle("Mini window")` bound to `floating.isEnabled`. It is itself behind `if floating.hasTabBar` (`LiveTab.swift:51-53`), so on iPad/macOS the toggle does not exist either.
+
+Persistence: `Sources/ReachyUI/FloatingViewportPreferences.swift:16` — key **`"floatingViewport.isEnabled"`** in `UserDefaults.standard` (not the App Group suite); absent reads as `true` (L26-29). Preview suite `"ReachyUI.previews"` at L37. It is *not* an `@AppStorage` — the only `@AppStorage` keys in the target are `ThemeStore.key`, `"update.preRelease"`, `"logConsole.capacity"`.
+
+Other viewport-scoped settings live in-place rather than in Settings: `SceneOptionsMenu` (reset view / place head from pose / solve Stewart linkage — `SceneViewport.swift:43-73`) and `TelepresenceSheet` (`Sources/ReachyUI/TelepresenceSheet.swift:14`), presented as a sheet from the viewport chrome precisely so the reader does not give up the stream (`ViewportView.swift:117-129`).
+
+---
+
+## 5. Previews — naming convention
+
+All in `/Sources/ReachyUI/Previews/`, excluded from the SwiftPM target, compiled only by the Xcode targets. Convention: **`"&lt;Subject&gt; — &lt;state&gt;"`**, em dash, lowercase state phrase. Screens take no `traits:` (full device size); components take `traits: .sizeThatFitsLayout`.
+
+| File | Prefix | Preview names |
+|---|---|---|
+| `SceneViewportPreviews.swift` | `Scene — ` | reading the description, downloading meshes, almost downloaded, building, failed (L8-24) |
+| `CameraViewportPreviews.swift` | `Camera — ` | connecting, waiting for producer, unavailable, facing forward, body turned (L11-35) |
+| `ViewportPreviews.swift` | `Viewport — ` | connecting to the scene/camera, unavailable, no camera, scene building, camera waiting, microphone blocked, no 3D over the relay, heard a voice, remote camera (L6-65) |
+| `ControllerScreenPreviews.swift` | `Controller — ` | awake neutral, asleep, backend stopped, displaced, setup failed (L5-31); plus `Controller — recording` in `MoveRecorderPreviews.swift:7` |
+| `JoystickPadPreviews.swift` | `Joystick — ` | screen, component, turning, turning from the corner (L8-27) |
+| `TelepresencePreviews.swift` | `Presence — ` | idle, both on, no camera for tracking, over the relay (L8-26) |
+| `FloatingViewportPreviews.swift` | `Floating viewport — ` + `Root — ` | 3D, camera, no camera, reconnecting, tab at the leading/trailing edge, undocking, tab unreachable (L19-93, all `.sizeThatFitsLayout`); then in-place: `Root — floating viewport over the dock` (L107), `Root — viewport docked at the edge` (L121) |
+| `ReachyRootViewPreviews.swift` | `Root — ` | idle, connecting, gate needs a decision, connected, **mini window off** (L39), unreachable, no live view, live tab, live tab asleep, dock on the robot/apps tab, dock crashed app, no camera, over the relay, relay live tab, relay moves tab, apps need the local network, idle signed in, session expired |
+
+Harness (`Previews/PreviewScenes.swift`):
+- `PreviewScene.floatingViewport(_ model:viewport:session:)` — L199-215, fakes `bounds` from a 320×460 `GeometryReader`
+- `PreviewScene.root(_ session:viewport:floating:tab:hfAccount:remoteLink:)` — L255-288; forces `.environment(\.reachyTabAccessoryStyle, .legacy)` because an enabled `tabViewBottomAccessory` blanks the whole capture
+- `PreviewScene.viewport(_:offersCamera:makeTeleop:offersPresence:)` — L145-170
+- `PreviewScene.controller(_:driver:setupError:recorder:)` — L120-135
+- `PreviewScene.pane { }` — L219-224, for inner panes on a `sizeThatFits` capture
+- `PreviewScene.teleopFactory` — L141, a throwing stub whose *presence* is what offers the joystick
+
+Model preview factories live in the models' own files under `#if DEBUG`: `ViewportModel.preview(...)` (`ViewportModel.swift:256-279`), `FloatingViewportModel.preview(_:settling:hasTabBar:isLiveTabSelected:isEnabled:)` (`FloatingViewportModel.swift:376-393`).
+
+**What a new (e.g. iPad side-by-side) layout would owe:** the naming pattern says a `Root — ` capture per state, since placement is only readable in place — `Root — connected` and `Root — mini window off` are explicitly documented as a *pair* that only means something read against each other (`ReachyRootViewPreviews.swift:36-38`). Note the recorded caveats: `PreviewScene.root` cannot capture the system tab accessory, no reference is evidence about the safe area (the stencil zeroes it), and iPad root captures currently show the sidebar layout with the viewport inline.
+
+---
+
+## Tests already covering this area
+`Tests/ReachyUITests/`: `FloatingViewportModelTests.swift`, `FloatingViewportGeometryTests.swift`, `FloatingViewportGestures.swift`, `FloatingViewportReleaseTests.swift`, `ViewportModelTests.swift`, `TeleopDriverTests.swift`, `JoystickMappingTests.swift`, `PresenceModelTests.swift`, `DirectionOfArrivalModelTests.swift`.</result>
+<usage><subagent_tokens>173816</subagent_tokens><tool_uses>38</tool_uses><duration_ms>194191</duration_ms></usage>
+</task-notification>
