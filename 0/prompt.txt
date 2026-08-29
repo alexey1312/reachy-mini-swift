@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bzhusuk8n</task-id>
+<tool-use-id>toolu_01RstKkSCAR5zhTkWNPSP1bd</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/f964d5cc-fabe-4d82-b1ab-2826dbc8dbc0/tasks/bzhusuk8n.output</output-file>
+<status>completed</status>
+<summary>Background command "Fresh-DerivedData full build with warm remote cache" completed (exit code 0)</summary>
+</task-notification>
