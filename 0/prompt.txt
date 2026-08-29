@@ -1,0 +1,40 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Tests/ReachyKitTests/RobotConnectionHandshakeTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Tests/ReachyKitTests/RobotConnectionHandshakeTests.swift ===
+@@ -47,6 +47,28 @@ struct RobotConnectionHandshakeTests {
+         #expect(handshake.identity.hardwareID == "9f86d081884c7d65")
+     }
+ 
++    /// **Recents rests on this.** `RobotCallController` puts `identity.name` in the
++    /// call handle and falls back to the hardware id, and iOS renders that value
++    /// verbatim — so a nameless identity turns a call history row into
++    /// `b68ff6bbe47f0608`, which names nothing to anybody. It shipped that way once.
++    ///
++    /// Today the fallback is unreachable: `robot_name` is required in the spec, so
++    /// even a daemon that mounts no rename route still names the robot. That is a
++    /// property of the *spec*, not of this code, and `mise run update-spec` is what
++    /// would take it away. This test is what notices.
++    @Test("the handshake always names the robot, rename route or not")
++    func alwaysNamesTheRobot() async throws {
++        let connection = try makeConnection([
++            "/api/daemon/status": .init(statusCode: 200, json: Self.status(hardwareID: "9f86d081884c7d65")),
++            "/api/daemon/robot-name": .init(statusCode: 404, json: #"{"detail": "Not Found"}"#),
++        ])
++
++        let handshake = try await connection.handshake()
++
++        #expect(handshake.identity.name == "reachy_mini")
++        #expect(handshake.supportsRename == false)
++    }
++
+     @Test("a daemon with no robot attached hands back no id rather than failing the handshake")
+     func toleratesMissingHardwareID() async throws {
+         let connection = try makeConnection([
+
+
+Investigate per the method in your instructions, then return the findings list.
