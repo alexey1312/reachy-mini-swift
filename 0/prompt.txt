@@ -1,0 +1,43 @@
+Hello,
+
+Thank you for your resubmission, but we need additional information before we can continue our review.
+
+Please reply to this message in App Store Connect with detailed answers to the questions below.
+
+Review Environment
+Submission ID: a752d500-2f7a-4a1f-90e0-7b0941f70761
+Review date: August 14, 2026
+Review Device: MacBook Pro (14-inch, Nov 2024)
+Version reviewed: 0.2.3 (143)
+
+Guideline 2.1 - Information Needed
+
+We need a demo video that shows a physical Apple device and the designated hardware pairing together and interacting during the use of the app.
+
+Provide a demo video that shows: 
+
+- The current version of the app in use on a physical Apple device, not on a simulator
+- The initial pairing process between the app and the designated hardware
+- The entire app workflow with the designated hardware
+
+Film the demo video to show both the designated hardware and the app running on a physical Apple device.
+
+Next Steps
+
+Provide a link to a demo video in the App Review Information section of App Store Connect, then reply to this message. 
+
+Make sure any required demo account information is provided, including passwords, in the App Review Information section for the app in App Store Connect.
+
+Resources
+
+To learn more about providing information to App Review in App Store Connect, see App Store Connect Help.
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.
+
+Test on the latest betas
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
+
+
+Что думаешь, что делать?
