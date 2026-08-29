@@ -1,0 +1,1 @@
+Продолжить с CoreBluetooth-адаптера можно в новой сессии — план лежит в frolicking-gliding-nygaard.md.
