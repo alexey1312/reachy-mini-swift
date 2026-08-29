@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bkl21jmtd</task-id>
+<tool-use-id>toolu_015cZhQEW328Fo8z5jfXhLfQ</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/5107feac-2b04-48ca-8c77-e17422222182/tasks/bkl21jmtd.output</output-file>
+<status>completed</status>
+<summary>Background command "Watch CI until it completes" completed (exit code 0)</summary>
+</task-notification>
