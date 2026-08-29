@@ -1,0 +1,357 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+## 1. Primary Request and Intent
+
+**Message 1 (original request, Russian):** Implement the next Phase 2 stage — **BLE Wi-Fi provisioning**. Three explicit parts:
+1. "Посмотри как это сделано и для чего в оригинальном приложеении" — investigate how and why it's done in the original app.
+2. "Так же, это ведь часть онбординга, первого подключения к роботу, которого у нас нет" — note this is part of onboarding / first robot connection, which the project lacks entirely.
+3. "Так же у нас нет при первом подключении к роботу, возможности обновить до послденей версии, как в оригинальном приложении (либо бету поставить — в одной из прошлых сессий мы уже это делали и другие настройки тоже посмотри)" — the app also lacks the ability to update the robot to the latest version (or install beta) at first connection, as the original app does; also look at other settings.
+
+**Clarifications the user gave via AskUserQuestion:**
+- **Hardware:** "Да, робот под рукой" — a physical Reachy Mini Wireless IS available for testing.
+- **Scope:** "Весь вертикальный срез (рекомендую)" — do the full vertical slice (BLE provisioning + onboarding shell + update gate) in one plan with separate commits.
+- **Recovery console:** "Полная консоль, но с алертами и CMD_SOFTWARE_RESET надо спрятать по дальше и справшивать несоклько раз перед тем как это сделать. Можем ли мы переиспользовать уже сущесвтующее решение с логами?" — full BLE console, but bury `CMD_SOFTWARE_RESET` deep behind repeated confirmations; asked whether the existing log console can be reused.
+- **Update scope:** "Блокирующий экран + тумблер beta (рекомендую)" — blocking screen when the daemon is too old, plus a `pre_release` toggle in settings.
+
+**Message 2:** ".githooks тоже закомить" — commit the untracked `.githooks` files.
+
+**Message 3:** `/claude-md-management:revise-claude-md` — review the session for learnings and update CLAUDE.md files. Then "да, применяй" — apply the proposed changes.
+
+**Message 4:** "Закомитил?" — verify commits were made.
+
+## 2. Key Technical Concepts
+
+- **Swift 6 strict concurrency**, SwiftUI, swift-testing (`@Suite`/`@Test`/`#expect`/`#require`/`Issue.record`), `@MainActor @Observable`, `@Bindable`, actors, `AsyncStream`
+- **swift-openapi-generator** build plugin over committed `openapi.json` (77 paths); hand-written clients for anything outside the spec
+- **CoreBluetooth / GATT**, ATT MTU limits, Just-Works pairing (NoInputNoOutput agent, no pairing prompt)
+- **CryptoKit**: `Curve25519.KeyAgreement`, HKDF-SHA256, AES-GCM; the daemon's `x25519-hkdf-sha256-aesgcm` sealed-password scheme
+- **mise** task runner (`./bin/mise run <task>`), **hk** (git hooks + format/lint orchestration), swiftformat, swiftlint --strict, xcsift, Tuist
+- **Conventional commits** enforced by commit-msg hook; pre-commit hook auto-stages every modified `*.swift`/`*.md`
+- Protocol-injection test seams (`RobotAPIClient` pattern with `public extension` throwing defaults)
+- `StubURLProtocol` (canned HTTP) and `LocalWebSocketServer` (in-process NWListener WS) test harnesses
+
+## 3. Files and Code Sections
+
+### Plan file: `/Users/aleksei/.claude/plans/frolicking-gliding-nygaard.md`
+The approved plan. Contains context, 8 verified protocol traps, architecture, commit order (blocks A–F, 21 steps), verification strategy, and a "cut" list.
+
+### `Sources/ReachyKit/Transport/RobotConnection.swift`
+**A1 fix** — the hardware id is the BLE↔LAN join key and was being mangled:
+```swift
+/// An unsupported version is reported, not thrown. The daemon's own update route
+/// is the way out of that state, and throwing here left the user on a "Try again"
+/// button that could never work. `RobotSession` gates the command surface on the
+/// verdict instead — see ADR 0001.
+public func handshake() async throws -> Handshake {
+    let status = try await daemonStatus()
+    let compatibility = DaemonCompatibilityPolicy.evaluate(status.version)
+    let hardwareID = await hardwareID(reportedIn: status)
+    let name = try? await client.getRobotDisplayNameApiDaemonRobotNameGet().ok.body.json.name
+    return Handshake(
+        identity: RobotIdentity(hardwareID: hardwareID, name: name ?? status.robotName,
+                                daemonVersion: status.version),
+        status: status, compatibility: compatibility
+    )
+}
+
+private func hardwareID(reportedIn status: Components.Schemas.DaemonStatus) async -> String? {
+    if let reported = status.hardwareId, !reported.isEmpty { return reported }
+    let map = try? await client.getRobotHardwareIdApiDaemonHardwareIdGet()
+        .ok.body.json.additionalProperties
+    return map?["hardware_id"].flatMap { $0.isEmpty ? nil : $0 }
+}
+```
+Also added `wirelessSession` (internal, 15 s timeout, non-private because sibling file uses it) and `setRobotName(_:)`.
+
+### `Tests/ReachyKitTests/Support/StubURLProtocol.swift` (rewritten)
+Fixed a latent race: stubs now bind to their session, plus query matching.
+```swift
+static func makeSession(_ stubs: [String: Stub]) -> URLSession {
+    let token = UUID().uuidString
+    lock.withLock { sessions[token] = stubs }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [StubURLProtocol.self]
+    configuration.httpAdditionalHeaders = [tokenHeader: token]
+    return URLSession(configuration: configuration)
+}
+
+private static func stub(for request: URLRequest) -> Stub? {
+    guard let token = request.value(forHTTPHeaderField: tokenHeader),
+          let url = request.url,
+          let table = lock.withLock({ sessions[token] })
+    else { return nil }
+    if let query = url.query(), let narrow = table["\(url.path)?\(query)"] { return narrow }
+    return table[url.path]
+}
+```
+
+### `Sources/ReachyUI/LogConsoleView.swift` (new) + `LogConsoleScreen.swift` (slimmed)
+Reusable console: `LogConsoleView(model:source:emptyDescription:failure:)` with `@Bindable var model: LogConsoleModel`. `LogConsoleScreen` keeps only the LAN `LogStreamClient` wiring.
+
+### `Sources/ReachyKit/Model/DaemonUpdate.swift` (new)
+```swift
+public struct DaemonUpdateRequirement: Equatable, Sendable {
+    public let reported: String
+    public let minimum: String
+    public let canSelfUpdate: Bool   // = DaemonStatus.wireless_version
+}
+
+public enum DaemonUpdateAvailability: Sendable, Equatable {
+    case upToDate(current: String)
+    case available(current: String, latest: String)
+    case robotOffline(current: String)   // available_version == "unknown"
+}
+
+public struct DaemonUpdateJob: Sendable, Equatable, Decodable {
+    public enum Status { case pending, inProgress, done, failed, unknown(String) }
+}
+```
+
+### `Sources/ReachyKit/Session/DaemonUpdateClient.swift` (new)
+Separate protocol (not on `RobotAPIClient`) with throwing defaults: `availableUpdate(preRelease:)`, `startUpdate(preRelease:)`, `updateInfo(jobID:)`.
+
+### `Sources/ReachyKit/Transport/RobotConnection+Wireless.swift` (new)
+Hand-written `/update/*` client. Key detail — 404 mapping:
+```swift
+if http.statusCode == 404, path != "/update/info" {
+    throw ReachyKitError.wirelessFeaturesUnavailable
+}
+```
+`preReleaseItem` uses lowercase `"true"`/`"false"` (FastAPI bool parsing).
+
+### `Sources/ReachyKit/Transport/UpdateLogStreamClient.swift` (new)
+```swift
+public enum UpdateLogEvent: Sendable, Equatable {
+    case line(String), status(DaemonUpdateJob.Status), rejected(String), closed
+}
+```
+**No reconnect** (daemon restarts and dies). Per frame: try JSON first → `.status` (ignoring its `logs`, which duplicate raw lines); else `.line`.
+
+### `Sources/ReachyKit/Session/RobotSession.swift`
+Added `case needsDaemonUpdate(RobotIdentity, DaemonUpdateRequirement)` to `ConnectionStep`, `case compatibility` to `ConnectionStage` (between `.connect` and `.backend`), and the gate in `connect(to:)`:
+```swift
+if case let .unsupported(reported, minimum) = handshake.compatibility {
+    return haltOnUnsupportedDaemon(
+        identity: handshake.identity,
+        requirement: DaemonUpdateRequirement(reported: reported, minimum: minimum,
+                                             canSelfUpdate: handshake.status.wirelessVersion)
+    )
+}
+```
+
+### `Sources/ReachyKit/Session/RobotSession+Connect.swift`
+```swift
+func haltOnUnsupportedDaemon(identity: RobotIdentity, requirement: DaemonUpdateRequirement) -> Bool {
+    phase = .connecting(.needsDaemonUpdate(identity, requirement))
+    return false
+}
+
+/// ADR 0001: an unsupported daemon is never sent a command...
+func assertSupportedDaemon() throws {
+    if case let .unsupported(reported, minimum) = DaemonCompatibilityPolicy.evaluate(lastStatus?.version) {
+        throw ReachyKitError.unsupportedDaemonVersion(reported: reported, minimum: minimum)
+    }
+}
+```
+Wired into `withClient` (RobotSession+Audio.swift), `wake()` and `sleep()` (RobotSession+Power.swift).
+
+### `Sources/ReachyKit/Session/RobotSession+ConnectionStage.swift` (rewritten to fix complexity)
+```swift
+private extension RobotSession.ConnectionStep {
+    var position: (stage: RobotSession.ConnectionStage, outcome: RobotSession.StageOutcome) {
+        switch self {
+        case .handshaking: (.connect, .active)
+        case .checkingBackend: (.backend, .active)
+        case .needsDaemonUpdate: (.compatibility, .attention)
+        case .backendUnavailable: (.backend, .attention)
+        case let .failed(stage, _): (stage, .failed)
+        }
+    }
+    func outcome(for stage: RobotSession.ConnectionStage) -> RobotSession.StageOutcome {
+        let current = position
+        guard stage != current.stage else { return current.outcome }
+        return stage.rawValue < current.stage.rawValue ? .done : .pending
+    }
+}
+```
+
+### `Sources/ReachyKit/Session/RobotSession+Update.swift` (new)
+`canUpdateDaemon`, `availableUpdate`, `startUpdate`, `updateLog(jobID:)`, `reconnectAfterUpdate(timeout:pollInterval:)`, and `withUpdateClient` (conditional cast; deliberately NOT guarded by `assertSupportedDaemon()`).
+
+### `Sources/ReachyUI/Settings/SystemUpdateModel.swift` (new)
+`@MainActor @Observable`, states `.idle/.checking/.upToDate/.robotOffline/.available/.installing/.restarting/.finished/.failed`, owns a `LogConsoleModel`. Two injected closures for testability:
+```swift
+init(session: RobotSession,
+     events: ((String) throws -> AsyncStream<UpdateLogEvent>)? = nil,
+     reconnect: (() async -> String?)? = nil)
+```
+
+### `Sources/ReachyUI/DaemonUpdateScreen.swift`, `Settings/SettingsScreen.swift`, `Settings/SystemUpdateCard.swift` (new)
+`DaemonUpdateScreen` is rendered by `ConnectionScreen` when `phase == .connecting(.needsDaemonUpdate(...))`. `SettingsScreen` absorbs `AudioSettingsSection`, adds rename + hardware ID, gates `SystemUpdateCard` on `session.supportsWirelessFeatures`. Beta toggle is `@AppStorage("update.preRelease")`.
+
+### `Sources/ReachyKit/BLE/` (new directory)
+- **`BLEGATT.swift`** — UUID constants; `advertisedService = statusService` (`…cdef3`, NOT the command service), `advertisedName = "ReachyMini"`; `BLECharacteristicID` enum (`command …cdef1`, `response …cdef2`, `networkStatus …cdef4`, `systemStatus …cdef5`, `availableCommands …cdef6`, `hardwareID …cdef7`); `BLEAvailability` enum.
+- **`BLECommand.swift`** — enum with `wireFormat`, `repliesToWrite` (false only for `.runScript`), `needsSession`, `timeout`, `data`.
+- **`BLEResponse.swift`** — `BLECommandError` (with `.lockedOut(seconds:)` parsed from "Too many attempts. Try again in 40s."), `BLEReply` (`.pong/.ok/.echo/.payload/.failure`, `workingAck = "OK: working"`, `isWorkingAck`), `BLEResponseParser`.
+- **`BLEPinSession.swift`** — struct with injected clock; critical asymmetry: `invalidateOnDisconnect()` clears the session but **keeps** the lockout.
+- **`WiFiNetworkStatus.swift`** — parser for `"{MODE} [iface] ip ; [iface] ip"` and bare `"OFFLINE"`.
+- **`BLETransport.swift`** — `Sendable, AnyObject` protocol; `BLEPeripheralSnapshot`; `BLETransportError` (incl. `.payloadTooLong(bytes:limit:)`).
+- **`BLECommandPump.swift`** — actor implementing the corrected reply model:
+```swift
+// write → read → await notification ONLY if the read was the ack
+let notifications = transport.notifications()
+try await transport.write(payload, to: .command)
+let immediate = try await BLEResponseParser.parse(transport.read(.response))
+guard immediate.isWorkingAck else { return immediate }
+return try await awaitResult(on: notifications, timeout: command.timeout)
+```
+Plus explicit FIFO serialisation (actors are reentrant) and re-read fallback on notification timeout.
+
+### `Sources/ReachyKit/WiFi/` (new directory)
+- **`SealedWiFiCredentials.swift`** — `WiFiProvisioningKey` (with `supportedAlgorithm = "x25519-hkdf-sha256-aesgcm"`), `SealedWiFiCredentials` with `jsonString()`.
+- **`WiFiPasswordSeal.swift`** — the crypto:
+```swift
+let shared = try ephemeralPrivateKey.sharedSecretFromKeyAgreement(with: robotPublicKey)
+let symmetricKey = shared.hkdfDerivedSymmetricKey(
+    using: SHA256.self, salt: Data(pin.utf8), sharedInfo: info, outputByteCount: 32)
+let sealed = try AES.GCM.seal(Data(password.utf8), using: symmetricKey,
+                              nonce: nonce, authenticating: Data(ssid.utf8))
+// ct = (sealed.ciphertext + sealed.tag).base64EncodedString()
+```
+`ephemeralPrivateKey`/`nonce` are injectable **only** for test reproducibility.
+
+### `Scripts/generate-seal-fixture.py` + `Scripts/seal-fixture-requirements.txt` (new)
+Hand-run generator producing `Tests/ReachyKitTests/Fixtures/wifi_seal_vector.json`. Self-verifies by re-opening the ciphertext from the daemon side before printing. Uses fixed keys/nonce, SSID with a space, mixed-case PIN. Separate requirements file so `sim-requirements.txt`'s checksum isn't disturbed.
+
+### `Tests/ReachyKitTests/Support/FakeBLETransport.swift` (new)
+Scriptable fake with `Script { read, notify, dropsNotification }`, `writeDelay`, `sawOverlappingWrites`, `writeError`.
+
+### `Apps/Project.swift`
+Added exactly one key, with a comment noting what is deliberately omitted:
+```swift
+"NSBluetoothAlwaysUsageDescription": .string(
+    "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
+),
+```
+
+### `docs/adr/0001-daemon-compatibility-and-lan-security.md`
+Amended with a "Decision: recovering from an unsupported daemon" section.
+
+### `.githooks/{post-checkout,post-commit,post-merge,pre-push}`
+Committed on user request. These are **Git LFS** hooks written by `git lfs install` (I initially misattributed them to `hk`). Repo has no `.gitattributes` and no LFS-tracked files; each hook `exit 2`s when git-lfs is absent, and `pre-push` doing so blocks pushes. Concern was stated and recorded in the commit body.
+
+### Documentation updated (commit d1cc446)
+- `AGENTS.md` — sim-daemon can't serve wireless routes; explicit lint/format paths; rule 6 (`git add` for non-Swift); rule 7 (parallel suites, `.timeLimit`)
+- `.claude/rules/daemon-api.md` — new "Wireless-only routes" section
+- `.claude/rules/networking.md` — BLE block rewritten (upstream doc is wrong; advertised ≠ command service; ATT MTU; scan truncation; session/lockout asymmetry)
+- `Sources/ReachyKit/AGENTS.md` — the four `RobotAPIClient` methods without defaults
+
+### Memory file created
+`~/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/memory/reachy-hardware-availability.md` + a line in `MEMORY.md`.
+
+## 4. Errors and Fixes
+
+1. **Three test failures from a latent parallelism race** — `StubURLProtocol` held stubs in a global static; `swift test --parallel` runs *suites* concurrently and `.serialized` only orders within one suite. My new suite turned the latent race into deterministic failure. **Fix:** bound stubs to their session via an `X-Stub-Session` header token.
+
+2. **Hung test (600 s timeout, killed)** — in `UpdateLogStreamClientTests` I concatenated two raw strings and left a stray `"`, producing malformed JSON, so the awaited event never arrived. **Fix:** used a triple-quoted literal and added `.timeLimit(.minutes(1))` to every async test.
+
+3. **`closesOnceWhenTheDaemonRestarts` lost its frame** — `connection.cancel()` raced the `.idempotent` send. **Fix:** added a `then:` completion to `LocalWebSocketServer.sendText` using `.contentProcessed`, so the test waits on the condition rather than racing it.
+
+4. **`cannot find '$model' in scope`** — passing an `@Observable` as `let` gives no projected value. **Fix:** `@Bindable var model: LogConsoleModel`.
+
+5. **`UpdateStubClient` does not conform to `RobotAPIClient`** — `handshake`, `daemonStatus`, `wakeUp`, `gotoSleep` have no defaults. **Fix:** implemented `wakeUp`/`gotoSleep`. Recorded in `Sources/ReachyKit/AGENTS.md`.
+
+6. **`AudioLevel(percent:platform:device:)` rejected nil** — `platform`/`device` are non-optional `String`. **Fix:** passed `"test"`.
+
+7. **Fixture not found** — `Bundle.module.url` needs `subdirectory: "Fixtures"` (the target uses `.copy("Fixtures")`).
+
+8. **SwiftLint cyclomatic complexity 11** in the stage table after adding a case. **Fix:** replaced the 11-branch table with a single `position` rule; the unchanged `RobotSessionStageOutcomeTests` proved equivalence.
+
+9. **SwiftLint `optional_data_string_conversion` (twice)** — `String(decoding:as:)`. **Fix:** `String(bytes:encoding:)`.
+
+10. **`swiftformat --lint .` reported hundreds of errors** — it walked into `Apps/DerivedData` (generated + vendored sources). This was my invocation error, not a code problem. Recorded in `AGENTS.md`.
+
+11. **`awaitResult` in closure requires explicit `self`** — **Fix:** `serialized { [self, transport] in … }`.
+
+12. **`git commit` with nothing staged failed** for the ADR (a `.md` edit that wasn't `git add`ed). **Fix:** explicit `git add`. Recorded as an amendment to rule 6.
+
+**User feedback / corrections received:**
+- The user asked to reuse the existing log solution for the BLE journal — I confirmed `LogConsoleModel.ingest(_:)` is transport-agnostic and reusable, and identified that a `BLEJournalReader` line-carry adapter is needed (because `_read_journal` slices at a byte offset).
+- The user asked to commit `.githooks` — I complied after reading them and stating the git-lfs dependency concern.
+
+## 5. Problem Solving
+
+**Solved:**
+- Established that the original desktop app does NOT use BLE for provisioning (it uses SoftAP + plaintext HTTP), and that the robot-side BLE protocol was purpose-built for mobile clients — we would be its first consumer.
+- Verified daemon 1.9.0 (our existing minimum) already ships everything needed — no version-policy change.
+- **Corrected upstream's own documentation**: `BLE_WIFI_PROVISIONING.md` claims all commands notify; the code shows synchronous commands answer only on a read. A client written to the doc would hang on `PING`.
+- Discovered `/update/ws/logs` sends both raw lines and repeating JSON frames.
+- Discovered `sim-daemon --wireless-version` cannot work (missing `nmcli`/`cryptography`; host-side robot-image maintenance).
+- Found and fixed a pre-existing hardware-id mangling bug that would have silently broken the BLE↔LAN handoff.
+- Produced a cross-implementation known-answer vector for the sealing crypto.
+
+**Open risk (documented, not resolved):** `WIFI_CONNECT_ENC` is ~260 bytes against iOS's default ATT MTU of 185, and the robot's handler ignores write offsets. The plan makes measuring `maximumWriteValueLength(for: .withResponse)` on hardware **step 0**, before anything is built on top of provisioning. `WiFiProvisioningTransport` exists in the design so an HTTP-over-hotspot fallback can be swapped in.
+
+## 6. All User Messages
+
+1. "Следующий этап который нам необходимо реализовать в фазе 2 - BLE Wi‑Fi provisioning / Посмотри как это сделано и для чего в оригинальном приложеении / Так же, это ведь часть онбординга, первого подключения к роботу, которого у нас нет / Так же у нас нет при первом подключении к роботу, возможности обновить до послденей версии, как в оригинальном приложении (либо бету поставить - в одной из прошлых сессий мы уже это делали и другие настройки тоже посмотри)"
+
+2. (AskUserQuestion answers) Hardware: "Да, робот под рукой" · Scope: "Весь вертикальный срез (рекомендую)" · Recovery: "Полная консоль, но с алертами и CMD_SOFTWARE_RESET надо спрятать по дальше и справшивать несоклько раз перед тем как это сделать. Можем ли мы переиспользовать уже сущесвтующее решение с логами?" · Update: "Блокирующий экран + тумблер beta (рекомендую)"
+
+3. (ExitPlanMode) Plan approved.
+
+4. ".githooks тоже закомить"
+
+5. "/claude-md-management:revise-claude-md — Review this session for learnings about working with Claude Code in this codebase. Update CLAUDE.md with context that would help future Claude sessions be more effective."
+
+6. "да, применяй"
+
+7. "Закомитил?"
+
+**Standing constraints from project instructions (still in effect):** ADR 0001 — the daemon transport is unauthenticated/unencrypted; support only a trusted private LAN or the robot's AP; never expose port 8000 publicly; client-side tokens and fake pairing screens are explicitly rejected. Never copy upstream Pollen code (specification only). All robot commands go through the daemon API; never duplicate motion limits client-side. Never install tools globally — always `./bin/mise run <task>` or `./bin/mise x -- <tool>`. `rm` is aliased to `trash` (no flags); use `/bin/rm` for real `rm`. Do not add redundant/obvious comments; no verification notes in code. All responses to the user in Russian.
+
+## 7. Pending Tasks
+
+Task list state (task #4 rewritten with precise remaining scope):
+
+- **#4 Block D (partial):** (1) `CoreBluetoothTransport` — the real adapter: `@MainActor`, manager with `queue: .main`, delegates `nonisolated` + `MainActor.assumeIsolated`, scan filtered on `…cdef3`, characteristics matched by UUID (not discovery order), `maximumWriteValueLength(for: .withResponse)`. (2) `BLEProvisioningSession` — `@MainActor @Observable` over the pump: PIN session, network scan, `WIFI_KEYEX` → seal → `WIFI_CONNECT_ENC`, `WIFI_STATUS` polling every 2 s for up to 60 s, exactly one KEYEX retry on `.badCredentials`. (3) `WiFiProvisioningTransport` + `WiFiConfigClient` (`/wifi/*` over HTTP) — deferred from block B.
+- **#5 Block E — onboarding:** `Sources/ReachyUI/Onboarding/` with `OnboardingModel` and screens Welcome → Scan → PIN → Network → Joining → Naming → Handoff; auto-shown only when `KnownRobots.lastAddress == nil && !hasCompletedOnboarding`, plus a "Set up a new robot" button in `ConnectionScreen`; Network **must** offer an "Other network…" row; hardware-id handoff to the LAN sweep.
+- **#6 Block F — BLE recovery console:** `BLEConsoleScreen` + `BLEConsoleModel` + `BLEJournalReader` (line-carry across chunks); commands read from `…cdef6`, unknown scripts → `.disruptive`; guarded `CMD_SOFTWARE_RESET` (toggle + type robot name + destructive `confirmationDialog` + 5 s countdown + forced re-`PIN_`); `docs/research/ble-provisioning.md` hardware checklist; Wi-Fi settings card.
+
+## 8. Current Work
+
+Immediately before the summary request, the user asked "Закомитил?" (Did you commit?). I ran verification showing:
+
+- **Working tree clean** (no modified or untracked files)
+- **Branch:** `feat/ble-wifi-provisioning`
+- **15 commits** on top of `main`:
+  - `d1cc446` docs: record this session's protocol and tooling traps
+  - `e56acd3` build: track the Git LFS hooks alongside the existing ones
+  - `f4e9b15` build(app): declare the Bluetooth usage description
+  - `bebb509` feat(kit): drive BLE commands one at a time
+  - `2f50fe4` feat(kit): seal Wi-Fi passwords for provisioning
+  - `cfbc3a7` feat(kit): model the BLE command protocol
+  - `c7ad100` feat(ui): give the robot a settings screen
+  - `ccc7933` docs(adr): record how an unsupported daemon is recovered from
+  - `c8ebae0` feat(ui): let the user update a robot the app cannot talk to
+  - `3d7d170` feat(kit): offer a daemon update instead of failing the connection
+  - `047af20` feat(kit): stream update job logs
+  - `be4cec1` feat(kit): add the daemon self-update client
+  - `f169f89` refactor(ui): extract LogConsoleView from LogConsoleScreen
+  - `3168ad9` fix(kit): read the hardware id as the daemon reports it
+  - `0b873dd` test(kit): bind stub responses to the session that carries them
+- **Not pushed** — no upstream tracking branch is set.
+
+Final verified state before that: 272 tests passing, SwiftLint `--strict` clean, formatting clean, `mise run build:app` succeeding.
+
+I had not yet reported this verification result back to the user in prose when the summarization request arrived.
+
+## 9. Optional Next Step
+
+Report the verification result to the user in Russian, answering their question "Закомитил?" directly: yes — everything is committed, working tree clean, 15 commits on `feat/ble-wifi-provisioning`, and the branch has **not** been pushed anywhere (no upstream configured). Memory files live outside the repo and are therefore not part of any commit.
+
+No further implementation work should begin without the user's direction: the previously delivered status report explicitly stated the session stopped mid-plan, and the remaining scope ("CoreBluetooth-адаптер, `BLEProvisioningSession`, `/wifi/*`, онбординг, консоль восстановления") was recorded in task #4 with the note "Продолжить с CoreBluetooth-адаптера можно в новой сессии". The user's last three messages were about committing and documentation, not about resuming implementation.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/aleksei/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/035b8c0a-f34d-4382-a303-7fd9c13245c5.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
