@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b43x53b81</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ac3c8bb8-614c-448a-8f0a-b3c7cdad610d/tasks/b43x53b81.output</output-file>
+<status>completed</status>
+<summary>Background command "Run sync synchronously and verify lock release" completed (exit code 0)</summary>
+</task-notification>
