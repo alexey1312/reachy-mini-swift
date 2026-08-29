@@ -1,0 +1,129 @@
+<task-notification>
+<task-id>ac343d9d01c03b63f</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/ac343d9d01c03b63f.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore storage for issue 62" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Findings for issue #62 (iCloud KVS sync of known robots + theme).
+
+## 1. Known-robots storage shape
+
+**`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/available-issues-review-0ce72a/Sources/ReachyKit/Model/KnownRobot.swift`** holds both `KnownRobot` (L8-24) and `KnownRobotStore` (L31-89).
+
+Keys and format (`KnownRobot.swift:32-33`, 42-61, 85-88):
+
+```swift
+static let knownRobotsKey = "ReachyKit.knownRobots"
+static let lastAddressKey = "ReachyKit.lastAddress"
+...
+public var all: [KnownRobot] {
+    guard let data = defaults.data(forKey: Self.knownRobotsKey),
+          let robots = try? JSONCodec.stored.decode([KnownRobot].self, from: data)
+    else { return [] }
+    return robots.sorted { $0.lastConnected &gt; $1.lastConnected }
+}
+```
+
+- Both values are **`Data` blobs of JSON via `JSONCodec.stored`** — `[KnownRobot]` under `knownRobotsKey`, a single `RobotAddress` under `lastAddressKey`. Never a plist/dictionary. KVS accepts `Data`, so the shape carries over unchanged.
+- `KnownRobot` = `{key, name?, address, lastConnected}`, `key` is `RobotIdentity.deduplicationKey` (hardware ID). `RobotAddress` = `{host, port}` (`Sources/ReachyKit/Model/RobotAddress.swift:4-13`, default port 8000).
+- `JSONCodec.stored` is **frozen** — `Sources/ReachyJSON/JSONCodec.swift:28-35` says changing it makes shipped records undecodable, and every store reports that as empty rather than an error. A KVS mirror must reuse `.stored` verbatim; no re-encoding.
+- Sort is on read, not on disk. `remember` upserts by `key`; `forget` also clears `lastAddress` when it pointed at the removed robot (`KnownRobot.swift:76-83`) — that side effect matters for a merge policy (a delete on device A must not be resurrected by device B's copy).
+- `lastAddress` is *not* per-robot: it is "the address to offer first" — the manual field's prefill and the first candidate the sweep tries (`KnownRobots.swift:84-87`, `Sources/ReachyUI/Connect/CandidateSweep.swift:96`, `Sources/ReachyUI/ConnectionScreen.swift:75`). It is device-local by nature: a LAN IP that is meaningless on another network. Strong candidate for **not** syncing.
+
+**Store resolution / injection** — `Sources/ReachyKit/Model/KnownRobots.swift:65-75`:
+
+```swift
+public nonisolated(unsafe) static let defaults: UserDefaults = {
+    guard let group = appGroupIdentifier,
+          let shared = UserDefaults(suiteName: group)
+    else { return .standard }
+    migrate(from: .standard, to: shared)
+    return shared
+}()
+
+public static var store: KnownRobotStore {
+    KnownRobotStore(defaults: defaults)
+}
+```
+
+`appGroupIdentifier` (L48-50) reads the Info.plist key `ReachyAppGroupIdentifier`; absent (fork, unit test) → `.standard`. `KnownRobots.all/lastAddress/remember/forget` are thin statics over `store` — that is the "already resolves its store" the issue refers to. Note `store` is a **computed property returning a fresh value struct each access**, so there is no single instance to hang an observer on.
+
+Migration precedent worth copying for a KVS pull: `migrate(from:to:)` (L29-36) is a once-only, key-by-key copy guarded by `ReachyKit.migratedToAppGroup`, over the ordered list `persistedKeys` (L15-20 = knownRobots, lastAddress, onboarding, provisioned).
+
+**Tests inject via a throwaway suite, never `.standard`:**
+- `Tests/ReachyKitTests/KnownRobotStoreTests.swift:9-12` — `UserDefaults(suiteName: "KnownRobotStoreTests.\(UUID().uuidString)")` per test, because `--parallel` shares `.standard`.
+- `Tests/ReachyKitTests/KnownRobotsMigrationTests.swift:11-16` — same, two suites named `legacy`/`shared`; `:87` asserts `KnownRobots.defaults === UserDefaults.standard` when no group is entitled.
+- `Tests/ReachyUITests/KnownRobotsModelTests.swift:10-18` — same pattern for the UI model.
+- `Sources/ReachyUI/KnownRobotsModel.swift:38-47` takes `store: KnownRobotStore = KnownRobots.store` as an init default; `preview` (L89-97) uses suite `"ReachyUI.previews"`. Nothing observes the store for change — `reload()` is called manually (L46, L50, L77-83), so a KVS-driven external change needs an explicit reload hook here.
+
+## 2. ThemeStore
+
+`Sources/ReachyDesign/ThemeStore.swift:9-29` — `public static let key = "ReachyDesign.theme"`, value is a **plain `String`** (`ReachyTheme.rawValue`), injected `UserDefaults`, `.fallback` on anything unreadable. No suite of its own; production passes `KnownRobots.defaults`.
+
+Readers/writers:
+- Widget (its own process, reads directly): `Apps/ReachyWidget/Sources/ReachyAppsWidget.swift:93` and `Apps/ReachyWidget/Sources/RobotStatusWidget.swift:103` — both `.reachyTheme(ThemeStore(defaults: KnownRobots.defaults).theme)`.
+- App root: `Sources/ReachyUI/ThemeSettings.swift:11-33` — `ThemeFromSettings` uses `@AppStorage(ThemeStore.key, store: defaults)` rather than `ThemeStore`, because the store is a value type with no change notification; `reachyThemeFromSettings(_ defaults: UserDefaults = KnownRobots.defaults)` is applied at the scene entry point.
+- Picker: `Sources/ReachyUI/Settings/AppearanceSection.swift:12,24-31,72-78` — writes through the same `@AppStorage`, then `WidgetCenter.shared.reloadAllTimelines()` (non-macOS) and best-effort `AppIconSwitcher.apply(theme)`.
+- Tests: `Tests/ReachyDesignTests/ThemeStoreTests.swift:10-11` — per-test suite plus `removePersistentDomain`, and it already covers wrong-type values (`Int`, `Data`) falling back.
+
+Consequence for the design: because both the app root and the picker go through `@AppStorage` on the app-group suite, a KVS→UserDefaults mirror write will redraw the app automatically (`@AppStorage` observes `UserDefaults` change notifications). The widget needs an explicit `WidgetCenter.reloadAllTimelines()` after a mirrored theme change — same line the picker already carries.
+
+## 3. Entitlements pattern (`Apps/Project.swift`)
+
+Group name is one constant at the top, `Apps/Project.swift:6`: `let appGroup = "group.com.alexey1312.ReachyMini"`, referenced into both targets' Info.plists at `:125` (app) and `:211` (widget) as `"ReachyAppGroupIdentifier": .string(appGroup)`.
+
+Entitlements are **hand-written plist files selected per SDK in build settings**, not generated by Tuist:
+
+```swift
+// app target, Apps/Project.swift:178-181
+settings: .settings(base: [
+    "SWIFT_VERSION": "6.0",
+    "CODE_SIGN_ENTITLEMENTS": "ReachyMini/Entitlements/ReachyMini-iOS.entitlements",
+    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "ReachyMini/Entitlements/ReachyMini-macOS.entitlements",
+```
+
+```swift
+// widget target, Apps/Project.swift:245-249
+"CODE_SIGN_ENTITLEMENTS": "ReachyWidget/Entitlements/ReachyWidget-iOS.entitlements",
+"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]":
+    "ReachyWidget/Entitlements/ReachyWidget-macOS.entitlements",
+```
+
+Four files, all four already carrying `com.apple.security.application-groups` with the literal group string:
+- `Apps/ReachyMini/Entitlements/ReachyMini-iOS.entitlements` (10 lines, groups only)
+- `Apps/ReachyMini/Entitlements/ReachyMini-macOS.entitlements` (sandbox, groups, audio-input, bluetooth, network client+server)
+- `Apps/ReachyWidget/Entitlements/ReachyWidget-iOS.entitlements` (groups only)
+- `Apps/ReachyWidget/Entitlements/ReachyWidget-macOS.entitlements` (sandbox, groups, network.client)
+
+So adding `com.apple.developer.ubiquity-kvstore-identifier` is **two files** (`ReachyMini-iOS`, `ReachyMini-macOS`) under the stated design. The split reason is documented at `Apps/Project.swift:174-177` and in the widget macOS plist's own comment: macOS-only keys fail an iOS build against any profile — an iCloud key is not macOS-only, so it goes in both app files with the same value. Note the group identifier is hard-coded as a literal in the plists while `Apps/Project.swift:6` holds the Swift constant — the same duplication already exists, so a KVS identifier will be a literal too (typically `$(TeamIdentifierPrefix)$(CFBundleIdentifier)`, but the team prefix is nowhere in this repo today — no `DEVELOPMENT_TEAM` in `Apps/Project.swift`, worth checking signing config before writing a literal).
+
+Widget: it reads `KnownRobots.all` and `ThemeStore` from the app-group suite in its own process (`Sources/ReachyWidgetUI/RobotEntity.swift:74`, `RobotPowerIntents.swift:65`, both widget views above). If the app mirrors KVS↔UserDefaults, the widget needs no entitlement and no change. Adding the KVS entitlement to the extension would also require the same store identifier and a second observer in a process that is woken briefly — not worth it.
+
+## 4. Existing external-change observation, and where a sync service would start
+
+**There is none.** `grep` over `Sources` and `Apps` for `NSUbiquitousKeyValueStore`, `didChangeExternallyNotification`, `NotificationCenter`, `addObserver` returns only unrelated hits (`BLELink.observe()` at `Sources/ReachyKit/BLE/BLELink.swift:83,213`, `ConnectProgressModel.observe` at `Sources/ReachyUI/Connect/ConnectProgressModel.swift:65`). No KVO on defaults anywhere. This would be the first `NotificationCenter` observer in the app.
+
+Startup seams, in order of narrowness:
+- `Apps/ReachyMini/Sources/ReachyMiniApp.swift:15-24` — `init()` currently only calls `ReachyShortcuts.updateAppShortcutParameters()`. Body at `:26-53`: `WindowGroup { ReachyRootView { … }.reachyPreviewMode(…).reachyThemeFromSettings() }`, plus `ReachyMenuBarScene()` on macOS. `NSUbiquitousKeyValueStore.default.synchronize()` + observer registration would fit here, but note the app target is where entitlements live so this is also the only process that can legally touch KVS.
+- `Sources/ReachyUI/Navigation/RootLifecycle.swift:13-31, 32-43` — "every effect the root runs, in one place", a `ViewModifier` with seven collaborators, mounted from `Sources/ReachyUI/ReachyRootView.swift:132-143`. Its first `.task` (L34-43) already guards on `@Environment(\.reachyPreviewMode)` and does the Spotlight/quick-action installs. It also has `.task(id: scenePhase)` (L53-55) — a KVS `synchronize()` on foreground belongs there. Adding an eighth collaborator to `RootLifecycle` trips the SwiftLint reason stated in its own doc comment (L10-12), so a KVS service is better started from `ReachyMiniApp.init` or as a `private let` like `quickActions = QuickActionInbox.shared` (L27) — that is the established escape hatch for a collaborator nothing injects.
+- Widget refresh precedent after a store write: `Sources/ReachyUI/ReachyRootViewSupport.swift:53-64` (`widgetReload(session:isPreview:)` → `WidgetCenter.shared.reloadAllTimelines()`) and `AppearanceSection.swift:74`.
+- macOS menu bar is a second scene reading the app-group stores independently: `Apps/ReachyMini/Sources/MenuBarScene.swift` + `Sources/ReachyWidgetUI/MenuBarModel.swift:49` (`defaults: UserDefaults = KnownRobots.defaults`) — it will pick up a mirrored write only if it re-reads; check its refresh trigger before assuming.
+
+## 5. Onboarding flags — how they are used
+
+Both live in the same suite and are already in `persistedKeys` (`KnownRobots.swift:15-20`), so an unthinking "sync everything in persistedKeys" would sweep them in.
+
+- `hasCompletedOnboarding` (`KnownRobots.swift:99-102`, key `"ReachyKit.hasCompletedOnboarding"`). Written at `Sources/ReachyUI/Onboarding/OnboardingModel.swift:228,236`; read once at `Sources/ReachyUI/ConnectionScreen.swift:299` — `if KnownRobots.lastAddress == nil, !KnownRobots.hasCompletedOnboarding` → auto-open onboarding. Its own doc says it "only stops onboarding from opening itself a second time — the flow is never a gate". Arguable either way: syncing it spares a second device the auto-open; leaving it local means a new device offers the setup flow, which for a BLE Wi-Fi provisioning flow performed *from that device* is probably the right behaviour.
+- `pendingProvisionedHardwareID` (`KnownRobots.swift:110-119`, key `"ReachyKit.pendingProvisionedHardwareID"`). Written by `OnboardingModel.swift:227` right after a BLE Wi-Fi handover, cleared on the matching handshake at `Sources/ReachyKit/Session/RobotSession+Connect.swift:100-101`. Read once at `ConnectionScreen.swift:76` into `@State` at init — and `Sources/ReachyUI/CLAUDE.md` records that this specific read is why the property is assigned in `init` rather than as a default: the value is cleared by the handshake, so a deferred read is a banner that never appears. This is a **short-lived hand-off token for a provisioning session on one device**; syncing it would make another device display "waiting for a robot to come back on the network" for a robot it never provisioned. Clear candidate for staying local.
+
+Also local by nature and in the same suite: `KnownRobots.migratedToAppGroup` (must never sync — it is a per-container marker), `lastAddress` (LAN-specific), and the widget/snapshot caches (`RobotSnapshotStore`, `RobotAppsCacheStore`, `PinnedAppStore`, `MovePlaybackRecord`, `MoveRecording`, `RobotAppLaunchState`, `RobotPowerTransitionState` — all `UserDefaults = KnownRobots.defaults`, all robot-session state).
+
+## Loose ends a planner should decide
+
+- `KnownRobots.store` is a computed property returning a fresh struct; there is no instance to attach a KVS observer to. The mirror will most likely be a separate type writing into `KnownRobots.defaults` under the same two keys, leaving `KnownRobotStore` untouched — which keeps `.stored` frozen and every existing test valid.
+- Merge semantics: `[KnownRobot]` is keyed by `key` with a `lastConnected` date, so a last-writer-wins union on `key` by `lastConnected` is natural — but it cannot represent a deletion (`forget` just drops the element), so a naive union resurrects forgotten robots. Same trap `migrate(from:to:)` documents at `KnownRobots.swift:25-28`.
+- KVS limits (1 MB total, 1024 keys) are not a concern for two small values; nothing here approaches them, unlike the multi-MB `RobotCatalogueCache` which is files in the group container, not defaults.
+- Tests will need a seam: `NSUbiquitousKeyValueStore` has no suite equivalent, so injecting a protocol with a `UserDefaults`-backed fake is the only way to keep the existing per-test-suite pattern (`swift test --parallel` is why every store here is injectable).</result>
+<usage><subagent_tokens>157903</subagent_tokens><tool_uses>32</tool_uses><duration_ms>161748</duration_ms></usage>
+</task-notification>
