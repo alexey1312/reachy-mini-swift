@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>blgel3idf</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/10f1d208-8719-4188-ab85-1898bc954618/tasks/blgel3idf.output</output-file>
+<status>completed</status>
+<summary>Background command "Build and run snapshot comparison" completed (exit code 0)</summary>
+</task-notification>
