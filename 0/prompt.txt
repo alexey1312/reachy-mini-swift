@@ -1,0 +1,4 @@
+Я добавил маркетинговый стай
+https://alexey1312.github.io/reachy-mini-swift/
+Обнови везде в app store connect включая marketing/privacy (они теперь на сайте))
+ URL для TestFlyight
