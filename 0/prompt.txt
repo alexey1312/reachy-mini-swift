@@ -1,0 +1,12 @@
+<ci-monitor-event>alexey1312/reachy-mini-swift PR #92 has 1 new review comment:
+- tuist[bot]: ### 🛠️ Tuist Run Report 🛠️
+
+#### Builds 🔨
+
+| Scheme | Status | Duration | Commit |
+|:-:|:-:|:-:|:-:|
+| [ReachyMini](https://tuist.dev/alexey1312/reachy-mini-swift/builds/build-runs/3ce5d687-afee-4faa-90f6-64c4f55d6507) | ✅ | 3m 26s | [4a6ebf161](https://github.com/alexey1312/reachy-mini-swift/commit/4a6ebf161463bcdf282dfdf57ca232d33cc14536) |
+
+
+
+Please address the feedback and push a fix. Then, for each inline comment you addressed (those with a comment_id), post a one-line reply on the thread via `gh api` saying what you changed (or why you didn't). End each reply with the line "_🤖 Addressed by [Claude Code](https://claude.com/claude-code)_" so reviewers can see it was automated. Then resolve the thread. Skip replies for comments you didn't act on.</ci-monitor-event>
