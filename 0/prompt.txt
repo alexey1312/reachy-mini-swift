@@ -1,0 +1,1 @@
+Одно предупреждение, не блокирующее: Upload Symbols Failed — the archive did not include a dSYM for WebRTC.framework. Бинарник WebRTC приходит как предсобранный xcframework без dSYM, поэтому символизация крашей внутри него в Xcode Organizer будет неполной. На установку и раздачу в TestFlight не влияет.
