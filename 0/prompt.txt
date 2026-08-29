@@ -1,0 +1,497 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Sources/ReachyUI/ConnectionScreen.swift
+  - Sources/ReachyUI/Navigation/RootLifecycle.swift
+  - Sources/ReachyUI/Navigation/RootSheets.swift
+  - Sources/ReachyUI/ReachyRootView.swift
+  - Sources/ReachyUI/Remote/YourReachiesModel.swift
+  - Sources/ReachyUI/Remote/YourReachiesScreen.swift
+  - Tests/ReachyUITests/YourReachiesModelTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Sources/ReachyUI/ConnectionScreen.swift ===
+@@ -122,8 +122,14 @@ struct ConnectionScreen: View {
+                 )
+                 .disabled(!session.phase.acceptsConnectionChoice)
+             case .account:
++                // The one segment with no `disabled` on it, which is what its own
++                // doc comment has always claimed. A robot reached through Hugging
++                // Face is not on this Wi-Fi, so a sweep of this one says nothing
++                // about whether it can be reached — and the sweep walks the phase
++                // through `idle → handshaking → idle` every 10 s, so gating on it
++                // made the only way to a remote robot go dead under a finger on a
++                // beat the reader cannot see.
+                 YourReachiesSection(show: showRemoteRobots)
+-                    .disabled(!session.phase.acceptsConnectionChoice)
+             case .manual:
+                 ManualAddressSection(input: $manualInput, connect: connectManually)
+                     .disabled(!session.phase.acceptsConnectionChoice)
+
+
+=== DIFF: Sources/ReachyUI/Navigation/RootLifecycle.swift ===
+@@ -6,13 +6,14 @@ import SwiftUI
+ /// Every effect the root runs, in one place.
+ ///
+ /// Applied with `.modifier(_:)` rather than through a `View` extension like its
+-/// neighbours: the cluster needs six collaborators, and a helper taking six
++/// neighbours: the cluster needs seven collaborators, and a helper taking seven
+ /// arguments is a SwiftLint violation while a memberwise initialiser is not.
+ struct RootLifecycle: ViewModifier {
+     let session: RobotSession
+     let viewport: ViewportModel
+     let floating: FloatingViewportModel
+     let hfAccount: HFAccount
++    let remoteRobots: YourReachiesModel
+     let runningApp: RunningAppModel
+     let router: ReachyRouter
+     @Binding var remoteLink: RemoteRobotLink?
+@@ -26,6 +27,10 @@ struct RootLifecycle: ViewModifier {
+                 guard !previewMode else { return }
+                 hfAccount.restore()
+             }
++            .onChange(of: hfAccount.state, initial: true) { _, _ in
++                guard !previewMode else { return }
++                remoteRobots.accountChanged()
++            }
+             .task(id: viewportTarget) {
+                 guard !previewMode else { return }
+                 if let viewportTarget {
+
+
+=== DIFF: Sources/ReachyUI/Navigation/RootSheets.swift ===
+@@ -6,9 +6,19 @@ import SwiftUI
+ /// The sheets the whole interface shares, mounted once above both the gate and the
+ /// shell so that connecting — which throws the tree below it away — does not
+ /// dismiss one mid-flight.
++///
++/// **Nothing stateful may be constructed in a sheet's content closure.** SwiftUI
++/// re-runs that closure on every update of the view the sheet hangs off, which
++/// here means every `RobotSession.phase` change — and the candidate sweep produces
++/// one every 10 s while the gate is up. Whatever a model was holding is thrown
++/// away with it, and a `.task` that filled it does not run a second time. Both
++/// models below are therefore handed in already built: `remoteRobots` by the root,
++/// `HFSignInModel` by `HFAccountSection`, which adopts the first one it is given
++/// into `@State` and ignores every replacement.
+ struct RootSheets: ViewModifier {
+     let session: RobotSession
+     let hfAccount: HFAccount
++    let remoteRobots: YourReachiesModel
+     let router: ReachyRouter
+     let connect: (CentralRobot) -> Void
+ 
+@@ -28,18 +38,7 @@ struct RootSheets: ViewModifier {
+             .sheet(isPresented: $router.showsRemoteRobots) {
+                 NavigationStack {
+                     YourReachiesScreen(
+-                        model: YourReachiesModel(
+-                            listing: CentralRelayClient { [hfAccount] in await hfAccount.currentToken() },
+-                            // `.needsReauth` also carries a username, so the state is
+-                            // the question, not whether a name is known.
+-                            isSignedIn: { [hfAccount] in
+-                                if case .signedIn = hfAccount.state {
+-                                    true
+-                                } else {
+-                                    false
+-                                }
+-                            }
+-                        ),
++                        model: remoteRobots,
+                         connect: connect,
+                         // Pushed inside this sheet rather than sending the user to
+                         // the robot's Settings tab: that tab does not exist until a
+
+
+=== DIFF: Sources/ReachyUI/ReachyRootView.swift ===
+@@ -4,8 +4,9 @@ import ReachyMedia
+ import SwiftUI
+ 
+ /// Entry point for the shared UI. It owns what outlives a screen — the session,
+-/// the account, the viewport, the running-app dock and the router — and chooses
+-/// between exactly two things: connecting, or being connected.
++/// the account and its robot list, the viewport, the running-app dock and the
++/// router — and chooses between exactly two things: connecting, or being
++/// connected.
+ ///
+ /// The tab bar lives below this rather than in the app target because every tab
+ /// shares one `RobotSession` and one `ViewportModel`. The app target's own
+@@ -22,6 +23,17 @@ public struct ReachyRootView<Developer: View>: View {
+     /// launch and handed down through the environment — the account outlives any
+     /// one robot connection, and several screens read it.
+     @State private var hfAccount: HFAccount
++    /// The account's robot list, held here rather than built by the sheet that
++    /// shows it.
++    ///
++    /// A `.sheet` content closure is re-run on **every** update of the view it
++    /// hangs off, so a model constructed inside one is replaced by a fresh, empty
++    /// one each time. This body reads `session.phase`, and the candidate sweep
++    /// walks it `idle → handshaking → idle` every 10 s while the gate is up — so
++    /// the list of robots the user was reading was replaced within seconds by a
++    /// model that had never asked central anything, and `.task` does not get a
++    /// second turn to ask again.
++    @State private var remoteRobots: YourReachiesModel
+     @State private var runningApp: RunningAppModel
+     @State private var router: ReachyRouter
+     /// Held for as long as the remote session is: dropping it would close the peer
+@@ -45,6 +57,7 @@ public struct ReachyRootView<Developer: View>: View {
+         viewport: ViewportModel = ViewportModel(),
+         floating: FloatingViewportModel? = nil,
+         hfAccount: HFAccount? = nil,
++        remoteRobots: YourReachiesModel? = nil,
+         runningApp: RunningAppModel? = nil,
+         tab: ReachyRouter.Tab = .robot,
+         remoteLink: RemoteRobotLink? = nil,
+@@ -58,12 +71,30 @@ public struct ReachyRootView<Developer: View>: View {
+         _runningApp = State(initialValue: runningApp ?? RunningAppModel())
+         _router = State(initialValue: ReachyRouter(tab: tab))
+         _remoteLink = State(initialValue: remoteLink)
+-        _hfAccount = State(
+-            initialValue: hfAccount ?? HFAccount(store: KeychainHFTokenStore())
+-        )
++        let account = hfAccount ?? HFAccount(store: KeychainHFTokenStore())
++        _hfAccount = State(initialValue: account)
++        _remoteRobots = State(initialValue: remoteRobots ?? Self.yourReachies(for: account))
+         self.developer = developer()
+     }
+ 
++    /// Central, authenticated with this app's own Hugging Face session — which is
++    /// the only thing that makes a robot visible to its owner and to nobody else.
++    @MainActor
++    private static func yourReachies(for account: HFAccount) -> YourReachiesModel {
++        YourReachiesModel(
++            listing: CentralRelayClient { [account] in await account.currentToken() },
++            // `.needsReauth` also carries a username, so the state is the question,
++            // not whether a name is known.
++            isSignedIn: { [account] in
++                if case .signedIn = account.state {
++                    true
++                } else {
++                    false
++                }
++            }
++        )
++    }
++
+     public var body: some View {
+         Group {
+             if isConnectedEnough {
+@@ -89,13 +120,22 @@ public struct ReachyRootView<Developer: View>: View {
+         .environment(runningApp)
+         .environment(hfAccount)
+         .environment(router)
+-        .modifier(RootSheets(session: session, hfAccount: hfAccount, router: router, connect: connectRemotely))
++        .modifier(
++            RootSheets(
++                session: session,
++                hfAccount: hfAccount,
++                remoteRobots: remoteRobots,
++                router: router,
++                connect: connectRemotely
++            )
++        )
+         .modifier(
+             RootLifecycle(
+                 session: session,
+                 viewport: viewport,
+                 floating: floating,
+                 hfAccount: hfAccount,
++                remoteRobots: remoteRobots,
+                 runningApp: runningApp,
+                 router: router,
+                 remoteLink: $remoteLink
+
+
+=== DIFF: Sources/ReachyUI/Remote/YourReachiesModel.swift ===
+@@ -30,33 +30,70 @@ public final class YourReachiesModel {
+     /// why it did not change.
+     public private(set) var lastRefreshError: String?
+ 
++    /// Changes whenever the Hugging Face session changes, so a presented screen
++    /// restarts the load that belongs to the new account.
++    private(set) var accountGeneration = 0
++
+     private let listing: any CentralRobotListing
+     private let isSignedIn: @MainActor () -> Bool
+     private var attemptedLoad = false
++    /// Which request is allowed to write back, and whether one is running.
++    ///
++    /// Two are easy to have in flight at once — the screen's `.task` and a
++    /// pull-to-refresh land on the same model — and central answers them in
++    /// whatever order it likes. Without this the *older* answer wins simply by
++    /// arriving second, which is how a list of robots turns into "none online" a
++    /// moment after it appeared. Same rule as `RobotSession.connectionAttemptID`: a
++    /// superseded request never writes back. An account change bumps it too, so an
++    /// answer that lands afterwards cannot repopulate a list the account no longer
++    /// owns.
++    ///
++    /// Named for the newest rather than shadowed by a local of the same name inside
++    /// `fetch`: `self.` would be load-bearing there, and swiftformat's
++    /// `redundantSelf` is exactly the kind of rule that decides otherwise.
++    private var latestAttempt = 0
++    private var isFetching = false
+ 
+     public init(listing: any CentralRobotListing, isSignedIn: @escaping @MainActor () -> Bool) {
+         self.listing = listing
+         self.isSignedIn = isSignedIn
+     }
+ 
+-    /// The model is created as the sheet opens. A signed-in account therefore has
+-    /// pending content before `.task` gets its first turn, even though `state` has not
+-    /// entered `.loading` yet.
++    /// Drops account-scoped data before another Hugging Face session can see it.
++    /// Incrementing the generation also restarts a presented screen's load.
++    func accountChanged() {
++        latestAttempt += 1
++        isFetching = false
++        state = .signedOut
++        lastRefreshError = nil
++        attemptedLoad = false
++        accountGeneration += 1
++    }
++
++    /// A signed-in account has pending content before `.task` gets its first turn,
++    /// even though `state` has not entered `.loading` yet — which is the first frame
++    /// the sheet draws, and it must not be an empty-state.
+     var isContentLoading: Bool {
+         isSignedIn() && !state.hasRobots && (state == .loading || !attemptedLoad)
+     }
+ 
++    /// The screen's own load, on presentation. A second one while the first is
++    /// still in flight would spend a round trip asking central the same question.
+     public func load() async {
+-        guard state != .loading else { return }
++        guard !isFetching else { return }
+         await fetch(showingSpinner: !state.hasRobots)
+     }
+ 
++    /// Pull to refresh. Always asks — the user asked — and supersedes whatever was
++    /// in flight rather than queueing behind it.
+     public func refresh() async {
+         await fetch(showingSpinner: !state.hasRobots)
+     }
+ 
+     private func fetch(showingSpinner: Bool) async {
+         guard isSignedIn() else {
++            latestAttempt += 1
++            isFetching = false
+             state = .signedOut
+             lastRefreshError = nil
+             attemptedLoad = false
+@@ -66,11 +103,21 @@ public final class YourReachiesModel {
+         if showingSpinner {
+             state = .loading
+         }
++        latestAttempt += 1
++        let attempt = latestAttempt
++        isFetching = true
++        defer {
++            if attempt == latestAttempt {
++                isFetching = false
++            }
++        }
+         do {
+             let robots = try await listing.robots()
++            guard attempt == latestAttempt else { return }
+             state = robots.isEmpty ? .empty : .listed(robots)
+             lastRefreshError = nil
+         } catch {
++            guard attempt == latestAttempt else { return }
+             report(error)
+         }
+     }
+
+
+=== DIFF: Sources/ReachyUI/Remote/YourReachiesScreen.swift ===
+@@ -9,16 +9,34 @@ import SwiftUI
+ /// than listed as offline: central sweeps a peer whose lease lapsed, so presence
+ /// in the list *is* the online signal.
+ struct YourReachiesScreen<SignIn: View>: View {
+-    let model: YourReachiesModel
++    /// `@State`, not a `let`, for the same reason `HFAccountSection` holds its own:
++    /// this screen is presented from a `.sheet`, and SwiftUI re-runs a sheet's
++    /// content closure on every update of the view it hangs off. Adopting the first
++    /// model and ignoring later ones is what stops a rebuilt, empty one from
++    /// blanking a list the user is reading. The root hands in a stable model as
++    /// well — belt and braces, because replacing the model does not restart the
++    /// task that fills it. Account changes use a generation on the stable model to
++    /// restart that task separately.
++    @State private var model: YourReachiesModel
+     @Environment(\.reachyPreviewMode) private var previewMode
+     /// Called with the robot the user picked. The session is built by whoever
+     /// presented this screen — it owns the WebRTC half.
+-    var connect: (CentralRobot) -> Void
++    private let connect: (CentralRobot) -> Void
+     /// Pushed rather than presented, so signing in never costs the user the sheet
+     /// they opened to find a robot. A view rather than an action because the
+     /// account belongs to whoever presented this — this screen lists robots and
+     /// has no business knowing what a session or a token is.
+-    @ViewBuilder var signIn: () -> SignIn
++    private let signIn: () -> SignIn
++
++    init(
++        model: YourReachiesModel,
++        connect: @escaping (CentralRobot) -> Void,
++        @ViewBuilder signIn: @escaping () -> SignIn
++    ) {
++        _model = State(initialValue: model)
++        self.connect = connect
++        self.signIn = signIn
++    }
+ 
+     var body: some View {
+         List {
+@@ -53,7 +71,7 @@ struct YourReachiesScreen<SignIn: View>: View {
+         .contentLoading(isPresented: model.isContentLoading, title: .reachy("Calling your Reachies home…"))
+         .navigationTitle(.reachy("Your Reachies"))
+         .refreshable { await model.refresh() }
+-        .task {
++        .task(id: model.accountGeneration) {
+             guard !previewMode else { return }
+             await model.load()
+         }
+
+
+=== DIFF: Tests/ReachyUITests/YourReachiesModelTests.swift ===
+@@ -34,6 +34,42 @@ private final class ListingDouble: CentralRobotListing, @unchecked Sendable {
+     }
+ }
+ 
++/// A listing that answers only when the test says so, and in the order the test
++/// chooses.
++///
++/// Ordering two in-flight requests by sleeping for different durations is the flake
++/// project rule 7 warns about; this waits on the condition instead — a call having
++/// arrived, and then an answer being released.
++private actor GatedListing: CentralRobotListing {
++    private(set) var callCount = 0
++    private var calls: [CheckedContinuation<[CentralRobot], any Error>] = []
++    private var arrivals: [CheckedContinuation<Void, Never>] = []
++
++    func robots() async throws -> [CentralRobot] {
++        try await withCheckedThrowingContinuation { continuation in
++            callCount += 1
++            calls.append(continuation)
++            for arrival in arrivals {
++                arrival.resume()
++            }
++            arrivals = []
++        }
++    }
++
++    /// Returns once `count` calls have arrived, so a test never releases an answer
++    /// to a request that has not been made yet.
++    func waitForCalls(_ count: Int) async {
++        while callCount < count {
++            await withCheckedContinuation { arrivals.append($0) }
++        }
++    }
++
++    /// Answers the call that arrived `index`-th, counting from zero.
++    func answer(_ index: Int, with robots: [CentralRobot]) {
++        calls[index].resume(returning: robots)
++    }
++}
++
+ /// Whether the account is signed in, as something a test can flip after the model
+ /// has already taken the closure that reads it.
+ @MainActor
+@@ -192,4 +228,95 @@ struct YourReachiesModelTests {
+ 
+         #expect(model.state == .signedOut)
+     }
++
++    /// The screen's `.task` and a pull-to-refresh land on the same model, and
++    /// central answers them in whatever order it likes. The older answer arriving
++    /// second must not win: that is a list of robots turning into "none online" a
++    /// moment after it appeared, for no reason the user can see.
++    @Test("a superseded request never writes back over a newer answer")
++    func dropsASupersededAnswer() async throws {
++        let robots = try Self.robots(#"[{"peerId":"p1","robotName":"kitchen"}]"#)
++        let listing = GatedListing()
++        let model = YourReachiesModel(listing: listing, isSignedIn: { true })
++
++        let first = Task { await model.load() }
++        await listing.waitForCalls(1)
++        let second = Task { await model.refresh() }
++        await listing.waitForCalls(2)
++
++        await listing.answer(1, with: robots)
++        await second.value
++        // The first request answers last, from a sweep that ran before the robot
++        // registered with central.
++        await listing.answer(0, with: [])
++        await first.value
++
++        #expect(model.state == .listed(robots))
++    }
++
++    /// Signing out is a decision the answer in flight knows nothing about.
++    @Test("an answer that lands after signing out does not repopulate the list")
++    func dropsAnAnswerFromASignedOutAccount() async throws {
++        let robots = try Self.robots(#"[{"peerId":"p1","robotName":"kitchen"}]"#)
++        let signedIn = SignedInFlag(true)
++        let listing = GatedListing()
++        let model = YourReachiesModel(listing: listing, isSignedIn: { signedIn.value })
++
++        let load = Task { await model.load() }
++        await listing.waitForCalls(1)
++        signedIn.value = false
++        model.accountChanged()
++        await listing.answer(0, with: robots)
++        await load.value
++
++        #expect(model.state == .signedOut)
++    }
++
++    /// The model outlives the sheet now, so the account boundary must explicitly
++    /// discard rows that belong to the previous owner. A failed request for the
++    /// next account must not preserve those rows as though it were a refresh.
++    @Test("changing accounts clears the previous account's robots")
++    func changingAccountsClearsRobots() async throws {
++        let robots = try Self.robots(#"[{"peerId":"p1","robotName":"kitchen"}]"#)
++        let signedIn = SignedInFlag(true)
++        let listing = ListingDouble([
++            .success(robots),
++            .failure(CentralRelayClient.Failure.http(503)),
++        ])
++        let model = YourReachiesModel(listing: listing, isSignedIn: { signedIn.value })
++
++        await model.load()
++        #expect(model.state == .listed(robots))
++
++        signedIn.value = false
++        model.accountChanged()
++        #expect(model.state == .signedOut)
++
++        signedIn.value = true
++        model.accountChanged()
++        await model.load()
++
++        #expect(!model.state.hasRobots)
++        #expect(model.lastRefreshError == nil)
++    }
++
++    /// `.task` runs once per presentation, but nothing stops a second `load()`
++    /// arriving while the first is still out. Central allows 1200 requests a minute
++    /// per token and a duplicate buys nothing.
++    @Test("a second load while one is in flight asks central once")
++    func loadsOnceWhileInFlight() async {
++        let listing = GatedListing()
++        let model = YourReachiesModel(listing: listing, isSignedIn: { true })
++
++        let load = Task { await model.load() }
++        await listing.waitForCalls(1)
++        await model.load()
++        let callCount = await listing.callCount
++
++        #expect(callCount == 1)
++
++        await listing.answer(0, with: [])
++        await load.value
++        #expect(model.state == .empty)
++    }
+ }
+
+
+Investigate per the method in your instructions, then return the findings list.
