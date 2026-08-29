@@ -1,0 +1,190 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Sources/ReachyKit/Model/DaemonCompatibility.swift
+  - Sources/ReachyKit/openapi.json
+  - Tests/ReachyKitTests/DaemonCompatibilityTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Sources/ReachyKit/Model/DaemonCompatibility.swift ===
+@@ -24,7 +24,11 @@ public enum DaemonCompatibility: Equatable, Sendable {
+ /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
+ public enum DaemonCompatibilityPolicy {
+     public static let minimumVersion = "1.9.0"
+-    public static let testedVersion = "1.9.0"
++    /// Raised to 1.10.0 against a Wireless unit on that daemon. The spec diff was
++    /// additive but for one rename: `DoAInfo` became `DoaSnapshot` with the same two
++    /// fields, so no generated type any caller names actually moved. `/api/state/imu`
++    /// and `FullState.imu` are new, and rule 3 already covers an unread field.
++    public static let testedVersion = "1.10.0"
+ 
+     public static func evaluate(_ reported: String?) -> DaemonCompatibility {
+         guard let reported, let current = SemanticVersion(reported),
+
+
+=== DIFF: Sources/ReachyKit/openapi.json ===
+@@ -2272,7 +2272,7 @@
+   "/api/state/doa": {
+    "get": {
+     "summary": "Get Doa",
+-    "description": "Get the Direction of Arrival from the microphone array.\n\nReturns the angle in radians (0=left, π/2=front, π=right) and speech detection status.\nReturns None if the audio device is not available.",
++    "description": "Get the Direction of Arrival from the microphone array.\n\nReturns the angle in radians (0=left, π/2=front, π=right) and speech detection status.\nReturns None if the audio device is not available or no reading has\nlanded yet (the first one lands within ~100 ms of the first request).",
+     "operationId": "get_doa_api_state_doa_get",
+     "responses": {
+      "200": {
+@@ -2280,7 +2280,26 @@
+       "content": {
+        "application/json": {
+         "schema": {
+-         "$ref": "#/components/schemas/DoAInfo"
++         "$ref": "#/components/schemas/DoaSnapshot"
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  "/api/state/imu": {
++   "get": {
++    "summary": "Get Imu",
++    "description": "Get the latest IMU reading (accelerometer, gyroscope, quaternion, temperature).\n\nAccelerations are in m/s², angular rates in rad/s, the quaternion is\nw-first and the temperature in °C.\nReturns None on versions without an IMU (Lite, simulation) or when the\ncached reading has gone stale.",
++    "operationId": "get_imu_api_state_imu_get",
++    "responses": {
++     "200": {
++      "description": "Successful Response",
++      "content": {
++       "application/json": {
++        "schema": {
++         "$ref": "#/components/schemas/ImuData"
+         }
+        }
+       }
+@@ -2404,6 +2423,16 @@
+        "title": "With Doa"
+       }
+      },
++     {
++      "name": "with_imu",
++      "in": "query",
++      "required": false,
++      "schema": {
++       "type": "boolean",
++       "default": false,
++       "title": "With Imu"
++      }
++     },
+      {
+       "name": "use_pose_matrix",
+       "in": "query",
+@@ -2943,7 +2972,7 @@
+     "title": "DaemonStatus",
+     "description": "Status of the Reachy Mini daemon."
+    },
+-   "DoAInfo": {
++   "DoaSnapshot": {
+     "properties": {
+      "angle": {
+       "type": "number",
+@@ -2959,8 +2988,8 @@
+      "angle",
+      "speech_detected"
+     ],
+-    "title": "DoAInfo",
+-    "description": "Direction of Arrival info from the microphone array."
++    "title": "DoaSnapshot",
++    "description": "Sound Direction of Arrival reading (ReSpeaker mic array).\n\n``angle`` is in radians: 0 = left, π/2 = front, π = right."
+    },
+    "EnableTrackingRequest": {
+     "properties": {
+@@ -3109,7 +3138,10 @@
+       "type": "array"
+      },
+      "doa": {
+-      "$ref": "#/components/schemas/DoAInfo"
++      "$ref": "#/components/schemas/DoaSnapshot"
++     },
++     "imu": {
++      "$ref": "#/components/schemas/ImuData"
+      }
+     },
+     "type": "object",
+@@ -3203,6 +3235,44 @@
+     "type": "object",
+     "title": "HTTPValidationError"
+    },
++   "ImuData": {
++    "properties": {
++     "accelerometer": {
++      "items": {
++       "type": "number"
++      },
++      "type": "array",
++      "title": "Accelerometer"
++     },
++     "gyroscope": {
++      "items": {
++       "type": "number"
++      },
++      "type": "array",
++      "title": "Gyroscope"
++     },
++     "quaternion": {
++      "items": {
++       "type": "number"
++      },
++      "type": "array",
++      "title": "Quaternion"
++     },
++     "temperature": {
++      "type": "number",
++      "title": "Temperature"
++     }
++    },
++    "type": "object",
++    "required": [
++     "accelerometer",
++     "gyroscope",
++     "quaternion",
++     "temperature"
++    ],
++    "title": "ImuData",
++    "description": "IMU sensor reading (BMI088, wireless version only).\n\nThe payload half of :class:`ImuDataMsg`, reused wherever the reading\nis carried without the legacy WS discriminator (state snapshots,\nREST replies)."
++   },
+    "InterpolationTechnique": {
+     "type": "string",
+     "enum": [
+
+
+=== DIFF: Tests/ReachyKitTests/DaemonCompatibilityTests.swift ===
+@@ -5,8 +5,15 @@ import Testing
+ struct DaemonCompatibilityTests {
+     @Test("tested baseline is supported")
+     func baseline() {
+-        #expect(DaemonCompatibilityPolicy.evaluate("1.9.0") == .supported)
+-        #expect(DaemonCompatibilityPolicy.evaluate("v1.9.0") == .supported)
++        #expect(DaemonCompatibilityPolicy.evaluate("1.10.0") == .supported)
++        #expect(DaemonCompatibilityPolicy.evaluate("v1.10.0") == .supported)
++    }
++
++    /// A daemon between the minimum and the tested baseline is supported outright,
++    /// not warned about — the warning is for versions this client has never seen.
++    @Test("daemons between the minimum and the baseline are supported", arguments: ["1.9.0", "1.9.5"])
++    func withinRange(version: String) {
++        #expect(DaemonCompatibilityPolicy.evaluate(version) == .supported)
+     }
+ 
+     @Test("older and different-major daemons are blocked", arguments: ["1.8.9", "2.0.0", "0.99.0"])
+@@ -17,7 +24,7 @@ struct DaemonCompatibilityTests {
+         ))
+     }
+ 
+-    @Test("newer compatible versions connect with a warning", arguments: ["1.9.1", "1.10.0"])
++    @Test("newer compatible versions connect with a warning", arguments: ["1.10.1", "1.11.0"])
+     func newer(version: String) {
+         #expect(DaemonCompatibilityPolicy.evaluate(version) == .untestedNewer(
+             reported: version,
+
+
+Investigate per the method in your instructions, then return the findings list.
