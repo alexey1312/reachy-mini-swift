@@ -1,0 +1,1 @@
+<bash-input>sudo log collect --device-udid 9FD3B44D-855B-565A-818A-DB10E3C2AB8C --last 10m --output ~/Downloads/reachy-call.logarchive</bash-input>
