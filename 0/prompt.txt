@@ -1,0 +1,19 @@
+<ci-monitor-event>alexey1312/reachy-mini-swift PR #86 has 1 new review comment:
+- tuist[bot]: ### 🛠️ Tuist Run Report 🛠️
+
+#### Tests 🧪
+
+| Scheme | Status | Cache hit rate | Tests | Skipped | Ran | Commit |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| [ReachyMini](https://tuist.dev/alexey1312/reachy-mini-swift/tests/test-runs/3490d89f-01f1-45b5-9438-20b7a52c1867) | ✅ | 0 % | 2 | 0 | 2 | [26f662260](https://github.com/alexey1312/reachy-mini-swift/commit/26f66226033ba63eb748514ac4f0746239e4423c) |
+
+
+#### Builds 🔨
+
+| Scheme | Status | Duration | Commit |
+|:-:|:-:|:-:|:-:|
+| [ReachyMini](https://tuist.dev/alexey1312/reachy-mini-swift/builds/build-runs/d231d53e-9c46-4c31-ba3f-175207e8707f) | ✅ | 6m 14s | [26f662260](https://github.com/alexey1312/reachy-mini-swift/commit/26f66226033ba63eb748514ac4f0746239e4423c) |
+
+
+
+Please address the feedback and push a fix. Then, for each inline comment you addressed (those with a comment_id), post a one-line reply on the thread via `gh api` saying what you changed (or why you didn't). End each reply with the line "_🤖 Addressed by [Claude Code](https://claude.com/claude-code)_" so reviewers can see it was automated. Then resolve the thread. Skip replies for comments you didn't act on.</ci-monitor-event>
