@@ -1,0 +1,4 @@
+Your question menu did not register my selection, so here is my answer as text:
+Какие платформы выгружать?: iOS + macOS (рекомендую)
+Раздавать ли публичной бете?: Нет, только internal
+Continue with that answer.
