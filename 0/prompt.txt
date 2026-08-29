@@ -1,0 +1,323 @@
+План есть - можно работать
+
+# App Store + Hugging Face + Remote Access («Your Reachies») + виджеты — Phase 2 finale
+
+## Context
+
+Последний крупный блок Фазы 2. По результатам ресёрча (исходники демона 1.9.0/main, открытый
+central-сервер, официальные приложения Pollen) фича состоит из четырёх частей:
+
+1. **Магазин приложений робота** — HF Spaces с тегом `reachy_mini_python_app`; демон сам
+   скачивает snapshot и ставит `uv pip install` в общий venv. Клиент — обёртка над `/api/apps/*`.
+2. **Вход в Hugging Face** — нативный, на телефоне, «в 1 кнопку» (как в официальном
+   iOS-приложении, которое показывает вход до подключения к роботу ⇒ OAuth у него клиентский):
+   `ASWebAuthenticationSession` (делит куки Safari) + наш зарегистрированный **public OAuth-app
+   HF** (client_id без секрета, custom-scheme redirect, PKCE). Токен — в **Keychain**
+   (ADR-0001: «credentials в Keychain, инжектятся централизованно ReachyKit»). Привязка робота =
+   `POST /api/hf-auth/save-token` по LAN (демон валидирует через whoami и хранит у себя).
+   Браузерный OAuth-флоу демона (редирект на `reachy-mini.local`) **не используем** — не нужен.
+   Fallback без OAuth-app: вставка PAT.
+3. **Remote-доступ «Your Reachies»** — central-сервер = публичный HF Space
+   `https://pollen-robotics-reachy-mini-central.hf.space` (исходники открыты; env
+   `REACHY_CENTRAL_URL`). Робот и клиент аутентифицируются `Authorization: Bearer <HF-токен>`;
+   робот-producer виден только владельцу токена. Сигналинг — тот же протокол GStreamer
+   webrtcsink, что у нас на :8443 (`SignalingMessage`), но поверх **SSE (`GET /events`) +
+   `POST /send`**. Дальше обычный WebRTC (STUN-only, **TURN нет**). Удалённо HTTP-API демона
+   **недоступен**: управление — data-канал `"data"` (JSON-команды `wake_up`, `set_target`,
+   `get_state`… + JSON-RPC `apps.*`), телеметрия — unreliable-канал `"pose"` (~30 Hz, `seq`).
+4. **Виджеты** — App Group + App Intents + widget-extension «запустить приложение робота».
+
+Решения пользователя: всё в одной ветке `claude/hugging-face-oauth-app-store-5hu2g2`
+(от `main@9404f7d`); вход — 1 кнопка + PAT-fallback; каталог — только демон (без кэш-API сайта).
+Conventional commits, коммит на milestone.
+
+## Контракт демона `/api/apps/*` (1.9.0; факты, проверенные по исходникам)
+
+- `AppInfo{name, source_kind: hf_space|dashboard_selection|local|installed, description, url?, extra}` —
+  `extra` = сырой JSON HF Space. **POST /install требует весь `AppInfo` дословно** → домен
+  хранит оригинальный generated-объект для round-trip.
+- **Ловушка идентичности**: catalog `name` = слаг Space, `extra["id"]` = `"owner/repo"`;
+  installed `name` = имя pip entry-point (может отличаться!) — lifecycle-роуты ключуются по
+  **installed**-имени. Сопоставлять через `extra["id"]` + нормализацию.
+- `install|remove|update` → сразу `{"job_id"}`; **провал job — не HTTP-ошибка** (только
+  `JobInfo.status == failed`). `job_id` не переживает рестарт демона (404).
+- WS `/api/apps/ws/apps-manager/{job_id}` (не в spec): неизвестный id →
+  `{"error":"Job ID not found"}`+close; каждая новая строка лога — голый текстовый фрейм, затем
+  JSON `{command,status,logs:[новые]}`; закрывается после done|failed; **просыпается только на
+  новых логах** → может молча висеть — всегда в паре с поллингом `job-status` (500 ms; таймауты:
+  install 60 s, remove 90 s, stale 90 s).
+- `current-app-status` → **200 с литеральным `null`**, когда idle. `stop-current-app` повторно →
+  400. `start-app` при занятом слоте → 400. `no-evict` — только main (404 на 1.9.0), не используем.
+  `GET /api/daemon/robot-app-lock-status` → `{state: free|local_app|remote_session, holder_name?}`.
+- `check-updates?force=` — кэш 5 мин на демоне.
+- UI-метаданные из `extra`: `cardData{title, emoji, colorFrom, colorTo, short_description}`,
+  `author`, `likes`, `private`; official = `author == "pollen-robotics"`. Тумбнейлов нет —
+  эмодзи на градиенте.
+- hf-auth: `GET /hf-auth/status → {is_logged_in, username?}` (whoami на каждый вызов — медленно
+  → кэшировать); `POST /hf-auth/save-token {token}` (400 если невалиден); `DELETE /hf-auth/token`;
+  `GET /hf-auth/central-robot-status → {available, robots[], reason?}` (LAN-прокси central без
+  выдачи токена); `GET /hf-auth/relay-status → {state: stopped|waiting_for_token|connecting|connected|reconnecting|error, is_connected}`;
+  `POST /hf-auth/refresh-relay`. Все ответы кроме save-token в спеке `additionalProperties: true`
+  → generated отдаёт `OpenAPIObjectContainer`, декодировать руками (паттерн `kinematicsInfo()`).
+
+## Контракт central-сервера (из `app.py` Space `pollen-robotics/reachy_mini_central`)
+
+- Auth: только `Authorization: Bearer` (валидация через `whoami-v2`, кэшируется). Rate limit
+  1200 req/60 s на токен. `GET /health` — без auth.
+- `GET /api/robot-status` → `{robots: [{peerId, robotName?, busy, activeApp?, meta{name, transport,
+  hardware_id?, install_id?}, last_seen_age_seconds}]}`. **Онлайн = присутствие в списке**
+  (lease 30 s, heartbeat робота ~10 s). `peerId` меняется на каждом реконнекте relay —
+  стабильный ключ: `install_id ?? hardware_id ?? peerId`; `hardware_id` = тот же 16-hex, что
+  `GET /api/daemon/hardware-id` (правило 4 — join LAN↔central по нему).
+- Сигналинг: `GET /events` (SSE, `data:`-строки; `welcome{peerId, username,
+  recommended_heartbeat_interval_seconds}` → `list{producers[]}` → дельты `peerStatusChanged`,
+  `sessionStateChanged`; `ping` каждые 30 s — тишина >30 s = мёртвый стрим). Исходящее —
+  `POST /send`, **ответ приходит телом POST** (`sessionStarted{sessionId}` /
+  `sessionRejected{reason: robot_busy, activeApp}` / `error{details}`). Клиент представляется
+  `setPeerStatus{roles:["listener"], meta:{name}}` — `meta.name` виден владельцу как `activeApp`.
+- **Робот — offerer**: по SSE приходит `peer{sessionId, sdp:{offer}}` → отвечаем
+  `peer{sdp:{answer}}`; ICE `peer{ice:{…}}` в обе стороны; **пустой `candidate` =
+  end-of-candidates — дропать** (WebRTC.framework кидает на нём). `endSession{reason:
+  robot_busy|robot_busy_local|robot_busy_local_app|local_app_started|install_id_takeover}` —
+  обрабатывать обе формы отказа (`sessionRejected` и `endSession`).
+- ICE: STUN-only `stun:stun.l.google.com:19302`, **TURN нет** — симметричный NAT/CGNAT не
+  соберётся; таймаут → подсказка «подключитесь к одной сети».
+- Медиа: H.264 CB 3.1 видео + **двунаправленный** Opus (робот форсирует `sendrecv`).
+- Data-каналы: `"data"` (reliable, открывает робот) — JSON-команды
+  (`{"type": "wake_up"}`, `get_state → {state:{head[16], antennas, body_yaw, motor_mode,
+  is_move_running}}`, `set_target`, volume, robot-name, …) и JSON-RPC 2.0
+  (`apps.start|stop|install|status`; прочие namespace уходят в запущенное приложение);
+  `"pose"` (unreliable, приходит вторым `ondatachannel` после `subscribe_pose`) — ~30 Hz,
+  дропать `seq <= lastSeq`, команды туда не слать.
+- `local_app` на роботе ≠ «нельзя подключиться»: сессия принимается как control-only.
+
+---
+
+# Milestones
+
+## M1 — ReachyKit: домен + клиент приложений
+
+- `Sources/ReachyKit/Model/RobotApps.swift` — `RobotApp` (обёртка над generated
+  `Components.Schemas.AppInfo` + парсинг `extra`: `spaceID`, `title`, `emoji`, `gradient`,
+  `author`, `likes`, `isPrivate`, `isOfficial`), `RobotAppStatus` (state с `unknown(String)` —
+  не кидает), `StartupApp`, `AppUpdatesSummary`, `RobotAppLockStatus`, маппинг идентичности
+  `RobotApp.matches(installed:)`.
+- `Sources/ReachyKit/Model/DaemonUpdate.swift` — извлечь общий `DaemonJob`
+  (`typealias DaemonUpdateJob = DaemonJob`): app-jobs и update-jobs делят shape и `isTerminal`.
+- `Sources/ReachyKit/Session/RobotAppsClient.swift` — протокол с throwing-defaults (образец
+  `DaemonUpdateClient`); конформанс в `Transport/RobotConnection+Apps.swift` через
+  generated-клиент (`currentAppStatus`: null-body → `nil`).
+- `Sources/ReachyKit/Transport/AppsManagerStreamClient.swift` — WS по образцу
+  `UpdateLogStreamClient` (события `line|status|rejected|closed`, ровно один `.closed`;
+  try-JSON-decode каждого фрейма, не-JSON = строка лога).
+- `Sources/ReachyKit/Session/AppJobMonitor.swift` — WS + поллинг `job-status` 500 ms
+  (инжектируемый clock — правило 7), таймауты 60/90/90 s, исход «демон перезапустился» (404
+  после видимого старта).
+- `Sources/ReachyKit/Session/RobotSession+Apps.swift` — `canManageApps`, `withAppsClient {}`
+  (копия `withWiFiClient`), кэш каталога/installed (образец `moves(in:refresh:)`).
+
+Тесты: `StubURLProtocol` (null-body, 400 на повторный stop, дословный round-trip `AppInfo` в
+теле install — по записанному запросу), `LocalWebSocketServer` (фреймы-причуды, тихое
+завершение → добор поллингом), идентичность, `.timeLimit(.minutes(1))` на async-тестах.
+
+## M2 — ReachyKit: hf-auth-поверхность демона
+
+- `Sources/ReachyKit/Model/HFAuth.swift` — `HFAuthStatus{isLoggedIn, username?}`,
+  `RelayStatus{state, isConnected, message?}` (state с `unknown(String)`),
+  `CentralRobotStatusProxy{available, robots, reason?}`.
+- `Sources/ReachyKit/Session/HFAuthClient.swift` + `Transport/RobotConnection+HFAuth.swift` —
+  `hfAuthStatus()`, `saveHFToken(_:)`, `deleteHFToken()`, `centralRobotStatus()`,
+  `relayStatus()`, `refreshRelay()`; ручное декодирование `OpenAPIObjectContainer`
+  (re-encode → `JSONDecoder`, как `kinematicsInfo`). OAuth-роуты демона не оборачиваем.
+- `Sources/ReachyKit/Session/RobotSession+HFAuth.swift` — `robotHFAccount` (кэшированный
+  статус), `linkRobot(token:)` (save-token + refresh-relay), `unlinkRobot()`.
+
+Тесты: фикстуры всех состояний, токен только в JSON-body (запись `StubURLProtocol`),
+неизвестные значения → `unknown`.
+
+## M3 — ReachyKit: нативный вход в HF (клиентский токен)
+
+- **Пререквизит (руками, вне кода)**: зарегистрировать public OAuth-app на
+  `huggingface.co/settings/applications/new` — без секрета, redirect
+  `reachy-mini-swift://oauth-callback`, scopes `openid profile read-repos write-repos
+  manage-repos inference-api` (совпадают с тем, что просит робот — один токен на всё).
+  client_id — константа в коде; пока его нет, работает PAT-путь.
+- `Sources/ReachyKit/Auth/HFTokenStore.swift` — Keychain (`kSecClassGenericPassword`,
+  Security framework, без сторонних зависимостей): токен, username, expiry, refresh_token?.
+  Первый Keychain-код в проекте — предписан ADR-0001.
+- `Sources/ReachyKit/Auth/HFOAuth.swift` — чистая логика без UI: PKCE (CryptoKit SHA256),
+  сборка authorize-URL (`URLComponents` — правило 5), обмен кода
+  (`POST https://huggingface.co/oauth/token`), декодинг (`access_token`/`accessToken` — демон
+  страхуется от обоих ключей, повторить), refresh при наличии refresh_token, иначе — флаг
+  `needsReauth` по expiry.
+- `Sources/ReachyKit/Auth/HFAccount.swift` — `@MainActor @Observable` модель аккаунта:
+  signed-out / signing-in / signed-in(username, avatarURL) / needsReauth; инжектируемые seams
+  (store, exchanger, browser) для тестов и превью.
+- Валидация PAT: `GET https://huggingface.co/api/whoami-v2` (то же, чем пользуется central).
+
+Тесты: PKCE-вектора, обмен/refresh через `StubURLProtocol`, Keychain-store за протоколом
+(In-memory double), модель состояний.
+
+## M4 — ReachyUI: экран магазина
+
+- `Sources/ReachyUI/Apps/AppStoreModel.swift` + `AppStoreScreen.swift` — секции
+  Installed / Discover (сегментный Picker, coalescing `loadID: UUID` — образец `MovesModel`),
+  поиск, карточка (эмодзи на градиенте, title, author, likes, Official, замочек private),
+  running-баннер (Stop/Restart), тумблер startup-app, бейджи обновлений, учёт
+  `robot-app-lock-status` (`remote_session` → объяснение).
+- `AppInstallModel.swift` + `AppInstallOverlay.swift` — образец `SystemUpdateModel`: State-enum
+  (idle/installing/removing/updating/confirming/succeeded/failed/daemonRestarted), живой лог
+  через `LogConsoleModel`, движок `AppJobMonitor`; после `done` — подтверждающий поллинг
+  installed-списка; сеams для тестов/превью.
+- Запуск при занятом слоте: `confirmationDialog` «остановить X и запустить Y?» (stop → start).
+- Приватные Spaces: если `isPrivate` и робот не привязан — подсказка со ссылкой на вход (M6).
+- Навигация: `NavigationLink("Apps")` в `RobotScreen.controlSection` за `canManageApps`.
+
+Превью (правило 8): store — loading/empty/catalog/installed+running/offline; overlay —
+installing/failed/success. `test:snapshots:record` + явный `git add` PNG (LFS).
+Тесты моделей в `Tests/ReachyUITests`.
+
+## M5 — Виджеты: фундамент + extension
+
+- App Group `group.com.alexey1312.ReachyMini` в `Apps/Project.swift` (ReachySpike + новый таргет).
+- `Sources/ReachyKit/Model/SharedRobotSnapshot.swift` — `{address, hardwareID, robotName,
+  installedApps[{name, title, emoji}], currentAppName, updatedAt}` через
+  `UserDefaults(suiteName:)`; `RobotSession` пишет на connect/после операций.
+- `Sources/ReachyKit/Widget/WidgetRobotClient.swift` — минимальный клиент интентов
+  (currentAppStatus/startApp/stopCurrentApp, timeout ~4 s, `URLComponents`).
+- `Apps/ReachySpike/Sources/Intents/` — `RobotAppEntity` (+ query из снапшота),
+  `StartRobotAppIntent`, `StopRobotAppIntent`; ошибка сети → понятный текст «откройте
+  приложение».
+- Таргет `ReachyWidgets` (`Apps/ReachyWidgets/`, iOS-only, bundleId
+  `com.alexey1312.ReachyMiniSpike.widgets`): конфигурируемый виджет «запустить приложение»
+  (`Button(intent:)`) + текущее running-app из снапшота; ReachySpike embed'ит его.
+- Риск: Local Network в extension-процессе iOS ненадёжен — деградация в понятную ошибку.
+  Widget UI вне снапшот-матрицы — отметить как осознанно непокрытое (правило 8).
+
+## M6 — ReachyUI: вход и аккаунт HF
+
+- `Sources/ReachyUI/Settings/HFAccountSection.swift` — карточка в Settings (образец
+  `WiFiSettingsCard`): signed-out → «Sign in with Hugging Face» (+ вторичная «Paste token»);
+  signed-in → username + аватар (`https://huggingface.co/api/users/{username}/avatar`),
+  состояние привязки текущего робота (`robotHFAccount`) + кнопка «Link this robot»
+  (save-token по LAN — предупреждение про plain HTTP), relay-статус робота, Sign out
+  (локально; отвязка робота — отдельно, `unlinkRobot`).
+- `Sources/ReachyUI/Settings/HFSignInModel.swift` + `HFSignInFlow.swift` — «1 кнопка»:
+  `ASWebAuthenticationSession` (не-ephemeral → куки Safari → мгновенно для залогиненных) через
+  `@MainActor` protocol-seam в ReachyUI (модель тестируема без браузера, превью не открывают
+  окон — `reachyPreviewMode`); callback по custom-scheme → обмен кода в M3; исходы
+  success/cancelled/error; PAT-шаг (SecureField) — fallback и путь без client_id. Каркас —
+  `OnboardingStepScaffold`.
+- Первый вход предлагать контекстно: из магазина (private Space) и из «Your Reachies» (M9).
+
+Превью: карточка signed-out/signed-in/linked/needsReauth; флоу — start/browser/PAT/success/error.
+Тесты: HFSignInModelTests на фейковом browser-seam.
+
+## M7 — ReachyKit: клиент central-сервера
+
+- `Sources/ReachyKit/Central/CentralRelayClient.swift` — `URLSession.bytes` + `.lines` на
+  `GET /events` (парсить только `data:`-строки, не требовать `event:`), исходящее
+  `POST /send` с декодом **тела ответа** как сигнального сообщения; keepalive-надзор
+  (тишина >30 s = реконнект с backoff — образец `StateStreamClient`); Bearer из
+  `HFTokenStore` инжектится централизованно (ADR-0001).
+- Расширить `SignalingMessage` (`Sources/ReachyKit/Transport/`): `welcome`, `list` (+`busy`,
+  `activeApp`), `peerStatusChanged`, `sessionStateChanged`, `sessionStarted`,
+  `sessionRejected{reason, activeApp?}`, `endSession{reason?}`, `error{details}` — decode
+  снисходительный (правило 3).
+- `Sources/ReachyKit/Central/CentralRobot.swift` — модель строки списка; стабильный ключ
+  `install_id ?? hardware_id ?? peerId`; сортировка по `last_seen_age_seconds`.
+- `Sources/ReachyKit/Central/YourReachiesModel`-уровень: `listRobots()` (REST) + live-обновления
+  из SSE-дельт.
+
+Тесты: SSE-поток через `StubURLProtocol` со стрим-ответом (при необходимости — маленький
+`LocalHTTPServer` harness рядом с `LocalWebSocketServer`), обе формы отказа, пустой ICE-candidate,
+rate-limit 429 → backoff.
+
+## M8 — ReachyKit/ReachyMedia: удалённая сессия (транспорт)
+
+- Seam сигналинга: протокол `SignalingTransport` — существующий WS :8443
+  (`CameraSignalingClient`) и новый `CentralSignalingTransport` (M7) — RTC-половина не меняется
+  (робот offerer, мы answerer, STUN-only), переиспользуется стек `ReachyMedia`.
+- `Sources/ReachyKit/Central/RemoteControlChannel.swift` — канал `"data"`: JSON-команды
+  (запрос/ответ `{"status":"ok"}` или payload-конверт) + JSON-RPC 2.0 (`apps.*`, id-корреляция,
+  ошибки `reason`); канал `"pose"` — отдельный AsyncStream с dedup по `seq`.
+- `RemoteRobotConnection` — конформит **те же capability-протоколы**, что `RobotConnection`,
+  где поверхность есть удалённо: `RobotAPIClient` (wake/sleep/state/volume/robot-name через
+  команды), `RobotAppsClient` (через `apps.*` JSON-RPC). **Не** конформит `WiFiConfigClient`,
+  `DaemonUpdateClient` → существующие capability-флаги сами прячут недоступное (в этом смысл
+  расслоения протоколов). `RobotSession.makeClient` уже инжектируем — remote = другая фабрика.
+- Состояние стриминга: удалённо `state` приходит по `"pose"`-каналу → адаптер под интерфейс
+  `StateStreamClient` для `ViewportModel`.
+- Опасные команды (`restart_daemon`, `start_update`, `delete_hf_token`) удалённо в UI **не
+  выносить**, пока не проверено гейтирование (зафиксировано как открытый вопрос).
+
+Тесты: RPC-корреляция и ошибки, pose-dedup, маппинг протоколов на дублях; e2e — только ручное.
+
+## M9 — ReachyUI: «Your Reachies» + remote-подключение
+
+- `Sources/ReachyUI/Central/YourReachiesScreen.swift` + модель: signed-out (CTA на вход M6),
+  список роботов (имя, online по присутствию, busy/activeApp, Wireless/USB-бейдж), Refresh,
+  пусто («привяжите робота» → подсказка), джойн LAN↔central по `hardware_id` — один робот не
+  показывается дважды (правило 4).
+- Подключение: степпер **LINK → SESSION → WAKE-UP** (дизайн-ориентир — официальное приложение;
+  реализация — расширение `ConnectionStepper`), статусные подписи («Establishing the WebRTC
+  session»…), исходы: `robot_busy(activeApp)`, NAT-таймаут («подключитесь к одной сети»),
+  эвикция по `endSession{reason}` — понятные тексты.
+- Интеграция в `ConnectionScreen`/`RobotBrowser`: central — второй источник роботов рядом с
+  LAN-discovery; remote-бейдж в шапке `RobotScreen`; latency/путь (LAN vs Remote) в
+  инфо-карточке.
+- Превью: список (signed-out/empty/online/busy), степпер по шагам, отказы.
+
+## M10 — Документация
+
+- `docs/superpowers/specs/2026-08-04-app-store-hf-remote-design.md` — формат существующих
+  спеков (Shape-таблица по milestone'ам).
+- `docs/adr/0003-hf-token-custody.md` — два хранителя токена: Keychain на клиенте (нативный
+  OAuth public-app + PKCE; PAT-fallback) и робот (`save-token`); central доверяет любому
+  валидному токену; plain-HTTP LAN при привязке — принятое ограничение (ADR-0001);
+  browser-flow и device-flow демона отвергнуты (не нужны при нативном входе).
+- `docs/research/central-relay.md` — протокол central-сервера (SSE+POST, сообщения, data-каналы,
+  открытые вопросы: `install_id`, гейтирование опасных команд, ротация токена = новый peer).
+- Дополнить `.claude/rules/daemon-api.md` (apps-WS причуды, идентичность, null-body,
+  версионный скью) и `.claude/rules/networking.md` (central, STUN-only, обе формы отказа).
+- README: Status Фазы 2.
+
+## Порядок и зависимости
+
+M1 → M2 → M3 (независим от M1–M2) → M4 (нужен M1) → M5 (нужен M1) → M6 (нужны M2+M3) →
+M7 (нужен M3) → M8 (нужны M7 + ReachyMedia) → M9 (нужны M6–M8) → M10. Каждый milestone
+собирается/тестируется и коммитится отдельно; ветка публикуется целиком.
+
+## Верификация
+
+1. `./bin/mise run build` / `test` после каждого milestone (после правок тестов —
+   `swift build --build-tests`, не `--skip-build`).
+2. `./bin/mise run test:snapshots` → `record` для новых превью, явный `git add` PNG;
+   генерирующую задачу — последней (16-pin `Package.resolved`).
+3. `./bin/mise run build:app` — ReachySpike + ReachyWidgets.
+4. `sim-daemon` + `test:sim` (за `REACHY_SIM_HOST`): `list-available` декодируется,
+   `current-app-status` = nil, `job-status/unknown` = 404, `hf-auth/status` = logged-out.
+   Реальную установку в интеграционных тестах не делать. `central-robot-status` на sim без
+   токена → `reason: not_authenticated` — тоже проверить.
+5. `GET https://pollen-robotics-reachy-mini-central.hf.space/health` — живой смоук central
+   (без токена); контрактные тесты central — только на фикстурах (не бить боевой сервер из CI).
+6. `./bin/mise run lint`, `format-check`.
+7. Ручное на железе (PR-чеклист): install/запуск/стоп, вход в 1 кнопку (Safari залогинен/нет),
+   привязка робота + появление в «Your Reachies», remote-сессия с мобильного интернета
+   (и NAT-фейл → подсказка), эвикция локальным приложением, Local Network из widget-extension.
+
+## Риски
+
+- **NAT без TURN** — remote может не собраться (CGNAT/симметричный NAT); честный таймаут и
+  подсказка. Продуктовое ограничение всего стека Pollen, не наше.
+- Версионный скью демона: `no-evict`/device-flow только в main — не используем; `install_id`
+  в meta может не приходить с 1.9.0 — ключ каскадный.
+- WS job-стрима может молча висеть → `AppJobMonitor` всегда поллит параллельно; рестарт демона
+  теряет job → отдельный исход + подтверждение по installed-списку.
+- OAuth: client_id надо зарегистрировать руками (до этого — PAT); expiry без refresh_token →
+  `needsReauth` (повторный вход почти мгновенен через куки Safari). Ротация токена = новый peer
+  на central (кэш по строке токена).
+- Rate limit central 1200/60 s → никакого агрессивного поллинга, SSE-дельты вместо refresh.
+- Опасные remote-команды не выносим в UI до проверки гейтирования.
+- PAT/токен по plain HTTP LAN при привязке — предупреждение в UI, тест «не в query».
+- Local Network в widget-extension — подтверждается только устройством.
