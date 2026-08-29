@@ -1,0 +1,40 @@
+<task-notification>
+<task-id>a8727830a9c389338</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/f6220956-9852-4d9d-895b-09b1fa8e12e9/tasks/a8727830a9c389338.output</output-file>
+<status>completed</status>
+<summary>Agent "Scoped re-review of the fix wave" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result># Scoped Re-Review: `feat/json-codec` fix commit (04d07db..383848d)
+
+## Findings verdicts
+
+1. **ADDRESSED.** `AGENTS.md`/`Sources/ReachyJSON/AGENTS.md` (and its `CLAUDE.md` symlink) now say the rule is scoped to `.*/Sources/.*\.swift`, does not reach `Tests/`, and record the consequence ("a test that decodes a daemon payload through a bare `JSONDecoder()` never exercises the date rule and proves nothing about the production path"). `docs/adr/0004-one-json-codec.md`'s "What this does not cover" section says the same. Verified `.swiftlint.yml`'s `included` is indeed `.*/Sources/.*\.swift`, and `grep -rE '\bJSON(Decoder|Encoder)\(' Tests/` returns 54 matches, matching the "~54" claim.
+
+2. **ADDRESSED.** `Sources/ReachyJSON/JSONCodec.swift` and the ADR now say sharing would be safe ("`JSONDecoder`/`JSONEncoder` satisfy `Sendable`... `static let decoder = JSONDecoder()` compiles clean") and give the real reason: measured cost. I independently verified the Sendable claim by compiling `struct Holder: Sendable { static let decoder = JSONDecoder(); static let encoder = JSONEncoder() }` with `swift -swift-version 6 -strict-concurrency=complete` on this machine's pinned Swift 6.3 — compiles clean. I also independently benchmarked decoder-construction vs. decode cost with an `-O` build: got 0.099 µs to build the daemon decoder vs 7.6 µs to decode a 110-byte payload (ratio ~1.3%), which is the right order of magnitude and shape for the report's 0.098 µs / 12.1 µs / "under 1%" claim on a 240-byte frame — not a bare assertion, framed with its build (`-O`) and site. Per-call construction logic in `decoder()`/`encoder()` is textually unchanged. `StateStreamClient.swift`'s dead `let decoder = JSONCodec.daemon` hoist is now inlined at both call sites — confirmed in the diff.
+
+3. **ADDRESSED** (mutation-tested). Renamed to `webCarriesFoundationDefaultsToday`, reframed to pin "today's coincidence." Mutation: gave `.web`'s encoder a distinct `dateEncodingStrategy` (`.iso8601`) in `JSONCodec.swift`, rebuilt, ran `swift test --filter JSONCodecTests` — the test failed exactly as expected (`Expectation failed: try JSONCodec.web.encode(value) == JSONCodec.stored.encode(value)`). Reverted; `git status` clean.
+
+4. **ADDRESSED.** All four fixtures now decode under `.daemon`: `PreviewFixtures.swift:212,267`, `PreviewStoreFixtures.swift:60`, `AppStoreModel.swift:309` — confirmed by grep, no `.stored` remaining at those call sites.
+
+5. **ADDRESSED.** `.swiftlint.yml`'s `excluded` regex is now `.*/ReachyJSON/JSONCodec\.swift` only; the dead `ReachyJSONTests/.*` alternative is gone.
+
+6. **ADDRESSED** (mutation-tested). `#expect(!json.contains("1994-08"))` replaced with `#expect(!json.contains(#""takenAt":""#))`, and the schema assertion decoupled to the literal `1` with an explanatory comment. Mutation: gave `.stored`'s encoder `dateEncodingStrategy = .iso8601` — `writesTheSameShape` failed exactly at the new assertion (line 43, the `!contains` check), plus the positive `contains(776000000)` check. Reverted; `git status` clean.
+
+7. **ADDRESSED.** Comment added in `CentralRelayClient.swift` beside `message(in:)` recording that `SignalingMessage` decodes under `.daemon` in `CameraSignalingClient` (LAN) and `.web` here (relay). Verified both decode sites in the tree: `CameraSignalingClient.swift:106` (`.daemon`) and `CentralRelayClient.swift:163,274` (`.web`, both `try?`).
+
+8. **ADDRESSED.** `encoder()`'s comment now names the `.daemon` asymmetry and the two round-trip sites. Verified against the actual code: `RobotApps.swift:162-163` (`Card.init(extra:)`) and `RobotConnection.swift:367-368` (`kinematicsInfo()`) — exact line numbers match, both genuinely encode-then-decode a `.daemon` value in one process.
+
+9. **ADDRESSED.** "Five sites" → "Four sites" (list has exactly four names). Illustrative code block now includes `public static let web = JSONCodec(.web)`.
+
+10. **ADDRESSED** (mutation-tested, two ways). `decodesAShippedSnapshot` and `writesTheSameSnapshotShape` added, built from reading `RobotSnapshot.swift` (matches declaration-order fields, `encodeIfPresent` nil-omission, nested `FailedApp`). Mutation A (fixture): changed `"reachy-mini-dance"` to `"reachy-mini-vision"` in the shipped fixture — `decodesAShippedSnapshot` failed exactly at that field (`snapshot.failedApp?.name`). Mutation B (encoding): the `.stored` date-strategy mutation used for finding 6 also broke `writesTheSameSnapshotShape` (two assertions failed on the now-string-encoded dates). Both reverted; `git status` clean throughout.
+
+## New breakage in the fix diff
+
+None found. Scope of the diff is 12 files: two comment/doc-only source edits (`JSONCodec.swift`, `CentralRelayClient.swift`), one behavior-neutral inlining (`StateStreamClient.swift` — `JSONCodec.daemon` is already `static let`, so inlining changes nothing at runtime), four `.stored`→`.daemon` fixture profile corrections (behaviorally inert today per the report, since none of the four fixtures carries a `Date`), a swiftlint config cleanup, three docs files, and two test files. No production logic changed. `Package.resolved` is **not** in this fix diff's file list (verified against the diff's own "Files changed" summary) — the `M Package.resolved` seen in `git status` is pre-existing churn from local `swift build`/`swift test` runs (documented in `AGENTS.md` as expected oscillation between build systems, and it was already flagged "M" in the gitStatus snapshot at the start of this session, before I ran anything).
+
+## Mutation evidence summary (3, 6, 10)
+
+All three mutations were applied to `Sources/ReachyJSON/JSONCodec.swift` and/or `Tests/ReachyKitTests/StoredFormatTests.swift`, confirmed red via `swift build --build-tests` + `swift test --skip-build --filter &lt;Suite&gt;`, then reverted from saved copies in the scratchpad (`/private/tmp/.../scratchpad/JSONCodec.swift.orig{,2}`, `StoredFormatTests.swift.orig`). `git status --short` on both files came back empty after each revert, and the final tree state matches the pre-mutation baseline (only the pre-existing `Package.resolved` churn and untracked `.claude/rules/ci-pipeline.md` remain, both present before this review began).</result>
+<usage><subagent_tokens>161362</subagent_tokens><tool_uses>38</tool_uses><duration_ms>462417</duration_ms></usage>
+</task-notification>
