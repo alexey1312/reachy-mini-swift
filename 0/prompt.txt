@@ -1,0 +1,5 @@
+<task-notification>
+<task-id>bktssur01</task-id>
+<summary>Monitor event: "snapshot run outcome"</summary>
+<event>[Monitor timed out — re-arm if needed.]</event>
+</task-notification>
