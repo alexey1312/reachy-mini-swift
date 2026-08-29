@@ -1,0 +1,4 @@
+Перед тем как браться, я бы хотел переименовать репо
+Переименовал в reachy-mini-swift, оставил ReachyKit/ReachyScene/ReachyUI как есть, и вложился в GitHub topics (reachy, reachy-mini, pollen-robotics, robotics, swift6, swiftui, realitykit, webrtc, urdf) — они дают находимости больше, чем само имя. Description оставил бы дословно текущий: он отличный и снимает вопрос об аффилиации первым же словом.
+
+По механике: GitHub держит редирект со старого имени и для веба, и для git clone, но редирект умрёт, если кто-то создаст репо со старым именем — поэтому сразу git remote set-url локально, плюс правка абсолютных ссылок в README (у тебя там ссылки на ADR 0001, LICENSE и NOTICE зашиты полными URL), в docs/adr/, в .github/workflows и в cliff.toml, если там есть repository URL для changelog. Для SPM-потребителей URL зависимости тоже пойдёт по редиректу, но лучше выпустить тег после переименования, чтобы Package.resolved у людей резолвился на канонический адрес.
