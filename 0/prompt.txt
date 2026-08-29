@@ -1,0 +1,20 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Apps/ReachySpike/Sources/SpikeModel.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Apps/ReachySpike/Sources/SpikeModel.swift ===
+@@ -39,7 +39,7 @@ final class SpikeModel {
+             daemon: \(handshake.identity.daemonVersion ?? "—")
+             hardware: \(handshake.identity.hardwareID ?? "— (sim)")
+             state: \(handshake.status.state)
+-            sim: \(handshake.status.simulationEnabled)
++            sim: \(handshake.status.simulationEnabled?.description ?? "—")
+             """
+         } catch {
+             lastError = "\(error)"
+
+
+Investigate per the method in your instructions, then return the findings list.
