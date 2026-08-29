@@ -1,0 +1,2 @@
+Проведи ревью, добавь все в ветку всего чего не хватает
+https://github.com/alexey1312/reachy-mini-swift/pull/21
