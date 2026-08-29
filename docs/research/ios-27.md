@@ -89,6 +89,32 @@ already resolves to 27 there.
 The local install (beta 6) and the image (beta 4) are different builds. That is safe here for one reason only: no
 CI job compares reference images. `preview-build` compiles them.
 
+### The swift.org toolchain cannot pair with the macOS 27 SDK
+
+`swift build` and `swift test` take their compiler from `.swift-version` (6.3.0, through swiftly) and their SDK from
+whatever `xcode-select` points at. With Xcode 27 selected, that pairing fails: `mise run test` ends with a batch of
+`initializer is inaccessible due to 'private' protection level` and `cannot be constructed because it has no
+accessible initializers` across `Sources/ReachyUI`, plus `ld` warnings about `building for macOS-11.0` against
+dylibs built for 13.0.
+
+Those errors are cascade, not cause. The cause is one line above them —
+`Sources/ReachyUI/Settings/SystemUpdateCard.swift:61`, a `@ViewBuilder` property wrapping a `switch`, reported as
+`the compiler is unable to type-check this expression in reasonable time`. A failed expression poisons the rest of
+the module, and the accessibility errors are the wreckage.
+
+The same sources, the same SDK, and Xcode 27's own Swift 6.4 build clean:
+
+```bash
+xcrun swift build --target ReachyUI   # Build complete! (49.23 s)
+```
+
+So the tree is not broken; the toolchain pairing is. **Nothing is changed here for it.** swift.org has no 6.4
+release to move `.swift-version` to, and CI is unaffected — `lint-test` stays on `macos-15` with
+`DEVELOPER_DIR=Xcode_26.2`, so it pairs 6.3 with the macOS 26.2 SDK exactly as before. Locally, run `swift build`
+and `swift test` with Xcode 26 selected, or reach for `xcrun swift` and accept Xcode's compiler.
+
+This is the measured form of the tooling-matrix gap in §2.
+
 ## §1 What iOS 27 requires
 
 | Requirement                                         | Consequence                                                                                 | State here                               |
