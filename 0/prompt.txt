@@ -1,0 +1,167 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Sources/ReachyMedia/MediaAudioSession.swift
+  - Sources/ReachyMedia/RobotCallController.swift
+  - Sources/ReachyUI/Navigation/CallRequests.swift
+  - Sources/ReachyUI/Navigation/RootCallLifecycle.swift
+  - Tests/ReachyUITests/CallRequestInboxTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Sources/ReachyMedia/MediaAudioSession.swift ===
+@@ -114,27 +114,47 @@ final class MediaAudioSession {
+             transitionTask?.cancel()
+             transitionTask = nil
+             owner = .call
++            // **Take WebRTC's audio unit down on purpose, and this line is the
++            // whole fix.** The system is about to interrupt this session and
++            // activate its own — measured: `Session interrupted, will stop
++            // iounit` lands ~700 ms after the start and `didActivate` ~80 ms
++            // after that. Turning the flag on again in `callDidActivate` only
++            // restarts the unit if it is a *change*, and `cameraSessionStarted`
++            // has already set it `true` for passive listening. Assigning `true`
++            // to a `true` flag restarts nothing, so #111 shipped a call that
++            // was silent in both directions while passive audio worked.
++            RTCAudioSession.sharedInstance().isAudioEnabled = false
++            Self.log.notice("Call starting; audio handed to the system")
+         }
+ 
+         /// The system activated the call's audio session — hand it to WebRTC.
++        /// This is where the audio unit comes back up, and it can only do so
++        /// because `callWillStart` took it down first.
+         func callDidActivate(_ session: AVAudioSession) {
+             let rtc = RTCAudioSession.sharedInstance()
+             rtc.audioSessionDidActivate(session)
+             rtc.isAudioEnabled = true
++            Self.log.notice("System activated the call's session; audio on")
+         }
+ 
+         /// The call ended and the system deactivated its session. A camera
+         /// session still running goes back to app ownership (the
+         /// passive-viewing shape); otherwise audio winds down entirely.
+         func callDidDeactivate(_ session: AVAudioSession, cameraStillRunning: Bool) {
+-            RTCAudioSession.sharedInstance().audioSessionDidDeactivate(session)
++            let rtc = RTCAudioSession.sharedInstance()
++            rtc.audioSessionDidDeactivate(session)
++            // Down unconditionally, for the reason `callWillStart` gives: the
++            // reclaim below has to be able to turn it back *on*.
++            rtc.isAudioEnabled = false
++            Self.log.notice(
++                "System deactivated the call's session; camera running: \(cameraStillRunning, privacy: .public)"
++            )
+             guard owner == .call else { return }
+             if cameraStillRunning {
+                 owner = .app
+                 transitionTask?.cancel()
+                 transitionTask = Task { await Self.reclaimForApp() }
+             } else {
+-                RTCAudioSession.sharedInstance().isAudioEnabled = false
+                 owner = .nobody
+             }
+         }
+@@ -170,6 +190,9 @@ final class MediaAudioSession {
+             for _ in 0 ..< 5 {
+                 do {
+                     try AVAudioSession.sharedInstance().setActive(true)
++                    // Passive listening again: the session is the app's, so the
++                    // audio unit has to be told to come back.
++                    RTCAudioSession.sharedInstance().isAudioEnabled = true
+                     return
+                 } catch {
+                     guard await (try? Task.sleep(for: .milliseconds(200))) != nil else { return }
+
+
+=== DIFF: Sources/ReachyMedia/RobotCallController.swift ===
+@@ -239,7 +239,9 @@ public final class RobotCallController {
+             let uuid = UUID()
+             conversationUUID = uuid
+             pendingRobot = ActiveCall(robotID: robotID, robotName: currentRobotName)
+-            let handle = Handle(type: .generic, value: robotID, displayName: currentRobotName)
++            // The name, because the call history renders `Handle.value` verbatim
++            // and nothing else — `AGENTS.md` has what else was tried.
++            let handle = Handle(type: .generic, value: currentRobotName ?? robotID, displayName: currentRobotName)
+             let action = StartConversationAction(conversationUUID: uuid, handles: [handle], isVideo: true)
+             // `.notice`, not `.debug`: the log store drops debug by default, so
+             // the one line saying a start was attempted was unreadable in the
+
+
+=== DIFF: Sources/ReachyUI/Navigation/CallRequests.swift ===
+@@ -72,9 +72,21 @@ enum CallRequestRouting {
+         case waitForConnection
+     }
+ 
+-    static func decide(requestRobotID: String?, connectedRobotID: String?) -> Decision {
++    /// A redial names the robot one of two legitimate ways, which is why this
++    /// takes a name as well. The donated intent carries `deduplicationKey`; a
++    /// Recents row carries whatever `Handle.value` was, and that is the robot's
++    /// **name** — the call history renders the value verbatim, so a hardware id
++    /// there would be a row naming nothing.
++    static func decide(
++        requestRobotID: String?,
++        connectedRobotID: String?,
++        connectedRobotName: String? = nil
++    ) -> Decision {
+         guard let connectedRobotID else { return .waitForConnection }
+-        guard let requestRobotID, requestRobotID != connectedRobotID else { return .proceed }
++        guard let requestRobotID else { return .proceed }
++        guard requestRobotID != connectedRobotID, requestRobotID != connectedRobotName else {
++            return .proceed
++        }
+         return .liveTabOnly
+     }
+ }
+
+
+=== DIFF: Sources/ReachyUI/Navigation/RootCallLifecycle.swift ===
+@@ -104,7 +104,8 @@ struct RootCallLifecycle: ViewModifier {
+         }
+         switch CallRequestRouting.decide(
+             requestRobotID: pending.request.robotID,
+-            connectedRobotID: connectedIdentity?.deduplicationKey
++            connectedRobotID: connectedIdentity?.deduplicationKey,
++            connectedRobotName: connectedIdentity?.name
+         ) {
+         case .waitForConnection:
+             // Leave it pending; connecting re-fires the trigger and expiry
+
+
+=== DIFF: Tests/ReachyUITests/CallRequestInboxTests.swift ===
+@@ -69,6 +69,34 @@ struct CallRequestInboxTests {
+     /// The receive rule shared with Handoff: an inbound request never
+     /// disconnects a live session — and it never unmutes at a robot the user
+     /// did not name, so the answer is the Live tab and nothing more.
++    /// A Recents row carries `Handle.value`, and that value is the robot's own
++    /// name so the call history has a word in it rather than a hardware id. The
++    /// redial therefore arrives naming the robot the other way round from a
++    /// donated intent, and must still reach the microphone.
++    @Test("a redial naming the robot by name proceeds")
++    func aNameFromTheCallHistoryProceeds() {
++        let decision = CallRequestRouting.decide(
++            requestRobotID: "reachy_mini",
++            connectedRobotID: "b68ff6bbe47f0608",
++            connectedRobotName: "reachy_mini"
++        )
++
++        #expect(decision == .proceed)
++    }
++
++    /// And a name that belongs to some other robot still must not open a
++    /// microphone at the one that is connected.
++    @Test("a redial naming another robot gets the Live tab only")
++    func anotherRobotsNameStillOnlyOpensTheTab() {
++        let decision = CallRequestRouting.decide(
++            requestRobotID: "kitchen",
++            connectedRobotID: "b68ff6bbe47f0608",
++            connectedRobotName: "reachy_mini"
++        )
++
++        #expect(decision == .liveTabOnly)
++    }
++
+     @Test("a different connected robot gets the Live tab and no microphone")
+     func mismatchedRobotStopsAtTheLiveTab() {
+         let decision = CallRequestRouting.decide(requestRobotID: "reachy-2", connectedRobotID: "reachy-1")
+
+
+Investigate per the method in your instructions, then return the findings list.
