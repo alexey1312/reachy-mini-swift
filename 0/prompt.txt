@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bo0sh1r7e</task-id>
+<tool-use-id>toolu_012kSG1NY6ac3RzcHGgKTuN6</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/bo0sh1r7e.output</output-file>
+<status>completed</status>
+<summary>Background command "Final format, lint and test run" completed (exit code 0)</summary>
+</task-notification>
