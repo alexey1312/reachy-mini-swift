@@ -1,0 +1,1 @@
+То что let appGroup = "group.com.alexey1312.ReachyMini" лежит не в секретах - это ок?
