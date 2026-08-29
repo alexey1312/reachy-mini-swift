@@ -1,0 +1,29 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - cliff.toml
+
+Unified diff (only + lines are new):
+
+=== DIFF: cliff.toml ===
+@@ -3,7 +3,7 @@
+ 
+ [remote.github]
+ owner = "alexey1312"
+-repo = "reachy-mini-desktop-app-swift"
++repo = "reachy-mini-swift"
+ 
+ [changelog]
+ header = """
+@@ -24,7 +24,7 @@ body = """
+         - {% if commit.scope %}**{{ commit.scope }}**: {% endif %}\
+             {{ commit.message | upper_first }}\
+             {% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}\
+-            {% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}](https://github.com/alexey1312/reachy-mini-desktop-app-swift/pull/{{ commit.remote.pr_number }}){% endif %}
++            {% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }}){% endif %}
+     {% endfor %}
+ {% endfor %}\n
+ """
+
+
+Investigate per the method in your instructions, then return the findings list.
