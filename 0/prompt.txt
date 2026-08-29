@@ -1,0 +1,42 @@
+<task-notification>
+<task-id>bse6ypi5i</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/75ed7bbf-02c9-4f5d-a982-b9e672a582f6/tasks/bse6ypi5i.output</output-file>
+<status>completed</status>
+<summary>Background command "Watch macOS build 180 processing" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>brbn5ivhv</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/75ed7bbf-02c9-4f5d-a982-b9e672a582f6/tasks/brbn5ivhv.output</output-file>
+<status>completed</status>
+<summary>Background command "Watch Xcode Cloud run 37 to completion" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+/skill-creator 
+/humanizer 
+
+Лучше подгтовь skill для публкации (без приватных данных)
+Так же в описании стоит писать только важные вещи, кракто четко и инетерсно без тех подробностей, потому что они ни кому не нужны
+
+---
+
+Может добавить его в репо?
+
+---
+
+Идея была в том что бы положить в репо!
+А в docs/release.md указать что в с репо есть готовый skill
+
+---
+
+jr
+
+---
+
+ок
