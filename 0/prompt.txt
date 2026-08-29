@@ -1,0 +1,3 @@
+Я не могу выполнить логин в claude code
+Проверь в чем проблема
+   OAuth error: Failed to start OAuth callback server: Failed to start server. Is port 0 in use?
