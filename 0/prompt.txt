@@ -1,0 +1,107 @@
+<task-notification>
+<task-id>ab8c1acf7d72d0da4</task-id>
+<tool-use-id>toolu_01C6PuXPg787KQ8AAivdg1Vf</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/ab8c1acf7d72d0da4.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore root shell and platform layout" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Exploration complete. No files modified.
+
+## Architecture: root shell and navigation
+
+**Two states, one fork.** `ReachyRootView` (`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/floating-robot-window-tablets-ddf6c1/Sources/ReachyUI/ReachyRootView.swift:15`) owns everything that outlives a screen (`RobotSession`, `ViewportModel`, `FloatingViewportModel`, `HFAccount`, `YourReachiesModel`, `RunningAppModel`, `ReachyRouter`, `RemoteRobotLink`, `ConnectProgressModel`) and picks one of two children in `body` (`:98–144`):
+
+- `ConnectGate` — `Sources/ReachyUI/Connect/ConnectGate.swift:14`
+- `ReachyTabShell` — `Sources/ReachyUI/Shell/ReachyTabShell.swift:13`
+
+The gate condition is `isConnectedEnough` (`ReachyRootView.swift:158–166`): `.connected` only once `ConnectProgressModel` has caught up and released; `.unreachable` deliberately stays on the shell side; `.idle`/`.connecting` show the gate. Transition is `.opacity` (`:118`) — crossing it destroys the whole subtree.
+
+Two cross-cutting modifiers hang off the root: `RootSheets` and `RootLifecycle` (`Sources/ReachyUI/Navigation/`).
+
+### The five stable tabs
+
+`ReachyTabShell.body` (`ReachyTabShell.swift:51–132`) is a `TabView(selection: $router.tab)` with five unconditional `Tab(value:)` declarations:
+
+| line | `ReachyRouter.Tab` | content view | label |
+|---|---|---|---|
+| `:54` | `.robot` | `RobotTab` | "Robot" / `figure.wave` |
+| `:61` | `.live` | `LiveTab` | "Live" / `cube.transparent` |
+| `:74` | `.moves` | `MovesTab` | "Moves" / `music.note` |
+| `:81` | `.apps` | `AppsTab` | "Apps" / `square.grid.2x2` |
+| `:95` | `.settings` | `SettingsTab` | "Settings" / `gearshape` |
+
+Tab enum: `Sources/ReachyUI/Navigation/ReachyRouter.swift:15–21`. The router also carries three root-level sheet flags (`showsRemoteRobots`, `showsAccount`, `showsPermissions`) and `follow(_ link: ReachyDeepLink)` (`:44`).
+
+Each tab file is a thin `NavigationStack` wrapper: `Shell/RobotTab.swift:10`, `LiveTab.swift:27`, `MovesTab.swift:11`, `AppsTab.swift:20`, `SettingsTab.swift:13`. Unavailable-feature tabs render `LiveUnavailableView` / `MovesUnavailableView` / `AppsUnavailableView` in place rather than disappearing.
+
+## Platform adaptation — the whole inventory
+
+**The adaptation is one line.** `ReachyTabShell.swift:103`: `.tabViewStyle(.sidebarAdaptable)`. That is the entire iPhone → iPad/Mac layout story. The header comment (`:8–12`) records that it replaced a hand-written `HStack { viewport | Divider | column }` for regular width, and that five unconditional tabs are what made it possible.
+
+Other shell-level modifiers (`:104–131`): `.reachyTabAccessory`, `.reachyMinimizingTabBar()`, `.floatingViewport(...)`, `.runningApp(...)`.
+
+### Size class / idiom
+
+- **Exactly one `horizontalSizeClass` read in the whole repo**: `Sources/ReachyUI/FloatingViewportModifier.swift:35`, consumed by `hasTabBar` (`:43–49`) — `#if os(macOS)` → `false`, else `horizontalSizeClass == .compact`. It is a *capability* question ("does the shell draw a tab bar or a sidebar"), not a layout fork; the result is written into `FloatingViewportModel.hasTabBar` (`:78–80`) so nothing else re-reads the size class.
+- `LiveTab.swift:51–53` and `:72–81` gate the "Mini window" toolbar menu on `floating.hasTabBar` (the model flag, not a second size-class read).
+- **`UIDevice.current.userInterfaceIdiom`: zero occurrences.**
+- Second orientation branch: `FloatingViewportModifier.dockBleed(in:)` (`:147–157`) reads `UIInterfaceOrientation` via `interfaceOrientation` (`:174–179`) to decide which landscape end has no Dynamic Island.
+
+### `#if os(...)` in UI code (non-preview)
+
+~35 sites, all platform-exclusive-API guards, none of them layout forks. Layout-relevant ones:
+
+- `Apps/ReachyMini/Sources/ReachyMiniApp.swift:11–13` (`UIApplicationDelegateAdaptor` for quick actions), `:42–44` (`.defaultSize`)
+- `Sources/ReachyDesign/ReachySheet.swift:38` — macOS-only sheet width
+- `Sources/ReachyDesign/ReachyChrome.swift:28` — `tabBarMinimizeBehavior`, iOS-only
+- `Sources/ReachyDesign/ReachyTabAccessory.swift:102–111` (`usesNativeAccessory`), `:119`, `:163`
+- `Sources/ReachyUI/Connect/ConnectGate.swift:51` — `groupedPageBackground()`
+- `Sources/ReachyUI/ViewportView.swift:173`, `:199`
+- `Sources/ReachyUI/Settings/Permissions/PrivacySettingsLink.swift:4/35/45`
+- `Sources/ReachyUI/Connect/CandidateSweep.swift:91` — `#if os(macOS) || targetEnvironment(simulator)`
+
+### Scene / window declarations
+
+- `Apps/ReachyMini/Sources/ReachyMiniApp.swift:26–45` — a single `WindowGroup { ReachyRootView { DeviceCheckView() } }`. macOS-only `.defaultSize(Metrics.window)` at `:43`. **No `Settings` scene, no `MenuBarExtra`, no `.windowStyle`, no `.windowResizability`, no second window, no `commands`.**
+- `Apps/ReachyStorybook/Sources/ReachyStorybookApp.swift:10–20` — debug catalogue, `WindowGroup { NavigationStack { PlaybookView … } }`.
+- `Apps/Project.swift:45` — `destinations: [.iPhone, .iPad, .mac]`, `:48` `deploymentTargets: .multiplatform(iOS: "18.0", macOS: "15.0")`. No orientation restrictions, no `UIRequiresFullScreen`.
+
+## 3. Existing split / adaptive layout: **none**
+
+Grepped repo-wide (`.swift` and `.md`): **zero** hits for `NavigationSplitView`, `.inspector(`, `HSplitView`, `VSplitView`, `columnVisibility`, `navigationSplitViewStyle`. The only `GeometryReader`s are `FloatingViewportModifier.swift:62` (overlay bounds for the floating window) and `JoystickPad.swift:35` (pad geometry) — neither is a split. `ViewThatFits` is unused. No `LazyVGrid` in `ReachyUI` (only in `ReachyWidgetUI`).
+
+The old two-column layout is gone; only a stale doc comment survives at `Sources/ReachyUI/RobotScreen.swift:9` ("this is a column on iPad and Mac and a tab on iPhone").
+
+## 4. Main screen on iPad/Mac, and the wasted width
+
+On iPad/Mac `.sidebarAdaptable` renders a sidebar with the five destinations; the selected tab's content fills the full detail area. Default tab is `.robot` (`ReachyRouter.init(tab: .robot)`, `ReachyRootView.swift:62`) → `RobotScreen`, a bare `Form` (`RobotScreen.swift:25`).
+
+**No tab content is width-constrained.** The only `Metrics.readableForm` (560 pt) call site in the entire repo is the *gate*: `ConnectGate.swift:31–32`. The comment there names the exact problem it solves — "A `Form` left to itself fills a 1024 pt iPad, and rows a metre wide with three words in them read as a broken layout. Nothing constrained this before because the tab bar's column did." That constraint was never extended to the shell.
+
+So on iPad/Mac:
+- `RobotScreen` (`Form`), `SettingsScreen` (`Form` + `.formStyle(.grouped)`, `Settings/SettingsScreen.swift:31–43`), `MovesScreen`, `AppStoreScreen` all stretch to the full detail width.
+- The only in-tab width caps are content-local and small: `LiveTab.swift:115` (`.frame(maxWidth: 420)` on `AsleepBanner`), `ControllerScreen.swift:62` (280), `ViewportView.swift:174` (240) / `:219` (220).
+- `Metrics.window` doc (`Metrics.swift:74–89`) explicitly assumes "every screen here is a column of cards capped at `readableForm`, so height is what they need and width past the cap is only margin" — which is true of the gate and *not* true of the shell. That is the gap.
+
+Snapshot coverage does exist for the sidebar layout: `Apps/.prefire.yml:16–19` captures `iPhone 16 Pro` **and** `iPad Pro 11`; `Sources/ReachyUI/Previews/ReachyRootViewPreviews.swift:9` notes "The iPad shots are the ones carrying `.sidebarAdaptable`".
+
+## 5. ReachyDesign layout tokens
+
+- **`Sources/ReachyDesign/Space.swift:16–24`** — `xxs 2, xs 4, sm 8, md 12, lg 16, xl 24, xxl 32`, on a 4-pt grid. Two adoption rules in the doc comment (`:8–15`): rhythm comes from tokens, optical adjustments stay literals; adopt a token only where the value already matches.
+- **`Sources/ReachyDesign/Metrics.swift`** — layout-relevant constants:
+  - `:52` `tabBarAllowance = 56` — room for the floating tab bar, invisible to a `TabView` overlay
+  - `:67` `tabAccessoryAllowance = 68` — the running-app accessory row
+  - `:73` `readableForm = 560` — the readable-width cap (one call site)
+  - `:89` `window = 720 × 680` — macOS `defaultSize`, an upper request only
+  - `:99` `sheetWidth = 600` — macOS sheet width
+  - `:41` `floatingViewport = 160 × 112`, `:44` `viewportTab = 44 × 72`
+- **No adaptive helpers.** There is no size-class helper, no `readableWidth()` modifier, no breakpoint enum. `Radius.swift`, `Typography.swift`, `Motion.swift`, `ReachySurface.swift`, `ReachyChrome.swift`, `ReachySheet.swift`, `ReachyTabAccessory.swift` round out the module. Explicit rule in `Sources/ReachyDesign/AGENTS.md`: no `@ScaledMetric` on `Space`; each component reading a `Metrics` constant adds its own.
+
+## Notes for whoever changes this
+
+- The five tabs being unconditional is load-bearing for `.sidebarAdaptable` (`ReachyTabShell.swift:8–12`, `ReachyRouter.swift:7–11`); a conditional tab breaks sidebar adaptation and forces selection-dragging.
+- Adding a second `horizontalSizeClass` read has a documented bar in `Sources/ReachyUI/AGENTS.md`: it must ask a question the size class alone can answer *about capability*, not "which screen looks better".
+- `ReachyTabShell.docked(_:)` (`:154–156`) builds all five tabs at once — any per-tab layout wrapper is instantiated five times.
+- No reference image is evidence about safe area (`PreviewTests.stencil:153` zeroes it), and an enabled system tab accessory blanks captures — relevant if new layout work needs snapshot cover.</result>
+<usage><subagent_tokens>127010</subagent_tokens><tool_uses>23</tool_uses><duration_ms>133312</duration_ms></usage>
+</task-notification>
