@@ -1,0 +1,810 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Sources/ReachyKit/Model/AudioParameter.swift
+  - Sources/ReachyKit/Model/ReachyKitError.swift
+  - Sources/ReachyKit/Session/AudioTuningClient.swift
+  - Sources/ReachyKit/Transport/RobotConnection+AudioTuning.swift
+  - Sources/ReachyMedia/CameraSession.swift
+  - Sources/ReachyUI/AudioSettingsModel.swift
+  - Sources/ReachyUI/AudioSettingsSection.swift
+  - Sources/ReachyUI/MicrophoneProfileCaption.swift
+  - Sources/ReachyUI/Previews/AudioSettingsSectionPreviews.swift
+  - Sources/ReachyUI/Previews/PreviewScenes.swift
+  - Sources/ReachyUI/Previews/TelepresencePreviews.swift
+  - Sources/ReachyUI/TelepresenceSheet.swift
+  - Sources/ReachyUI/ViewportModel.swift
+  - Sources/ReachyUI/ViewportView.swift
+  - Tests/ReachyKitTests/MicrophoneProfileTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Sources/ReachyKit/Model/AudioParameter.swift ===
+@@ -0,0 +1,107 @@
++import Foundation
++
++/// One register on the robot's audio board, as `/api/audio/config/*` names it.
++///
++/// The board carries an XMOS XVF3800, and every microphone control the robot has is
++/// one of these registers: the input gain, the automatic gain control, the limiter,
++/// and the two noise-suppression floors. The daemon's `media/audio_control_utils.py`
++/// holds the full register map; XMOS documents what each name means.
++///
++/// **The daemon writes no values of its own.** `media/audio_base.py` says so directly:
++/// the SDK ships no defaults, so an untouched robot reads back its firmware
++/// configuration. A write is global, and it outlives the session that made it.
++public struct AudioParameter: Sendable, Equatable {
++    /// The register name, e.g. `PP_MIN_NN`. The daemon answers 404 for a name its
++    /// map does not hold.
++    public let name: String
++    /// Most registers hold one number. Some hold several — `AUDIO_MGR_OP_L` holds
++    /// two, `AEC_MIC_ARRAY_GEO` holds twelve — so this stays an array.
++    public let values: [Double]
++
++    public init(_ name: String, _ values: [Double]) {
++        self.name = name
++        self.values = values
++    }
++
++    /// The first value, which is the whole answer for every register this app writes.
++    public var value: Double? {
++        values.first
++    }
++}
++
++/// A named set of microphone registers, applied together.
++///
++/// Raw registers never reach a person: a number like `0.0045` says nothing about how
++/// far away the robot can hear. Each profile writes **the same** registers, so a
++/// switch leaves nothing behind from the profile before it.
++///
++/// The `standard` values were read from a Wireless unit on firmware 2.1.2. The other
++/// two move from there, and their numbers are starting points to tune by ear — the
++/// right amount of noise suppression depends on the room.
++///
++/// **Every register here holds a float, and that is a constraint rather than a
++/// coincidence.** The daemon types the request body as `list[float]`, so an integer
++/// register reaches `ReSpeaker.write` as `1.0` and `struct.pack("i", 1.0)` throws.
++/// The daemon counts that as a failure and answers `{"applied": false}`; `verify:
++/// false` does not help, because the write itself is what fails. So `PP_AGCONOFF`
++/// and `PP_LIMITONOFF` cannot be moved from here — measured against firmware 2.1.2,
++/// where every integer register refused and every float register took. Both are on
++/// already, and neither profile wants them off.
++public enum MicrophoneProfile: String, Sendable, CaseIterable, Identifiable {
++    /// What the audio board holds before anything writes to it.
++    case standard
++    /// Hears a quiet voice, and a voice from across the room. It raises the level the
++    /// gain control aims for and gives the limiter more headroom, so the robot lifts
++    /// a distant voice instead of leaving it near the noise floor.
++    case sensitive
++    /// Holds back a noisy room. It drops both noise-suppression floors and lowers the
++    /// gain ceiling, because gain applied to a quiet voice lifts the noise with it.
++    case noisy
++
++    public var id: String {
++        rawValue
++    }
++
++    /// The registers this profile writes. Every profile names all of them.
++    public var parameters: [AudioParameter] {
++        switch self {
++        case .standard:
++            [
++                AudioParameter("PP_AGCDESIREDLEVEL", [0.0045]),
++                AudioParameter("PP_AGCMAXGAIN", [64]),
++                AudioParameter("PP_LIMITPLIMIT", [0.47]),
++                AudioParameter("PP_MIN_NS", [0.15]),
++                AudioParameter("PP_MIN_NN", [0.51]),
++            ]
++        case .sensitive:
++            [
++                AudioParameter("PP_AGCDESIREDLEVEL", [0.015]),
++                AudioParameter("PP_AGCMAXGAIN", [64]),
++                AudioParameter("PP_LIMITPLIMIT", [0.7]),
++                AudioParameter("PP_MIN_NS", [0.15]),
++                AudioParameter("PP_MIN_NN", [0.51]),
++            ]
++        case .noisy:
++            [
++                AudioParameter("PP_AGCDESIREDLEVEL", [0.008]),
++                AudioParameter("PP_AGCMAXGAIN", [32]),
++                AudioParameter("PP_LIMITPLIMIT", [0.6]),
++                AudioParameter("PP_MIN_NS", [0.06]),
++                AudioParameter("PP_MIN_NN", [0.18]),
++            ]
++        }
++    }
++
++    /// The profile whose values match `parameters`, or nil for a robot somebody tuned
++    /// by hand. The comparison is loose because the board rounds a float on the way
++    /// back — the daemon verifies its own writes to `1e-3` for the same reason.
++    public static func matching(_ parameters: [AudioParameter]) -> MicrophoneProfile? {
++        let read = Dictionary(parameters.map { ($0.name, $0.value ?? 0) }, uniquingKeysWith: { first, _ in first })
++        return allCases.first { profile in
++            profile.parameters.allSatisfy { expected in
++                guard let actual = read[expected.name], let want = expected.value else { return false }
++                return abs(actual - want) <= max(1e-3, abs(want) * 1e-2)
++            }
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachyKit/Model/ReachyKitError.swift ===
+@@ -76,6 +76,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
+     /// quote or newline, which would break out of the multipart header the upload is
+     /// carried in rather than being escaped by it.
+     case soundNameRejected(name: String)
++    /// The audio board's registers cannot be reached over this connection — the same
++    /// distinction as ``soundboardUnavailable``: `/api/audio/config/*` is a LAN
++    /// surface, and this client carries no data-channel arm for it.
++    ///
++    /// Appended, like every case since ``daemonLogsUnavailable``.
++    case audioTuningUnavailable
+ 
+     /// Maps a daemon HTTP status onto the cases callers can act on.
+     ///
+@@ -114,7 +120,8 @@ public enum ReachyKitError: Error, Sendable, Equatable {
+              .backendNotRunning, .daemonBusy, .wirelessFeaturesUnavailable,
+              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
+              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
+-             .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected:
++             .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
++             .audioTuningUnavailable:
+             nil
+         }
+     }
+@@ -169,6 +176,8 @@ extension ReachyKitError: LocalizedError {
+             "The robot is waking up or going to sleep; try again in a moment"
+         case .soundboardUnavailable:
+             "The robot's sounds cannot be reached over this connection"
++        case .audioTuningUnavailable:
++            "The robot's audio board cannot be reached over this connection"
+         case let .soundTooLarge(bytes, limit):
+             """
+             \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \
+
+
+=== DIFF: Sources/ReachyKit/Session/AudioTuningClient.swift ===
+@@ -0,0 +1,71 @@
++import Foundation
++
++/// The robot's audio-board registers: read one, write a batch.
++///
++/// A protocol of its own rather than two more methods on ``RobotAPIClient``, for the
++/// reason ``SoundboardClient`` is one: conforming *is* the capability. A session over
++/// the Hugging Face relay reports it unavailable instead of failing a control somebody
++/// just moved.
++///
++/// The daemon opens a short-lived USB handle for every call and closes it again
++/// (`routers/audio_config.py`), so a batch of six registers costs one round trip and
++/// six reads cost six. Write a profile, do not write a register at a time.
++public protocol AudioTuningClient: Sendable {
++    /// Reads one register by name. The daemon answers 404 for a name its map does not
++    /// hold, and 503 when no audio board answers on USB.
++    func readAudioParameter(named name: String) async throws -> AudioParameter
++
++    /// Writes a batch of registers.
++    ///
++    /// - Parameter verify: the daemon reads each register back and compares it to
++    ///   `1e-3` after the write settles. Leave it on: a refused write is otherwise
++    ///   indistinguishable from an accepted one.
++    func applyAudioConfig(_ parameters: [AudioParameter], verify: Bool) async throws
++}
++
++public extension RobotSession {
++    /// False over the relay, whose data channel carries no audio-config commands in
++    /// this client. The daemon's own protocol does define them, so this can grow a
++    /// remote arm later without the screens above changing.
++    var canTuneAudio: Bool {
++        client is any AudioTuningClient
++    }
++
++    /// Reads back the registers a profile writes, and names the profile they match.
++    ///
++    /// - Returns: nil for a robot somebody tuned by hand, which is a state to show
++    ///   rather than to overwrite.
++    func microphoneProfile() async throws -> MicrophoneProfile? {
++        let names = MicrophoneProfile.standard.parameters.map(\.name)
++        var read: [AudioParameter] = []
++        for name in names {
++            try await read.append(withAudioTuningClient { try await $0.readAudioParameter(named: name) })
++        }
++        return MicrophoneProfile.matching(read)
++    }
++
++    /// Writes a profile to the audio board.
++    ///
++    /// - Important: the write is global and it outlives this session — every app on
++    ///   the robot hears through the registers this moves. Whether it also outlives a
++    ///   reboot is a property of the board, not of this call: the register map holds a
++    ///   `SAVE_CONFIGURATION` command that nothing here sends.
++    func applyMicrophoneProfile(_ profile: MicrophoneProfile) async throws {
++        try await withAudioTuningClient {
++            try await $0.applyAudioConfig(profile.parameters, verify: true)
++        }
++    }
++}
++
++extension RobotSession {
++    /// Throws and says nothing else, the way ``withSoundboardClient`` does: a control
++    /// that failed belongs to the screen that moved it, and `robotError` is the
++    /// robot's connection and power alone.
++    func withAudioTuningClient<T>(_ call: (any AudioTuningClient) async throws -> T) async throws -> T {
++        guard let client else { throw ReachyKitError.notConnected }
++        guard let tuning = client as? any AudioTuningClient else {
++            throw ReachyKitError.audioTuningUnavailable
++        }
++        return try await call(tuning)
++    }
++}
+
+
+=== DIFF: Sources/ReachyKit/Transport/RobotConnection+AudioTuning.swift ===
+@@ -0,0 +1,46 @@
++import Foundation
++
++/// The audio-board half of the daemon's audio surface: `/api/audio/config/*`.
++///
++/// A file of its own because `RobotConnection.swift` is at SwiftLint's length limit —
++/// the same split `+Sounds`, `+Presence` and `+Apps` make.
++extension RobotConnection: AudioTuningClient {
++    public func readAudioParameter(named name: String) async throws -> AudioParameter {
++        switch try await client.readAudioParameterApiAudioConfigParameterNameGet(path: .init(name: name)) {
++        case let .ok(response):
++            // The register map holds both floats and integers, and the spec says so
++            // with an `anyOf`. The generator answers that with one payload per value
++            // that fills `value1` for a float and `value2` for an integer, so a
++            // caller that reads only `value1` gets nil for `PP_AGCONOFF`.
++            let values = try response.body.json.values.compactMap { number in
++                number.value1 ?? number.value2.map(Double.init)
++            }
++            return try AudioParameter(response.body.json.name, values)
++        case .unprocessableContent:
++            throw ReachyKitError.daemonRejected(statusCode: 422)
++        case let .undocumented(statusCode, _):
++            throw ReachyKitError.fromStatusCode(statusCode)
++        }
++    }
++
++    /// - Note: a 503 here is an audio board that did not answer on USB, not a daemon
++    ///   that is down. It is the daemon's own wording for `init_respeaker_usb`
++    ///   returning nothing.
++    public func applyAudioConfig(_ parameters: [AudioParameter], verify: Bool) async throws {
++        let config = parameters.map { Components.Schemas.AudioParamPair(name: $0.name, values: $0.values) }
++        let body = Components.Schemas.ApplyAudioConfigRequest(config: config, verify: verify)
++        switch try await client.applyAudioConfigApiAudioConfigApplyPost(body: .json(body)) {
++        case let .ok(response):
++            // `verify: true` makes the daemon read every register back. A false here
++            // is a board that took the write and did not keep it, which no status
++            // code reports.
++            guard try response.body.json.applied else {
++                throw ReachyKitError.daemonRejected(statusCode: 200)
++            }
++        case .unprocessableContent:
++            throw ReachyKitError.daemonRejected(statusCode: 422)
++        case let .undocumented(statusCode, _):
++            throw ReachyKitError.fromStatusCode(statusCode)
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachyMedia/CameraSession.swift ===
+@@ -24,6 +24,21 @@ public final class CameraSession {
+     public private(set) var videoTrack: RTCVideoTrack?
+     public private(set) var isMicEnabled = false
+ 
++    /// Gain applied to this device's microphone before the robot hears it, where 1 is
++    /// unchanged. libwebrtc takes 0…10 and clamps outside that.
++    ///
++    /// **It exists because the robot has no headroom left.** The daemon applies no
++    /// software gain to anything it plays, and its mixer is already at 100, so a call
++    /// cannot be made quieter or an app's speech louder from that end. What a person
++    /// hears as "the call is much louder than the apps" is the level of the two
++    /// sources: this device's voice arrives compressed and near full scale from the
++    /// system's voice-processing unit, while a sound asset plays at whatever level it
++    /// was recorded — `wake_up.wav` sits 14 dB below `go_sleep.wav`. Lowering this is
++    /// the only control over that difference.
++    public var micVolume: Double = 1 {
++        didSet { micSource?.volume = min(max(micVolume, 0), 10) }
++    }
++
+     /// Whether `start()` has run and `stop()` has not — what "the camera is
+     /// still up" means to the audio handover when a call ends over it.
+     var isRunning: Bool {
+@@ -60,6 +75,9 @@ public final class CameraSession {
+     private var peerConnection: RTCPeerConnection?
+     private var delegateAdapter: PeerConnectionDelegateAdapter?
+     private var micTrack: RTCAudioTrack?
++    /// Held so ``micVolume`` can move after the track is attached. The peer owns the
++    /// track; nothing else keeps the source alive.
++    private var micSource: RTCAudioSource?
+     /// `@ObservationIgnored` because `deinit` reads it: the macro would turn a
+     /// tracked property into a MainActor-isolated accessor, which a nonisolated
+     /// `deinit` may not call — a stored property it may.
+@@ -278,8 +296,12 @@ public final class CameraSession {
+         // from the start. Verified: the OS permission prompt still fires only on
+         // the first unmute (WebRTC doesn't start capture for a disabled track).
+         let source = Self.factory.audioSource(with: Self.noConstraints)
++        // Re-applied here rather than only in the setter: a renegotiation builds a new
++        // source, and the old one's gain goes with it.
++        source.volume = min(max(micVolume, 0), 10)
+         let track = Self.factory.audioTrack(with: source, trackId: "reachy-mic")
+         track.isEnabled = isMicEnabled
++        micSource = source
+         if let transceiver = peer.transceivers.first(where: { $0.mediaType == .audio }) {
+             transceiver.sender.track = track
+             transceiver.setDirection(.sendRecv, error: nil)
+@@ -312,6 +334,7 @@ public final class CameraSession {
+         peerConnection = nil
+         delegateAdapter = nil
+         micTrack = nil
++        micSource = nil
+         videoTrack = nil
+         answerSent = false
+         pendingLocalCandidates = []
+
+
+=== DIFF: Sources/ReachyUI/AudioSettingsModel.swift ===
+@@ -15,6 +15,10 @@ final class AudioSettingsModel {
+ 
+     private(set) var speaker: AudioLevel?
+     private(set) var microphone: AudioLevel?
++    /// Nil while unread, and nil again for a board somebody tuned by hand — the two
++    /// are told apart by ``canTuneProfile``, which is false until the read succeeds.
++    private(set) var profile: MicrophoneProfile?
++    private(set) var canTuneProfile = false
+     private(set) var isLoading = false
+     private(set) var isBusy = false
+     private(set) var errorMessage: String?
+@@ -39,6 +43,7 @@ final class AudioSettingsModel {
+             try await adoptMicrophone(session.microphoneVolume())
+             errorMessage = nil
+             hasLoaded = true
++            await loadProfile(session: session)
+         } catch {
+             errorMessage.recordDaemonFailure(error)
+         }
+@@ -57,6 +62,31 @@ final class AudioSettingsModel {
+         await perform { try await adoptMicrophone(session.setMicrophoneVolume(percent)) }
+     }
+ 
++    /// Reads the audio board back, after the levels and never with them.
++    ///
++    /// It costs one USB round trip per register — the daemon opens and closes a
++    /// handle for each — and it is the one part of this screen a robot can lack, so a
++    /// failure here leaves the levels working and hides the profile row instead of
++    /// reporting an error over them.
++    private func loadProfile(session: RobotSession) async {
++        guard session.canTuneAudio else { return }
++        do {
++            profile = try await session.microphoneProfile()
++            canTuneProfile = true
++        } catch {
++            canTuneProfile = false
++        }
++    }
++
++    /// - Important: this writes the robot's audio board, not a per-session setting.
++    ///   Every app on the robot hears through the registers it moves.
++    func applyProfile(_ profile: MicrophoneProfile, session: RobotSession) async {
++        await perform {
++            try await session.applyMicrophoneProfile(profile)
++            self.profile = profile
++        }
++    }
++
+     func playTestSound(session: RobotSession) async {
+         await perform { try await session.playTestSound() }
+     }
+@@ -95,7 +125,9 @@ final class AudioSettingsModel {
+             microphone: AudioLevel? = .previewMicrophone,
+             isLoading: Bool = false,
+             isBusy: Bool = false,
+-            errorMessage: String? = nil
++            errorMessage: String? = nil,
++            profile: MicrophoneProfile? = .standard,
++            canTuneProfile: Bool = true
+         ) -> AudioSettingsModel {
+             let model = AudioSettingsModel()
+             model.speaker = speaker
+@@ -105,6 +137,8 @@ final class AudioSettingsModel {
+             model.isLoading = isLoading
+             model.isBusy = isBusy
+             model.errorMessage = errorMessage
++            model.profile = profile
++            model.canTuneProfile = canTuneProfile
+             model.hasLoaded = true
+             return model
+         }
+
+
+=== DIFF: Sources/ReachyUI/AudioSettingsSection.swift ===
+@@ -39,6 +39,9 @@ struct AudioSettingsSection: View {
+                 ) {
+                     await model.commitMicrophone(session: session)
+                 }
++                if model.canTuneProfile {
++                    profilePicker
++                }
+                 Button(.reachy("Test sound")) {
+                     Task { await model.playTestSound(session: session) }
+                 }
+@@ -60,6 +63,41 @@ struct AudioSettingsSection: View {
+         }
+     }
+ 
++    /// The audio board's profile, named by the room rather than by its registers.
++    ///
++    /// "Custom" appears only for a board that matches no profile, and it cannot be
++    /// selected: it is a state to report, and choosing it would have nothing to write.
++    private var profilePicker: some View {
++        VStack(alignment: .leading, spacing: Space.xxs) {
++            Picker(selection: profileSelection) {
++                ForEach(MicrophoneProfile.allCases) { profile in
++                    Text(MicrophoneProfileCaption.title(for: profile)).tag(Optional(profile))
++                }
++                if model.profile == nil {
++                    Text(MicrophoneProfileCaption.custom).tag(MicrophoneProfile?.none)
++                }
++            } label: {
++                Label(.reachy("Hearing"), systemImage: "waveform")
++            }
++            Text(model.profile.map(MicrophoneProfileCaption.detail) ?? MicrophoneProfileCaption.customDetail)
++                .font(Typography.statusCompact)
++                .foregroundStyle(.tertiary)
++        }
++        .disabled(model.isBusy)
++    }
++
++    /// Writes on selection rather than on a gesture ending, unlike the level sliders:
++    /// a profile is one discrete choice, and it beeps at nobody.
++    private var profileSelection: Binding<MicrophoneProfile?> {
++        Binding(
++            get: { model.profile },
++            set: { selected in
++                guard let selected, selected != model.profile else { return }
++                Task { await model.applyProfile(selected, session: session) }
++            }
++        )
++    }
++
+     private func level(
+         _ title: String,
+         systemImage: String,
+
+
+=== DIFF: Sources/ReachyUI/MicrophoneProfileCaption.swift ===
+@@ -0,0 +1,36 @@
++import Foundation
++import ReachyDesign
++import ReachyKit
++
++/// The robot's microphone profiles in words, and what each one is for.
++///
++/// The profile is a set of audio-board registers, and a register name says nothing
++/// to a reader: `PP_MIN_NN` is the floor a babble-noise suppressor may reach. So the
++/// screen names the room instead of the register, the way ``DaemonStateCaption``
++/// names the state instead of the wire value.
++enum MicrophoneProfileCaption {
++    static func title(for profile: MicrophoneProfile) -> LocalizedStringResource {
++        switch profile {
++        case .standard: .reachy("Standard")
++        case .sensitive: .reachy("More sensitive")
++        case .noisy: .reachy("Noisy room")
++        }
++    }
++
++    static func detail(for profile: MicrophoneProfile) -> LocalizedStringResource {
++        switch profile {
++        case .standard: .reachy("The settings the robot comes with.")
++        case .sensitive: .reachy("Hears a quiet voice, and a voice from across the room.")
++        case .noisy: .reachy("Holds back background noise, at the cost of some range.")
++        }
++    }
++
++    /// Shown for a board somebody tuned by hand — a state to report, not to correct.
++    static var custom: LocalizedStringResource {
++        .reachy("Custom")
++    }
++
++    static var customDetail: LocalizedStringResource {
++        .reachy("This robot's audio board holds values no profile matches.")
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Previews/AudioSettingsSectionPreviews.swift ===
+@@ -28,3 +28,26 @@ import SwiftUI
+ #Preview("Audio — sheet variant") {
+     PreviewScene.audioSection(.preview(), header: nil)
+ }
++
++// The three profiles the picker offers. Each is one set of audio-board registers,
++// and the caption under the row is the only place their difference is legible.
++#Preview("Audio — sensitive profile") {
++    PreviewScene.audioSection(.preview(profile: .sensitive))
++}
++
++#Preview("Audio — noisy profile") {
++    PreviewScene.audioSection(.preview(profile: .noisy))
++}
++
++// A board somebody tuned by hand, over the API or with the XMOS tool. The row
++// reports it and offers the three profiles beside it; it never overwrites silently.
++#Preview("Audio — custom profile") {
++    PreviewScene.audioSection(.preview(profile: nil))
++}
++
++// No audio board answered, or the session is a relay that carries no such route.
++// The levels stay; the profile row is absent rather than disabled, because there is
++// nothing to read back and nothing to write.
++#Preview("Audio — no audio board") {
++    PreviewScene.audioSection(.preview(profile: nil, canTuneProfile: false))
++}
+
+
+=== DIFF: Sources/ReachyUI/Previews/PreviewScenes.swift ===
+@@ -201,14 +201,19 @@ enum PreviewScene {
+ 
+     /// The sheet that button opens: the robot's audio levels and its two presence
+     /// behaviours, reachable without giving up the stream.
++    /// `viewport` is what adds the Call section: without one there is no microphone
++    /// track to scale, so the sheet leaves the slider out rather than showing a dead
++    /// one. Nil by default, so every reference recorded before it is unchanged.
+     static func telepresence(
+         _ session: RobotSession? = nil,
+-        presence: PresenceModel? = nil
++        presence: PresenceModel? = nil,
++        viewport: ViewportModel? = nil
+     ) -> some View {
+         NavigationHost {
+             TelepresenceSheet(
+                 session: session ?? .preview(),
+                 dismiss: {},
++                viewport: viewport,
+                 presence: presence,
+                 // Settled, not empty: `AudioSettingsSection`'s `.task` is skipped in
+                 // preview mode, so the default model would capture every slider at
+
+
+=== DIFF: Sources/ReachyUI/Previews/TelepresencePreviews.swift ===
+@@ -36,3 +36,14 @@ import SwiftUI
+         presence: .preview()
+     )
+ }
++
++// The Call section, which appears only with a viewport behind the sheet. It scales
++// this device's voice on the way to the robot — the one control over a call that
++// drowns out everything else the robot plays.
++#Preview("Telepresence — your voice") {
++    PreviewScene.telepresence(presence: .preview(), viewport: .preview())
++}
++
++#Preview("Telepresence — voice turned down") {
++    PreviewScene.telepresence(presence: .preview(), viewport: .preview(callMicVolume: 0.4))
++}
+
+
+=== DIFF: Sources/ReachyUI/TelepresenceSheet.swift ===
+@@ -14,6 +14,9 @@ import SwiftUI
+ struct TelepresenceSheet: View {
+     let session: RobotSession
+     let dismiss: () -> Void
++    /// Absent in previews and wherever no camera is up: without one there is no track
++    /// to scale, and a slider over nothing is worse than no slider.
++    var viewport: ViewportModel?
+ 
+     @State private var presence: PresenceModel
+     @State private var audio: AudioSettingsModel
+@@ -21,11 +24,13 @@ struct TelepresenceSheet: View {
+     init(
+         session: RobotSession,
+         dismiss: @escaping () -> Void,
++        viewport: ViewportModel? = nil,
+         presence: PresenceModel? = nil,
+         audio: AudioSettingsModel? = nil
+     ) {
+         self.session = session
+         self.dismiss = dismiss
++        self.viewport = viewport
+         _presence = State(initialValue: presence ?? PresenceModel())
+         _audio = State(initialValue: audio ?? AudioSettingsModel())
+     }
+@@ -33,6 +38,9 @@ struct TelepresenceSheet: View {
+     var body: some View {
+         Form {
+             AudioSettingsSection(session: session, model: audio)
++            if let viewport {
++                voiceSection(viewport)
++            }
+             if session.canControlPresence {
+                 behaviourSection
+             }
+@@ -44,6 +52,34 @@ struct TelepresenceSheet: View {
+         }
+     }
+ 
++    /// How loud this device's voice is when the robot plays it.
++    ///
++    /// It belongs beside the robot's own levels and is not one of them: the robot's
++    /// speaker slider moves everything the robot plays, and this moves one source.
++    /// It is here because the robot has no headroom left — the daemon adds no gain
++    /// and its mixer is already at the top, so a call that drowns out the robot's own
++    /// sounds can only be brought down, never matched.
++    private func voiceSection(_ viewport: ViewportModel) -> some View {
++        @Bindable var viewport = viewport
++        return Section {
++            VStack(alignment: .leading, spacing: Space.xxs) {
++                HStack {
++                    Label(.reachy("Your voice"), systemImage: "person.wave.2")
++                    Spacer()
++                    Text(.reachy("\(Int((viewport.callMicVolume * 100).rounded()))%"))
++                        .font(Typography.consoleLine)
++                        .foregroundStyle(.secondary)
++                }
++                Slider(value: $viewport.callMicVolume, in: ViewportModel.micVolumeRange, step: 0.05)
++                Text(.reachy("How loud you are when the robot plays your voice. It takes effect at once."))
++                    .font(Typography.statusCompact)
++                    .foregroundStyle(.tertiary)
++            }
++        } header: {
++            Text(.reachy("Call"))
++        }
++    }
++
+     private var behaviourSection: some View {
+         Section {
+             MoveWhileSpeakingToggle(session: session, presence: presence)
+
+
+=== DIFF: Sources/ReachyUI/ViewportModel.swift ===
+@@ -1,3 +1,4 @@
++import Foundation
+ import Observation
+ import ReachyDesign
+ import ReachyKit
+@@ -82,6 +83,25 @@ final class ViewportModel {
+     private var ownsCamera = false
+     private var isActive = false
+ 
++    /// How loud this device's voice comes out of the robot, where 1 is unchanged.
++    ///
++    /// **The one control over the loudness a person actually complains about.** The
++    /// daemon applies no software gain and its mixer is already at 100, so the robot
++    /// cannot play a sound louder to match a call — the call has to come down to meet
++    /// the sounds. Stored on the device rather than on the robot, because it scales
++    /// *this* microphone.
++    var callMicVolume: Double = UserDefaults.standard.object(forKey: ViewportModel.micVolumeKey) as? Double ?? 1 {
++        didSet {
++            UserDefaults.standard.set(callMicVolume, forKey: ViewportModel.micVolumeKey)
++            cameraSession?.micVolume = callMicVolume
++        }
++    }
++
++    static let micVolumeKey = "callMicVolume"
++    /// Below 0.1 a voice is gone rather than quiet, and above 2 the encoder clips
++    /// before the robot gets louder. libwebrtc itself accepts 0…10.
++    static let micVolumeRange: ClosedRange<Double> = 0.1 ... 2
++
+     var address: RobotAddress? {
+         if case let .lan(address) = source {
+             address
+@@ -210,6 +230,8 @@ final class ViewportModel {
+             // Already running — `RemoteRobotLink` started it, and it is the same
+             // connection the commands are on. Adopted, never started or stopped.
+             cameraSession = session
++            // Adopted, so nothing here built the track — the gain still has to reach it.
++            session.micVolume = callMicVolume
+             ownsCamera = false
+         }
+     }
+@@ -271,6 +293,7 @@ final class ViewportModel {
+         }
+         cameraSession = session
+         ownsCamera = true
++        session.micVolume = callMicVolume
+         session.start()
+     }
+ 
+@@ -318,9 +341,14 @@ extension ViewportModel.Source: Equatable {
+             // reference that predates it and none of them moved when it landed. A
+             // preview that wants the badge injects a settled model, which is built
+             // with no stream and therefore has no socket to open.
+-            hearing: DirectionOfArrivalModel? = nil
++            hearing: DirectionOfArrivalModel? = nil,
++            // Always assigned, never left to the stored default: the real one reads
++            // `UserDefaults`, so a preview that took whatever a previous one wrote
++            // would render a different slider on each run.
++            callMicVolume: Double = 1
+         ) -> ViewportModel {
+             let model = ViewportModel()
++            model.callMicVolume = callMicVolume
+             model.content = content
+             model.sceneModel = sceneModel
+             model.cameraSession = cameraSession
+
+
+=== DIFF: Sources/ReachyUI/ViewportView.swift ===
+@@ -70,6 +70,7 @@ struct ViewportView: View {
+                         TelepresenceSheet(
+                             session: robotSession,
+                             dismiss: { showsPresence = false },
++                            viewport: model,
+                             presence: presence
+                         )
+                     }
+
+
+=== DIFF: Tests/ReachyKitTests/MicrophoneProfileTests.swift ===
+@@ -0,0 +1,66 @@
++@testable import ReachyKit
++import Testing
++
++/// The register sets and the readback that names them.
++///
++/// `matching` is the whole reason a profile can be *shown* rather than only written,
++/// and it compares floats that a USB round trip has already rounded — the values in
++/// `readback` are what a Wireless unit on firmware 2.1.2 actually answered.
++@Suite("Microphone profiles")
++struct MicrophoneProfileTests {
++    /// Every profile writes the same registers, so switching leaves nothing behind
++    /// from the profile before it. A profile that named fewer would silently keep a
++    /// value the reader thinks they replaced.
++    @Test func everyProfileWritesTheSameRegisters() {
++        let expected = Set(MicrophoneProfile.standard.parameters.map(\.name))
++        for profile in MicrophoneProfile.allCases {
++            #expect(Set(profile.parameters.map(\.name)) == expected)
++        }
++        #expect(expected.count == MicrophoneProfile.standard.parameters.count)
++    }
++
++    /// The daemon types its request body as `list[float]`, so an integer register
++    /// reaches `struct.pack("i", 1.0)` and throws — the write is refused and the call
++    /// answers `{"applied": false}`. A profile that named one could never be applied.
++    @Test func noProfileWritesAnIntegerRegister() {
++        let integerRegisters: Set = [
++            "PP_AGCONOFF", "PP_LIMITONOFF", "PP_ECHOONOFF", "PP_NLATTENONOFF",
++            "PP_DTSENSITIVE", "AEC_HPFONOFF", "AEC_FIXEDBEAMSONOFF",
++        ]
++        for profile in MicrophoneProfile.allCases {
++            #expect(Set(profile.parameters.map(\.name)).isDisjoint(with: integerRegisters))
++        }
++    }
++
++    @Test func eachProfileMatchesItsOwnValues() {
++        for profile in MicrophoneProfile.allCases {
++            #expect(MicrophoneProfile.matching(profile.parameters) == profile)
++        }
++    }
++
++    /// The board rounds a float on the way back, so an exact comparison would report
++    /// every robot as hand-tuned.
++    @Test func matchesValuesTheBoardRounded() {
++        let readback = [
++            AudioParameter("PP_AGCDESIREDLEVEL", [0.0044999998062849045]),
++            AudioParameter("PP_AGCMAXGAIN", [64.0]),
++            AudioParameter("PP_LIMITPLIMIT", [0.4699999988079071]),
++            AudioParameter("PP_MIN_NS", [0.15000000596046448]),
++            AudioParameter("PP_MIN_NN", [0.5099999904632568]),
++        ]
++        #expect(MicrophoneProfile.matching(readback) == .standard)
++    }
++
++    @Test func namesNoProfileForABoardTunedByHand() {
++        var tuned = MicrophoneProfile.standard.parameters
++        tuned[0] = AudioParameter("PP_AGCDESIREDLEVEL", [0.03])
++        #expect(MicrophoneProfile.matching(tuned) == nil)
++    }
++
++    /// A short read is not a match: a register the daemon refused to answer would
++    /// otherwise leave the screen naming a profile the board does not hold.
++    @Test func namesNoProfileWhenARegisterIsMissing() {
++        let partial = Array(MicrophoneProfile.standard.parameters.dropLast())
++        #expect(MicrophoneProfile.matching(partial) == nil)
++    }
++}
+
+
+Investigate per the method in your instructions, then return the findings list.
