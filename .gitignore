@@ -17,9 +17,11 @@ Apps/ReachyStorybook/Generated/
 *.profraw
 *.profdata
 
-# Local Claude Code state. `rules/` stays tracked for target-specific instructions.
+# Local Claude Code state. `rules/` and `skills/` stay tracked — both carry
+# instructions the repository owns rather than this machine.
 .claude/*
 !.claude/rules/
+!.claude/skills/
 
 # Environment
 .envrc

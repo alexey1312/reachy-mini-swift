@@ -3,6 +3,14 @@
 Signed artifacts are produced locally; CI only publishes the GitHub release with
 generated notes. Credentials never enter the repository or CI.
 
+**The portable half of this lives in a skill.** `.claude/skills/app-store-release`
+carries what App Store Connect does to every app rather than to this one: a review
+that stalls for weeks and how to act on it, the recovery path once a submission has
+to be cancelled, and the errors whose text names the wrong cause. It is written
+without this project's ids, tasks and paths, so it also works in another repository.
+Reach for it when a submission misbehaves. Everything below is what applies only
+here.
+
 ## One-time setup
 
 1. **App Store Connect API key** — App Store Connect → Users and Access →
