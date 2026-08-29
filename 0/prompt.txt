@@ -1,0 +1,234 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. **Primary Request and Intent:**
+
+   The user is executing a 10-milestone plan ("App Store + Hugging Face + Remote Access («Your Reachies») + виджеты — Phase 2 finale") on branch `claude/app-store-hf-remote-phase2-0463e5` in a git worktree. During this segment the user repeatedly said "продолжай" (continue) and explicitly directed "продолжай, делай M9b".
+
+   In one substantive message (with a screenshot of the official app's "Your Reachies" screen) the user raised three points:
+   - The Apps tab in the tab bar requires a robot connection, but remote access and auth are now implemented — "Может стоит авторизацию сделать глобальной?" (should we make auth global?)
+   - "Приступай к следующей задачи" (start the next task)
+   - "И снепшот тесты ты ведь делаешь?" (you are doing snapshot tests, right?)
+
+   Standing constraint carried from earlier context: **"Попробуй не запускать несколько тестов параллельно, подозреваю что дело в этом"** — do not run multiple SwiftPM test processes concurrently.
+
+2. **Key Technical Concepts:**
+   - Swift 6 strict concurrency, actors, `AsyncStream`, `withCheckedThrowingContinuation`, `@unchecked Sendable`, `noasync` (`NSLock`)
+   - **Swift compiler SIL pass `ClosureLifetimeFixup`** hanging on `convert_escape_to_noescape`
+   - SwiftPM single `.build` lock per worktree
+   - swift-openapi-generator; `Scripts/normalize-openapi.py`
+   - WebRTC (`RTCDataChannel`, `RTCDataBuffer`, `RTCPeerConnectionDelegate`), `webrtcsink` signaling
+   - Hugging Face central relay (SSE `GET /events` + `POST /send`), OAuth PKCE, Keychain
+   - Prefire + swift-snapshot-testing, Git LFS references, `record: .missing`
+   - SwiftLint `type_body_length` (300) / `file_length` (400) forcing sibling-file splits
+
+3. **Files and Code Sections:**
+
+   - **`Sources/ReachyKit/Central/RemoteControlChannel.swift`** (committed `101f0c7`, amended in `63c2533`)
+     Core of the remote command surface. Gained explicit correlation because five daemon commands do not echo their name:
+     ```swift
+     public enum Correlation: Sendable, Equatable {
+         case echoedCommand
+         case replyKey(String)
+     }
+
+     @discardableResult
+     public func perform(
+         _ command: String,
+         payload: [String: RemoteValue] = [:],
+         correlation: Correlation = .echoedCommand
+     ) async throws -> Data {
+         startReading()
+         let token = switch correlation {
+         case .echoedCommand: command
+         case let .replyKey(key): key
+         }
+         await takeTurn(for: token)
+         defer { yieldTurn(for: token) }
+         var body = payload
+         body["type"] = .string(command)
+         let encoded = try JSONEncoder().encode(body)
+         guard let text = String(bytes: encoded, encoding: .utf8) else {
+             throw EncodingError.invalidValue(body, .init(codingPath: [], debugDescription: "command payload is not UTF-8"))
+         }
+         let deadline = Task { [timeout] in
+             try? await Task.sleep(for: timeout)
+             guard !Task.isCancelled else { return }
+             await self.expire(token)
+         }
+         defer { deadline.cancel() }
+         let reply = try await awaitReply(to: token, sending: text)
+         try Self.throwIfError(in: reply)
+         return reply
+     }
+     ```
+     Routing (the `type` field is the discriminator):
+     ```swift
+     private func deliver(_ text: String) {
+         let data = Data(text.utf8)
+         guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else { return }
+         guard envelope.type == nil else { return }
+         if let command = envelope.command {
+             resume(command, with: .success(data))
+         } else if let token = waiting.keys.first(where: envelope.keys.contains) {
+             resume(token, with: .success(data))
+         }
+     }
+
+     private struct Envelope: Decodable {
+         let type: String?
+         let command: String?
+         let keys: Set<String>
+         init(from decoder: any Decoder) throws {
+             let container = try decoder.container(keyedBy: AnyKey.self)
+             keys = Set(container.allKeys.map(\.stringValue))
+             type = try? container.decodeIfPresent(String.self, forKey: AnyKey("type"))
+             command = try? container.decodeIfPresent(String.self, forKey: AnyKey("command"))
+         }
+         private struct AnyKey: CodingKey {
+             let stringValue: String
+             var intValue: Int? { nil }
+             init(_ value: String) { stringValue = value }
+             init?(stringValue: String) { self.init(stringValue) }
+             init?(intValue _: Int) { nil }
+         }
+     }
+     ```
+
+   - **`Tests/ReachyKitTests/RemoteControlChannelTests.swift`** — 9 tests. The fake **must** lock by hand; this comment is load-bearing:
+     ```swift
+     /// Locks by hand rather than through `withLock`. A closure nested inside the
+     /// `AsyncStream` builder, capturing the escaping continuation, hands the
+     /// compiler's `ClosureLifetimeFixup` SIL pass a `convert_escape_to_noescape` it
+     /// never finishes walking: the whole test module compiles forever, so no test
+     /// in it ever runs and the failure reads as a hang in the code under test.
+     private final class FakeDataChannel: RemoteDataChannel, @unchecked Sendable {
+         func send(_ text: String) async throws {
+             guard let reply = record(text) else { return }
+             emit(reply)
+         }
+         /// Synchronous on purpose: `NSLock` is `noasync`, because a lock held across
+         /// a suspension is a deadlock waiting for the right scheduling.
+         private func record(_ text: String) -> String? {
+             let command = try? JSONDecoder().decode(TypeOnly.self, from: Data(text.utf8)).type
+             lock.lock()
+             defer { lock.unlock() }
+             recorded.append(text)
+             guard let command else { return nil }
+             return scripted[command]
+         }
+         func messages() -> AsyncStream<String> {
+             AsyncStream { continuation in
+                 lock.lock()
+                 self.continuation = continuation
+                 let backlog = pending
+                 pending = []
+                 lock.unlock()
+                 for text in backlog { continuation.yield(text) }
+             }
+         }
+     }
+     ```
+
+   - **`Sources/ReachyKit/Central/RemoteRobotConnection.swift`** (committed `63c2533`) — actor conforming to `RobotAPIClient`. `daemonStatus()` is **assembled**, not fetched:
+     ```swift
+     public func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
+         let version = try await control.perform("get_version", correlation: .replyKey("version"), expecting: VersionReply.self)
+         let hardware = try await control.perform("get_hardware_id", correlation: .replyKey("hardware_id"), expecting: HardwareIDReply.self)
+         return Components.Schemas.DaemonStatus(
+             robotName: robotName ?? "",
+             state: .running,
+             wirelessVersion: false,
+             desktopAppDaemon: false,
+             version: version.version,
+             hardwareId: hardware.hardwareID
+         )
+     }
+     ```
+     `runningMoveUUIDs()` returns `[]` by construction (this connection never hands out a move id), which lets `waitForMoveToFinish` return immediately instead of sitting out its full timeout.
+
+   - **`Sources/ReachyMedia/WebRTCDataChannel.swift`** (committed `585a3c4`) — `RemoteDataChannel` over `RTCDataChannel`. 64-message capped backlog, `attach`/`detach`, manual locking, `RTCDataChannelDelegate` conformance. No unit tests (ReachyMedia has no test target).
+
+   - **`Sources/ReachyMedia/CameraSession.swift`** — gained `public let dataChannel = WebRTCDataChannel()` (created at construction so it survives self-healing peer-connection restarts), `adopt(_:)` guarding `channel.label == "data"`, `dataChannel.detach()` in `teardownPeer()`, and `peerConnection(_:didOpen:)` is no longer a no-op.
+
+   - **`Sources/ReachyMedia/RemoteRobotLink.swift`** (committed `60bbe8d`) — `@MainActor final class` assembling `CentralSignalingTransport` → `CameraSession` → `dataChannel` → `RemoteRobotConnection`. Camera comes free; 3D scene does not (URDF/STL are HTTP-only).
+
+   - **`Sources/ReachyKit/Session/RobotSession.swift` / `RobotSession+Connect.swift`** (committed `60bbe8d`) — the whole connection protocol moved into the sibling file for length. `makeClient` became internal. New:
+     ```swift
+     @discardableResult
+     func connect(using client: any RobotAPIClient) async -> Bool {
+         automaticConnectionAllowed = true
+         let attemptID = beginAttempt(at: nil)
+         return await settle(client: client, address: nil, attemptID: attemptID, automatically: false)
+     }
+     ```
+     `KnownRobots` writes wrapped in `if let address { … }`. `failAttempt` changed from `guard !automatically, let address else { return false }` to `guard !automatically else { return false }`.
+
+   - **`Sources/ReachyUI/Remote/YourReachiesModel.swift`** — `@MainActor @Observable`, states `.signedOut/.loading/.empty/.listed([CentralRobot])/.needsSignIn/.failed(String)`. `State` marked `Sendable` explicitly (nested in a `@MainActor` type). A failed refresh over an existing list sets `lastRefreshError` instead of blanking. `#if DEBUG` `preview(_:refreshFailure:)` uses a `PreviewListing` that makes `load()` **land on** the parked state (the screen calls `load()` in `.task`).
+
+   - **`Sources/ReachyUI/Remote/YourReachiesScreen.swift`**, **`YourReachiesSection.swift`**, **`Sources/ReachyUI/KnownRobotStatusLabel.swift`** — the screen, the connection-screen entry point, and an extracted status label (both extractions forced by SwiftLint length limits).
+
+   - **`Sources/ReachyUI/ReachyRootView.swift`** — added `showsRemoteRobots`, `remoteLink`, the `.sheet`, and:
+     ```swift
+     private func connectRemotely(to robot: CentralRobot) {
+         showsRemoteRobots = false
+         remoteLink?.stop()
+         let link = RemoteRobotLink(robot: robot, relay: CentralRelayClient { [hfAccount] in await hfAccount.currentToken() })
+         remoteLink = link
+         link.start()
+         tab = .robot
+         Task { await session.connect(using: link.client) }
+     }
+     ```
+     Apps dead end now offers two buttons: "Find one nearby" and "Your Reachies".
+
+   - **`Sources/ReachyKit/Model/AudioLevel.swift`** — `platform`/`device` became `String?` (the channel's volume reply carries only `{"volume": …}`).
+
+   - **`AGENTS.md`** (committed `314713d`) — documents the two false hangs: SwiftPM `.build` lock contention (invisible through `tail`) and the `ClosureLifetimeFixup` compiler hang.
+
+   - **Scratchpad `m8-datachannel-contract.md`** — verified daemon contract, intended as the basis for M10's `docs/research/`.
+
+4. **Errors and fixes:**
+
+   - **21-minute compiler hang mistaken for a runtime deadlock.** Evidence-driven diagnosis: `ps -o command= -p <pid>` named `-primary-file .../RemoteControlChannelTests.swift`; `sample` showed 100% of samples in `ClosureLifetimeFixup::run()` → `tryExtendLifetimeToLastUse` → `computeDominatedBoundaryBlocks`. Fix: flatten the `withLock` closure nested inside the `AsyncStream` builder. Confirmed by contrast with `AppJobMonitorTests`, which has an `AsyncStream` builder with no nested closure. **The tests had never run at all.** I explicitly told the user my earlier "deadlock in `perform`" hypothesis had been applied without proof and was wrong.
+   - **`NSLock.lock()` is `noasync`** inside `async func send` → extracted a synchronous `record(_:)` helper.
+   - **Five daemon replies carry no `command` field** — discovered by reading `abstract.py`; would have made `get_version` time out. Fixed with the `Correlation` enum.
+   - **`daemon_status` unreachable over the data channel** — `_publish_status` calls `ws_server.publish_status`, not `broadcast_to_all_clients`. Fixed by assembling `DaemonStatus`.
+   - **SwiftLint `optional_data_string_conversion`** → `String(bytes:encoding:)` + `EncodingError.invalidValue`.
+   - **`PreviewListing.state` not Sendable** (nested in `@MainActor` type) → marked `State: Sendable`.
+   - **`.foregroundStyle(isBusy ? .secondary : .tint)`** — different `ShapeStyle` types → `AnyShapeStyle(...)`.
+   - **Snapshot prediction wrong.** I claimed the connection-screen references would not move because `ConnectionScreen` previews omit `showRemoteRobots`. Four tests failed: `Root — idle` / `Root — connecting` × 2 configs, because `ReachyRootView` previews render the real tree with the closure passed. Re-recorded and verified visually. I stated the error plainly to the user.
+   - **Two python line-index scripts failed** because the formatter had shifted lines between read and write; switched to exact-string `Edit`.
+   - **SwiftLint length limits twice** (`RobotSession.swift` 434/328, `ConnectionScreen.swift` 401/321→303) → sibling-file split and two view extractions.
+   - **`git commit` on a symlink** — `CLAUDE.md` → `AGENTS.md`; had to edit the real target.
+
+5. **Problem Solving:**
+   Verified every daemon contract by reading `.venv-sim/lib/python3.12/site-packages/reachy_mini/` rather than trusting the plan, finding three plan errors: no `"pose"` channel, no `seq` field, and `daemon_status` unreachable. Established that HF auth was already global and that the Apps-tab gate is a hard requirement (the daemon fetches the catalogue). Ran all builds/tests strictly one process at a time per the user's instruction, using background tasks plus `Monitor` until-loops.
+
+6. **All user messages:**
+   - `/compact` command invocation, with a system-reminder that background task task_ff664c6a ended, followed by "Continue from where you left off."
+   - "продолжай"
+   - "продолжай"
+   - [Screenshot of the "Your Reachies" screen] "Важный вопрос, вкладка в таб баре, с магазином приложений, требует что бы было подключение к роботу / Но мы сейчас реализовали удаленный доступ и авторизацию / Может стоит авторизацию сделать глобальной? / Приступай к следующей задачи / И снепшот тесты ты вдеь делаешь?"
+   - "продолжай, делай M9b"
+
+7. **Pending Tasks:**
+   - **M5** — widgets (App Group, App Intents, widget extension). Not started.
+   - **M10** — documentation: ADR-0003, `docs/research/central-relay.md`, rules updates, README; plus refining the `AGENTS.md` note about `ProgressView` snapshot churn (this run's evidence did not match its prediction — 8 previews with one spinner moved zero existing references).
+   - **User-side prerequisite:** register the public Hugging Face OAuth app; `client_id` is empty, so only personal-access-token sign-in works.
+   - **Hardware verification:** the full remote chain (`RemoteRobotLink` → live `RTCDataChannel` → robot) has never run against real hardware and is untestable in CI.
+
+8. **Current Work:**
+   M9 and M9b were just completed and committed. The final commit `f04b4f3` ("feat: offer the remote list wherever a robot is missing") wired both entry points — the connection screen's `YourReachiesSection` and the app store's empty state (two buttons: "Find one nearby" / "Your Reachies") — plus the extracted `KnownRobotStatusLabel` and 4 re-recorded snapshot references.
+
+   Final verification was green on all three axes: `Test run with 533 tests in 83 suites passed`, app target `status: success / failed_tests: 0`, snapshots `status: success / failed_tests: 0`, with exactly 4 changed references (`Root-idle` and `Root-connecting` × iPhone-16-Pro and iPad-Pro-11), visually confirmed to differ only by the new section.
+
+   Tasks #18 (M9) and #21 (M9b) were marked completed. Branch commits: `101f0c7`, `314713d`, `63c2533`, `585a3c4`, the Your Reachies screen commit, `60bbe8d`, `f04b4f3`.
+
+9. **Optional Next Step:**
+   The remaining plan milestones are M5 (widgets) and M10 (documentation), both still `pending` in the task list and both part of the original plan the user approved with "План есть - можно работать". The user's most recent explicit direction was "продолжай, делай M9b", which is now finished, so the natural continuation is M10 (documentation) — it consolidates the three verified plan corrections already captured in `m8-datachannel-contract.md`, and includes the `AGENTS.md` churn-note refinement I told the user I would make there rather than retroactively: "Заметка, похоже, описывает случай на порядок больше (четырнадцать превью разом против восьми здесь); уточню её в M10, а не задним числом сейчас."
+
+   Given that both remaining milestones are independent and the user has been directing milestone order explicitly ("делай M9b"), it is worth confirming whether to proceed with M5 or M10 next rather than assuming.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/aleksei/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-app-store-hf-remote-phase2-0463e5/13da7018-a7c0-4b05-8699-82396e070810.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
