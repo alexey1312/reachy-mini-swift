@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bioauutwz</task-id>
+<tool-use-id>toolu_0131hpDtPYum6eMZXTk1ZREL</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-live-tab-dark-theme-acc022/ea40aa9d-ff24-4b00-93ed-3a06d6796e70/tasks/bioauutwz.output</output-file>
+<status>failed</status>
+<summary>Background command "Restart sim-daemon with warm pip cache" failed with exit code 1</summary>
+</task-notification>
