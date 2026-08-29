@@ -1,0 +1,210 @@
+# iOS 27, Xcode 27 and this app
+
+Issues #56, #57, #58 and #74 all cite `docs/research/apple-ecosystem-growth.md`. That file is in no commit and in
+no branch — the reasoning behind the P0 label lives only in the issue bodies. This file replaces it. It records
+what the SDK move demands, what was measured on a local Xcode 27 install, and which of the audit's findings
+survived a check against the code.
+
+Everything below was verified against the tree at the time of writing. Claims that did **not** survive are kept and
+marked, because a corrected claim is worth more than a deleted one.
+
+## §0 The SDK move
+
+### Measured on Xcode 27.0 Beta 6 (27A5252f), 2026-08-29
+
+| Task                         | Result                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `mise run build:app` (macOS) | 0 errors. `actool` compiles the macOS variant of the Icon Composer `.icon`                      |
+| `mise run build:app:ios`     | 0 errors, widget controls included                                                              |
+| `mise run snapshots:build`   | `** TEST BUILD SUCCEEDED **`, 0 errors, artifact `…_iphonesimulator27.0-arm64-x86_64.xctestrun` |
+
+**No source change was necessary.** See `@ContentBuilder` below for why one was expected and did not arrive.
+
+New warnings, all from Swift 6.3 rather than from the SDK: 42 × `NonSendableSuperclass` in the Prefire-generated
+test classes (the forked `PreviewTests.stencil` writes them), and 5 × `SendingRisksDataRace` in `ReachyMedia`
+(`RobotCallController.swift:251,267,286`, `ConversationDelegateAdapter.swift:46,52`). They are warnings today and
+an error in a later language mode.
+
+### `@ContentBuilder` is not an adoption task
+
+`ContentBuilder` is a type alias for `ViewBuilder`. The win comes from the SDK rebuilding its own shared components
+around `TupleContent`, which carries no domain until its elements give it one, so `Group { Group { … } }` no longer
+multiplies the overload search at every level. Published measurements put a five-level
+`Section → Group → ForEach` at 1 050 052 constraint scopes / 11.06 s under Xcode 26.6 against 189 / 26.97 ms under
+Xcode 27 beta 4.
+
+Three consequences for this repository:
+
+- The improvement arrives with the SDK. There is nothing to annotate, so the separate commit issue #56 budgets for
+  `Sources/ReachyUI/Previews/**` and `Apps/ReachyStorybook` has no content.
+- The real cost runs the other way. Once the builder stops supplying a protocol for every expression, calls that
+  leaned on that implicit context can go ambiguous — positional `.overlay(Color…)`, an empty `Group {}`, elaborate
+  conditional branches. **This tree has none.** The compile above is the evidence.
+- Issue #56's premise does not hold. `Sources/ReachyUI/Previews` is a flat `enum PreviewScene` of small
+  `static func … -> some View` wrappers, not nested containers — the previews are already written the way the
+  workaround advice recommends, so the pathological shape is absent.
+
+The third use, a custom multi-domain DSL built on `TupleContent`, has no consumer here: the repository declares no
+`@resultBuilder`, and the three `@ToolbarContentBuilder` properties are single-domain.
+
+Source: <https://fatbobman.com/en/posts/contentbuilder-explained/>
+
+### Snapshot identifiers
+
+Two of the four move. `REACHY_SNAPSHOT_SIM` (`iPhone 17 Pro`) exists on the iOS 27 runtime; `simulator_device`
+(`iPhone18,1`) is still the iPhone 17 Pro model id, confirmed with `simctl list devicetypes`; `snapshot_devices`
+are `ViewImageConfig` names that appear in every filename and must not move. `REACHY_SNAPSHOT_OS` goes to `27.0`
+and `required_os` to `27`.
+
+**`required_os` is compiled into the generated tests, not read at run time.** Editing `.prefire.yml` without
+rebuilding leaves the old value in `…PreviewsTests.generated.swift`, where it is a `fatalError`, not a failed
+assertion:
+
+```
+Fatal error: Switch to iOS 26 for these tests. (You are using NSOperatingSystemVersion(majorVersion: 27, …))
+```
+
+Reached through `test:snapshots:record`, that deletes every reference and then crashes on every test. Rebuild the
+snapshot target after changing the pin, and prove one test class runs before recording.
+
+**Not every reference moves.** Issue #56 states that all of them do, for glass and for text rendering together, and
+that the usual advice to check a control reference does not apply. Measured against the iOS 27 runtime before
+re-recording, `JoystickPadPreviewsTests` passed all four of its tests unchanged. The control reference still works.
+
+### CI images
+
+`macos-26` carries Xcode 26.6 at most, so issue #57's "a `macos-26`-class image" does not reach Xcode 27. The
+label is **`xcode-27`** (announced in actions/runner-images#14404): macOS 26.5.2, arm64, Xcode 27.0 beta 4 as the
+only Xcode on the image, iOS 27.0 the only simulator runtime, `iPhone 17 Pro` present. A standard label, not
+`-xlarge`, so the five concurrent macOS slots are unaffected.
+
+The versioned path on that image is `/Applications/Xcode_27_beta_4.app` and it moved from `_beta_3` at the last
+rollout. Point `DEVELOPER_DIR` at the `/Applications/Xcode_27.0.app` symlink, or leave it unset — `Xcode.app`
+already resolves to 27 there.
+
+`warm-cache` moves with the build jobs. It is the only job that writes the `SourcePackages` cache on
+`refs/heads/main`, and a package graph resolved by a different Xcode does not serve the jobs that read it.
+`lint-test` stays: it is SwiftPM against the swift.org toolchain and never opens the iOS SDK.
+
+The local install (beta 6) and the image (beta 4) are different builds. That is safe here for one reason only: no
+CI job compares reference images. `preview-build` compiles them.
+
+### The swift.org toolchain cannot pair with the macOS 27 SDK
+
+`swift build` and `swift test` take their compiler from `.swift-version` (6.3.0, through swiftly) and their SDK from
+whatever `xcode-select` points at. With Xcode 27 selected, that pairing fails: `mise run test` ends with a batch of
+`initializer is inaccessible due to 'private' protection level` and `cannot be constructed because it has no
+accessible initializers` across `Sources/ReachyUI`, plus `ld` warnings about `building for macOS-11.0` against
+dylibs built for 13.0.
+
+Those errors are cascade, not cause. The cause is one line above them —
+`Sources/ReachyUI/Settings/SystemUpdateCard.swift:61`, a `@ViewBuilder` property wrapping a `switch`, reported as
+`the compiler is unable to type-check this expression in reasonable time`. A failed expression poisons the rest of
+the module, and the accessibility errors are the wreckage.
+
+The same sources, the same SDK, and Xcode 27's own Swift 6.4 build clean:
+
+```bash
+xcrun swift build --target ReachyUI   # Build complete! (49.23 s)
+```
+
+So the tree is not broken; the toolchain pairing is. **Nothing is changed here for it.** swift.org has no 6.4
+release to move `.swift-version` to, and CI is unaffected — `lint-test` stays on `macos-15` with
+`DEVELOPER_DIR=Xcode_26.2`, so it pairs 6.3 with the macOS 26.2 SDK exactly as before. Locally, run `swift build`
+and `swift test` with Xcode 26 selected, or reach for `xcrun swift` and accept Xcode's compiler.
+
+This is the measured form of the tooling-matrix gap in §2.
+
+## §1 What iOS 27 requires
+
+| Requirement                                         | Consequence                                                                                 | State here                               |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `UIApplicationSceneManifest`                        | the app does not launch                                                                     | declared, `Apps/Project.swift:132` (#95) |
+| `UIDesignRequiresCompatibility` ignored             | Liquid Glass is mandatory and its appearance changed                                        | accepted; drives the re-recording        |
+| Resizability turns on when built against the 27 SDK | iPhone apps resize on iPad and in iPhone Mirroring                                          | **open**, see §2                         |
+| `@State` is a macro (TN3211)                        | lazy initialisation, back-deployed to iOS 17; breaks a default plus an assignment in `init` | audited, #95                             |
+| Deployment target below 15.0                        | an error, not a warning                                                                     | clear: iOS 18.0 / macOS 15.0             |
+
+**Corrected from the audit.** A claim that `UILaunchScreen` causes an upload rejection does not apply. The
+deprecated keys are `UILaunchStoryboardName` and the launch-image entries, and neither appears in the tree. The
+dictionary form at `Apps/Project.swift:105` and `:298` is the replacement Apple recommends.
+
+Apple has announced no deadline for the iOS 27 SDK. The floor is still Xcode 26 / the iOS 26 SDK.
+
+## §2 Gaps the P0 issues do not cover
+
+Each row was checked against the tree.
+
+| Gap                                             | Where                                                                                                                           | Note                                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Resizability audit                              | `Sources/ReachyUI/FloatingViewportModifier.swift:142-180`                                                                       | **Analysed, no change made.** See §2.1                                                 |
+| The `.soft` scroll edge effect                  | `Sources/ReachyDesign/ReachyChrome.swift:47`, one consumer at `Sources/ReachyUI/LogConsoleView.swift:74`                        | **Open, but a device check rather than a code task.** See §2.1                         |
+| Menu icons ~~needs `preferredImageVisibility`~~ | `Menu {` in `LogConsoleView`, `SceneViewport`, `SoundboardScreen`, `AppStoreScreen`, `LiveTab`, `RobotFilesScreen`              | **Closed — nothing to do.** See §2.1                                                   |
+| Tooling matrix                                  | `mise.toml` — swiftlint, swiftformat, swift-syntax, and Prefire pinned `.exact` to 5.7.0 behind a forked `PreviewTests.stencil` | #57 moves the CI image but not the parsers, and the `@State` macro passes through them |
+| Snapshot coverage is two fixed sizes            | `Apps/.prefire.yml` (`iPhone 16 Pro`, `iPad Pro 11`)                                                                            | under resizability no reference exercises a narrow or a wide window                    |
+| The combined privacy prompt                     | camera, microphone, Bluetooth, local network and location in one dialog                                                         | the first-run gate and the smoke test that walks it may both shift                     |
+| Stricter TLS                                    | `ws://<host>:8443`, `Sources/ReachyKit/Transport/CameraSignalingClient.swift:4`, plus `NSAllowsLocalNetworking`                 | signaling is plaintext                                                                 |
+| macOS 27 drops Intel                            | `Scripts/release-macos.sh`                                                                                                      | the universal slice stops being obligatory                                             |
+
+### §2.1 The three visual rows, resolved
+
+**Menu icons — closed, nothing to do.** `preferredImageVisibility` is UIKit only. It is a property of
+`UIMenuElement` and `UIMenuLeaf` (`UIMenuElement.h:68`, `UIMenuLeaf.h:33`, `API_AVAILABLE(ios(27.0))`), and SwiftUI
+exposes no counterpart — its `swiftinterface` has no `ImageVisibility` of any spelling, and its only menu modifiers
+are `menuOrder`, `menuActionDismissBehavior` and `menuIndicator`. Every menu here is a SwiftUI `Menu`, so there is
+no knob to set. Re-open this row only when SwiftUI ships one.
+
+**The `.soft` scroll edge — open, and not a code task.** The modifier survives in the 27 SDK
+(`ScrollEdgeEffectStyle.automatic` / `.hard` / `.soft`), so the availability gate needs nothing. Whether `.soft` is
+still the better choice than the revised `.automatic` cannot be settled here: the effect draws where content passes
+under a bar, and the preview renders no bar. `Console-installer-log-iPhone-16-Pro` is a plain page of log text.
+Re-recording a variant would compare two identical images. This needs the app on a device, with the log console
+open, exactly as glass does.
+
+**Resizability and `dockBleed` — analysed, and left alone.** The concern is real in shape: `dockBleed` picks its
+edge from `UIWindowScene.interfaceOrientation`, and under 27 orientation is a preference. But the failure degrades
+to nothing rather than to something wrong, because the branch only chooses _which_ side, while the amount always
+comes from `geometry.safeAreaInsets`:
+
+- a mis-reported orientation falls to `default: .none`, which is the neutral value;
+- a window away from the screen edge has no safe-area inset, so either side bleeds by zero.
+
+The wrong-side case would need a window at a screen edge _and_ an orientation reported for the opposite one. Not
+measured, because nothing here reaches a resized window: no preview forces landscape, and
+`FloatingViewportGeometryTests` takes `bleed` as a value already decided — which the source comment at
+`FloatingViewportModifier.swift:130-148` states outright. What would settle it is an XCUITest that sets
+`XCUIDevice.shared.orientation`, or the app in iPhone Mirroring. Until then this is reasoning, not a measurement.
+
+Searched for and **absent**, so not problems: `UIScreen.main`, `userInterfaceIdiom`, the deprecated `UIApplication`
+status-bar accessors, `MXMetricManager`, On Demand Resources, `.onMove`.
+
+## §3 New API worth having
+
+Ordered by how close each sits to something the app already does.
+
+- **Toolbars.** `visibilityPriority(_:)`, `ToolbarOverflowMenu`, `ToolbarItem(placement: .topBarPinnedTrailing)`,
+  `toolbarMinimizeBehavior(_:for:)`, `ToolbarPlacement.statusBar`, `ForEach` and `EmptyView` inside toolbar
+  builders. The direct remedy for a toolbar in a narrow window, which resizability now makes reachable.
+- **`.reorderable()` + `.reorderContainer(for:)`** — reordering in any container. The known-robots list has no
+  `.onMove` today.
+- **`swipeActionsContainer()`** — swipe actions outside `List`, so a `LazyVGrid` can carry them.
+- **`systemExtraLargePortrait`** — a new widget family on iOS, iPadOS and macOS 27.
+- **Live Activities**: `supplementalActivityFamilies([.small])` puts an activity on Apple Watch and the CarPlay
+  dashboard **without a watchOS app**, which covers much of #75 from inside #61; a landscape Dynamic Island
+  (`isDynamicIslandLimitedInWidth`); StandBy.
+- **App Intents**: `LongRunningIntent`, `CancellableIntent`, `ExecutionTargets`, `EntityCollection`,
+  `SyncableEntity`, `RelevantEntities`, `@UnionValue`, and **`AppIntentsTesting`**, which drives intents through the
+  real system paths. Nine controls plus Siri, Spotlight and Handoff are covered only indirectly today.
+- **Foundation Models**: the `LanguageModel` / `LanguageModelExecutor` protocols make one session work against the
+  on-device model, Private Cloud Compute, MLX and third-party providers, which turns the on-device-or-cloud question
+  in #72 and #73 from an architectural choice into configuration. Evaluations and the token-count API are new.
+- **ARKit object tracking reaches iOS** with the visionOS API, so #77 is a shipped feature rather than a bet.
+- `AsyncImage(request:)` with HTTP caching, for `HFAvatar` — the one network image in the app.
+- `@Environment(\.appearsActive)` for the inactive Mac window; a sidebar on iPhone for the five-tab shell
+  (`.sidebarAdaptable` is already set, `Sources/ReachyUI/Shell/ReachyTabShell.swift:120`); the Now Playing framework
+  for the soundboard.
+
+## §4 Order
+
+`#57` → the resizability audit → `#56` → chrome and `.soft` → `preferredImageVisibility`. Everything in §3 waits
+until the tree is green again.

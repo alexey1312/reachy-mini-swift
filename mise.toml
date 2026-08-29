@@ -268,7 +268,7 @@ xcrun simctl ui "$SIM" appearance light >/dev/null 2>&1 || true
 # References are English-only on purpose. Every string this app shows is localizable, and a
 # simulator left in another language would re-render all 1000 of them in it.
 xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyUISnapshotTests \
-  -destination "platform=iOS Simulator,name=${SIM},OS=${REACHY_SNAPSHOT_OS:-26.4.1}" \
+  -destination "platform=iOS Simulator,name=${SIM},OS=${REACHY_SNAPSHOT_OS:-27.0}" \
   -derivedDataPath Apps/DerivedData \
   -testLanguage en -testRegion US \
   CODE_SIGNING_ALLOWED=NO \
@@ -345,7 +345,7 @@ prefire playbook Sources/ReachyDesign/Previews Sources/ReachyUI/Previews Sources
 ./bin/mise run project
 set -o pipefail
 xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyStorybook \
-  -destination "platform=iOS Simulator,name=$SIM,OS=${REACHY_SNAPSHOT_OS:-26.4.1}" \
+  -destination "platform=iOS Simulator,name=$SIM,OS=${REACHY_SNAPSHOT_OS:-27.0}" \
   -configuration Debug -derivedDataPath Apps/DerivedData \
   CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation -skipMacroValidation \
   build 2>&1 | xcsift
