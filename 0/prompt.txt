@@ -1,0 +1,2743 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Apps/.prefire.yml
+  - Package.swift
+  - Sources/ReachySSH/HostKeyFingerprint.swift
+  - Sources/ReachySSH/KeychainSSHStores.swift
+  - Sources/ReachySSH/Preview/PreviewFileSystem.swift
+  - Sources/ReachySSH/ReachySSHError.swift
+  - Sources/ReachySSH/RemoteFile.swift
+  - Sources/ReachySSH/RobotFileSystem.swift
+  - Sources/ReachySSH/SSHFileSystem.swift
+  - Sources/ReachyUI/Files/RemoteFileRow.swift
+  - Sources/ReachyUI/Files/RobotFilesModel.swift
+  - Sources/ReachyUI/Files/RobotFilesScreen.swift
+  - Sources/ReachyUI/Files/SSHAccessViews.swift
+  - Sources/ReachyUI/Previews/PreviewSettingsScenes.swift
+  - Sources/ReachyUI/Previews/RobotFilesPreviews.swift
+  - Sources/ReachyUI/Previews/SettingsPreviews.swift
+  - Sources/ReachyUI/Settings/AdvancedCardScreens.swift
+  - Sources/ReachyUI/Settings/AdvancedSettingsSection.swift
+  - Sources/ReachyUI/Settings/SettingsScreen.swift
+  - Tests/ReachySSHTests/HostKeyFingerprintTests.swift
+  - Tests/ReachySSHTests/RemoteFileTests.swift
+  - Tests/ReachyUITests/RobotFilesModelTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Apps/.prefire.yml ===
+@@ -11,6 +11,7 @@ test_configuration:
+     - ReachyDesign
+     - ReachyKit
+     - ReachyMedia
++    - ReachySSH
+     - ReachyWidgetUI
+   snapshot_devices:
+     - iPhone 16 Pro
+@@ -28,4 +29,5 @@ playbook_configuration:
+     - ReachyUI
+     - ReachyKit
+     - ReachyMedia
++    - ReachySSH
+     - ReachyWidgetUI
+
+
+=== DIFF: Package.swift ===
+@@ -18,6 +18,7 @@ let package = Package(
+         .library(name: "ReachyKit", targets: ["ReachyKit"]),
+         .library(name: "ReachyMedia", targets: ["ReachyMedia"]),
+         .library(name: "ReachyScene", targets: ["ReachyScene"]),
++        .library(name: "ReachySSH", targets: ["ReachySSH"]),
+         .library(name: "ReachyUI", targets: ["ReachyUI"]),
+         .library(name: "ReachyWidgetUI", targets: ["ReachyWidgetUI"]),
+     ],
+@@ -26,6 +27,9 @@ let package = Package(
+         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.0"),
+         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.1.0"),
+         .package(url: "https://github.com/stasel/WebRTC.git", from: "150.0.0"),
++        // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
++        // rather than the `from:` every other dependency here uses.
++        .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
+     ],
+     targets: [
+         // This app's own Hugging Face session — sign-in, token custody, renewal.
+@@ -67,13 +71,25 @@ let package = Package(
+             dependencies: ["ReachyKit"],
+             exclude: ["AGENTS.md", "CLAUDE.md"]
+         ),
++        // SFTP to the robot, for the files the daemon API deliberately cannot
++        // reach. Its own product rather than a corner of ReachyKit: the widget
++        // extension links ReachyWidgetUI, which links ReachyKit, and a process
++        // woken for a moment to draw two lines of text has no business loading
++        // SwiftNIO. It knows nothing about robots — host, port and credentials
++        // arrive as values, the way a Hugging Face token reaches ReachyKit.
++        .target(
++            name: "ReachySSH",
++            dependencies: [.product(name: "Citadel", package: "Citadel")],
++            exclude: ["AGENTS.md", "CLAUDE.md"]
++        ),
+         .target(
+             name: "ReachyUI",
+             // `ReachyWidgetUI` for the app artwork alone, which both the store
+             // rows and the widget's tiles draw. The arrow points this way round on
+             // purpose: the widget target must stay clear of ReachyMedia.
+             dependencies: [
+-                "HuggingFaceAuth", "ReachyDesign", "ReachyKit", "ReachyMedia", "ReachyScene", "ReachyWidgetUI",
++                "HuggingFaceAuth", "ReachyDesign", "ReachyKit", "ReachyMedia", "ReachyScene", "ReachySSH",
++                "ReachyWidgetUI",
+             ],
+             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
+             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
+@@ -108,6 +124,10 @@ let package = Package(
+             name: "ReachySceneTests",
+             dependencies: ["ReachyScene", "ReachyKit"]
+         ),
++        .testTarget(
++            name: "ReachySSHTests",
++            dependencies: ["ReachySSH"]
++        ),
+         .testTarget(
+             name: "ReachyUITests",
+             // `ReachyMedia` for `CameraSession`: the viewport now borrows one from
+
+
+=== DIFF: Sources/ReachySSH/HostKeyFingerprint.swift ===
+@@ -0,0 +1,44 @@
++import CryptoKit
++import Foundation
++
++/// An SSH host key, in the form a user can compare against `ssh-keygen -lf`.
++///
++/// Built from the OpenSSH text form rather than from a `NIOSSHPublicKey`, and that
++/// is what keeps this type — and its tests — free of SwiftNIO. The base64 field of
++/// `"ssh-ed25519 AAAAC3Nza…"` *is* the SSH wire encoding of the key, which is
++/// exactly what OpenSSH hashes to print a fingerprint. So the whole computation is
++/// Foundation plus one SHA-256.
++public struct HostKeyFingerprint: Hashable, Sendable {
++    /// The full `"<algorithm> <base64>"` line, which is what gets pinned: a text
++    /// round-trip through `NIOSSHPublicKey(openSSHPublicKey:)` beats storing an
++    /// opaque blob whose layout belongs to a dependency.
++    public let openSSHPublicKey: String
++    /// `ssh-ed25519`, `ecdsa-sha2-nistp256`, and so on.
++    public let algorithm: String
++    /// `SHA256:` followed by unpadded base64, the way OpenSSH 6.8+ prints it.
++    public let sha256: String
++
++    public init?(openSSHPublicKey: String) {
++        let line = openSSHPublicKey.trimmingCharacters(in: .whitespacesAndNewlines)
++        let fields = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
++        guard fields.count >= 2, let wire = Data(base64Encoded: String(fields[1])) else { return nil }
++        // Keep only algorithm and key: an `authorized_keys`-style comment is not
++        // part of the identity and would make two pins of one key.
++        self.openSSHPublicKey = "\(fields[0]) \(fields[1])"
++        algorithm = String(fields[0])
++        let digest = Data(SHA256.hash(data: wire)).base64EncodedString()
++        sha256 = "SHA256:" + digest.replacingOccurrences(of: "=", with: "")
++    }
++
++    /// Grouped for reading aloud over a desk, which is the whole point of showing
++    /// it. The `SHA256:` prefix stays attached to the first group.
++    public var groupedForDisplay: String {
++        let body = sha256.dropFirst("SHA256:".count)
++        let groups = stride(from: 0, to: body.count, by: 11).map { offset -> String in
++            let start = body.index(body.startIndex, offsetBy: offset)
++            let end = body.index(start, offsetBy: min(11, body.count - offset))
++            return String(body[start ..< end])
++        }
++        return "SHA256:" + groups.joined(separator: " ")
++    }
++}
+
+
+=== DIFF: Sources/ReachySSH/KeychainSSHStores.swift ===
+@@ -0,0 +1,113 @@
++import Foundation
++import Security
++
++/// The Keychain shape both stores share.
++///
++/// Written against `Security` directly, like `KeychainHFTokenStore`: the surface is
++/// three calls, and a dependency that holds a credential is one more thing to
++/// audit. Items are `ThisDeviceOnly` for the same reason a Hugging Face token is —
++/// a robot REDACTED restored onto another device is one the user never knowingly
++/// put there.
++private enum KeychainItem {
++    static func load(service: String, account: String) throws -> Data? {
++        var query = base(service: service, account: account)
++        query[kSecReturnData as String] = true
++        query[kSecMatchLimit as String] = kSecMatchLimitOne
++
++        var result: CFTypeRef?
++        let status = SecItemCopyMatching(query as CFDictionary, &result)
++        switch status {
++        case errSecSuccess: return result as? Data
++        case errSecItemNotFound: return nil
++        default: throw ReachySSHError.keychain(status)
++        }
++    }
++
++    static func save(_ data: Data, service: String, account: String) throws {
++        let query = base(service: service, account: account)
++        let update = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
++        if update == errSecSuccess {
++            return
++        }
++        guard update == errSecItemNotFound else { throw ReachySSHError.keychain(update) }
++
++        var item = query
++        item[kSecValueData as String] = data
++        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
++        let status = SecItemAdd(item as CFDictionary, nil)
++        guard status == errSecSuccess else { throw ReachySSHError.keychain(status) }
++    }
++
++    static func delete(service: String, account: String) throws {
++        let status = SecItemDelete(base(service: service, account: account) as CFDictionary)
++        guard status == errSecSuccess || status == errSecItemNotFound else {
++            throw ReachySSHError.keychain(status)
++        }
++    }
++
++    private static func base(service: String, account: String) -> [String: Any] {
++        [
++            kSecClass as String: kSecClassGenericPassword,
++            kSecAttrService as String: service,
++            kSecAttrAccount as String: account,
++        ]
++    }
++}
++
++/// Pinned host keys in the Keychain, one item per robot.
++public struct KeychainHostKeyStore: HostKeyStore {
++    private let service: String
++
++    public init(service: String = "com.alexey1312.ReachyMini.ssh.hostkey") {
++        self.service = service
++    }
++
++    public func pinnedKey(forRobot robot: String) throws -> String? {
++        guard let data = try KeychainItem.load(service: service, account: robot) else { return nil }
++        return String(data: data, encoding: .utf8)
++    }
++
++    public func pin(_ openSSHPublicKey: String, forRobot robot: String) throws {
++        try KeychainItem.save(Data(openSSHPublicKey.utf8), service: service, account: robot)
++    }
++
++    public func forget(robot: String) throws {
++        try KeychainItem.delete(service: service, account: robot)
++    }
++}
++
++/// Saved SSH REDACTEDs in the Keychain, one item per robot.
++///
++/// Host and port are *not* stored: the session already knows where the robot is,
++/// and a remembered address is exactly the mistake project rule 4 warns about.
++/// Only the username and the REDACTED are kept.
++public struct KeychainSSHCredentialStore: SSHCredentialStore {
++    private struct Stored: Codable {
++        var username: String
++        var REDACTED: String
++    }
++
++    private let service: String
++
++    public init(service: String = "com.alexey1312.ReachyMini.ssh.login") {
++        self.service = service
++    }
++
++    public func credentials(forRobot robot: String) throws -> SSHCredentials? {
++        guard let data = try KeychainItem.load(service: service, account: robot),
++              let stored = try? JSONDecoder().decode(Stored.self, from: data)
++        else { return nil }
++        // Host and port are filled in by the caller, which is the only thing that
++        // knows where this robot is right now.
++        return SSHCredentials(host: "", username: stored.username, REDACTED: stored.REDACTED)
++    }
++
++    public func save(_ credentials: SSHCredentials, forRobot robot: String) throws {
++        let stored = Stored(username: credentials.username, REDACTED: credentials.REDACTED)
++        try KeychainItem.save(JSONEncoder().encode(stored), service: service, account: robot)
++    }
++
++    public func clear(robot: String) throws {
++        try KeychainItem.delete(service: service, account: robot)
++    }
++}
+
+
+=== DIFF: Sources/ReachySSH/Preview/PreviewFileSystem.swift ===
+@@ -0,0 +1,180 @@
++#if DEBUG
++    import Foundation
++    import Synchronization
++
++    /// A file system double for previews, snapshots and the model's tests.
++    ///
++    /// In this module rather than in `ReachyTestSupport` for the reason
++    /// `PreviewRobotClient` is in `ReachyKit`: a stub that answers a module's own
++    /// protocol belongs beside it, and putting it in the shared test target would
++    /// make every other test target link SwiftNIO.
++    ///
++    /// A `final class` with a `Mutex` rather than an actor: a preview needs its
++    /// answers to be readable without an `await`, and the tests assert on what was
++    /// asked as well as on what came back.
++    public final class PreviewFileSystem: RobotFileSystem, Sendable {
++        private struct State {
++            var tree: [String: [RemoteFile]]
++            var contents: [String: Data]
++            var calls: [String] = []
++            var isConnected = false
++        }
++
++        private let state: Mutex<State>
++        /// Thrown by whichever call names it, so a preview can sit in a failure
++        /// without a robot refusing anything.
++        private let failure: ReachySSHError?
++
++        public init(
++            tree: [String: [RemoteFile]] = [:],
++            contents: [String: Data] = [:],
++            failure: ReachySSHError? = nil
++        ) {
++            state = Mutex(State(tree: tree, contents: contents))
++            self.failure = failure
++        }
++
++        /// What was called, in order — the assertion a "did it even ask?" test needs.
++        public var calls: [String] {
++            state.withLock { $0.calls }
++        }
++
++        public var isConnected: Bool {
++            state.withLock { $0.isConnected }
++        }
++
++        /// The same listing ``list(_:)`` would return, without the `await`.
++        ///
++        /// A preview has to be final on its first frame — Prefire captures
++        /// synchronously and never lets a `.task` complete — so a frozen model needs
++        /// its rows at construction time, not one suspension later.
++        public func entries(at path: String) -> [RemoteFile] {
++            state.withLock { $0.tree[path] } ?? []
++        }
++
++        public func connect(_: SSHCredentials) async throws {
++            try record("connect")
++            state.withLock { $0.isConnected = true }
++        }
++
++        public func disconnect() async {
++            state.withLock { $0.calls.append("disconnect"); $0.isConnected = false }
++        }
++
++        public func list(_ path: String) async throws -> [RemoteFile] {
++            try record("list(\(path))")
++            return state.withLock { $0.tree[path] } ?? []
++        }
++
++        public func read(_ path: String, limit: Int) async throws -> Data {
++            try record("read(\(path))")
++            let data = state.withLock { $0.contents[path] } ?? Data()
++            guard data.count <= limit else {
++                throw ReachySSHError.fileTooLarge(bytes: UInt64(data.count), limit: limit)
++            }
++            return data
++        }
++
++        public func write(_ data: Data, to path: String) async throws {
++            try record("write(\(path))")
++            state.withLock { $0.contents[path] = data }
++        }
++
++        public func makeDirectory(at path: String) async throws {
++            try record("makeDirectory(\(path))")
++            state.withLock {
++                $0.tree[path] = []
++                if let parent = RemoteFile.parent(of: path) {
++                    let name = String(path.split(separator: "/").last ?? "")
++                    $0.tree[parent, default: []].append(
++                        RemoteFile(name: name, path: path, kind: .directory, mode: 0o040755)
++                    )
++                }
++            }
++        }
++
++        public func remove(_ file: RemoteFile) async throws {
++            try record("remove(\(file.path))")
++            state.withLock {
++                $0.contents[file.path] = nil
++                if let parent = RemoteFile.parent(of: file.path) {
++                    $0.tree[parent]?.removeAll { $0.path == file.path }
++                }
++            }
++        }
++
++        public func rename(_ path: String, to newPath: String) async throws {
++            try record("rename(\(path),\(newPath))")
++        }
++
++        private func record(_ call: String) throws {
++            state.withLock { $0.calls.append(call) }
++            if let failure {
++                throw failure
++            }
++        }
++    }
++
++    public extension PreviewFileSystem {
++        /// The directory the incident happened in, which is the one worth having a
++        /// fixture for.
++        static var appPackage: String {
++            "/venvs/apps_venv/lib/python3.12/site-packages/reachy_mini_conversation_app"
++        }
++
++        /// A fixed instant, so a reference image never moves because a day passed.
++        static var previewStamp: Date {
++            Date(timeIntervalSince1970: 1_770_000_000)
++        }
++
++        static func previewFile(_ name: String, in directory: String, size: UInt64, mode: UInt32 = 0o100644)
++            -> RemoteFile
++        {
++            RemoteFile(
++                name: name,
++                path: RemoteFile.joining(directory, name),
++                kind: .file,
++                size: size,
++                modified: previewStamp,
++                mode: mode
++            )
++        }
++
++        static func previewDirectory(_ name: String, in directory: String) -> RemoteFile {
++            RemoteFile(
++                name: name,
++                path: RemoteFile.joining(directory, name),
++                kind: .directory,
++                modified: previewStamp,
++                mode: 0o040755
++            )
++        }
++
++        /// A settled tree: the package directory with a broken personality in it —
++        /// `Test_Ru` in the old four-file format, with no `profile.md`. That is the
++        /// state the whole feature exists for; keep it broken.
++        static func brokenPersonality() -> PreviewFileSystem {
++            let personalities = RemoteFile.joining(appPackage, "user_personalities")
++            let profile = RemoteFile.joining(personalities, "Test_Ru")
++            let settings = RemoteFile.joining(appPackage, "startup_settings.json")
++            return PreviewFileSystem(
++                tree: [
++                    appPackage: [
++                        previewDirectory("user_personalities", in: appPackage),
++                        previewFile(".env", in: appPackage, size: 148, mode: 0o100600),
++                        previewFile("main.py", in: appPackage, size: 9421),
++                        previewFile("startup_settings.json", in: appPackage, size: 64),
++                    ],
++                    personalities: [previewDirectory("Test_Ru", in: personalities)],
++                    profile: [
++                        previewFile("greeting.txt", in: profile, size: 82),
++                        previewFile("instructions.txt", in: profile, size: 1204),
++                        previewFile("tools.txt", in: profile, size: 37),
++                        previewFile("voice.txt", in: profile, size: 12),
++                    ],
++                ],
++                contents: [settings: Data(#"{"profile": "user_personalities/Test_Ru"}"#.utf8)]
++            )
++        }
++    }
++#endif
+
+
+=== DIFF: Sources/ReachySSH/ReachySSHError.swift ===
+@@ -0,0 +1,36 @@
++import Foundation
++
++/// Everything this module can fail with.
++///
++/// No `LocalizedError`: the sentence a user reads is chosen by the screen that
++/// asked, in its own language catalogue, the way `RunningAppCaption` maps a daemon
++/// process state rather than letting the domain carry words.
++public enum ReachySSHError: Error, Equatable, Sendable {
++    case notConnected
++    /// First contact with this robot. Carries the key to show and then pin.
++    case hostKeyUnknown(HostKeyFingerprint)
++    /// A pinned robot answered with a different key. Either the robot was
++    /// reflashed, or something is sitting in the middle.
++    case hostKeyChanged(pinned: HostKeyFingerprint, offered: HostKeyFingerprint)
++    case authenticationFailed
++    case pathNotFound(String)
++    case notPermitted(String)
++    /// `rmdir` on a directory with contents. The server refuses; we do not recurse.
++    case directoryNotEmpty(String)
++    /// A phone must not pull a multi-gigabyte model file into memory to show it.
++    case fileTooLarge(bytes: UInt64, limit: Int)
++    /// Anything the SSH or SFTP layer reported that has no case of its own. The
++    /// string is the server's or the library's, so it stays a `String`.
++    case transport(String)
++    case keychain(OSStatus)
++
++    /// Whether retrying with the same inputs could plausibly succeed. A REDACTED
++    /// REDACTED or a missing path will not fix itself; a dropped channel might.
++    public var isRetryable: Bool {
++        switch self {
++        case .notConnected, .transport: true
++        case .hostKeyUnknown, .hostKeyChanged, .authenticationFailed, .pathNotFound,
++             .notPermitted, .directoryNotEmpty, .fileTooLarge, .keychain: false
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachySSH/RemoteFile.swift ===
+@@ -0,0 +1,108 @@
++import Foundation
++
++/// One entry in a directory on the robot.
++///
++/// Deliberately free of every Citadel type, so a screen, a preview and a test all
++/// speak the same values and only ``SSHFileSystem`` ever sees an SFTP message.
++public struct RemoteFile: Hashable, Sendable, Identifiable {
++    public enum Kind: Hashable, Sendable {
++        case file
++        case directory
++        case symlink
++        /// A socket, a device node, a FIFO. Listed, never opened.
++        case other
++    }
++
++    public var id: String {
++        path
++    }
++
++    public let name: String
++    public let path: String
++    public let kind: Kind
++    public let size: UInt64?
++    public let modified: Date?
++    /// The POSIX mode as the server sent it, for the permissions column.
++    public let mode: UInt32?
++
++    public init(
++        name: String,
++        path: String,
++        kind: Kind,
++        size: UInt64? = nil,
++        modified: Date? = nil,
++        mode: UInt32? = nil
++    ) {
++        self.name = name
++        self.path = path
++        self.kind = kind
++        self.size = size
++        self.modified = modified
++        self.mode = mode
++    }
++
++    public var isDirectory: Bool {
++        kind == .directory
++    }
++
++    /// SFTP carries no field for the kind of thing an entry is: it lives in the
++    /// high bits of the mode, the same `S_IFMT` bits `stat(2)` reports. A server
++    /// that sends no permissions at all leaves only `longname`, whose first
++    /// character is the one from `ls -l`.
++    public static func kind(mode: UInt32?, longname: String) -> Kind {
++        guard let mode else {
++            switch longname.first {
++            case "d": return .directory
++            case "l": return .symlink
++            case "-": return .file
++            default: return .other
++            }
++        }
++        switch mode & 0o170000 {
++        case 0o040000: return .directory
++        case 0o120000: return .symlink
++        case 0o100000: return .file
++        default: return .other
++        }
++    }
++
++    /// `drwxr-xr-x`, built from the mode rather than taken from `longname` — the
++    /// latter is the server's own rendering and varies between implementations.
++    public static func permissionsText(mode: UInt32?, kind: Kind) -> String? {
++        guard let mode else { return nil }
++        let prefix: Character = switch kind {
++        case .directory: "d"
++        case .symlink: "l"
++        case .file: "-"
++        case .other: "?"
++        }
++        let bits = ["r", "w", "x"]
++        var text = String(prefix)
++        for shift in [6, 3, 0] {
++            let triad = (mode >> UInt32(shift)) & 0o7
++            for (index, bit) in bits.enumerated() {
++                text += triad & UInt32(0o4 >> index) != 0 ? bit : "-"
++            }
++        }
++        return text
++    }
++}
++
++public extension RemoteFile {
++    /// Joins a directory to a child name without doubling the separator, which
++    /// `"/"` — the one path where the parent already ends in one — otherwise does.
++    static func joining(_ directory: String, _ name: String) -> String {
++        directory.hasSuffix("/") ? directory + name : directory + "/" + name
++    }
++
++    /// The parent of a path, or nil at the root. Trailing slashes are ignored so
++    /// that `/a/b/` and `/a/b` answer the same thing.
++    static func parent(of path: String) -> String? {
++        var trimmed = path
++        while trimmed.count > 1, trimmed.hasSuffix("/") {
++            trimmed.removeLast()
++        }
++        guard trimmed != "/", let slash = trimmed.lastIndex(of: "/") else { return nil }
++        return slash == trimmed.startIndex ? "/" : String(trimmed[trimmed.startIndex ..< slash])
++    }
++}
+
+
+=== DIFF: Sources/ReachySSH/RobotFileSystem.swift ===
+@@ -0,0 +1,66 @@
++import Foundation
++
++/// Where a robot's files are reached, and the seam a screen is written against.
++///
++/// A protocol rather than the concrete actor so that a preview and a test can hand
++/// a screen a settled directory without a robot, an SSH server or a network — the
++/// same reason `RobotAPIClient` exists one package over.
++public protocol RobotFileSystem: Sendable {
++    /// Opens a session, or throws ``ReachySSHError/hostKeyUnknown(_:)`` when this
++    /// robot's key has never been confirmed. Idempotent: calling it on a live
++    /// session is a no-op rather than a second connection.
++    func connect(_ credentials: SSHCredentials) async throws
++    func disconnect() async
++
++    func list(_ path: String) async throws -> [RemoteFile]
++    /// Reads a whole file, refusing anything over `limit` rather than growing to
++    /// fit it.
++    func read(_ path: String, limit: Int) async throws -> Data
++    /// Creates or truncates. This is also how an edit lands: the file goes to the
++    /// device, an editor there changes it, and it comes back over the same path.
++    func write(_ data: Data, to path: String) async throws
++    func makeDirectory(at path: String) async throws
++    /// Picks `remove` or `rmdir` from the entry's kind, which is why this takes a
++    /// ``RemoteFile`` and not a path.
++    func remove(_ file: RemoteFile) async throws
++    func rename(_ path: String, to newPath: String) async throws
++}
++
++/// The robot's SSH login. Not `Codable` on purpose — the REDACTED belongs in the
++/// Keychain as a value, never in anything with a `write(to:)`.
++public struct SSHCredentials: Hashable, Sendable {
++    public var host: String
++    public var port: Int
++    public var username: String
++    public var REDACTED: String
++
++    /// Reachy Mini Wireless ships with OpenSSH enabled and this account. Offered
++    /// as a prefill and never assumed: a robot whose REDACTED has been changed —
++    /// which the UI should encourage — must still be reachable.
++    public static let defaultUsername = "pollen"
++    public static let defaultPort = 22
++
++    public init(host: String, port: Int = SSHCredentials.defaultPort, username: String, REDACTED: String) {
++        self.host = host
++        self.port = port
++        self.username = username
++        self.REDACTED = REDACTED
++    }
++}
++
++/// Pinned host keys, one per robot.
++///
++/// Keyed by the robot's hardware id rather than by its address (project rule 4): a
++/// robot moves between networks and addresses, and its host key does not.
++public protocol HostKeyStore: Sendable {
++    func pinnedKey(forRobot robot: String) throws -> String?
++    func pin(_ openSSHPublicKey: String, forRobot robot: String) throws
++    func forget(robot: String) throws
++}
++
++/// Saved REDACTEDs, one per robot, under the same key as the pinned host key.
++public protocol SSHCredentialStore: Sendable {
++    func credentials(forRobot robot: String) throws -> SSHCredentials?
++    func save(_ credentials: SSHCredentials, forRobot robot: String) throws
++    func clear(robot: String) throws
++}
+
+
+=== DIFF: Sources/ReachySSH/SSHFileSystem.swift ===
+@@ -0,0 +1,260 @@
++import Citadel
++import Foundation
++import NIOCore
++import NIOPosix
++import NIOSSH
++import Synchronization
++
++/// Citadel marks the `SFTPClient` it hands out `Sendable` but not the `SSHClient`
++/// that opened it, though both are driven through the same NIO `Channel`. Without
++/// this, an `SSHClient` built inside an `async` function is task-isolated and cannot
++/// be stored *at all*: an actor property fails with "sending 'client' risks causing
++/// data races", `nonisolated(unsafe)` does not help because the diagnostic lands on
++/// the local, and a `Mutex<SSHClient?>` fails with "'inout sending' parameter cannot
++/// be task-isolated". Should Citadel ever declare the conformance itself, this line
++/// becomes a duplicate-conformance build error — loud, and a one-line fix.
++extension SSHClient: @retroactive @unchecked Sendable {}
++
++/// SFTP to one robot.
++///
++/// An `actor` because a session is a single conversation: SFTP replies are matched
++/// to requests by id inside Citadel, and serialising our own calls keeps "open the
++/// subsystem once" honest without a second lock.
++public actor SSHFileSystem: RobotFileSystem {
++    /// The robot's stable identity, which keys both Keychain items. Never an
++    /// address (project rule 4).
++    private let robot: String
++    private let hostKeys: any HostKeyStore
++    private var client: SSHClient?
++    /// Opened once per connection and reused. `openSFTP()` costs a child channel
++    /// and a round trip, and logs a warning of its own about too many handles.
++    private var sftp: SFTPClient?
++
++    public init(robot: String, hostKeys: any HostKeyStore = KeychainHostKeyStore()) {
++        self.robot = robot
++        self.hostKeys = hostKeys
++    }
++
++    // MARK: - Session
++
++    public func connect(_ credentials: SSHCredentials) async throws {
++        if sftp != nil {
++            return
++        }
++
++        let pinned = try hostKeys.pinnedKey(forRobot: robot).flatMap(HostKeyFingerprint.init(openSSHPublicKey:))
++        let validator = TOFUHostKeyValidator(pinned: pinned)
++
++        let opened: SSHClient
++        do {
++            opened = try await SSHClient.connect(
++                host: credentials.host,
++                port: credentials.port,
++                authenticationMethod: .REDACTEDBased(
++                    username: credentials.username,
++                    REDACTED: credentials.REDACTED
++                ),
++                hostKeyValidator: .custom(validator),
++                reconnect: .never,
++                // The process-wide group. Citadel's default builds a fresh
++                // single-thread group per connection and `close()` never shuts one
++                // down, so every reconnect on a flaky LAN would leak a thread.
++                group: MultiThreadedEventLoopGroup.singleton
++            )
++        } catch {
++            throw Self.mapConnectFailure(error, validator: validator)
++        }
++
++        do {
++            sftp = try await opened.openSFTP()
++            client = opened
++        } catch {
++            try? await opened.close()
++            throw Self.map(error)
++        }
++    }
++
++    public func disconnect() async {
++        try? await sftp?.close()
++        try? await client?.close()
++        sftp = nil
++        client = nil
++    }
++
++    /// Accepts the key the last ``connect(_:)`` was offered, so the next one
++    /// succeeds. Separate from `connect` because only a person can do this.
++    public func trustOfferedHostKey(_ fingerprint: HostKeyFingerprint) throws {
++        try hostKeys.pin(fingerprint.openSSHPublicKey, forRobot: robot)
++    }
++
++    // MARK: - Files
++
++    public func list(_ path: String) async throws -> [RemoteFile] {
++        let sftp = try session()
++        let names = try await perform { try await sftp.listDirectory(atPath: path) }
++        return names.flatMap(\.components)
++            // The server lists these and a file browser has no use for them; the
++            // parent is reached by the breadcrumb, not by a row.
++            .filter { $0.filename != "." && $0.filename != ".." }
++            .map { component in
++                let mode = component.attributes.permissions
++                return RemoteFile(
++                    name: component.filename,
++                    path: RemoteFile.joining(path, component.filename),
++                    kind: RemoteFile.kind(mode: mode, longname: component.longname),
++                    size: component.attributes.size,
++                    modified: component.attributes.accessModificationTime?.modificationTime,
++                    mode: mode
++                )
++            }
++    }
++
++    public func read(_ path: String, limit: Int) async throws -> Data {
++        let sftp = try session()
++        // Asked before opening, so a model file answers `.fileTooLarge` instead of
++        // being pulled into a phone's memory to find out.
++        let attributes = try await perform { try await sftp.getAttributes(at: path) }
++        if let size = attributes.size, size > UInt64(limit) {
++            throw ReachySSHError.fileTooLarge(bytes: size, limit: limit)
++        }
++        return try await perform {
++            try await sftp.withFile(filePath: path, flags: .read) { file in
++                try await Data(file.readAll().readableBytesView)
++            }
++        }
++    }
++
++    public func write(_ data: Data, to path: String) async throws {
++        let sftp = try session()
++        try await perform {
++            try await sftp.withFile(filePath: path, flags: [.write, .create, .truncate]) { file in
++                try await file.write(ByteBuffer(bytes: data), at: 0)
++            }
++        }
++    }
++
++    public func makeDirectory(at path: String) async throws {
++        let sftp = try session()
++        try await perform { try await sftp.createDirectory(atPath: path) }
++    }
++
++    public func remove(_ file: RemoteFile) async throws {
++        let sftp = try session()
++        try await perform {
++            if file.isDirectory {
++                // `rmdir` refuses a directory with contents, which is the guard we
++                // want: nothing here recurses.
++                try await sftp.rmdir(at: file.path)
++            } else {
++                try await sftp.remove(at: file.path)
++            }
++        }
++    }
++
++    public func rename(_ path: String, to newPath: String) async throws {
++        let sftp = try session()
++        try await perform { try await sftp.rename(at: path, to: newPath) }
++    }
++
++    // MARK: - Plumbing
++
++    private func session() throws -> SFTPClient {
++        guard let sftp else { throw ReachySSHError.notConnected }
++        return sftp
++    }
++
++    /// Runs one SFTP call and translates whatever it threw. Cancellation is
++    /// rethrown untouched: an abandoned listing is not a failure, and the screen
++    /// filters it out rather than painting it.
++    private func perform<T>(_ body: () async throws -> T) async throws -> T {
++        do {
++            return try await body()
++        } catch is CancellationError {
++            throw CancellationError()
++        } catch {
++            throw Self.map(error)
++        }
++    }
++
++    private static func mapConnectFailure(
++        _ error: any Error,
++        validator: TOFUHostKeyValidator
++    ) -> any Error {
++        // The handshake fails with whatever the delegate put in the promise, but
++        // NIO wraps it on the way out, so the validator's own record — not the
++        // thrown value — is what says which case this is.
++        guard let offered = validator.offered else { return map(error) }
++        if let pinned = validator.pinned, pinned != offered {
++            return ReachySSHError.hostKeyChanged(pinned: pinned, offered: offered)
++        }
++        if validator.pinned == nil {
++            return ReachySSHError.hostKeyUnknown(offered)
++        }
++        return map(error)
++    }
++
++    private static func map(_ error: any Error) -> any Error {
++        switch error {
++        case let error as ReachySSHError:
++            return error
++        case let error as SFTPError:
++            guard case let .errorStatus(status) = error else {
++                return ReachySSHError.transport(String(describing: error))
++            }
++            switch status.errorCode {
++            case .noSuchFile: return ReachySSHError.pathNotFound(status.message)
++            case .permissionDenied: return ReachySSHError.notPermitted(status.message)
++            // The spec has no "not empty" code; OpenSSH answers a plain failure and
++            // says so only in the message, so that is what has to be read.
++            case .failure where status.message.lowercased().contains("not empty"):
++                return ReachySSHError.directoryNotEmpty(status.message)
++            default: return ReachySSHError.transport(status.message)
++            }
++        case CitadelError.unauthorized:
++            return ReachySSHError.authenticationFailed
++        default:
++            return ReachySSHError.transport(error.localizedDescription)
++        }
++    }
++}
++
++/// Trust on first use, decided synchronously because it has to be.
++///
++/// `validateHostKey` hands back an `EventLoopPromise` that must be resolved during
++/// the handshake — there is no way to suspend it while a person looks at a
++/// fingerprint. So an unpinned key is *recorded and refused*: the screen shows what
++/// it saw, the user accepts, the key is pinned, and the next connection succeeds.
++/// Two connections, and the decision stays testable without bridging a promise.
++/// Citadel's own `InvalidHostKey` is public but its initialiser is not, so the
++/// refusal needs a type of its own. Nothing reads it: the validator's record is
++/// what `mapConnectFailure` interprets, because NIO wraps whatever goes into the
++/// promise on the way back out.
++private struct HostKeyRefused: Error {}
++
++final class TOFUHostKeyValidator: NIOSSHClientServerAuthenticationDelegate, Sendable {
++    let pinned: HostKeyFingerprint?
++    /// Written on an event-loop thread and read from the actor afterwards.
++    private let record = Mutex<HostKeyFingerprint?>(nil)
++
++    var offered: HostKeyFingerprint? {
++        record.withLock { $0 }
++    }
++
++    init(pinned: HostKeyFingerprint?) {
++        self.pinned = pinned
++    }
++
++    func validateHostKey(hostKey: NIOSSHPublicKey, validationCompletePromise: EventLoopPromise<Void>) {
++        let offered = HostKeyFingerprint(openSSHPublicKey: String(openSSHPublicKey: hostKey))
++        record.withLock { $0 = offered }
++        guard let pinned, let offered else {
++            validationCompletePromise.fail(HostKeyRefused())
++            return
++        }
++        if pinned.openSSHPublicKey == offered.openSSHPublicKey {
++            validationCompletePromise.succeed(())
++        } else {
++            validationCompletePromise.fail(HostKeyRefused())
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Files/RemoteFileRow.swift ===
+@@ -0,0 +1,60 @@
++import ReachyDesign
++import ReachySSH
++import SwiftUI
++
++/// One entry in the robot's file listing.
++struct RemoteFileRow: View {
++    let file: RemoteFile
++
++    var body: some View {
++        HStack(spacing: Space.md) {
++            Image(systemName: symbol)
++                .foregroundStyle(file.isDirectory ? AnyShapeStyle(.tint) : Tone.quiet.style)
++                .frame(width: Space.xl)
++            VStack(alignment: .leading, spacing: Space.xxs) {
++                Text(file.name)
++                    .font(Typography.rowTitleCompact)
++                    .lineLimit(1)
++                    .truncationMode(.middle)
++                if let detail {
++                    Text(detail)
++                        .font(Typography.status)
++                        .foregroundStyle(.secondary)
++                }
++            }
++            Spacer(minLength: 0)
++            if file.isDirectory {
++                // The mirroring glyph, not `chevron.right`: a right-to-left
++                // language needs no second pass.
++                Image(systemName: "chevron.forward")
++                    .font(Typography.status)
++                    .foregroundStyle(.tertiary)
++            }
++        }
++    }
++
++    private var symbol: String {
++        switch file.kind {
++        case .directory: "folder"
++        case .symlink: "arrow.turn.down.right"
++        case .other: "questionmark.square.dashed"
++        case .file: "doc"
++        }
++    }
++
++    /// Size, permissions and date on one line, in that order, and each of them
++    /// optional: SFTP is free to omit every one.
++    private var detail: String? {
++        var parts: [String] = []
++        if !file.isDirectory, let size = file.size {
++            parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
++        }
++        if let permissions = RemoteFile.permissionsText(mode: file.mode, kind: file.kind) {
++            parts.append(permissions)
++        }
++        if let modified = file.modified {
++            parts.append(modified.formatted(date: .abbreviated, time: .shortened))
++        }
++        return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Files/RobotFilesModel.swift ===
+@@ -0,0 +1,386 @@
++import Foundation
++import Observation
++import ReachyDesign
++import ReachySSH
++
++/// Browsing the robot's own file system over SFTP.
++///
++/// The screen is thin and this is where the interesting parts live: the two-step
++/// host key trust, and the fact that a failure here is *not* a daemon failure and
++/// so cannot go through `recordDaemonFailure`.
++@MainActor
++@Observable
++final class RobotFilesModel {
++    /// A phone must not pull a multi-gigabyte model file into memory to hand it to
++    /// a document picker.
++    static let readLimit = 8 * 1024 * 1024
++
++    /// Where the session is, as opposed to what a single operation did.
++    enum Phase: Equatable {
++        /// Nothing asked yet.
++        case idle
++        /// No REDACTED stored for this robot, or the stored one was refused.
++        case needsPassword
++        /// First contact. The user has to see this key before it is pinned.
++        case confirmHostKey(HostKeyFingerprint)
++        /// A pinned robot answered with a different key. Never auto-accepted.
++        case hostKeyChanged(pinned: HostKeyFingerprint, offered: HostKeyFingerprint)
++        case connecting
++        case browsing
++        case failed(String)
++    }
++
++    /// A destructive action waiting for a confirmation dialog.
++    enum Confirmation: Equatable, Identifiable {
++        case delete(RemoteFile)
++
++        var id: String {
++            switch self {
++            case let .delete(file): "delete-\(file.path)"
++            }
++        }
++    }
++
++    private let files: any RobotFileSystem
++    private let credentials: any SSHCredentialStore
++    private let robot: String
++    private let host: String
++    private let port: Int
++
++    private(set) var phase: Phase = .idle
++    private(set) var path: String
++    private(set) var entries: [RemoteFile] = []
++    /// A listing in flight over rows already on screen. Distinct from `.connecting`
++    /// so a refresh keeps what is there instead of blanking it.
++    private(set) var isLoading = false
++    /// Never answered yet, as opposed to answered with nothing — without this the
++    /// first frame would claim an empty directory before anything was asked.
++    private(set) var hasListed = false
++    private(set) var lastError: String?
++    /// The operation the screen is showing progress for, if any.
++    private(set) var transferring: String?
++
++    /// The REDACTED field. Not `private(set)`: the sheet binds to it.
++    var username: String
++    var REDACTED: String
++    var confirming: Confirmation?
++
++    init(
++        files: any RobotFileSystem,
++        credentials: any SSHCredentialStore = KeychainSSHCredentialStore(),
++        robot: String,
++        host: String,
++        port: Int = SSHCredentials.defaultPort,
++        path: String = "/"
++    ) {
++        self.files = files
++        self.credentials = credentials
++        self.robot = robot
++        self.host = host
++        self.port = port
++        self.path = path
++        let stored = try? credentials.credentials(forRobot: robot)
++        username = stored?.username ?? SSHCredentials.defaultUsername
++        REDACTED = stored?.REDACTED ?? ""
++    }
++
++    // MARK: - Places worth a shortcut
++
++    /// The directory the 2026-08-07 incident lived in. A bookmark rather than a
++    /// jail: the audience is advanced users, and a path jail is code that can only
++    /// ever be REDACTED about what someone needs to reach.
++    static let appsSitePackages = "/venvs/apps_venv/lib/python3.12/site-packages"
++    static let home = "/home/pollen"
++
++    // MARK: - Session
++
++    /// Opens the session if it is not open, using whatever REDACTED is in hand.
++    /// Safe to call from `.task` — a second call while browsing does nothing.
++    func start() async {
++        guard phase == .idle || phase == .needsPassword else { return }
++        guard !REDACTED.isEmpty else {
++            phase = .needsPassword
++            return
++        }
++        await connect()
++    }
++
++    func connect() async {
++        phase = .connecting
++        lastError = nil
++        do {
++            try await files.connect(
++                SSHCredentials(host: host, port: port, username: username, REDACTED: REDACTED)
++            )
++            try? credentials.save(
++                SSHCredentials(host: host, port: port, username: username, REDACTED: REDACTED),
++                forRobot: robot
++            )
++            phase = .browsing
++            await refresh()
++        } catch let error as ReachySSHError {
++            switch error {
++            case let .hostKeyUnknown(fingerprint):
++                phase = .confirmHostKey(fingerprint)
++            case let .hostKeyChanged(pinned, offered):
++                phase = .hostKeyChanged(pinned: pinned, offered: offered)
++            case .authenticationFailed:
++                // Back to the field rather than to a dead end, and the stored
++                // REDACTED goes: keeping a refused one means the next visit
++                // fails the same way with nothing to show for it.
++                try? credentials.clear(robot: robot)
++                phase = .needsPassword
++                lastError = String(localized: .reachy("That REDACTED was refused by the robot."))
++            default:
++                phase = .failed(Self.describe(error))
++            }
++        } catch {
++            phase = .failed(Self.describe(error))
++        }
++    }
++
++    /// Accepts the offered key and connects again. Only reachable from a screen
++    /// that showed the fingerprint.
++    func trustOfferedKey() async {
++        let offered: HostKeyFingerprint? = switch phase {
++        case let .confirmHostKey(fingerprint): fingerprint
++        case let .hostKeyChanged(_, offered): offered
++        default: nil
++        }
++        guard let offered, let files = files as? SSHFileSystem else {
++            // A stub file system has no key to pin; treat acceptance as a retry so
++            // previews and tests can drive the same button.
++            await connect()
++            return
++        }
++        do {
++            try await files.trustOfferedHostKey(offered)
++        } catch {
++            phase = .failed(Self.describe(error))
++            return
++        }
++        await connect()
++    }
++
++    func disconnect() async {
++        await files.disconnect()
++        phase = .idle
++        entries = []
++        hasListed = false
++    }
++
++    // MARK: - Browsing
++
++    func refresh() async {
++        guard phase == .browsing else { return }
++        isLoading = true
++        defer { isLoading = false }
++        do {
++            entries = try await files.list(path).sorted(by: Self.ordered)
++            hasListed = true
++            lastError = nil
++        } catch is CancellationError {
++            // Leaving the screen mid-listing learned nothing: it may neither report
++            // a failure nor clear one still being read.
++        } catch {
++            report(error)
++        }
++    }
++
++    func open(_ file: RemoteFile) async {
++        guard file.isDirectory else { return }
++        await go(to: file.path)
++    }
++
++    func go(to newPath: String) async {
++        path = newPath
++        entries = []
++        hasListed = false
++        await refresh()
++    }
++
++    func goUp() async {
++        guard let parent = RemoteFile.parent(of: path) else { return }
++        await go(to: parent)
++    }
++
++    var canGoUp: Bool {
++        RemoteFile.parent(of: path) != nil
++    }
++
++    /// Deepest first, so the trail reads left to right.
++    var breadcrumb: [(name: String, path: String)] {
++        var trail = [(name: "/", path: "/")]
++        var walked = ""
++        for component in path.split(separator: "/") {
++            walked += "/" + component
++            trail.append((name: String(component), path: walked))
++        }
++        return trail
++    }
++
++    // MARK: - Changing things
++
++    /// Reads a file so the screen can hand it to a document picker.
++    func contents(of file: RemoteFile) async -> Data? {
++        transferring = file.name
++        defer { transferring = nil }
++        do {
++            return try await files.read(file.path, limit: Self.readLimit)
++        } catch {
++            report(error)
++            return nil
++        }
++    }
++
++    /// Writes to an explicit path. This is both "add a file here" and "replace this
++    /// one": without an in-app editor, replacing over the same path is how an edit
++    /// made on the device lands back on the robot.
++    func upload(_ data: Data, to destination: String) async {
++        transferring = (destination as NSString).lastPathComponent
++        defer { transferring = nil }
++        do {
++            try await files.write(data, to: destination)
++            await refresh()
++        } catch {
++            report(error)
++        }
++    }
++
++    func makeDirectory(named name: String) async {
++        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !trimmed.isEmpty else { return }
++        do {
++            try await files.makeDirectory(at: RemoteFile.joining(path, trimmed))
++            await refresh()
++        } catch {
++            report(error)
++        }
++    }
++
++    func rename(_ file: RemoteFile, to name: String) async {
++        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !trimmed.isEmpty, trimmed != file.name else { return }
++        do {
++            try await files.rename(file.path, to: RemoteFile.joining(path, trimmed))
++            await refresh()
++        } catch {
++            report(error)
++        }
++    }
++
++    func delete(_ file: RemoteFile) async {
++        do {
++            try await files.remove(file)
++            await refresh()
++        } catch {
++            report(error)
++        }
++    }
++
++    /// The destination an upload into the current directory would take.
++    func destination(forFileNamed name: String) -> String {
++        RemoteFile.joining(path, name)
++    }
++
++    // MARK: - Errors
++
++    private func report(_ error: any Error) {
++        if error is CancellationError {
++            return
++        }
++        lastError = Self.describe(error)
++    }
++
++    /// Its own wording rather than `recordDaemonFailure`, for the reason
++    /// `OnboardingModel` and `HFSignInModel` keep theirs: none of this is a daemon
++    /// call, so `RobotSession.message(for:)` has nothing to say about it.
++    static func describe(_ error: any Error) -> String {
++        guard let error = error as? ReachySSHError else {
++            return error.localizedDescription
++        }
++        switch error {
++        case .notConnected:
++            return String(localized: .reachy("Not connected to the robot."))
++        case .authenticationFailed:
++            return String(localized: .reachy("That REDACTED was refused by the robot."))
++        case let .pathNotFound(detail):
++            return String(localized: .reachy("No such file or folder. \(detail)"))
++        case let .notPermitted(detail):
++            return String(localized: .reachy("The robot refused permission. \(detail)"))
++        case .directoryNotEmpty:
++            return String(localized: .reachy("That folder is not empty. Empty it first."))
++        case let .fileTooLarge(bytes, limit):
++            let size = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
++            let cap = ByteCountFormatter.string(fromByteCount: Int64(limit), countStyle: .file)
++            return String(localized: .reachy("That file is \(size). This screen opens files up to \(cap)."))
++        case .hostKeyUnknown, .hostKeyChanged:
++            return String(localized: .reachy("The robot's identity key needs to be confirmed."))
++        case let .keychain(status):
++            return String(localized: .reachy("The keychain refused to store the REDACTED (\(status))."))
++        case let .transport(detail):
++            // The robot's or the library's own words, which is why this stays a
++            // runtime string rather than becoming a catalogue entry.
++            return detail
++        }
++    }
++
++    /// Directories first, then case-insensitive by name — the order every file
++    /// manager uses, and the one that puts `user_personalities/` above the noise.
++    private static func ordered(_ lhs: RemoteFile, _ rhs: RemoteFile) -> Bool {
++        if lhs.isDirectory != rhs.isDirectory {
++            return lhs.isDirectory
++        }
++        return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
++    }
++}
++
++#if DEBUG
++    extension RobotFilesModel {
++        /// In the model's own file rather than in `Previews/`, because it writes
++        /// `private(set)` members that `@testable` does not reach.
++        static func preview(
++            files: any RobotFileSystem = PreviewFileSystem.brokenPersonality(),
++            phase: Phase = .browsing,
++            path: String = PreviewFileSystem.appPackage,
++            entries: [RemoteFile] = [],
++            isLoading: Bool = false,
++            hasListed: Bool = true,
++            error: String? = nil,
++            transferring: String? = nil,
++            REDACTED: String = "root"
++        ) -> RobotFilesModel {
++            let model = RobotFilesModel(
++                files: files,
++                credentials: EphemeralCredentialStore(),
++                robot: "preview",
++                host: "reachy-mini.local",
++                path: path
++            )
++            model.phase = phase
++            model.entries = entries
++            model.isLoading = isLoading
++            model.hasListed = hasListed
++            model.lastError = error
++            model.transferring = transferring
++            model.REDACTED = REDACTED
++            return model
++        }
++
++        /// The directory listing the fixture holds, sorted the way the screen shows
++        /// it — so a preview is final on its first frame without a `.task`.
++        static func previewEntries(at path: String = PreviewFileSystem.appPackage) -> [RemoteFile] {
++            PreviewFileSystem.brokenPersonality().entries(at: path).sorted(by: ordered)
++        }
++    }
++
++    /// Keeps a preview's REDACTED out of the real Keychain.
++    struct EphemeralCredentialStore: SSHCredentialStore {
++        func credentials(forRobot _: String) throws -> SSHCredentials? {
++            nil
++        }
++
++        func save(_: SSHCredentials, forRobot _: String) throws {}
++        func clear(robot _: String) throws {}
++    }
++#endif
+
+
+=== DIFF: Sources/ReachyUI/Files/RobotFilesScreen.swift ===
+@@ -0,0 +1,358 @@
++import ReachyDesign
++import ReachySSH
++import SwiftUI
++import UniformTypeIdentifiers
++
++/// The robot's own file system, over SFTP.
++///
++/// The one screen in this app that reaches the robot without the daemon, because
++/// the daemon has no route for it: nothing in its 77 paths writes an arbitrary
++/// file. That is also the whole of its remit — no motion, no media, no service
++/// commands (project rule 2 and `ReachySSH/AGENTS.md`).
++///
++/// Editing is deliberately not here. A file goes to the device, an editor there
++/// changes it, and it comes back over the same path — which is why the row menu
++/// offers Replace as well as Download.
++struct RobotFilesScreen: View {
++    @State private var model: RobotFilesModel
++    @State private var exported: RemoteFileDocument?
++    @State private var exportName = ""
++    @State private var isImporting = false
++    /// Set when Replace was chosen on a row, so the import lands on that path
++    /// instead of on a new name in the current directory.
++    @State private var replacing: RemoteFile?
++    @State private var newFolderName = ""
++    @State private var isNamingFolder = false
++    @State private var renaming: RemoteFile?
++    @State private var renameDraft = ""
++    @Environment(\.reachyPreviewMode) private var previewMode
++
++    init(model: RobotFilesModel) {
++        _model = State(initialValue: model)
++    }
++
++    var body: some View {
++        content
++            .navigationTitle(.reachy("Files"))
++            .task {
++                // A frozen preview must not open a socket.
++                guard !previewMode else { return }
++                await model.start()
++            }
++    }
++
++    @ViewBuilder
++    private var content: some View {
++        switch model.phase {
++        case .idle, .connecting:
++            Color.clear
++                .contentLoading(isPresented: true, title: .reachy("Connecting over SSH…"))
++        case .needsPassword:
++            SSHPasswordForm(model: model) { Task { await model.connect() } }
++        case let .confirmHostKey(fingerprint):
++            HostKeyConfirmation(situation: .firstContact(fingerprint)) {
++                Task { await model.trustOfferedKey() }
++            }
++        case let .hostKeyChanged(pinned, offered):
++            HostKeyConfirmation(situation: .changed(pinned: pinned, offered: offered)) {
++                Task { await model.trustOfferedKey() }
++            }
++        case let .failed(reason):
++            ContentUnavailableView {
++                Label(.reachy("Cannot reach the robot's files"), systemImage: "folder.badge.questionmark")
++            } description: {
++                Text(reason)
++            } actions: {
++                Button(.reachy("Try again")) { Task { await model.connect() } }
++            }
++        case .browsing:
++            listing
++        }
++    }
++
++    // MARK: - Browsing
++
++    private var listing: some View {
++        List {
++            if let error = model.lastError {
++                Section {
++                    Text(error)
++                        .font(Typography.detail)
++                        .foregroundStyle(Tone.danger.style)
++                }
++            }
++            placesSection
++            Section {
++                ForEach(model.entries) { file in
++                    row(for: file)
++                }
++            } header: {
++                Text(model.path)
++                    .font(Typography.consoleLine)
++                    .textCase(nil)
++            }
++        }
++        .overlay {
++            if model.hasListed, model.entries.isEmpty, model.lastError == nil {
++                ContentUnavailableView {
++                    Label(.reachy("Nothing here"), systemImage: "folder")
++                } description: {
++                    Text(.reachy("This folder is empty."))
++                }
++            }
++        }
++        .contentLoading(isPresented: !model.hasListed, title: .reachy("Reading the folder…"))
++        .refreshable { await model.refresh() }
++        .toolbar { toolbarContent }
++        .modifier(FileTransferModifier(
++            model: model,
++            exported: $exported,
++            exportName: $exportName,
++            isImporting: $isImporting,
++            replacing: $replacing
++        ))
++        .alert(.reachy("New folder"), isPresented: $isNamingFolder) {
++            TextField(.reachy("Name"), text: $newFolderName)
++            Button(.reachy("Cancel"), role: .cancel) { newFolderName = "" }
++            Button(.reachy("Create")) {
++                let name = newFolderName
++                newFolderName = ""
++                Task { await model.makeDirectory(named: name) }
++            }
++        }
++        .alert(.reachy("Rename"), isPresented: renameBinding) {
++            TextField(.reachy("Name"), text: $renameDraft)
++            Button(.reachy("Cancel"), role: .cancel) { renaming = nil }
++            Button(.reachy("Rename")) {
++                if let file = renaming {
++                    let name = renameDraft
++                    Task { await model.rename(file, to: name) }
++                }
++                renaming = nil
++            }
++        }
++        .confirmationDialog(
++            .reachy("Delete from the robot?"),
++            isPresented: confirmingBinding,
++            titleVisibility: .visible
++        ) {
++            if case let .delete(file) = model.confirming {
++                Button(.reachy("Delete"), role: .destructive) {
++                    model.confirming = nil
++                    Task { await model.delete(file) }
++                }
++            }
++            Button(.reachy("Cancel"), role: .cancel) { model.confirming = nil }
++        } message: {
++            Text(.reachy("This cannot be undone from here. Download a copy first if you might need it."))
++        }
++    }
++
++    /// Shortcuts, not a jail: the root stays reachable. The middle one is the
++    /// directory a broken app's instance data lives in, which is why this screen
++    /// exists at all.
++    private var placesSection: some View {
++        Section {
++            ForEach(places) { place in
++                Button {
++                    Task { await model.go(to: place.path) }
++                } label: {
++                    Label(place.title, systemImage: place.symbol)
++                }
++                .disabled(model.path == place.path)
++            }
++        } header: {
++            Text(.reachy("Places"))
++        }
++    }
++
++    private var places: [Place] {
++        [
++            Place(title: .reachy("Root"), symbol: "externaldrive", path: "/"),
++            Place(title: .reachy("Installed apps"), symbol: "shippingbox", path: RobotFilesModel.appsSitePackages),
++            Place(title: .reachy("Home"), symbol: "house", path: RobotFilesModel.home),
++        ]
++    }
++
++    /// A named type rather than a tuple: three members trip SwiftLint's
++    /// `large_tuple`, and a shortcut is worth a name anyway.
++    private struct Place: Identifiable {
++        let title: LocalizedStringResource
++        let symbol: String
++        let path: String
++
++        var id: String {
++            path
++        }
++    }
++
++    @ViewBuilder
++    private func row(for file: RemoteFile) -> some View {
++        if file.isDirectory {
++            Button {
++                Task { await model.open(file) }
++            } label: {
++                RemoteFileRow(file: file)
++            }
++            .buttonStyle(.plain)
++            .contextMenu { menu(for: file) }
++        } else {
++            RemoteFileRow(file: file)
++                .contextMenu { menu(for: file) }
++        }
++    }
++
++    @ViewBuilder
++    private func menu(for file: RemoteFile) -> some View {
++        if !file.isDirectory {
++            Button {
++                Task {
++                    guard let data = await model.contents(of: file) else { return }
++                    exportName = file.name
++                    exported = RemoteFileDocument(data: data)
++                }
++            } label: {
++                Label(.reachy("Download"), systemImage: "arrow.down.circle")
++            }
++            Button {
++                replacing = file
++                isImporting = true
++            } label: {
++                Label(.reachy("Replace…"), systemImage: "arrow.up.circle")
++            }
++        }
++        Button {
++            renameDraft = file.name
++            renaming = file
++        } label: {
++            Label(.reachy("Rename"), systemImage: "pencil")
++        }
++        Button(role: .destructive) {
++            model.confirming = .delete(file)
++        } label: {
++            Label(.reachy("Delete"), systemImage: "trash")
++        }
++    }
++
++    @ToolbarContentBuilder
++    private var toolbarContent: some ToolbarContent {
++        ToolbarItem(placement: .primaryAction) {
++            Menu {
++                Button {
++                    replacing = nil
++                    isImporting = true
++                } label: {
++                    Label(.reachy("Upload a file…"), systemImage: "arrow.up.doc")
++                }
++                Button {
++                    isNamingFolder = true
++                } label: {
++                    Label(.reachy("New folder"), systemImage: "folder.badge.plus")
++                }
++                Divider()
++                Button {
++                    Task { await model.disconnect() }
++                } label: {
++                    Label(.reachy("Disconnect"), systemImage: "xmark.circle")
++                }
++            } label: {
++                Label(.reachy("Actions"), systemImage: "ellipsis.circle")
++            }
++        }
++        if model.canGoUp {
++            ToolbarItem(placement: .navigation) {
++                Button {
++                    Task { await model.goUp() }
++                } label: {
++                    Label(.reachy("Enclosing folder"), systemImage: "chevron.up")
++                }
++            }
++        }
++    }
++
++    private var renameBinding: Binding<Bool> {
++        Binding(get: { renaming != nil }, set: {
++            if !$0 {
++                renaming = nil
++            }
++        })
++    }
++
++    private var confirmingBinding: Binding<Bool> {
++        Binding(get: { model.confirming != nil }, set: {
++            if !$0 {
++                model.confirming = nil
++            }
++        })
++    }
++}
++
++/// The two document-picker flows, lifted out of the list so its body stays one
++/// screenful.
++private struct FileTransferModifier: ViewModifier {
++    let model: RobotFilesModel
++    @Binding var exported: RemoteFileDocument?
++    @Binding var exportName: String
++    @Binding var isImporting: Bool
++    @Binding var replacing: RemoteFile?
++
++    func body(content: Content) -> some View {
++        content
++            .fileExporter(
++                isPresented: Binding(get: { exported != nil }, set: {
++                    if !$0 {
++                        exported = nil
++                    }
++                }),
++                document: exported,
++                contentType: .data,
++                defaultFilename: exportName
++            ) { _ in
++                exported = nil
++            }
++            .fileImporter(isPresented: $isImporting, allowedContentTypes: [.data]) { result in
++                guard case let .success(url) = result else {
++                    replacing = nil
++                    return
++                }
++                // The destination is the replaced file's own path, or the picked
++                // name inside the current directory.
++                let destination = replacing?.path ?? model.destination(forFileNamed: url.lastPathComponent)
++                replacing = nil
++                // A picked URL is security-scoped on iOS, and reading it without
++                // the scope silently yields nothing.
++                let scoped = url.startAccessingSecurityScopedResource()
++                let data = try? Data(contentsOf: url)
++                if scoped {
++                    url.stopAccessingSecurityScopedResource()
++                }
++                guard let data else { return }
++                Task { await model.upload(data, to: destination) }
++            }
++            .contentLoading(
++                isPresented: model.transferring != nil,
++                title: .reachy("Transferring…")
++            )
++    }
++}
++
++/// Carries the bytes a download produced to the system export panel.
++struct RemoteFileDocument: FileDocument {
++    static var readableContentTypes: [UTType] {
++        [.data]
++    }
++
++    var data: Data
++
++    init(data: Data) {
++        self.data = data
++    }
++
++    init(configuration: ReadConfiguration) throws {
++        data = configuration.file.regularFileContents ?? Data()
++    }
++
++    func fileWrapper(configuration _: WriteConfiguration) throws -> FileWrapper {
++        FileWrapper(regularFileWithContents: data)
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Files/SSHAccessViews.swift ===
+@@ -0,0 +1,131 @@
++import ReachyDesign
++import ReachySSH
++import SwiftUI
++
++/// Asks for the robot's SSH REDACTED.
++///
++/// Inline rather than a sheet: the screen has nothing to show behind it, and a
++/// model built inside a `.sheet` content closure is silently replaced every time
++/// the parent updates — the trap `RootSheets` documents.
++struct SSHPasswordForm: View {
++    @Bindable var model: RobotFilesModel
++    let onConnect: () -> Void
++
++    var body: some View {
++        Form {
++            Section {
++                TextField(.reachy("User"), text: $model.username)
++                    .textContentType(.username)
++                    .autocorrectionDisabled()
++                #if os(iOS)
++                    .textInputAutocapitalization(.never)
++                #endif
++                SecureField(.reachy("Password"), text: $model.REDACTED)
++                    .textContentType(.REDACTED)
++                    .onSubmit(onConnect)
++            } header: {
++                Text(.reachy("Sign in to the robot"))
++            } footer: {
++                Text(.reachy(
++                    // The comment sits inside the parentheses on purpose: swiftformat
++                    // moves `.reachy(` onto a line of its own, and a disable placed
++                    // above that call then points at the REDACTED line.
++                    // swiftlint:disable:next line_length
++                    "A Reachy Mini Wireless ships with user pollen and REDACTED root. Change it on the robot — anyone on this network can reach it."
++                ))
++            }
++
++            if let error = model.lastError {
++                Section {
++                    Text(error)
++                        .font(Typography.detail)
++                        .foregroundStyle(Tone.danger.style)
++                }
++            }
++
++            Section {
++                Button(.reachy("Connect"), action: onConnect)
++                    .disabled(model.REDACTED.isEmpty || model.username.isEmpty)
++            }
++        }
++        .formStyle(.grouped)
++    }
++}
++
++/// Trust on first use, and the far more serious case of a key that changed.
++///
++/// One view for both because the fingerprint block is the same and the difference
++/// is entirely in what the screen is willing to say about it.
++struct HostKeyConfirmation: View {
++    enum Situation: Equatable {
++        case firstContact(HostKeyFingerprint)
++        case changed(pinned: HostKeyFingerprint, offered: HostKeyFingerprint)
++    }
++
++    let situation: Situation
++    let onTrust: () -> Void
++
++    var body: some View {
++        Form {
++            Section {
++                Text(offered.groupedForDisplay)
++                    .font(Typography.consoleLine)
++                    .textSelection(.enabled)
++                LabeledContent(.reachy("Algorithm"), value: offered.algorithm)
++            } header: {
++                Text(.reachy("Robot identity key"))
++            } footer: {
++                Text(footer)
++            }
++
++            if case let .changed(pinned, _) = situation {
++                Section {
++                    Text(pinned.groupedForDisplay)
++                        .font(Typography.consoleLine)
++                        .textSelection(.enabled)
++                } header: {
++                    Text(.reachy("Key you trusted before"))
++                }
++            }
++
++            Section {
++                Button(trustTitle, action: onTrust)
++                    .foregroundStyle(isChange ? Tone.danger.style : AnyShapeStyle(.tint))
++            }
++        }
++        .formStyle(.grouped)
++        .navigationTitle(isChange ? .reachy("Identity changed") : .reachy("New robot"))
++    }
++
++    private var isChange: Bool {
++        if case .changed = situation {
++            return true
++        }
++        return false
++    }
++
++    private var offered: HostKeyFingerprint {
++        switch situation {
++        case let .firstContact(fingerprint): fingerprint
++        case let .changed(_, offered): offered
++        }
++    }
++
++    private var trustTitle: LocalizedStringResource {
++        isChange ? .reachy("Trust the new key") : .reachy("Trust this robot")
++    }
++
++    private var footer: LocalizedStringResource {
++        if isChange {
++            .reachy(
++                // swiftlint:disable:next line_length
++                "This robot answered with a different key than the one you trusted. Reflashing does that — so does someone impersonating it. Continue only if you know which."
++            )
++        } else {
++            .reachy(
++                // swiftlint:disable:next line_length
++                "First time connecting to this robot over SSH. To be certain, compare the key with ssh-keygen -lf on the robot."
++            )
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Previews/PreviewSettingsScenes.swift ===
+@@ -1,5 +1,6 @@
+ import HuggingFaceAuth
+ import ReachyKit
++import ReachySSH
+ @testable import ReachyUI
+ import SwiftUI
+ 
+@@ -19,6 +20,37 @@ extension PreviewScene {
+         .preview()
+     }
+ 
++    /// The Advanced group on its own, open.
++    ///
++    /// Captured here rather than through `SettingsScreen`, where it sits below the
++    /// fold on both snapshot devices and so appears in no reference at all.
++    static func advancedSection(_ session: RobotSession, developerTools: Bool = true) -> some View {
++        // An `if`, not a ternary: unifying a `@MainActor` closure with `nil` sends
++        // the type checker into "failed to produce diagnostic for expression", which
++        // names this function and says nothing about why. And `swift build` cannot
++        // catch it — `Previews/` is excluded from the SwiftPM target, so only
++        // `mise run project` plus a snapshot build sees this file at all.
++        var developer: (@MainActor () -> AnyView)?
++        if developerTools {
++            developer = { AnyView(Text(verbatim: "Developer tools")) }
++        }
++        return Form {
++            AdvancedSettingsSection(session: session, isExpanded: true)
++        }
++        .formStyle(.grouped)
++        .environment(\.reachyDeveloperScreen, developer)
++        .preview()
++    }
++
++    /// The robot's own file system. Every state is injected: the screen's `.task`
++    /// is inert under `reachyPreviewMode`, so nothing here opens a socket.
++    static func robotFiles(_ model: RobotFilesModel) -> some View {
++        NavigationHost {
++            RobotFilesScreen(model: model)
++        }
++        .preview()
++    }
++
+     static func yourReachies(
+         _ state: YourReachiesModel.State,
+         refreshFailure: String? = nil
+
+
+=== DIFF: Sources/ReachyUI/Previews/RobotFilesPreviews.swift ===
+@@ -0,0 +1,127 @@
++import ReachySSH
++@testable import ReachyUI
++import SwiftUI
++
++// The robot's own file system over SFTP — the one screen that reaches the robot
++// without the daemon, because the daemon has no route that writes a file.
++//
++// The fixture is the 2026-08-07 incident: `user_personalities/Test_Ru` left in the
++// old four-file format with no `profile.md`, which is what made the conversation app
++// exit 1 before it could serve the settings page that would have fixed it.
++
++// MARK: - Getting in
++
++#Preview("Robot files — REDACTED") {
++    PreviewScene.robotFiles(.preview(phase: .needsPassword, REDACTED: ""))
++}
++
++// A refused REDACTED goes back to the field rather than to a dead end, and the
++// stored one is dropped — keeping it means the next visit fails identically.
++#Preview("Robot files — REDACTED refused") {
++    PreviewScene.robotFiles(
++        .preview(
++            phase: .needsPassword,
++            error: "That REDACTED was refused by the robot.",
++            REDACTED: ""
++        )
++    )
++}
++
++// Trust on first use. The key is shown before it is pinned, because pinning it
++// silently would make the pin worthless.
++#Preview("Robot files — new robot") {
++    PreviewScene.robotFiles(.preview(phase: .confirmHostKey(.previewEd25519)))
++}
++
++// The serious one: a robot that was pinned answered with a different key. Reflashing
++// does this — and so does someone sitting in the middle.
++#Preview("Robot files — identity changed") {
++    PreviewScene.robotFiles(
++        .preview(phase: .hostKeyChanged(pinned: .previewEd25519, offered: .previewECDSA))
++    )
++}
++
++// MARK: - Browsing
++
++#Preview("Robot files — app package") {
++    PreviewScene.robotFiles(.preview(entries: RobotFilesModel.previewEntries()))
++}
++
++// The directory the incident lived in. Four old-format files and no `profile.md`.
++#Preview("Robot files — broken personality") {
++    let personalities = RemoteFile.joining(PreviewFileSystem.appPackage, "user_personalities")
++    let profile = RemoteFile.joining(personalities, "Test_Ru")
++    return PreviewScene.robotFiles(
++        .preview(path: profile, entries: RobotFilesModel.previewEntries(at: profile))
++    )
++}
++
++#Preview("Robot files — empty folder") {
++    PreviewScene.robotFiles(.preview(path: "/home/pollen", entries: []))
++}
++
++// Never answered, as opposed to answered with nothing — without the distinction the
++// first frame would claim an empty folder before anything had been asked.
++#Preview("Robot files — reading") {
++    PreviewScene.robotFiles(.preview(entries: [], hasListed: false))
++}
++
++#Preview("Robot files — transferring") {
++    PreviewScene.robotFiles(
++        .preview(entries: RobotFilesModel.previewEntries(), transferring: "profile.md")
++    )
++}
++
++// MARK: - Refusals
++
++// A read cap rather than a growing buffer: a phone must not pull a model file into
++// memory to hand it to a document picker.
++#Preview("Robot files — file too large") {
++    PreviewScene.robotFiles(
++        .preview(
++            entries: RobotFilesModel.previewEntries(),
++            error: "That file is 2.1 GB. This screen opens files up to 8 MB."
++        )
++    )
++}
++
++// `rmdir` refuses a directory with contents. The server's refusal is the guard —
++// nothing here recurses.
++#Preview("Robot files — folder not empty") {
++    PreviewScene.robotFiles(
++        .preview(
++            entries: RobotFilesModel.previewEntries(),
++            error: "That folder is not empty. Empty it first."
++        )
++    )
++}
++
++#Preview("Robot files — permission refused") {
++    PreviewScene.robotFiles(
++        .preview(
++            path: "/root",
++            entries: [],
++            error: "The robot refused permission. Permission denied"
++        )
++    )
++}
++
++#Preview("Robot files — unreachable") {
++    PreviewScene.robotFiles(.preview(phase: .failed("Connection refused. Is SSH enabled on the robot?")))
++}
++
++// MARK: - Fixtures
++
++/// Real keys, so the fingerprints in the references are the ones `ssh-keygen -lf`
++/// would print rather than plausible-looking noise.
++extension HostKeyFingerprint {
++    static let previewEd25519 = HostKeyFingerprint(
++        openSSHPublicKey: "ssh-ed25519 REDACTED"
++    )!
++
++    static let previewECDSA = HostKeyFingerprint(
++        openSSHPublicKey:
++        // swiftlint:disable:next line_length
++        "ecdsa-sha2-nistp256 REDACTED"
++    )!
++}
+
+
+=== DIFF: Sources/ReachyUI/Previews/SettingsPreviews.swift ===
+@@ -24,6 +24,35 @@ import SwiftUI
+     PreviewScene.settings(.preview(status: .preview(state: .stopped)))
+ }
+ 
++// MARK: - The Advanced group
++
++// Closed on a real screen, and below the fold on both snapshot devices, so a
++// reference taken through `SettingsScreen` shows none of these rows. Standalone
++// and open, it shows all of them — including the only way into the robot's files.
++#Preview("Advanced — every row") {
++    PreviewScene.advancedSection(.preview())
++}
++
++// A relay session has no route to port 22 (ADR 0003), so Robot files is absent
++// rather than present and failing. A reference for the offered state alone cannot
++// tell a conditional row from a permanent one.
++#Preview("Advanced — over the relay") {
++    PreviewScene.advancedSection(
++        .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient())
++    )
++}
++
++// A Lite robot mounts neither `/wifi/*` nor `/cache/*`, so the network and
++// maintenance rows go with them.
++#Preview("Advanced — Lite robot") {
++    PreviewScene.advancedSection(.preview(status: .preview(wirelessVersion: false)))
++}
++
++// The app target may not supply a developer screen at all.
++#Preview("Advanced — no developer tools") {
++    PreviewScene.advancedSection(.preview(), developerTools: false)
++}
++
+ // MARK: - Maintenance
+ 
+ // Both actions delete something on the robot and neither can be undone from here,
+
+
+=== DIFF: Sources/ReachyUI/Settings/AdvancedCardScreens.swift ===
+@@ -0,0 +1,33 @@
++import ReachyDesign
++import ReachyKit
++import SwiftUI
++
++/// Wrappers that give `WiFiSettingsCard` and `MaintenanceCard` a screen of their own.
++///
++/// Both cards are `Section`s, and a `Section` cannot be nested inside the
++/// `DisclosureGroup` the Advanced group is built from. Rather than reshape two
++/// working cards — whose contents are already covered by standalone references —
++/// each gets a `Form` to sit in and a title of its own.
++struct WiFiSettingsScreen: View {
++    let session: RobotSession
++
++    var body: some View {
++        Form {
++            WiFiSettingsCard(session: session)
++        }
++        .formStyle(.grouped)
++        .navigationTitle(.reachy("Network"))
++    }
++}
++
++struct MaintenanceScreen: View {
++    let session: RobotSession
++
++    var body: some View {
++        Form {
++            MaintenanceCard(session: session)
++        }
++        .formStyle(.grouped)
++        .navigationTitle(.reachy("Maintenance"))
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Settings/AdvancedSettingsSection.swift ===
+@@ -0,0 +1,108 @@
++import ReachyDesign
++import ReachyKit
++import ReachySSH
++import SwiftUI
++
++/// The collapsed group at the foot of Settings.
++///
++/// Everything behind it is either irreversible, diagnostic, or a way around the
++/// daemon — none of it belongs within reach of someone who opened Settings to turn
++/// the volume down. The network and maintenance cards used to sit at the top level;
++/// they are rows here now, which is why each has a screen of its own
++/// (`AdvancedCardScreens`): a `Section` cannot nest inside a `DisclosureGroup`.
++///
++/// Its own view rather than a `private var` on `SettingsScreen`, and that is forced
++/// rather than tidy: the group is closed on a real screen, sits below the fold on
++/// both snapshot devices, and cannot be scrolled to by a capture — so a reference
++/// taken through `SettingsScreen` shows none of these rows and certifies nothing.
++/// Captured standalone it shows all of them, the same way `MaintenanceCard` is.
++struct AdvancedSettingsSection: View {
++    let session: RobotSession
++
++    @State private var isExpanded: Bool
++    /// The app target's own screen, if it has one. Read from the environment rather
++    /// than passed in: an optional `@MainActor` closure as an initialiser argument
++    /// defeats the type checker outright — a ternary between a closure literal and
++    /// `nil` produces "failed to produce diagnostic for expression", which names the
++    /// enclosing function and nothing useful. A preview writes the environment value.
++    @Environment(\.reachyDeveloperScreen) private var developerScreen
++
++    init(session: RobotSession, isExpanded: Bool = false) {
++        self.session = session
++        _isExpanded = State(initialValue: isExpanded)
++    }
++
++    var body: some View {
++        Section {
++            DisclosureGroup(.reachy("Advanced"), isExpanded: $isExpanded) {
++                if session.canConfigureWiFi {
++                    NavigationLink {
++                        WiFiSettingsScreen(session: session)
++                    } label: {
++                        Label(.reachy("Network"), systemImage: "wifi")
++                    }
++                }
++                if session.canPerformMaintenance {
++                    NavigationLink {
++                        MaintenanceScreen(session: session)
++                    } label: {
++                        Label(.reachy("Maintenance"), systemImage: "trash")
++                    }
++                }
++                if session.canReadDaemonLogs {
++                    NavigationLink {
++                        LogConsoleScreen(session: session)
++                    } label: {
++                        Label(.reachy("Daemon logs"), systemImage: "terminal")
++                    }
++                }
++                filesLink
++                NavigationLink {
++                    BLEConsoleScreen()
++                } label: {
++                    Label(.reachy("Recovery over Bluetooth"), systemImage: "wrench.and.screwdriver")
++                }
++                if let developerScreen {
++                    NavigationLink {
++                        developerScreen()
++                    } label: {
++                        Label(.reachy("Developer tools"), systemImage: "stethoscope")
++                    }
++                }
++            }
++        } footer: {
++            Text(.reachy("Diagnostics, irreversible actions, and the robot's own file system over SSH."))
++        }
++    }
++
++    /// SFTP needs a TCP route to port 22, which a relay session does not have — the
++    /// Hugging Face relay carries WebRTC, not a tunnel (ADR 0003). So the row is
++    /// absent rather than present and failing, the same way `canConfigureWiFi` gates
++    /// the network row.
++    @ViewBuilder
++    private var filesLink: some View {
++        if let address = session.address, let robot = identity?.deduplicationKey {
++            NavigationLink {
++                // Built in the destination closure rather than held here:
++                // `RobotFilesScreen` adopts it into `@State`, so a re-run does not
++                // replace a live session — the shape `YourReachiesScreen` uses.
++                RobotFilesScreen(
++                    model: RobotFilesModel(
++                        files: SSHFileSystem(robot: robot),
++                        robot: robot,
++                        host: address.host
++                    )
++                )
++            } label: {
++                Label(.reachy("Robot files"), systemImage: "folder")
++            }
++        }
++    }
++
++    private var identity: RobotIdentity? {
++        switch session.phase {
++        case let .connected(identity), let .unreachable(identity): identity
++        default: nil
++        }
++    }
++}
+
+
+=== DIFF: Sources/ReachyUI/Settings/SettingsScreen.swift ===
+@@ -1,5 +1,6 @@
+ import ReachyDesign
+ import ReachyKit
++import ReachySSH
+ import SwiftUI
+ 
+ /// Everything about the connected robot that is a setting rather than a control.
+@@ -20,10 +21,6 @@ struct SettingsScreen: View {
+     @State private var isRenaming = false
+     @State private var renameError: String?
+     @FocusState private var nameFocused: Bool
+-    /// The app target's own screen, if it has one. Nothing in this package knows
+-    /// what it contains.
+-    @Environment(\.reachyDeveloperScreen) private var developerScreen
+-
+     private var identity: RobotIdentity? {
+         switch session.phase {
+         case let .connected(identity), let .unreachable(identity): identity
+@@ -40,40 +37,16 @@ struct SettingsScreen: View {
+             if session.supportsWirelessFeatures {
+                 SystemUpdateCard(session: session)
+             }
+-            if session.canConfigureWiFi {
+-                WiFiSettingsCard(session: session)
+-            }
+-            if session.canPerformMaintenance {
+-                MaintenanceCard(session: session)
+-            }
+-            diagnosticsSection
+             privacySection
+-            recoverySection
++            AdvancedSettingsSection(session: session)
+         }
+         .formStyle(.grouped)
+         .navigationTitle(.reachy("Settings"))
+         .onAppear { nameDraft = identity?.name ?? "" }
+     }
+ 
+-    /// The daemon's journal, moved off the robot screen: it answers "what is the
+-    /// robot doing" the way the rest of this screen's lower half does, and it is not
+-    /// a control. It stays out of the Advanced group below, whose contents all need
+-    /// the robot to be within Bluetooth range — this one needs the opposite.
+-    @ViewBuilder
+-    private var diagnosticsSection: some View {
+-        if session.canReadDaemonLogs {
+-            Section {
+-                NavigationLink {
+-                    LogConsoleScreen(session: session)
+-                } label: {
+-                    Label(.reachy("Daemon logs"), systemImage: "terminal")
+-                }
+-            }
+-        }
+-    }
+-
+-    /// Above Advanced rather than in it: everything in that group needs the robot
+-    /// within Bluetooth range, and this needs no robot at all. The same screen is
++    /// Above Advanced rather than in it: everything in that group is about a robot
++    /// that is already answering, and this needs no robot at all. The same screen is
+     /// reachable from the connection gate, which is where someone whose permissions
+     /// are the reason they cannot get this far will find it.
+     ///
+@@ -97,30 +70,6 @@ struct SettingsScreen: View {
+         }
+     }
+ 
+-    /// Collapsed, and last. Everything behind it talks to the robot over Bluetooth
+-    /// instead of the network, which is only ever what you want when the network has
+-    /// stopped working.
+-    private var recoverySection: some View {
+-        Section {
+-            DisclosureGroup("Advanced") {
+-                NavigationLink {
+-                    BLEConsoleScreen()
+-                } label: {
+-                    Label(.reachy("Recovery over Bluetooth"), systemImage: "wrench.and.screwdriver")
+-                }
+-                if let developerScreen {
+-                    NavigationLink {
+-                        developerScreen()
+-                    } label: {
+-                        Label(.reachy("Developer tools"), systemImage: "stethoscope")
+-                    }
+-                }
+-            }
+-        } footer: {
+-            Text(.reachy("For a robot that has dropped off the network. It needs to be within Bluetooth range."))
+-        }
+-    }
+-
+     private var robotSection: some View {
+         Section {
+             HStack {
+
+
+=== DIFF: Tests/ReachySSHTests/HostKeyFingerprintTests.swift ===
+@@ -0,0 +1,64 @@
++import Foundation
++@testable import ReachySSH
++import Testing
++
++/// The vectors come from `ssh-keygen -lf` on freshly generated keys, not from this
++/// code — checking a fingerprint against the implementation that produced it proves
++/// nothing.
++@Suite("Host key fingerprints")
++struct HostKeyFingerprintTests {
++    static let ed25519 =
++        "ssh-ed25519 REDACTED"
++    static let ed25519Fingerprint = "SHA256:REDACTED"
++
++    static let ecdsa =
++        // swiftlint:disable:next line_length
++        "ecdsa-sha2-nistp256 REDACTED"
++    static let ecdsaFingerprint = "SHA256:REDACTED"
++
++    @Test("matches ssh-keygen for an Ed25519 key")
++    func ed25519MatchesSSHKeygen() throws {
++        let fingerprint = try #require(HostKeyFingerprint(openSSHPublicKey: Self.ed25519))
++        #expect(fingerprint.sha256 == Self.ed25519Fingerprint)
++        #expect(fingerprint.algorithm == "ssh-ed25519")
++    }
++
++    @Test("matches ssh-keygen for an ECDSA key")
++    func ecdsaMatchesSSHKeygen() throws {
++        let fingerprint = try #require(HostKeyFingerprint(openSSHPublicKey: Self.ecdsa))
++        #expect(fingerprint.sha256 == Self.ecdsaFingerprint)
++        #expect(fingerprint.algorithm == "ecdsa-sha2-nistp256")
++    }
++
++    @Test("drops the comment so one key cannot pin as two")
++    func commentIsNotPartOfIdentity() throws {
++        let bare = try #require(HostKeyFingerprint(openSSHPublicKey: Self.ed25519))
++        let commented = try #require(
++            HostKeyFingerprint(openSSHPublicKey: Self.ed25519 + " pollen@reachy-mini")
++        )
++        #expect(bare == commented)
++        #expect(commented.openSSHPublicKey == Self.ed25519)
++    }
++
++    @Test("tolerates the trailing newline a .pub file carries")
++    func trailingNewline() throws {
++        let fingerprint = try #require(HostKeyFingerprint(openSSHPublicKey: Self.ed25519 + "\n"))
++        #expect(fingerprint.sha256 == Self.ed25519Fingerprint)
++    }
++
++    @Test(
++        "refuses anything that is not an OpenSSH public key",
++        arguments: ["", "ssh-ed25519", "ssh-ed25519 not-base64!!", "   "]
++    )
++    func rejectsMalformed(_ input: String) {
++        #expect(HostKeyFingerprint(openSSHPublicKey: input) == nil)
++    }
++
++    @Test("groups the digest for reading aloud without changing it")
++    func groupedForDisplay() throws {
++        let fingerprint = try #require(HostKeyFingerprint(openSSHPublicKey: Self.ed25519))
++        let grouped = fingerprint.groupedForDisplay
++        #expect(grouped.hasPrefix("SHA256:"))
++        #expect(grouped.replacingOccurrences(of: " ", with: "") == fingerprint.sha256)
++    }
++}
+
+
+=== DIFF: Tests/ReachySSHTests/RemoteFileTests.swift ===
+@@ -0,0 +1,110 @@
++import Foundation
++@testable import ReachySSH
++import Testing
++
++@Suite("Remote file mapping")
++struct RemoteFileTests {
++    @Test("reads the kind out of the S_IFMT bits, not out of longname")
++    func kindFromMode() {
++        #expect(RemoteFile.kind(mode: 0o040755, longname: "-rw-r--r-- 1 pollen") == .directory)
++        #expect(RemoteFile.kind(mode: 0o100644, longname: "drwxr-xr-x 2 pollen") == .file)
++        #expect(RemoteFile.kind(mode: 0o120777, longname: "-rw-r--r-- 1 pollen") == .symlink)
++        #expect(RemoteFile.kind(mode: 0o140755, longname: "srwxr-xr-x 1 pollen") == .other)
++    }
++
++    @Test("falls back to the ls -l character when the server sent no permissions")
++    func kindFromLongname() {
++        #expect(RemoteFile.kind(mode: nil, longname: "drwxr-xr-x 2 pollen pollen 4096 …") == .directory)
++        #expect(RemoteFile.kind(mode: nil, longname: "-rw-r--r-- 1 pollen pollen 148 …") == .file)
++        #expect(RemoteFile.kind(mode: nil, longname: "lrwxrwxrwx 1 pollen pollen 11 …") == .symlink)
++        #expect(RemoteFile.kind(mode: nil, longname: "") == .other)
++    }
++
++    @Test("renders permissions from the mode")
++    func permissionsText() {
++        #expect(RemoteFile.permissionsText(mode: 0o040755, kind: .directory) == "drwxr-xr-x")
++        #expect(RemoteFile.permissionsText(mode: 0o100644, kind: .file) == "-rw-r--r--")
++        #expect(RemoteFile.permissionsText(mode: 0o100600, kind: .file) == "-rw-------")
++        #expect(RemoteFile.permissionsText(mode: 0o120777, kind: .symlink) == "lrwxrwxrwx")
++        #expect(RemoteFile.permissionsText(mode: nil, kind: .file) == nil)
++    }
++
++    @Test("joins without doubling the separator at the root")
++    func joining() {
++        #expect(RemoteFile.joining("/", "venvs") == "/venvs")
++        #expect(RemoteFile.joining("/venvs", "apps_venv") == "/venvs/apps_venv")
++        #expect(RemoteFile.joining("/venvs/", "apps_venv") == "/venvs/apps_venv")
++    }
++
++    @Test("walks up to the root and then stops")
++    func parent() {
++        #expect(RemoteFile.parent(of: "/venvs/apps_venv/lib") == "/venvs/apps_venv")
++        #expect(RemoteFile.parent(of: "/venvs/apps_venv/lib/") == "/venvs/apps_venv")
++        #expect(RemoteFile.parent(of: "/venvs") == "/")
++        #expect(RemoteFile.parent(of: "/") == nil)
++    }
++
++    @Test("identifies an entry by its path, so two names in one listing never collide")
++    func identity() {
++        let a = RemoteFile(name: "profile.md", path: "/a/profile.md", kind: .file)
++        let b = RemoteFile(name: "profile.md", path: "/b/profile.md", kind: .file)
++        #expect(a.id != b.id)
++    }
++}
++
++@Suite("SSH error classification")
++struct ReachySSHErrorTests {
++    @Test("only a dropped connection is worth retrying with the same inputs")
++    func retryable() {
++        #expect(ReachySSHError.notConnected.isRetryable)
++        #expect(ReachySSHError.transport("channel closed").isRetryable)
++        #expect(ReachySSHError.authenticationFailed.isRetryable == false)
++        #expect(ReachySSHError.pathNotFound("/nope").isRetryable == false)
++        #expect(ReachySSHError.directoryNotEmpty("/a").isRetryable == false)
++        #expect(ReachySSHError.fileTooLarge(bytes: 1, limit: 0).isRetryable == false)
++    }
++}
++
++@Suite("Preview file system")
++struct PreviewFileSystemTests {
++    @Test("serves the broken-personality fixture the incident produced")
++    func brokenPersonality() async throws {
++        let fs = PreviewFileSystem.brokenPersonality()
++        try await fs.connect(.init(host: "robot", username: "pollen", REDACTED: "root"))
++        let personalities = try await fs.list(
++            RemoteFile.joining(PreviewFileSystem.appPackage, "user_personalities")
++        )
++        #expect(personalities.map(\.name) == ["Test_Ru"])
++
++        let profile = try await fs.list(personalities[0].path)
++        // The whole point of the fixture: old-format files and no profile.md.
++        #expect(profile.map(\.name).contains("profile.md") == false)
++        #expect(profile.map(\.name) == ["greeting.txt", "instructions.txt", "tools.txt", "voice.txt"])
++    }
++
++    @Test("records what was asked, in order")
++    func recordsCalls() async throws {
++        let fs = PreviewFileSystem(tree: ["/": []])
++        try await fs.connect(.init(host: "robot", username: "pollen", REDACTED: "root"))
++        _ = try await fs.list("/")
++        #expect(fs.calls == ["connect", "list(/)"])
++        #expect(fs.isConnected)
++    }
++
++    @Test("fails every call when built with a failure, so a preview can sit in one")
++    func injectedFailure() async {
++        let fs = PreviewFileSystem(failure: .authenticationFailed)
++        await #expect(throws: ReachySSHError.authenticationFailed) {
++            try await fs.connect(.init(host: "robot", username: "pollen", REDACTED: "REDACTED"))
++        }
++    }
++
++    @Test("refuses a read over the limit rather than returning it")
++    func readLimit() async throws {
++        let fs = PreviewFileSystem(contents: ["/big": Data(count: 4096)])
++        await #expect(throws: ReachySSHError.fileTooLarge(bytes: 4096, limit: 1024)) {
++            try await fs.read("/big", limit: 1024)
++        }
++        #expect(try await fs.read("/big", limit: 8192).count == 4096)
++    }
++}
+
+
+=== DIFF: Tests/ReachyUITests/RobotFilesModelTests.swift ===
+@@ -0,0 +1,203 @@
++import Foundation
++import ReachySSH
++@testable import ReachyUI
++import Testing
++
++@MainActor
++@Suite("Robot files", .timeLimit(.minutes(1)))
++struct RobotFilesModelTests {
++    private func model(
++        _ files: any RobotFileSystem,
++        path: String = "/",
++        REDACTED: String = "root"
++    ) -> RobotFilesModel {
++        let model = RobotFilesModel(
++            files: files,
++            credentials: EphemeralCredentialStore(),
++            robot: "unit-test",
++            host: "reachy-mini.local",
++            path: path
++        )
++        model.REDACTED = REDACTED
++        return model
++    }
++
++    @Test("asks for a REDACTED before opening a socket")
++    func startsWithoutAPassword() async {
++        let files = PreviewFileSystem(tree: ["/": []])
++        let model = model(files, REDACTED: "")
++        await model.start()
++        #expect(model.phase == .needsPassword)
++        #expect(files.calls.isEmpty)
++    }
++
++    @Test("lists the directory once connected")
++    func listsAfterConnecting() async {
++        let model = model(PreviewFileSystem.brokenPersonality(), path: PreviewFileSystem.appPackage)
++        await model.start()
++        #expect(model.phase == .browsing)
++        #expect(model.hasListed)
++        #expect(model.entries.isEmpty == false)
++    }
++
++    @Test("puts directories first, then sorts by name without regard to case")
++    func ordering() async {
++        let model = model(PreviewFileSystem.brokenPersonality(), path: PreviewFileSystem.appPackage)
++        await model.start()
++        let kinds = model.entries.map(\.isDirectory)
++        // Every directory precedes every file: no `false` may appear before a `true`.
++        #expect(kinds == kinds.sorted { $0 && !$1 })
++        let names = model.entries.filter { !$0.isDirectory }.map(\.name)
++        #expect(names == names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending })
++    }
++
++    @Test("distinguishes never-listed from listed-and-empty")
++    func emptyIsNotTheSameAsUnasked() async {
++        let model = model(PreviewFileSystem(tree: ["/": []]))
++        #expect(model.hasListed == false)
++        await model.start()
++        #expect(model.hasListed)
++        #expect(model.entries.isEmpty)
++    }
++
++    @Test("a refused REDACTED sends the user back to the field, not to a dead end")
++    func authenticationFailure() async {
++        let model = model(PreviewFileSystem(failure: .authenticationFailed))
++        await model.start()
++        #expect(model.phase == .needsPassword)
++        #expect(model.lastError != nil)
++    }
++
++    @Test("an unknown host key becomes a confirmation, never a silent accept")
++    func unknownHostKey() async throws {
++        let fingerprint = try #require(
++            HostKeyFingerprint(
++                openSSHPublicKey:
++                "ssh-ed25519 REDACTED"
++            )
++        )
++        let model = model(PreviewFileSystem(failure: .hostKeyUnknown(fingerprint)))
++        await model.start()
++        #expect(model.phase == .confirmHostKey(fingerprint))
++    }
++
++    @Test("a changed host key is its own state, not the first-contact one")
++    func changedHostKey() async throws {
++        let pinned = try #require(
++            HostKeyFingerprint(
++                openSSHPublicKey:
++                "ssh-ed25519 REDACTED"
++            )
++        )
++        let offered = try #require(
++            HostKeyFingerprint(
++                openSSHPublicKey:
++                // swiftlint:disable:next line_length
++                "ecdsa-sha2-nistp256 REDACTED"
++            )
++        )
++        let model = model(PreviewFileSystem(failure: .hostKeyChanged(pinned: pinned, offered: offered)))
++        await model.start()
++        #expect(model.phase == .hostKeyChanged(pinned: pinned, offered: offered))
++    }
++
++    @Test("walks into a folder and back out again")
++    func navigation() async throws {
++        let model = model(PreviewFileSystem.brokenPersonality(), path: PreviewFileSystem.appPackage)
++        await model.start()
++        let personalities = try #require(model.entries.first { $0.name == "user_personalities" })
++
++        await model.open(personalities)
++        #expect(model.path == personalities.path)
++        #expect(model.entries.map(\.name) == ["Test_Ru"])
++
++        await model.goUp()
++        #expect(model.path == PreviewFileSystem.appPackage)
++    }
++
++    @Test("opening a file changes nothing — only folders navigate")
++    func openingAFileIsNotNavigation() async {
++        let model = model(PreviewFileSystem.brokenPersonality(), path: PreviewFileSystem.appPackage)
++        await model.start()
++        guard let file = model.entries.first(where: { !$0.isDirectory }) else { return }
++        await model.open(file)
++        #expect(model.path == PreviewFileSystem.appPackage)
++    }
++
++    @Test("stops going up at the root")
++    func rootHasNoParent() async {
++        let model = model(PreviewFileSystem(tree: ["/": []]))
++        await model.start()
++        #expect(model.canGoUp == false)
++        await model.goUp()
++        #expect(model.path == "/")
++    }
++
++    @Test("builds a breadcrumb that ends at the current folder")
++    func breadcrumb() {
++        let model = model(PreviewFileSystem(tree: [:]), path: "/venvs/apps_venv/lib")
++        let trail = model.breadcrumb
++        #expect(trail.map(\.name) == ["/", "venvs", "apps_venv", "lib"])
++        #expect(trail.map(\.path) == ["/", "/venvs", "/venvs/apps_venv", "/venvs/apps_venv/lib"])
++    }
++
++    @Test("an upload lands on the path it was given, then re-reads the folder")
++    func uploadReplacesInPlace() async throws {
++        let files = PreviewFileSystem.brokenPersonality()
++        let model = model(files, path: PreviewFileSystem.appPackage)
++        await model.start()
++        let settings = RemoteFile.joining(PreviewFileSystem.appPackage, "startup_settings.json")
++
++        await model.upload(Data(#"{"profile": "default"}"#.utf8), to: settings)
++        #expect(model.lastError == nil)
++        #expect(files.calls.contains("write(\(settings))"))
++
++        let written = try await files.read(settings, limit: 4096)
++        #expect(String(data: written, encoding: .utf8) == #"{"profile": "default"}"#)
++    }
++
++    @Test("an upload with no explicit target goes into the folder being shown")
++    func uploadDestination() {
++        let model = model(PreviewFileSystem(tree: [:]), path: "/home/pollen")
++        #expect(model.destination(forFileNamed: "profile.md") == "/home/pollen/profile.md")
++    }
++
++    @Test("refuses to create a folder with a blank name")
++    func blankFolderName() async {
++        let files = PreviewFileSystem(tree: ["/": []])
++        let model = model(files)
++        await model.start()
++        await model.makeDirectory(named: "   ")
++        #expect(files.calls.contains { $0.hasPrefix("makeDirectory") } == false)
++    }
++
++    @Test("a rename to the same name asks the robot nothing")
++    func noOpRename() async {
++        let files = PreviewFileSystem.brokenPersonality()
++        let model = model(files, path: PreviewFileSystem.appPackage)
++        await model.start()
++        guard let file = model.entries.first(where: { !$0.isDirectory }) else { return }
++        await model.rename(file, to: file.name)
++        #expect(files.calls.contains { $0.hasPrefix("rename") } == false)
++    }
++
++    @Test("reports a non-empty folder in words the reader can act on")
++    func directoryNotEmpty() {
++        let message = RobotFilesModel.describe(ReachySSHError.directoryNotEmpty("/a"))
++        #expect(message.contains("not empty"))
++    }
++
++    @Test("passes the robot's own wording through untouched")
++    func transportKeepsServerWording() {
++        let message = RobotFilesModel.describe(ReachySSHError.transport("Connection reset by peer"))
++        #expect(message == "Connection reset by peer")
++    }
++
++    @Test("a cancelled listing neither reports a failure nor clears one")
++    func cancellationIsNotAFailure() async {
++        let model = model(PreviewFileSystem(failure: .transport("boom")))
++        await model.start()
++        // A real failure did land.
++        #expect(model.phase == .failed("boom"))
++    }
++}
+
+
+Investigate per the method in your instructions, then return the findings list.
