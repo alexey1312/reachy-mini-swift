@@ -17,7 +17,7 @@ test_configuration:
     - iPhone 16 Pro
     - iPad Pro 11
   simulator_device: "iPhone18,1"
-  required_os: 26
+  required_os: 27
   use_grouped_snapshots: false
   split_snapshot_directories: true
   preview_default_enabled: true

@@ -153,11 +153,15 @@ is silent on macOS.
 `Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
 resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is
 that larger runners are billed — including on public repositories, where the standard ones are free. Three cores is
-why compilation dominates every number in this file. **Two images are in play, and not for performance**: the two
-app-build jobs run on `macos-26` with Xcode 26.4.1 because `actool` on 26.2 fails `CompileAssetCatalogVariant` for the
-macOS variant of an Icon Composer `.icon`, and 26.4.1 exists only on that image. Everything else stays on `macos-15`
-with 26.2 — the simulator-bound jobs because their runtime and device identifiers are pinned to what that image
-carries. `macos-26`'s own core count has not been measured, so every timing quoted here is a `macos-15` number.
+why compilation dominates every number in this file. **Every Xcode job runs on `xcode-27`; only `lint-test` stays on
+`macos-15` with 26.2**, because it is SwiftPM against the swift.org toolchain and never opens the iOS SDK. The
+`macos-*` family cannot host Xcode 27 at all — `macos-26` tops out at 26.6 — so the old two-image split is gone, and
+with it the reason 26.4.1 was pinned (`actool` failing `CompileAssetCatalogVariant` for the macOS variant of an Icon
+Composer `.icon` on 26.2). `xcode-27` is a public preview image (actions/runner-images#14404) carrying Xcode 27
+alone, iOS 27.0 as its only simulator runtime, and `iPhone 17 Pro`; the label is standard rather than `-xlarge`, so
+the five slots are unchanged. Point `DEVELOPER_DIR` at the `/Applications/Xcode_27.0.app` symlink, never the
+versioned path, which moved from `_beta_3` to `_beta_4` at one rollout. That image's core count has not been
+measured, so every timing quoted here is a `macos-15` number.
 **The previews job and the smoke job compile the same packages twice, on purpose.** Both build Debug for the iOS
 Simulator into the same `Debug-iphonesimulator` products directory, so one job running them in sequence really does
 reuse: the smoke step measured 9.9–10.7 min as its own job against **7.4** after the preview build in the same job.
@@ -369,10 +373,15 @@ either re-records everything or fails the run outright:
 | `iPhone 17 Pro`                | `mise.toml`, `REACHY_SNAPSHOT_SIM`   | The simulator the tests execute on. Renders every image.                                             |
 | `iPhone18,1`                   | `.prefire.yml`, `simulator_device`   | The same machine as a model id. Prefire aborts on a mismatch.                                        |
 | `iPhone 16 Pro`, `iPad Pro 11` | `.prefire.yml`, `snapshot_devices`   | `ViewImageConfig`s — frame size and traits, and the filename suffixes. Not devices anything runs on. |
-| `26.4.1` / `26`                | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                    |
+| `27.0` / `27`                  | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                    |
 
 So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, at iPhone 16 Pro dimensions. A
 different iOS runtime renders text differently and every reference would have to be re-recorded.
+**`required_os` is compiled into the generated tests, not read at run time.** Editing `.prefire.yml` without
+rebuilding the snapshot target leaves the old value in `…PreviewsTests.generated.swift`, where it is a `fatalError`
+and not a failed assertion — `Switch to iOS 26 for these tests`. Reached through `record`, which deletes every PNG
+before it runs anything, that is every reference gone and every test crashing. Rebuild after changing the pin, then
+prove one class runs (`test-without-building -only-testing:…/JoystickPadPreviewsTests`) before recording.
 **Every preview is captured in both appearances**, by `Apps/ReachyUISnapshotTests/PreviewTests.stencil` — a fork of
 Prefire 5.7.0's built-in test template, which is why the package requirement is `.exact` rather than
 `upToNextMajor`. Light keeps the name it always had and dark takes a `-dark` suffix, so adopting it added 500 files
@@ -539,7 +548,9 @@ LiveCommunicationKit call framing (#78)** — read it before touching `AVAudioSe
 or anything named `Call*`. **`ReachyDesign/AGENTS.md` is the design system's entire rulebook** — the tokens,
 the `SurfaceRole` facade, the four things glass does headless, what a dark reference proves and what it does not, and
 the localization catalogue. Read it before any visual change, not after one moved a reference.
-Background reading: `docs/adr/` for accepted decisions, `docs/research/webrtc.md` for 8443 signaling quirks.
+Background reading: `docs/adr/` for accepted decisions, `docs/research/webrtc.md` for 8443 signaling quirks, and
+`docs/research/ios-27.md` for the Xcode 27 move — what was measured, why `@ContentBuilder` is not an adoption task,
+and the audit of what iOS 27 still asks of this app.
 
 **`docs/` is also the GitHub Pages root**, served at `https://alexey1312.github.io/reachy-mini-swift/` by Pages' own
 Jekyll (Settings → Pages → Deploy from a branch → `main` → `/docs`). There is no workflow, no mise task and no Ruby

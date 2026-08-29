@@ -92,14 +92,17 @@ jobs:
   # this job does is the shared setup, which ends by populating the cache.
   warm-cache:
     name: Warm the SPM cache
-    runs-on: macos-15
+    # On `xcode-27` with the jobs that read this cache: a package graph resolved by a
+    # different Xcode does not serve them, and this is the only job that writes the
+    # cache on `refs/heads/main`, the one ref every PR can restore from.
+    runs-on: xcode-27
     if: github.event_name == 'push'
     timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -114,17 +117,14 @@ jobs:
   # not have, and would resolve the package graph four times over.
   app-build-macos:
     name: App Build (macOS)
-    # The two app-build jobs are the ones on macos-26, and only because of the app
-    # icon: `actool` on the Xcode 26.2 that macos-15 tops out at fails
-    # `CompileAssetCatalogVariant` for the macOS variant of an Icon Composer `.icon`,
-    # while the iOS variant of the same tree compiles (Smoke builds and runs it).
-    # 26.4.1 is where the macOS icon compiles, and it exists only on this image —
-    # macos-15 offers 26.3 at most. The simulator-bound jobs stay on macos-15
-    # deliberately: their runtime and device identifiers are pinned to what that image
-    # carries. The iOS app build follows this one rather than macos-15 because that is
-    # where it ran when the two were a single job, and a merge is the wrong place to
-    # discover otherwise.
-    runs-on: macos-26
+    # Every Xcode job sits on `xcode-27`, and the two-image split this comment used to
+    # describe is gone with it: `macos-26` tops out at Xcode 26.6, so nothing in the
+    # macos-* family reaches the iOS 27 SDK. The label is a public preview image
+    # (actions/runner-images#14404) carrying Xcode 27 alone, iOS 27.0 as its only
+    # simulator runtime, and `iPhone 17 Pro`. Standard rather than `-xlarge`, so the
+    # five concurrent macOS slots are unchanged. `actool` compiles the macOS variant of
+    # the Icon Composer `.icon` here, which is what 26.4.1 was pinned for.
+    runs-on: xcode-27
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     # `id-token` is what lets the composite action authenticate over OIDC instead of a
@@ -134,13 +134,13 @@ jobs:
       id-token: write
       contents: read
     env:
-      # 17E202 — the same build the project is developed against, so a macOS app build
-      # that passes here is one that passes locally. Deliberately Xcode's own Swift,
-      # with no swift.org toolchain overlaid: xcodebuild cannot load the local
-      # package's manifest under one (its clang fails to spawn the linker). These jobs
-      # exist to compile the app shell and the Tuist manifest; lint-test is what holds
-      # the code to Swift 6.3.
-      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
+      # The stable symlink, not the versioned path: the image's own
+      # `/Applications/Xcode_27_beta_N.app` moved from beta 3 to beta 4 at one rollout
+      # and moves again at the next. Deliberately Xcode's own Swift, with no swift.org
+      # toolchain overlaid: xcodebuild cannot load the local package's manifest under
+      # one (its clang fails to spawn the linker). These jobs exist to compile the app
+      # shell and the Tuist manifest; lint-test is what holds the code to Swift 6.3.
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -181,14 +181,14 @@ jobs:
   app-build-ios:
     name: App Build (iOS + widget)
     # Same image and Xcode as the macOS app build above, for the reason given there.
-    runs-on: macos-26
+    runs-on: xcode-27
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.4.1.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -225,14 +225,14 @@ jobs:
   # are involved, which is what makes it runnable on CI's Xcode at all.
   preview-build:
     name: Preview Build (ReachyUISnapshotTests)
-    runs-on: macos-15
+    runs-on: xcode-27
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -247,14 +247,14 @@ jobs:
   # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
   smoke:
     name: Smoke (iOS Simulator)
-    runs-on: macos-15
+    runs-on: xcode-27
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 

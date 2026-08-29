@@ -1,0 +1,6 @@
+# `xcode-27` is a GitHub-hosted preview image, not a self-hosted runner. actionlint
+# validates `runs-on` against a built-in list that preview labels never reach, and this
+# key is the only place it accepts one.
+self-hosted-runner:
+  labels:
+    - xcode-27
