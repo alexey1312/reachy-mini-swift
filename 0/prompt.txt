@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bawea9sw5</task-id>
+<tool-use-id>toolu_01EwyFZqsLZV2bUPAYLtBozw</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ac3c8bb8-614c-448a-8f0a-b3c7cdad610d/tasks/bawea9sw5.output</output-file>
+<status>completed</status>
+<summary>Background command "Install repowise via uv tool, logging output" completed (exit code 0)</summary>
+</task-notification>
