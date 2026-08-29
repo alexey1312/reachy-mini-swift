@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>btmk0p31x</task-id>
+<tool-use-id>toolu_01DEgrukB3xEommRu9cAkNom</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/3d371da0-b73b-4627-b7de-c016ffbe789c/tasks/btmk0p31x.output</output-file>
+<status>completed</status>
+<summary>Background command "Poll until macOS build 172 appears" completed (exit code 0)</summary>
+</task-notification>
