@@ -1,0 +1,53 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Tests/ReachyKitTests/SetTargetClientTests.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Tests/ReachyKitTests/SetTargetClientTests.swift ===
+@@ -22,7 +22,9 @@ struct SetTargetClientTests {
+     @Test("throttle: a burst of sends collapses to one wire frame", .timeLimit(.minutes(1)))
+     func throttle() async throws {
+         let received = ReceivedCounter()
++        let accepted = ReceivedCounter()
+         let server = try LocalWebSocketServer { connection in
++            accepted.increment()
+             receiveLoop(connection, counter: received)
+         }
+         defer { server.stop() }
+@@ -33,15 +35,29 @@ struct SetTargetClientTests {
+             minSendInterval: .seconds(10)
+         )
+         await client.connect()
+-        try await Task.sleep(for: .milliseconds(200))
++        // `connect()` returns before the handshake, so wait on the server actually
++        // accepting rather than on a duration a loaded CI runner can overrun.
++        await waitUntil(accepted.count >= 1)
+ 
+         for i in 0 ..< 5 {
+             await client.send(.init(bodyYaw: Double(i)))
+         }
+-        try await Task.sleep(for: .milliseconds(300))
++        // The 10 s throttle means no second frame can follow, so the first arrival
++        // is already the final count.
++        await waitUntil(received.count >= 1)
+         #expect(received.count == 1)
+         await client.disconnect()
+     }
++
++    private func waitUntil(
++        _ condition: @autoclosure () -> Bool,
++        timeout: Duration = .seconds(10)
++    ) async {
++        let start = ContinuousClock.now
++        while !condition(), start.duration(to: .now) < timeout {
++            try? await Task.sleep(for: .milliseconds(10))
++        }
++    }
+ }
+ 
+ private final class ReceivedCounter: @unchecked Sendable {
+
+
+Investigate per the method in your instructions, then return the findings list.
