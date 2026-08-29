@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bgjg8ile7</task-id>
+<tool-use-id>toolu_019Qnh8Tpm74dsz1oXC4dtQE</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/7e74cd7d-fbf2-4e77-a218-db4f254f0c1a/tasks/bgjg8ile7.output</output-file>
+<status>completed</status>
+<summary>Background command "Poll until macOS build 170 appears in ASC" completed (exit code 0)</summary>
+</task-notification>
