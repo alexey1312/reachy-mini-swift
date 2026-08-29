@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b4ak3lse2</task-id>
+<tool-use-id>toolu_01HafpZA7YNV1qaq77H9kRok</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/10f1d208-8719-4188-ab85-1898bc954618/tasks/b4ak3lse2.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for CI to settle on the fixed branch" completed (exit code 0)</summary>
+</task-notification>
