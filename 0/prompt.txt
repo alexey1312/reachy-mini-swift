@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bxrvtju7p</task-id>
+<tool-use-id>toolu_013AS1BBXBW36Si6b9nZRnG4</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/7e74cd7d-fbf2-4e77-a218-db4f254f0c1a/tasks/bxrvtju7p.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-run the macOS App Store release at 0.4.2" completed (exit code 0)</summary>
+</task-notification>
