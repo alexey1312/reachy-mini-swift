@@ -1,0 +1,98 @@
+## Context
+
+- Current git status: On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   Sources/ReachyKit/Model/ReachyKitError.swift
+	modified:   Sources/ReachyKit/Session/RobotAPIClient.swift
+	modified:   Sources/ReachyKit/Session/RobotSession.swift
+	modified:   Sources/ReachyKit/Transport/RobotConnection.swift
+	modified:   Sources/ReachyUI/ConnectionScreen.swift
+	modified:   Sources/ReachyUI/RobotScreen.swift
+	new file:   Tests/ReachyKitTests/DaemonStatusDecodingTests.swift
+	modified:   Tests/ReachyKitTests/RobotSessionMoveTests.swift
+	modified:   Tests/ReachyKitTests/RobotSessionTests.swift
+	modified:   Tests/ReachyUITests/MovesModelTests.swift
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   Scripts/normalize-openapi.py
+	modified:   Sources/ReachyKit/openapi.json
+- Current git diff (staged and unstaged changes): <persisted-output>
+Output too large (34.1KB). Full output saved to: /Users/aleksei/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/8b0d8262-4892-4713-8096-91bb28432b9f/tool-results/btojspj5g.txt
+
+Preview (first 2KB):
+diff --git a/Scripts/normalize-openapi.py b/Scripts/normalize-openapi.py
+index 2a1953a..68d2540 100644
+--- a/Scripts/normalize-openapi.py
++++ b/Scripts/normalize-openapi.py
+@@ -4,9 +4,12 @@
+ FastAPI/Pydantic v2 encodes nullable fields as `anyOf: [X, {"type": "null"}]`.
+ swift-openapi-generator does not support `type: null` branches (upstream issues
+ apple/swift-openapi-generator#906, #817) and silently drops such properties,
+-producing empty structs. Optionality is preserved anyway: these properties are
+-not in `required`, so the generated Swift fields are Optional, and explicit
+-JSON nulls decode as nil via decodeIfPresent.
++producing empty structs.
++
++Stripping the null branch alone is not enough: Pydantic marks `Optional[X]`
++without a default as *required and nullable* (e.g. `DaemonStatus.backend_status`,
++which a stopped daemon sends as null). Such a property must also leave `required`,
++or the generated Swift field is non-Optional and decoding a real null throws.
+ 
+ Usage: normalize-openapi.py <spec.json>   (rewrites the file in place)
+ """
+@@ -14,6 +17,34 @@ import json
+ import sys
+ 
+ 
++def is_nullable(schema):
++    return isinstance(schema, dict) and any(
++        branch == {"type": "null"} for branch in schema.get("anyOf", [])
++    )
++
++
++def relax_nullable_required(node):
++    """Drop required+nullable properties from `required`, before the null branch is gone."""
++    if isinstance(node, list):
++        for item in node:
++            relax_nullable_required(item)
++        return
++    if not isinstance(node, dict):
++        return
++
++    properties = node.get("properties")
++    required = node.get("required")
++    if isinstance(properties, dict) and isinstance(required, list):
++        remaining = [name for name in required if not is_nullable(properties.get(name))]
++        if remaining:
++            node["required"] = remaining
++        else:
++            node.pop("required")
++
++    for value in node.values():
++        relax_nullable_required(value)
++
++
+...
+</persisted-output>
+- Current branch: main
+- Recent commits: dc76af3 feat: webrtc camera and two-way audio
+abcf336 feat: daemon compatibility policy, stream diagnostics, pinned simulator
+d910b9b feat: improve playback and robot discovery
+6c61334 feat: network resilience — path monitor, auto-reconnect, forget robot
+a83623f feat: daemon log console
+8c609b3 feat: recorded moves screen — dances, emotions, music libraries
+701813c feat: live teleop controller — SetTargetClient + joystick UI
+e0b377c fix: RobotScreen link row stretched to fill the form
+9ebc234 feat: phase-1 connection core — RobotSession, discovery in ReachyKit, ReachyUI screens
+873f7d0 docs: close phase 0 — on-device checks passed on iPhone 17 Pro
+
+## Your task
+
+Based on the above changes, create a single git commit.
+
+You have the capability to call multiple tools in a single response. Stage and create the commit using a single message. Do not use any other tools or do anything else. Do not send any other text or messages besides these tool calls.
