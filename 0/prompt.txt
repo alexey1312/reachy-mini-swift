@@ -1,0 +1,483 @@
+Base directory for this skill: /Users/aleksei/.claude/plugins/cache/indrive-claude-plugins/devx/1.2.0/skills/github-helper
+
+# GitHub Helper
+
+Helps inDrive developers work with GitHub in compliance with the corporate Change Management Policy
+(Conventional Branch 1.0.0 + Conventional Commits 1.0.0 + ADR-0016).
+
+> **NEVER add agent co-authorship or attribution.** No `Co-authored-by`, `Made with [Tool]`, or any
+> similar footer in commits, PR descriptions, or anywhere else.
+>
+> **NEVER run `git commit`, `git push`, `gh pr create`, or any other write operation without explicit
+> user confirmation.** This applies to every mode — branch creation, commits, pushes, PR creation,
+> marking PR ready, replying to comments, resolving threads. No exceptions.
+>
+> **Before every `git commit`:** list the files that will be committed and wait for explicit yes
+> before proceeding. Do this even inside automated
+> loops (CI fix loop, Full Pipeline) — never commit silently.
+>
+> **First PR creation:** always show the PR title, body, and target branch, and wait for yes
+> before calling `gh pr create` or the GitHub MCP `create_pull_request` tool.
+>
+> **Confirmation marker:** after the user confirms a plan containing `git commit / push / reset --hard`,
+> append `# claude-confirmed` to those commands so the user's PreToolUse hook does not block them again.
+> Example: `git push -u origin feat/x # claude-confirmed`. Never add the marker before the user says yes.
+
+## Reference Files
+
+Load these only when needed for the current action:
+
+| File | Load When |
+|------|-----------|
+| `references/branch-rules.md` | Generating or validating a branch name |
+| `references/commit-rules.md` | Generating or validating a commit message; breaking change format |
+| `references/pr-rules.md` | Creating, updating, or marking a PR ready |
+| `references/start-work.md` | Executing the Full Flow: Start Work (Steps 1–11) |
+| `references/review-comments.md` | Addressing PR review comments |
+| `references/ci-monitoring.md` | Monitoring CI after a push and fixing failures |
+| `references/get-version.md` | Extracting APP_VERSION for NS deploy |
+
+---
+
+## Mode Detection
+
+Identify which mode the user needs and jump directly to it:
+
+| User intent | Mode |
+|-------------|------|
+| "Give me a branch name for ECO-123" | [Atomic: Branch Name](#atomic-branch-name) |
+| "Write a commit message for ECO-123" | [Atomic: Commit Message](#atomic-commit-message) |
+| "What should I title my PR?" | [Atomic: PR Title](#atomic-pr-title) |
+| "Start work on ECO-5289", "bootstrap task" | [Full Flow: Start Work](#full-flow-start-work) |
+| "Is my branch name correct?", "validate commit" | [Validate Naming](#validate-naming) |
+| "Mark PR ready", "pr-ready", "done coding" | [PR Ready](#pr-ready) |
+| "Hotfix for incident X" | [Hotfix Flow](#hotfix-flow) |
+| "Create release branch v1.4.0" | [Release Branch](#release-branch) |
+| "This is a breaking change", "API changed incompatibly", "add breaking change" | [Breaking Change](#breaking-change) |
+| PR URL provided + "address comments", "fix review", "implement feedback" | [Address Review Comments](#address-review-comments) |
+| "Monitor CI", "check CI", "watch pipeline", "CI failed", "fix CI" | [Monitor CI](#monitor-ci) |
+| "Get version", "what version to deploy", "version for NS", "app version" | [Get Version for NS Deploy](#get-version-for-ns-deploy) |
+| the `ship` command, "ship ECO-123", "full pipeline for ECO-123", "get CI green" | [Full Pipeline](#full-pipeline) |
+| the `land` command, "land changes", "commit and push and watch CI", "push to existing PR and monitor" | [Land Changes](#land-changes) |
+
+---
+
+## Atomic: Branch Name
+
+> Load `references/branch-rules.md` before generating.
+
+1. Ask for (or extract): Jira ticket key + short description of the change.
+2. Determine change type from context (see branch rules for the type → prefix mapping).
+3. Generate the branch name and show it to the user.
+4. If the user wants adjustments — regenerate and show again.
+
+```text
+Branch: <branch-name>
+```
+
+---
+
+## Atomic: Commit Message
+
+> Load `references/commit-rules.md` before generating.
+
+1. Ask for (or extract): Jira ticket key + what was done (one sentence).
+2. Determine commit type from context.
+3. Generate the commit message and show it.
+4. If the user wants adjustments — regenerate.
+
+```text
+Commit: <type>[scope]: <TICKET>: <Description>
+```
+
+---
+
+## Atomic: PR Title
+
+> Load `references/commit-rules.md` before generating.
+
+PR title follows the same format as a commit message subject line. Follow the same steps as
+[Atomic: Commit Message](#atomic-commit-message) and label the output as "PR title".
+
+---
+
+## Full Flow: Start Work
+
+> Load `references/start-work.md` for the complete step-by-step flow (Steps 1–11).
+
+Bootstraps the full development setup: branch → initial commit → draft PR.
+This is a one-time bootstrap. After setup, the developer manages commits themselves.
+
+---
+
+## Validate Naming
+
+> Load `references/branch-rules.md` and `references/commit-rules.md`.
+
+Check the current branch name and recent commit messages against policy regexes.
+
+```bash
+# Current branch
+git branch --show-current
+
+# Detect default branch
+git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'
+
+# Commits in this branch not yet in default branch
+git log origin/<default-branch>..HEAD --format="%H %s"
+```
+
+If the default branch cannot be detected, try `main`, then `master`, then `develop`.
+
+For each item, run the relevant regex and report PASS / FAIL. For failures, suggest corrected names.
+
+---
+
+## PR Ready
+
+> Load `references/pr-rules.md` for the full steps.
+
+1. Identify the current open draft PR:
+
+   ```bash
+   gh pr view --json number,title,isDraft,url
+   ```
+
+2. Confirm with the user that they want to mark it ready.
+3. Snapshot the current check list (`gh pr checks <PR> --json name,state`), then mark the PR
+   ready (see pr-rules.md → "Marking PR Ready for Review").
+4. Monitor newly triggered pipelines (see pr-rules.md → "After Marking Ready: Monitor New
+   Pipelines"). The `ready_for_review` event often starts additional workflows that never ran
+   on the draft — the PR is not actually ready until those are green too. If new or pending
+   checks appear, enter the CI loop from `references/ci-monitoring.md` until everything passes.
+5. Suggest reviewers (see pr-rules.md → "Suggesting Reviewers").
+
+---
+
+## Hotfix Flow
+
+> Load `references/branch-rules.md` and `references/commit-rules.md`.
+>
+> **Warning:** `hotfix/` branches trigger the emergency change management process. Confirm the user
+> is resolving an **active production incident** before proceeding.
+
+1. Confirm this is an active incident. If not, suggest `fix/` instead.
+2. Ask for: incident ticket key + one-line description of the fix.
+3. Generate branch name with `hotfix/` prefix.
+4. Generate commit message with `hotfix` type.
+5. Load `references/start-work.md` and follow Steps 5–11 using the hotfix names.
+
+---
+
+## Release Branch
+
+> Load `references/branch-rules.md`.
+
+1. Ask for the version number (e.g., `1.4.0`).
+2. Generate branch name: `release/v<version>`.
+3. Confirm with user, then follow start-work Step 8 to create it from the default branch.
+
+```text
+Branch: release/v1.4.0
+```
+
+---
+
+## Breaking Change
+
+> Load `references/commit-rules.md` before generating.
+
+Use when the change breaks backward compatibility: removes or renames a public API, changes a
+contract, drops a field, or alters behavior that requires consumers to update.
+
+### Step 1: Clarify scope
+
+Ask (or extract from context):
+
+- Jira ticket key
+- What exactly breaks (one sentence: "removed field X from response")
+- Output needed: commit message, PR title, or both
+
+### Step 2: Choose the format
+
+**Format A — inline `!` (preferred):**
+
+```text
+feat!: ARCH-100: Remove deprecated /v1/orders endpoint
+fix!: PAY-200: Change error response shape to RFC 7807
+```
+
+**Format B — `BREAKING CHANGE:` footer (when explanation needs more than one line):**
+
+```text
+feat: ARCH-100: Migrate orders API to v2
+
+BREAKING CHANGE: /v1/orders endpoint removed. Consumers must migrate to /v2/orders.
+Old field `orderId` (int) is replaced by `orderUid` (UUID).
+```
+
+> Do NOT use both `!` and the footer at the same time — pick one.
+
+### Step 3: Output
+
+```text
+Commit: feat!: ARCH-100: Remove deprecated /v1/orders endpoint
+PR:     feat!: ARCH-100: Remove deprecated /v1/orders endpoint
+```
+
+---
+
+## Address Review Comments
+
+> Load `references/review-comments.md` for the full step-by-step flow.
+
+Work through all unresolved review threads on a PR: fetch threads, classify each one, confirm the
+action plan with the user, implement code changes, propose a commit, reply to every thread, and
+resolve each conversation.
+
+---
+
+## Monitor CI
+
+> Load `references/ci-monitoring.md` for the full step-by-step flow.
+
+Monitors the CI pipeline after a push and automatically fixes any failures.
+
+**Activate automatically** after every `git push` in any mode — do not wait for the user to ask.
+
+**Flow summary:**
+
+1. Fetch the latest run for the current branch from `pipeline.yml`; output the run URL.
+2. Poll every 3 minutes until `status == "completed"`.
+3. On success — report and stop.
+4. On failure — fetch failed job logs, classify, fix, commit, push, and re-poll from step 1.
+5. Continue until CI passes or a failure is unresolvable (report blocker to user).
+
+Never ask the user to check CI manually. Never block while doing nothing — always be polling or fixing.
+
+---
+
+## Get Version for NS Deploy
+
+> Load `references/get-version.md` for the complete step-by-step flow.
+
+Extracts `APP_VERSION` from the "Prepare version / Create version" CI job so the user can deploy a
+specific build to a dev/stage namespace.
+
+---
+
+## Full Pipeline
+
+> Load `references/start-work.md`, `references/ci-monitoring.md`.
+
+Chains **Start Work → CI Monitor → Fix Loop** in one uninterrupted run. Use when the user
+wants to bootstrap a ticket and get CI green without managing each step manually.
+
+Triggered by the `ship` command, "ship ECO-123", "full pipeline", "get to green".
+
+### Phase 1: Bootstrap (Start Work)
+
+Follow all steps from `references/start-work.md` (Steps 1–11):
+
+- Parse ticket, determine change type, generate branch + commit + PR title.
+- **One combined confirmation prompt** (Step 6) — show branch, commit, PR, repo and wait for yes.
+- Create branch, push empty bootstrap commit, open draft PR.
+
+### Phase 2: Continuous CI Loop
+
+After every push in this session, immediately enter the CI loop (see `references/ci-monitoring.md`):
+
+```text
+repeat:
+  1. Fetch latest run for current branch from pipeline.yml
+  2. Output run URL
+  3. Poll every 3 min until completed
+  4. If success → break
+  5. If failure → fetch logs, classify, fix, commit, push → goto 1
+until green or unresolvable blocker
+```
+
+The loop runs without asking the user each iteration. Only stop to ask when:
+
+- A fix requires a decision (ambiguous change, missing context, test failure needs new logic)
+- CI passes — report green and offer `pr-ready`
+
+### Phase 3: Offer PR Ready
+
+When CI is green:
+
+```text
+✓ CI passed.
+
+PR: <PR-URL>
+
+Mark it ready for review? (yes / no)
+```
+
+If yes — follow the [PR Ready](#pr-ready) mode.
+
+---
+
+## Land Changes
+
+> Load `references/commit-rules.md`, `references/ci-monitoring.md`, `references/pr-rules.md`.
+
+Lands local work into an **already-existing** PR: commit → push → CI loop → offer pr-ready.
+Does NOT bootstrap a branch or open a new PR — use [Full Pipeline](#full-pipeline) or
+[Full Flow: Start Work](#full-flow-start-work) for that.
+
+Triggered by the `land` command, "land changes", "commit and push and watch CI",
+"push to existing PR and monitor".
+
+### Step 1: Detect Branch and Open PR
+
+```bash
+git branch --show-current
+gh pr view --json number,title,isDraft,url,headRefName,baseRefName,state 2>&1
+```
+
+- If the branch is the default branch (`main` / `master` / `develop`) — stop and ask the
+  user to switch to a feature branch.
+- If `gh pr view` returns a PR — record its number, URL, draft status; continue to Step 2.
+- If no PR exists for this branch — ask:
+
+  ```text
+  No open PR found for branch <branch>.
+
+    1. Stop — run the `ship` command to bootstrap a branch + draft PR
+    2. Open a draft PR for this branch now and continue
+    3. Push to the branch only (no PR)
+    4. Cancel
+  ```
+
+  - **1 / stop** → stop and point user to `ship`.
+  - **2 / open PR** → after Step 3 push, follow `references/pr-rules.md` →
+    "Creating a Draft PR" to open a draft PR, then continue at Step 5.
+  - **3 / push only** → continue without a PR; skip Step 6 (cannot mark a missing PR ready).
+  - **4 / cancel** → stop.
+
+### Step 2: Check Local Changes
+
+```bash
+git status --porcelain
+```
+
+- Output is empty → ask the user:
+
+  ```text
+  No local changes to commit.
+
+    1. Skip to CI monitoring of the last push on this branch
+    2. Cancel
+  ```
+
+  - **1 / skip** → go to Step 5 (use the latest run for the current branch).
+  - **2 / cancel** → stop.
+
+- Output is non-empty → continue to Step 3.
+
+### Step 3: Confirm, Commit, Push
+
+Generate the commit message via `references/commit-rules.md` (use `monitor CI on main until green (push 65334b6)` as
+context if the user passed any; otherwise infer the change type and description from
+the diff and the existing branch/PR name).
+
+Show the plan and wait for explicit confirmation — **mandatory, never skip:**
+
+```text
+About to land changes on branch <branch>:
+
+  Files:
+    <list of changed/staged files>
+
+  Commit:  <commit-message>
+  Push to: origin/<branch>
+  PR:      <PR-URL> (or "none — push-only" / "draft PR will be opened after push")
+
+Proceed? (yes / no / adjust)
+```
+
+- **yes** → execute below.
+- **adjust** → regenerate commit message or re-stage and re-confirm.
+- **no / cancel** → stop.
+
+After yes:
+
+```bash
+git add <files>
+git commit -m "<commit-message>" # claude-confirmed
+git push # claude-confirmed
+```
+
+### Step 4: Open Draft PR If Requested
+
+If Step 1 branch had no PR and the user picked option 2, open it now per
+`references/pr-rules.md` → "Creating a Draft PR".
+
+### Step 5: Monitor CI Until Green
+
+Enter the CI loop from `references/ci-monitoring.md`:
+
+```text
+repeat:
+  1. Fetch latest run for current branch via gh pr checks <PR>
+  2. Output run URL
+  3. Watch via `gh pr checks <PR> --watch` (run_in_background: true)
+  4. If success → break
+  5. If failure → fetch failed-job logs, classify, fix, commit, push → goto 1
+until green or unresolvable blocker
+```
+
+Re-use the same commit-confirmation contract from `ci-monitoring.md` Step 6 for every
+fix commit — list files, show message, wait for yes before each commit/push.
+
+Skip Step 5 entirely if Step 1 chose option 3 (push-only, no PR) — there is no PR to
+poll. Report the run URL via `gh run list` if the user wants to track it themselves.
+
+### Step 6: Offer PR Ready
+
+When CI is green and a PR exists:
+
+```text
+✓ CI passed.
+
+PR: <PR-URL> (draft)
+
+Mark it ready for review? (yes / no)
+```
+
+- **yes** → follow the [PR Ready](#pr-ready) mode.
+- **no** → stop. Leave PR as draft.
+
+If the PR is already non-draft, skip the offer and just report the green CI status.
+
+---
+
+## MCP Server IDs
+
+| Agent | Jira server ID | GitHub server ID |
+|-------|---------------|-----------------|
+| Claude Code | `atlassian` | `github` |
+| Cursor | `user-atlassian` | `user-github` |
+
+When calling tools, `<atlassian>` and `<github>` are placeholders — substitute the actual server ID.
+
+---
+
+## Error Handling
+
+| Error | Action |
+|-------|--------|
+| Atlassian MCP not configured | Fall back to Path C — ask user for details |
+| Atlassian MCP auth fails | Ask user to reconnect; fall back to Path C |
+| GitHub MCP not configured | Use Git CLI + gh CLI fallbacks |
+| `getJiraIssue` not found | Verify ticket key with user |
+| No git remote | Ask user for owner/repo |
+| Branch already exists | Inform user, ask whether to reuse or rename |
+| PR already exists | Show existing PR URL |
+| Invalid ticket key format | Must match `[A-Z]{2,10}-[1-9]\d*` |
+| GitHub API error | Show error, suggest checking permissions |
+| No unresolved threads found | Report "No unresolved review threads — nothing to do" |
+| Thread has no line reference (PR-level comment) | Treat as reply-only, no code change |
+| `resolveReviewThread` mutation fails | Report which threads could not be resolved; manual resolution link |
+| Code change is ambiguous or too broad | Ask the user to clarify before editing |
