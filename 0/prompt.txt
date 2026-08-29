@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b1b90shnc</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/71cc5653-cb5b-411e-92e8-f14c6b87d3b6/tasks/b1b90shnc.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for the snapshot run to finish" completed (exit code 0)</summary>
+</task-notification>
