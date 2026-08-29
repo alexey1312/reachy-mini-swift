@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bgs5w1pej</task-id>
+<tool-use-id>toolu_0137vFxxKPk2aturqddjjQuR</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ee2b8e9f-2599-46a1-9525-8204f94244fa/tasks/bgs5w1pej.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for the macOS build to appear" completed (exit code 0)</summary>
+</task-notification>
