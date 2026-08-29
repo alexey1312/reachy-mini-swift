@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bup0ee3us</task-id>
+<tool-use-id>toolu_01A1cymkvpSohNEyg6dXdNx8</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/bup0ee3us.output</output-file>
+<status>failed</status>
+<summary>Background command "Run the snapshot suite" failed with exit code 65</summary>
+</task-notification>
