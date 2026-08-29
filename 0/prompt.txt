@@ -1,0 +1,93 @@
+<task-notification>
+<task-id>a6c2affcc0efacd5d</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/a6c2affcc0efacd5d.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore floating robot window" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>`git log --oneline main..HEAD` is **empty** and `git diff main...HEAD --stat` is empty — the branch has zero commits of its own (it's actually one commit *behind* `main`, which has a release bump on top). The entire floating-window feature already exists on `main`, shipped over six PRs (#15, #24, #28, #36, #40, #48).
+
+## 1. The floating window
+
+Six files in `Sources/ReachyUI/`, all internal (no `public`):
+
+| File | Type | Role |
+|---|---|---|
+| `FloatingViewport.swift:29` | `struct FloatingViewport: View` | The window **and** its edge tab, one SwiftUI identity |
+| `FloatingViewportModel.swift:29` | `@MainActor @Observable final class FloatingViewportModel` | Placement state machine, drag arithmetic |
+| `FloatingViewportPlacement.swift:12,19,45` | `Corner`, `Placement`, `EdgeBleed` | The vocabulary |
+| `FloatingViewportGeometry.swift:9` | static extension on the model | Pure placement math |
+| `FloatingViewportModifier.swift:18,28` | `View.floatingViewport(model:viewport:session:open:)` + private modifier | Mounts the overlay on the `TabView` |
+| `FloatingViewportPreferences.swift:15` | `FloatingViewportPreferences` | One `UserDefaults` key, `floatingViewport.isEnabled` |
+
+**Placement is derived, never assigned** (`FloatingViewportModel.swift:116`):
+
+```swift
+var placement: Placement {
+    isLiveTabSelected || !hasTabBar || !isEnabled ? .inline : rest
+}
+```
+
+Three cases: `.inline` (Live tab owns it), `.floating(Corner)` (window over everything, stream on), `.docked(HorizontalEdge, y:)` (44×72 tab at the screen edge, stream **off**). Plus `settling: Placement?` (`:94`) — where an in-flight animation is heading, which is what keeps the RealityKit teardown off the animation's frames. `drawn` (`:123`) = `settling ?? placement`.
+
+Related pieces: `Motion.absorb(velocity:)` / `Motion.absorbContent` / `Motion.dock` in `Sources/ReachyDesign/Motion.swift`; `Radius.flush(to:_:)`; `SurfaceRole.window` in `ReachySurface.swift`; `CoordinateSpace.floatingViewportBounds` (`FloatingViewportModifier.swift:189`).
+
+Wiring: `ReachyRootView.swift:21,70` owns the model → `ReachyTabShell.swift:125` applies `.floatingViewport(...)` to the `TabView` → `RootLifecycle.swift:151` reads `floating.isStreaming` as half of `viewportIsOnScreen` (the battery lever). The user-facing switch is a toolbar `Menu` labelled `pip` on the Live tab (`LiveTab.swift:72-81`).
+
+Tests: 717 lines across `Tests/ReachyUITests/FloatingViewport{ModelTests,GeometryTests,ReleaseTests,Gestures}.swift`. Snapshots: `Apps/ReachyUISnapshotTests/__Snapshots__/FloatingViewportPreviewsTests.generated/` (10 previews × iPhone/iPad × light/dark).
+
+## 2. ReachyScene
+
+`Sources/ReachyScene/` — 5 source files, depends only on `ReachyKit`.
+
+- **`RobotSceneView`** (`RobotSceneView.swift:8`) is the only public view. `public init(model: RobotSceneModel)`. Body is a bare `RealityView` + `.gesture(orbit)` + `.simultaneousGesture(zoom)`. **No frame, no aspect ratio, no `GeometryReader`** — it takes whatever proposal it's given, so it embeds at arbitrary sizes fine.
+- **There is no `SceneViewport` in the package.** `SceneViewport` (`Sources/ReachyUI/SceneViewport.swift:7`) is a ReachyUI-internal wrapper adding the phase overlay (downloading meshes / building scene / failed). `SceneOptionsMenu` (`:43`) sits beside it.
+- **`RobotSceneModel`** (`RobotSceneModel.swift:10`) `@MainActor @Observable public final class`: `phase`, `lastFrameAt`, `streamDiagnostics`, `container: Entity`, `camera: OrbitCamera`, `placesHeadDirectly`, `solvesPassiveJoints`; `init(address:client:cache:)`, `start()`, `stop()`, `pauseStream()`, `resumeStream()`.
+- **`OrbitCamera`** (`OrbitCamera.swift:11`) holds the one aspect assumption, at `:69-79`:
+
+  ```swift
+  // Vertical field of view is 60° by default; 2.2 radii leaves a margin so
+  // the robot does not touch the edges of the screen.
+  distance = radius * 2.2
+  ```
+
+  Fixed 2.2× multiplier, never recomputed for the host's aspect. At the 160×112 window (1.43:1 landscape) the vertical FOV governs, so the robot is framed the same as full-screen with more slack sideways — it works, but nothing adapts.
+- **Platform conditionals: none.** The only `#if` in the whole package is `#if DEBUG` at `RobotSceneModel.swift:176`. It does carry `import _RealityKit_SwiftUI` (`RobotSceneView.swift:3`) because SwiftPM doesn't wire the cross-import overlay automatically. Floor is iOS 18 / macOS 15, set by `RealityView`.
+- **Hard constraint** (`Sources/ReachyScene/CLAUDE.md`): exactly **one live `RealityView` per `RobotSceneModel`**. An `Entity` has one parent, so a second view silently steals the robot. This is why the window and the tab are one identity, why `matchedGeometryEffect` is ruled out, and why `LiveTab` draws `Color.clear` when the window has the viewport (`LiveTab.swift:107`).
+
+## 3. Where the scene sits today
+
+Two hosts, never simultaneously, both drawing the shared `ViewportContent` (`Sources/ReachyUI/ViewportContent.swift:12`):
+
+1. **`LiveTab`** → `ViewportView` (`Sources/ReachyUI/ViewportView.swift:50`) at `.frame(maxWidth: .infinity, maxHeight: .infinity)`, full screen, with the 240 pt segmented picker and the joystick.
+2. **`FloatingViewport`** → `ViewportContent` at a fixed **`Metrics.floatingViewport` = 160 × 112** (`Sources/ReachyDesign/Metrics.swift:41`), `.allowsHitTesting(false)`, no teleop, two icon buttons instead of the picker. Docked tab is **`Metrics.viewportTab` = 44 × 72** (`:44`).
+
+The window's own frame animates (`FloatingViewport.swift:129-137`) while `pictureSize` stays fixed and is clipped (`:184`) so the `RealityView` never re-lays out during the morph. During expansion all three fork on `isExpanding` together.
+
+Available rectangle (`FloatingViewportModifier.swift:103`): the `GeometryReader`'s own size minus `Metrics.tabBarAllowance` (56) minus `Metrics.tabAccessoryAllowance` (68, only when the running-app dock is up). Safe area is *not* subtracted — the reader is already inside it.
+
+## 4. The gap your branch name points at
+
+`FloatingViewportModifier.swift:43-49`:
+
+```swift
+private var hasTabBar: Bool {
+    #if os(macOS)
+        false
+    #else
+        horizontalSizeClass == .compact
+    #endif
+}
+```
+
+**On iPad (regular width) and on macOS the floating window does not exist at all.** `hasTabBar == false` collapses `placement` to `.inline` everywhere, `isStreaming` is permanently false, and `LiveTab` hides the "Mini window" toggle (`LiveTab.swift:51`). The stated reason (`Sources/ReachyUI/CLAUDE.md`, and `ReachyTabShell.swift:103`) is that `.tabViewStyle(.sidebarAdaptable)` draws a sidebar at regular width, so Live is permanently visible and there is nothing to float out of.
+
+Everything downstream of that flag is already size-agnostic:
+- `FloatingViewportModel` has no size-class knowledge; `hasTabBar` is a plain `var` written by one `onChange`.
+- All geometry (`FloatingViewportGeometry.swift`) takes `size:` and `margin:` parameters defaulted to the metrics, and clamps for degenerate rectangles.
+- `FloatingViewportPreviews.swift` already injects `hasTabBar: true` and records iPad-Pro-11 references for every window state (`:99` explicitly notes the iPad root captures show "the plain tab it is captured on").
+- `FloatingViewportModelTests.regularWidthIsUnchanged()` (`:81`) is the test that pins the current behaviour.
+
+Two other things a tablet change would meet: `dockBleed(in:)` (`FloatingViewportModifier.swift:147`) is iPhone-landscape-only Dynamic Island logic that reads `UIInterfaceOrientation` — harmless on iPad but not meaningful there; and `Metrics.tabBarAllowance`/`tabAccessoryAllowance` are iPhone tab-bar numbers that mean nothing under a sidebar.</result>
+<usage><subagent_tokens>146134</subagent_tokens><tool_uses>30</tool_uses><duration_ms>144984</duration_ms></usage>
+</task-notification>
