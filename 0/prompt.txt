@@ -1,0 +1,3 @@
+Your question menu did not register my selection, so here is my answer as text:
+PR #105 — это `feat`, а тег и GitHub release 0.4.0 уже опубликованы на коде без него. Под каким номером выпускать?: 0.4.1
+Continue with that answer.
