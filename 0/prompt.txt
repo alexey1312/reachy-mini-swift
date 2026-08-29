@@ -1,0 +1,2 @@
+Надо сделать
+tuist setup cache
