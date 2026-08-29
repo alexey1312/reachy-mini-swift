@@ -1,0 +1,4 @@
+https://github.com/alexey1312/reachy-mini-swift/pull/17
+  Я случайно удалил иходную ветку claude/permissions-access-handling-r37eup
+  Вмердижл правки из ПР и удалил
+  Можем востановить и влить в main?
