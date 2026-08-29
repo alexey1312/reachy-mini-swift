@@ -1,0 +1,1 @@
+❯ Добавь в рутовй CLAUDE.md правило, всегда писать Simplified Technical English https://en.wikipedia.org/wiki/Simplified_Technical_English
