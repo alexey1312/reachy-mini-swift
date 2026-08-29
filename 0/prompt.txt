@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bvv4o4j6m</task-id>
+<tool-use-id>toolu_01TUqxLiHThcPqcBSvJUgZq5</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/7e74cd7d-fbf2-4e77-a218-db4f254f0c1a/tasks/bvv4o4j6m.output</output-file>
+<status>completed</status>
+<summary>Background command "Archive and upload iOS then macOS to TestFlight" completed (exit code 0)</summary>
+</task-notification>
