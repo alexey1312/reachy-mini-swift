@@ -1,0 +1,172 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. **Primary Request and Intent:**
+
+   The user asked me to work through ("проработай решение") the design for the remaining Phase 2 item: **"3D-вьюер и пассивная кинематика"** (3D viewer and passive kinematics) for a native Swift client of the Reachy Mini robot. This evolved through explicit follow-ups into full implementation, device deployment, and end-to-end testing:
+   - Design/plan the feature (started in plan mode, brainstorming skill)
+   - "Подтяни актуальный main / И приступи к реализации" — pull latest main and implement
+   - "комит в main push" — commit to main and push
+   - "по поводу 20 Гц (демон по умолчанию отдаёт 10) - надо убедиться еще раз" — re-verify the 10 Hz claim
+   - "Потом запусти симулятор и смулятор робота, на другом компе он был и все протестируй просмотри" — run the iOS simulator + robot simulator and test everything visually
+   - "Собери билд на моем устройстве" — build on their physical device
+   - "Демона выключ" — shut down the daemon
+
+2. **Key Technical Concepts:**
+   - Swift 6 strict concurrency, SPM multi-target package
+   - RealityKit / `RealityView` (iOS 18 / macOS 15), `_RealityKit_SwiftUI` cross-import overlay (SwiftPM does not auto-enable it)
+   - `@MainActor @Observable` models held as `@State`, passed down as `let` (project pattern, no TCA/Combine)
+   - swift-testing (`@Suite`/`@Test`/`#expect`/`#require`), gated suites via `.enabled(if: ProcessInfo...environment[...])`
+   - swift-openapi-generator; `prefixItems` without `items` → `OpenAPIArrayContainer`
+   - URDF: 6-RSS Stewart platform, 21 passive joints = 7 spherical wrists × 3 revolute (x→y→z chains)
+   - Loop closure frames `closing_i_1`/`closing_i_2` for legs 1–5; leg 6 runs through `passive_7` to head link `xl_330`
+   - App Transport Security: `NSAllowsLocalNetworking` exempts only `.local`, link-local, and single-label hosts
+   - Euler conventions: URDF `rpy` = intrinsic xyz = `Rz·Ry·Rx`; extraction = extrinsic XYZ via `sy = m[0][2]`
+   - Rodrigues' rotation / `alignment(from:to:)` with parallel/antiparallel guards
+   - STL binary detection via `count == 84 + 50*n`, NOT the "solid" prefix
+   - Tuist project generation, `xcodebuild` with `-skipPackagePluginValidation`, `devicectl`
+
+3. **Files and Code Sections:**
+
+   **`Package.swift`** — platforms `.macOS(.v15)`, `.iOS(.v18)`; added `ReachyScene` target (deps `["ReachyKit"]`) and `ReachySceneTests`; `ReachyUI` deps now `["ReachyKit", "ReachyMedia", "ReachyScene"]`.
+
+   **`Apps/Project.swift`** — `deploymentTargets: .multiplatform(iOS: "18.0", macOS: "15.0")`.
+
+   **`Sources/ReachyKit/Transport/StateStreamOptions.swift`** (new) — models undocumented WS query params. Critically, `with_target_*` is **deliberately unrepresentable**:
+   ```swift
+   public struct StateStreamOptions: Sendable, Equatable {
+       public var frequency: Double?          // daemon default is 10, not 20
+       public var headPose: Bool?
+       public var headJoints: Bool?           // 7 values [body_yaw, stewart_1...6]
+       public var bodyYaw: Bool?
+       public var antennaPositions: Bool?
+       public var passiveJoints: Bool?        // null unless --kinematics-engine Placo
+       public var directionOfArrival: Bool?
+       public var poseAsMatrix: Bool?
+       public static var visualization: Self { /* freq 20, headPose, headJoints, bodyYaw, antennas, poseAsMatrix */ }
+       public var queryItems: [URLQueryItem] { /* fixed order */ }
+   }
+   ```
+
+   **`Sources/ReachyKit/Transport/RobotStateFrame.swift`** (new) — hand-written decoder bypassing `OpenAPIArrayContainer`:
+   ```swift
+   public enum HeadPose: Sendable, Equatable {
+       case matrix([Double])   // 16, row-major, metres
+       case euler(x:y:z:roll:pitch:yaw:)
+       public var transform: simd_double4x4? { ... }
+   }
+   ```
+   Decoded in `StateStreamClient` with `try?` and **never folded into diagnostics** so a viewer-only decode problem can't look like a broken stream.
+
+   **`Sources/ReachyKit/Transport/StateStreamClient.swift`** — `Configuration.options` added (empty default = byte-identical URL); `url` made internal; `StateStreamUpdate` gained `frame: RobotStateFrame?`.
+
+   **`Sources/ReachyKit/Model/RobotAddress.swift`** — added `webSocketURL(path:queryItems:)` and `httpURL(path:queryItems:)`; `components.queryItems = queryItems.isEmpty ? nil : queryItems`.
+
+   **`Sources/ReachyKit/Transport/RobotConnection.swift`** — added `assetSession` (20 s request / 120 s resource) plus `urdf()`, `stlAsset(named:)` (raw URLSession — generated client declares `application/json` while daemon returns `model/stl`), `kinematicsInfo()`.
+
+   **`Sources/ReachyKit/Kinematics/RigidTransform.swift`** (new) — single home for `rotation(rpy:)`, `euler(from:)`, `transform(rotation:translation:)`, `matrix(rowMajor:)`, `rotation(axis:angle:)`, `alignment(from:to:)`.
+
+   **`Sources/ReachyKit/Kinematics/URDFDocument.swift` / `URDFParser.swift`** (new) — SAX parser; `<collision>`/`<inertial>` skipped via `skipDepth`; `restTransformFromRoot(_:)` and `restTransform(from:to:)` give rest-pose FK.
+
+   **`Sources/ReachyKit/Geometry/STLMesh.swift`** (new) — own decoder, no vertex welding, repairs zero normals, drops degenerate facets, `loadUnaligned` for arm64 safety.
+
+   **`Sources/ReachyKit/Geometry/GeometryCache.swift` / `RobotGeometryProvider.swift`** (new) — cache keyed by SHA-256 of URDF text; manifest written last as completeness marker; 4 concurrent downloads.
+
+   **`Sources/ReachyKit/Kinematics/StewartGeometry.swift`** (new) — everything derived from URDF:
+   - `motorFrames` = `restTransformFromRoot(stewart_i.child) * translate(0,0,passive_i_x.origin.z)` → reproduces upstream r=0.038, z=0.0766334, angles ±44.742/±75.258/±164.742
+   - `branchPositions` from `closing_i_2` (legs 1–5) and `passive_7_link_x` (leg 6), in `head` frame → r=0.030
+   - `rodDirections` from `closing_i_1` origins / `passive_7_x` origin
+   - `headHeightOffset` = `restTransformFromRoot("head").translation.z` = **0.14957** (upstream's 0.177 is in a different frame)
+
+   **`Sources/ReachyKit/Kinematics/PassiveJointSolver.swift`** (new) — z-offset, `Rz(-bodyYaw)`, per-leg alignment, seventh wrist from leg 6's saved frames.
+
+   **`Sources/ReachyScene/OrbitCamera.swift`** (new) — auto-framing camera, `frame(_ bounds:)` sets `distance = radius * 2.2`, drag/magnify with gesture anchors released in `endGesture()`, `reset()`.
+
+   **`Sources/ReachyScene/RobotSceneGraph.swift` / `RobotSceneModel.swift` / `RobotSceneView.swift` / `RobotSceneLighting.swift`** (new).
+
+   **`Sources/ReachyUI/RobotViewerScreen.swift`** (new) + `RobotScreen.swift` NavigationLink gated on `!session.isBackendRunning`.
+
+   **`Sources/ReachyUI/ConnectionScreen.swift`** — removed `reachy-mini.home`; `#if os(macOS) || targetEnvironment(simulator)` for 127.0.0.1.
+
+   **`CLAUDE.local.md`** (new, gitignored) — `DEVELOPMENT_TEAM = J52C3SB8K5`, device `9FD3B44D-855B-565A-818A-DB10E3C2AB8C`, build command.
+
+4. **Errors and fixes:**
+   - `DirectionalLight.shadow` reads non-nil even without the component — my test failed; fixed by asserting `components.has(DirectionalLightComponent.Shadow.self)`; a probe showed a fresh light has no shadow component, making my `components.remove` dead code, removed.
+   - `simd_double4x4(simd_double3x3)` doesn't exist → added `transform(rotation:translation:)`.
+   - Type-checker timeout on the 6-argument `.euler(...)` → extracted nested `component()`.
+   - `URDFDocument.init` captured `self` in a closure before init → build dictionaries into locals first.
+   - SwiftLint cyclomatic complexity 21 / body length in parser `start()` → split into `startJoint`, `startGeometry`, `startJointDetail`.
+   - Swift 6 Sendable: `FileManager` stored property → computed; `group.reduce` "sending 'group' risks data races" → manual `for try await`.
+   - `RealityView` not found under `swift build` → `import _RealityKit_SwiftUI`.
+   - `Issue.record(String(format:))` ambiguous with the `Error` overload → `Comment(rawValue:)`.
+   - Test local `geometry` shadowed method `geometry()` → renamed helper to `loadGeometry()`.
+   - `#expect` with rethrowing `contains {}` → extracted to locals.
+   - Large-tuple SwiftLint violation in STL `Builder.add` → separate parameters.
+   - **My own measurement bug:** `.components.seconds` is Int64, truncating 2.4 s → 2, reporting 20 Hz for a 16 Hz stream; fixed with attoseconds.
+   - Leftover `private extension PassiveJointSolver.SolvedLeg` with a duplicate init → removed.
+   - Device build failed twice: plugin validation (fixed with `-skipPackagePluginValidation -skipMacroValidation`), then provisioning (fixed with `DEVELOPMENT_TEAM=J52C3SB8K5 CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates`).
+
+   **User feedback that changed direction:**
+   - "угол обзора, не очень понятно откуда (кажется изнутри с цента робота)... стоит добавить другой угол, а так же возомжность приближать, уладалять жестами" → replaced built-in `.orbit` with own OrbitCamera.
+   - "по поводу 20 Гц (демон по умолчанию отдаёт 10) - надо убедиться еще раз" → I re-verified from upstream source myself and then measured empirically.
+
+5. **Problem Solving:**
+   - **Camera-inside-model:** `RealityView`'s `make` closure runs before the async geometry download, so `cameraTarget` framed an empty container. Fixed with own camera framed from `graph.visualBounds` after build.
+   - **Geometry derivation:** a probe test (`StewartGeometryProbe.swift`, still present, gated on `REACHY_URDF_PROBE`) revealed the crank's 7 mm rise is folded into upstream's motor frame; deriving `horn * translate(0,0,armZ)` reproduced their constants to six figures.
+   - **Head z-offset discrepancy:** URDF gives 0.14957, upstream literal is 0.177. Kept the derived value because the rest-pose test only passes with it (all six legs → 0 within 1e-9).
+   - **ATS bug found during simulator testing:** `reachy-mini.home` always blocked (`NSURLErrorDomain -1022`), showing a red error block even when Bonjour succeeded. Removed with the reason recorded in `.claude/rules/networking.md`.
+   - **10 Hz verified three ways:** upstream source at v1.9.0 and main (`frequency: float = 10.0`, `sleep(period)` after send), and empirically — 40 frames in 4.195 s default vs 2.159 s with `frequency=20`.
+
+6. **All user messages:**
+   - "Фаза 1 закончена / Уже начали Фазу 2 / Проработай решение о: 3D-вьюер и пассивная кинематика"
+   - (ExitPlanMode rejection) "Подтяни актуальный main / И приступи к реализации"
+   - "давай / затем ставим на мой девайс и тестим"
+   - "Я в xcode автоизован, устанавливай (и сохрани это себе в память)"
+   - "Я запустил, но угол обзора, не очень понятно откуда (кажется изнутри с цента робота) / Кажется стоит добавить другой угол, а так же возомжность приближать, уладалять жестами"
+   - "Все четко"
+   - "давай"
+   - "комит в main push"
+   - "Продолжи но по поводу 20 Гц (демон по умолчанию отдаёт 10) - надо убедиться еще раз"
+   - "давай"
+   - "Потом запусти симулятор и смулятор робота, на другом компе он был и все протестируй просмотри"
+   - "Вроде похоже на правду"
+   - "Все четко"
+   - "Собери билд на моем устройстве"
+   - "Демона выключ"
+
+   **Security-relevant constraints stated by the user (still in effect):**
+   - Signing team must be `J52C3SB8K5` (personal); the work teams on the machine (`922SS86H33`, `FY2ZX2NBG3`, `4J74267VMS`, `YP2NJS4FS8`) must not be used.
+   - "хранить надо в CLAUDE.local.md так что бы не комитилось" — the team ID must live in `CLAUDE.local.md` and never be committed (it is in `.gitignore` line 22; verified with `git check-ignore`).
+   - Project rule (from CLAUDE.md, unchanged): upstream Pollen repos are a **specification only, never a source of code**; no upstream assets (URDF/STL) are bundled or committed — they are fetched from the robot at runtime.
+
+7. **Pending Tasks:**
+   - Task #9 "Этап 8: сверка с Placo и включение пассивных суставов" remains open in the task list, but I told the user its value is now low since rest-pose and direction round-trip both agree to 1e-9. Not explicitly requested again.
+   - Two issues I reported but did not fix (user has not asked me to):
+     - Pre-existing WebRTC signaling integration test times out (port 8443 listens, producer never registers).
+     - After a horizontal swipe the camera drifts below the base; suspected `DragGesture`/`MagnifyGesture` interaction via `simultaneousGesture`. "Reset view" recovers.
+   - BLE Wi-Fi provisioning is the only remaining Phase 2 item overall.
+
+8. **Current Work:**
+
+   The user's last request was "Демона выключ" (shut down the daemon). I checked port 8000 (not responding) but found process 23544 still alive:
+   ```
+   23544 /Users/aleksei/Developer/reachy-mini-desktop-app-swift/.venv-sim/bin/python -m reachy_mini.daemon.app.main --sim --fastapi-host 0.0.0.0
+   ```
+   `kill 23544` (SIGTERM) was ignored; `kill -9 23544` succeeded and verification confirmed "демон остановлен". I left `.venv-sim` (1.4 GB, gitignored) in place so the next `./bin/mise run sim-daemon` starts immediately, and offered `trash .venv-sim` if space is needed.
+
+   Final repository state — four commits pushed to `main`:
+   | Commit | Content |
+   | --- | --- |
+   | `5459aa4` | 3D viewer: ReachyScene module, geometry download, scene, screen |
+   | `5984352` | Docs: 10 Hz not 20, query params, `with_target_*` trap |
+   | `6e5ac35` | Stewart passive-joint solver |
+   | `2bea537` | Connection fix: removed ATS-blocked `.home`, loopback in simulator |
+
+   170 tests passing, SwiftLint `--strict` 0 violations, `format-check` clean. App installed and launched on both the iPhone 17 Pro and the iOS simulator.
+
+9. **Optional Next Step:**
+
+   No next step. The user's last request ("Демона выключ") was completed and verified — the daemon process was killed and confirmed gone. All prior tasks (implementation, commit/push, device build, simulator testing) were completed and acknowledged by the user with "Все четко". The remaining known items (Placo cross-check, WebRTC test timeout, camera drift after horizontal swipe, BLE provisioning) were reported to the user but not requested, so I should confirm with the user before starting any of them.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/aleksei/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/2b31bcb3-8b49-4d59-a8cc-55479cff0d4e.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
