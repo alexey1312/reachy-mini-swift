@@ -135,16 +135,45 @@ Apple has announced no deadline for the iOS 27 SDK. The floor is still Xcode 26 
 
 Each row was checked against the tree.
 
-| Gap                                  | Where                                                                                                                           | Note                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Resizability audit                   | `Sources/ReachyUI/FloatingViewportModifier.swift:142-180`                                                                       | `dockBleed` branches on `UIWindowScene.interfaceOrientation`, and its own comment records that the values were measured by forcing `UISupportedInterfaceOrientations`. Orientation is a preference under 27, not a contract. **Do this before the re-recording** — otherwise the references freeze whatever `dockBleed` then computes |
-| The `.soft` scroll edge effect       | `Sources/ReachyDesign/ReachyChrome.swift:47`, one consumer at `Sources/ReachyUI/LogConsoleView.swift:74`                        | `.automatic` has a new appearance in 27 and Apple asks for overrides to be reviewed. A separate commit after the re-recording, or it is indistinguishable from the images that moved                                                                                                                                                  |
-| Menu icons                           | `Menu {` in `LogConsoleView`, `SceneViewport`, `SoundboardScreen`, `AppStoreScreen`, `LiveTab`, `RobotFilesScreen`              | hidden by default on iPadOS and macOS 27 without `preferredImageVisibility`; they disappear silently                                                                                                                                                                                                                                  |
-| Tooling matrix                       | `mise.toml` — swiftlint, swiftformat, swift-syntax, and Prefire pinned `.exact` to 5.7.0 behind a forked `PreviewTests.stencil` | #57 moves the CI image but not the parsers, and the `@State` macro passes through them                                                                                                                                                                                                                                                |
-| Snapshot coverage is two fixed sizes | `Apps/.prefire.yml` (`iPhone 16 Pro`, `iPad Pro 11`)                                                                            | under resizability no reference exercises a narrow or a wide window                                                                                                                                                                                                                                                                   |
-| The combined privacy prompt          | camera, microphone, Bluetooth, local network and location in one dialog                                                         | the first-run gate and the smoke test that walks it may both shift                                                                                                                                                                                                                                                                    |
-| Stricter TLS                         | `ws://<host>:8443`, `Sources/ReachyKit/Transport/CameraSignalingClient.swift:4`, plus `NSAllowsLocalNetworking`                 | signaling is plaintext                                                                                                                                                                                                                                                                                                                |
-| macOS 27 drops Intel                 | `Scripts/release-macos.sh`                                                                                                      | the universal slice stops being obligatory                                                                                                                                                                                                                                                                                            |
+| Gap                                             | Where                                                                                                                           | Note                                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Resizability audit                              | `Sources/ReachyUI/FloatingViewportModifier.swift:142-180`                                                                       | **Analysed, no change made.** See §2.1                                                 |
+| The `.soft` scroll edge effect                  | `Sources/ReachyDesign/ReachyChrome.swift:47`, one consumer at `Sources/ReachyUI/LogConsoleView.swift:74`                        | **Open, but a device check rather than a code task.** See §2.1                         |
+| Menu icons ~~needs `preferredImageVisibility`~~ | `Menu {` in `LogConsoleView`, `SceneViewport`, `SoundboardScreen`, `AppStoreScreen`, `LiveTab`, `RobotFilesScreen`              | **Closed — nothing to do.** See §2.1                                                   |
+| Tooling matrix                                  | `mise.toml` — swiftlint, swiftformat, swift-syntax, and Prefire pinned `.exact` to 5.7.0 behind a forked `PreviewTests.stencil` | #57 moves the CI image but not the parsers, and the `@State` macro passes through them |
+| Snapshot coverage is two fixed sizes            | `Apps/.prefire.yml` (`iPhone 16 Pro`, `iPad Pro 11`)                                                                            | under resizability no reference exercises a narrow or a wide window                    |
+| The combined privacy prompt                     | camera, microphone, Bluetooth, local network and location in one dialog                                                         | the first-run gate and the smoke test that walks it may both shift                     |
+| Stricter TLS                                    | `ws://<host>:8443`, `Sources/ReachyKit/Transport/CameraSignalingClient.swift:4`, plus `NSAllowsLocalNetworking`                 | signaling is plaintext                                                                 |
+| macOS 27 drops Intel                            | `Scripts/release-macos.sh`                                                                                                      | the universal slice stops being obligatory                                             |
+
+### §2.1 The three visual rows, resolved
+
+**Menu icons — closed, nothing to do.** `preferredImageVisibility` is UIKit only. It is a property of
+`UIMenuElement` and `UIMenuLeaf` (`UIMenuElement.h:68`, `UIMenuLeaf.h:33`, `API_AVAILABLE(ios(27.0))`), and SwiftUI
+exposes no counterpart — its `swiftinterface` has no `ImageVisibility` of any spelling, and its only menu modifiers
+are `menuOrder`, `menuActionDismissBehavior` and `menuIndicator`. Every menu here is a SwiftUI `Menu`, so there is
+no knob to set. Re-open this row only when SwiftUI ships one.
+
+**The `.soft` scroll edge — open, and not a code task.** The modifier survives in the 27 SDK
+(`ScrollEdgeEffectStyle.automatic` / `.hard` / `.soft`), so the availability gate needs nothing. Whether `.soft` is
+still the better choice than the revised `.automatic` cannot be settled here: the effect draws where content passes
+under a bar, and the preview renders no bar. `Console-installer-log-iPhone-16-Pro` is a plain page of log text.
+Re-recording a variant would compare two identical images. This needs the app on a device, with the log console
+open, exactly as glass does.
+
+**Resizability and `dockBleed` — analysed, and left alone.** The concern is real in shape: `dockBleed` picks its
+edge from `UIWindowScene.interfaceOrientation`, and under 27 orientation is a preference. But the failure degrades
+to nothing rather than to something wrong, because the branch only chooses _which_ side, while the amount always
+comes from `geometry.safeAreaInsets`:
+
+- a mis-reported orientation falls to `default: .none`, which is the neutral value;
+- a window away from the screen edge has no safe-area inset, so either side bleeds by zero.
+
+The wrong-side case would need a window at a screen edge _and_ an orientation reported for the opposite one. Not
+measured, because nothing here reaches a resized window: no preview forces landscape, and
+`FloatingViewportGeometryTests` takes `bleed` as a value already decided — which the source comment at
+`FloatingViewportModifier.swift:130-148` states outright. What would settle it is an XCUITest that sets
+`XCUIDevice.shared.orientation`, or the app in iPhone Mirroring. Until then this is reasoning, not a measurement.
 
 Searched for and **absent**, so not problems: `UIScreen.main`, `userInterfaceIdiom`, the deprecated `UIApplication`
 status-bar accessors, `MXMetricManager`, On Demand Resources, `.onMove`.
