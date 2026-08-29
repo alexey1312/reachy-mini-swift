@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>br8qe6yj1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/c27357a6-efa0-41b0-a9a0-9f93efe009fe/tasks/br8qe6yj1.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-run snapshot suite" completed (exit code 0)</summary>
+</task-notification>
