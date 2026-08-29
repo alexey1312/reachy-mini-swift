@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bczxlrkgg</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/5107feac-2b04-48ca-8c77-e17422222182/tasks/bczxlrkgg.output</output-file>
+<status>completed</status>
+<summary>Background command "Run snapshot suite to create missing references" completed (exit code 0)</summary>
+</task-notification>
