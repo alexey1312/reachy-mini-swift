@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>brqai8pwq</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/brqai8pwq.output</output-file>
+<status>completed</status>
+<summary>Background command "Run the lint suite" completed (exit code 0)</summary>
+</task-notification>
