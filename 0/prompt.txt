@@ -1,0 +1,15 @@
+App Review Guideline Issue
+
+This is an automated message. The review of this submission cannot proceed. See below for more information.
+
+An automated analysis of the submission indicates the app includes the com.apple.security.network.server entitlement but does not appear to have matching functionality. 
+
+Apps that initiate outgoing connections (for example, to download new content from a server) only need to include the com.apple.security.network.client entitlement. The server entitlement is only necessary for apps that listen for and respond to incoming network connections (such as web or FTP servers).
+
+Take one of the following actions:
+
+- If this or other entitlements are not needed, remove them before resubmitting the app for review. Apps should have only the minimum set of entitlements necessary for the app to function properly.
+
+- If the app does need the com.apple.security.network.server entitlement, reply to this message, describe how your app utilizes the entitlement, and add this information to the App Review Information section of App Store Connect. 
+
+Learn more about the App Sandbox on macOS.
