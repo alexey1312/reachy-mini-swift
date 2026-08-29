@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b0p8vkuol</task-id>
+<tool-use-id>toolu_01VyGaP9EBtenUPP8M1yc7Uy</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/b0p8vkuol.output</output-file>
+<status>completed</status>
+<summary>Background command "Boot the simulator and rebuild with instrumentation" completed (exit code 0)</summary>
+</task-notification>
