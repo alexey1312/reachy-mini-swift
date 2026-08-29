@@ -1,0 +1,114 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - .github/workflows/ci.yml
+  - Apps/Tuist.swift
+  - bootstrap.sh
+  - mise.toml
+
+Unified diff (only + lines are new):
+
+=== DIFF: .github/workflows/ci.yml ===
+@@ -14,6 +14,10 @@ env:
+   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+   MISE_GITHUB_GITHUB_ATTESTATIONS: false
++  # Read by Apps/Tuist.swift at generation. Off for every job by default — with the
++  # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
++  # waits out a CAS socket deadline. app-build flips it on once its service is up.
++  TUIST_CACHE_ENABLED: "false"
+ 
+ jobs:
+   lint:
+@@ -115,6 +119,23 @@ jobs:
+         working-directory: Apps
+         run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
+ 
++      # The compilation cache answers only through the service `tuist setup cache`
++      # starts, so the env flips to true strictly after its socket is live — settings
++      # baked in with no service behind them stall every compile task instead (the
++      # workflow-level default covers forks, which have no session to set it up with).
++      - name: Set up Tuist cache
++        if: ${{ !github.event.pull_request.head.repo.fork }}
++        working-directory: Apps
++        run: |
++          mise x -- tuist setup cache || true
++          SOCK="$HOME/.local/state/tuist/alexey1312_reachy-mini-swift.sock"
++          for _ in $(seq 1 10); do [ -S "$SOCK" ] && break; sleep 1; done
++          if [ -S "$SOCK" ]; then
++            echo "TUIST_CACHE_ENABLED=true" >> "$GITHUB_ENV"
++          else
++            echo "::warning::Tuist cache service did not start — building uncached."
++          fi
++
+       # `build:app` generates the project first (depends = ["project"]).
+       - name: Build ReachyMini
+         run: mise run build:app
+
+
+=== DIFF: Apps/Tuist.swift ===
+@@ -6,6 +6,12 @@ let tuist = Tuist(
+         // A set `fullHandle` otherwise makes generation require a tuist.dev session, which
+         // CI and forks have none of. The project itself is connected; what is optional here
+         // is the session, not the connection.
+-        generationOptions: .options(optionalAuthentication: true)
++        // Caching needs the local cache service from `tuist setup cache` (a LaunchAgent);
++        // bootstrap.sh runs it. Without the daemon every compile task waits out a CAS
++        // socket deadline, so CI enables it only after its own setup step succeeds.
++        generationOptions: .options(
++            optionalAuthentication: true,
++            enableCaching: Environment.cacheEnabled.getBoolean(default: true)
++        )
+     )
+ )
+
+
+=== DIFF: bootstrap.sh ===
+@@ -30,6 +30,17 @@ echo "==> Enabling Git LFS for this clone"
+ # Install only the local filters so git-lfs does not reject those existing hooks.
+ ./bin/mise x -- git lfs install --local --skip-repo
+ 
++# Apps/Tuist.swift enables the Xcode compilation cache by default, and the cache
++# only answers through this per-user LaunchAgent — without it every compile task
++# waits out a CAS socket deadline. Needs a tuist.dev session, hence best-effort.
++echo "==> Setting up the Tuist Xcode cache service (LaunchAgent)"
++TUIST="$(./bin/mise where tuist)/tuist"
++(cd Apps && env -u TOOLCHAINS "$TUIST" setup cache) || {
++  echo "WARNING: tuist setup cache failed — no tuist.dev session?"
++  echo "         Run './bin/mise x -- tuist auth login' and re-run bootstrap,"
++  echo "         or generate with TUIST_CACHE_ENABLED=false to build uncached."
++}
++
+ echo "==> Done"
+ ./bin/mise run setup
+ echo ""
+
+
+=== DIFF: mise.toml ===
+@@ -366,6 +366,23 @@ TUIST="$(./bin/mise where tuist)/tuist"
+ cd Apps && exec "$TUIST" inspect bundle "$BUNDLE"
+ '''
+ 
++[tasks.share]
++description = "Upload a built app to tuist.dev Previews and print the share link"
++# The Debug-iphoneos default is the `mise run device` product: signed with the personal
++# team, so the preview installs on registered devices — the unsigned CI build would not.
++run = '''
++#!/bin/bash
++set -euo pipefail
++BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
++if [ ! -e "$BUNDLE" ]; then
++  echo "No bundle at $BUNDLE — run 'mise run device -- --build-only' first." >&2
++  exit 1
++fi
++BUNDLE="$(cd "$(dirname "$BUNDLE")" && pwd)/$(basename "$BUNDLE")"
++TUIST="$(./bin/mise where tuist)/tuist"
++cd Apps && exec env -u TOOLCHAINS "$TUIST" share "$BUNDLE"
++'''
++
+ [tasks.clean]
+ description = "Clean build artifacts"
+ run = "swift package clean && rm -rf .build"
+
+
+Investigate per the method in your instructions, then return the findings list.
