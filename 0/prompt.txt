@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b5u8n7x4u</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/b5u8n7x4u.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for all CI checks to finish" completed (exit code 0)</summary>
+</task-notification>
