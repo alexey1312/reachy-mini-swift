@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>beu76d8qc</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/13583d08-3102-46da-b3e3-f6ef29306f03/tasks/beu76d8qc.output</output-file>
+<status>completed</status>
+<summary>Background command "Загрузить iOS-билд в TestFlight" completed (exit code 0)</summary>
+</task-notification>
