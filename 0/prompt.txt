@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bg8ceyqnx</task-id>
+<tool-use-id>toolu_01SjzoF3HaBX9Xh3xXJDDjR9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-app-store-hf-remote-phase2-0463e5/13da7018-a7c0-4b05-8699-82396e070810/tasks/bg8ceyqnx.output</output-file>
+<status>completed</status>
+<summary>Background command "Build and test the UI wiring" completed (exit code 0)</summary>
+</task-notification>
