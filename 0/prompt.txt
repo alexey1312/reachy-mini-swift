@@ -1,0 +1,144 @@
+<task-notification>
+<task-id>a06fba53dea383da9</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/a06fba53dea383da9.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore navigation for issue 68" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>Findings for issue #68 (Handoff via NSUserActivity).
+
+## 1. `Sources/ReachyUI/Navigation/` — six files, no `Handoff` anywhere
+
+**`ReachyDeepLink` is not here — it lives in ReachyKit**: `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/available-issues-review-0ce72a/Sources/ReachyKit/Model/ReachyDeepLink.swift` (39 lines, the whole type):
+
+```swift
+public enum ReachyDeepLink: String, CaseIterable, Sendable {
+    case robot
+    case apps
+    case runningApp = "running-app"
+    public static let scheme = "reachy-mini-swift"
+```
+- URL shape is `scheme://&lt;rawValue&gt;` and nothing else — no path, **no query, no robot identity** (`url`, lines 22–32; `init?(url:)` lines 34–37 requires exact scheme + host match against the raw value). Three destinations only; two tabs (`.robot`, `.apps`) plus a "do something on arrival" variant.
+- Scheme is shared with the OAuth callback (`reachy-mini-swift://oauth-callback`), so parsing is deliberately exact/refusing.
+
+**`SpotlightIndex.swift`** (`Sources/ReachyUI/Navigation/SpotlightIndex.swift`):
+- `destination(for activity: NSUserActivity)` at lines 158–164 — the only `NSUserActivity` consumer in the app:
+```swift
+guard activity.activityType == CSSearchableItemActionType,
+      let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+      let url = URL(string: identifier)
+else { return nil }
+return ReachyDeepLink(url: url)
+```
+- Row identifier *is* the deep-link URL (line 178), so there is no second identifier→destination table. `entries(appName:)` (58–78) files only `.robot` and `.apps`; `.runningApp` is deliberately excluded (comment 55–57).
+- `domainIdentifier = "com.alexey1312.ReachyMini.destination"` (190), stamp key `"reachy.spotlight.indexed"` (191), stamp = build ‖ language ‖ name (123–127).
+
+**Tab model — `ReachyRouter.swift`** (55 lines), `@MainActor @Observable final class ReachyRouter`:
+```swift
+enum Tab: Hashable { case robot, live, moves, apps, settings }   // lines 15–21
+var tab: Tab
+var showsRemoteRobots = false
+var showsAccount = false
+var showsPermissions = false
+func follow(_ link: ReachyDeepLink) { … }                        // lines 44–54
+```
+`Tab` is **not `Codable`, not `RawRepresentable`, and internal** (not `public`) — a Handoff payload will need a string encoding for it. `follow(_:)` moves the selection only; `.runningApp` maps to `.apps`.
+
+Other files in the folder: `EntityIndex.swift` (fourth Spotlight system — robot apps/moves as `AppEntity`s, `deleteAppEntities(ofType:)` only, never `deleteAllSearchableItems()`), `QuickActions.swift` (UIKit `UIApplicationShortcutItem`, `QuickActionInbox.shared`), `RootSheets.swift`, `RootLifecycle.swift`.
+
+## 2. App entry point and root routing
+
+`Apps/ReachyMini/Sources/ReachyMiniApp.swift` (54 lines) is thin: one `WindowGroup { ReachyRootView { DeviceCheckView() } }` plus `ReachyMenuBarScene()` under `#if os(macOS)` (lines 50–52). **No `onOpenURL`/`onContinueUserActivity` here** — everything is inside ReachyUI.
+
+The wiring is in `Sources/ReachyUI/Navigation/RootLifecycle.swift`, a `ViewModifier` applied by `ReachyRootView` (lines 132–143 of `ReachyRootView.swift`):
+
+```swift
+.onOpenURL { url in                                              // :82–88
+    guard let link = ReachyDeepLink(url: url) else { return }
+    follow(link)
+}
+.onContinueUserActivity(CSSearchableItemActionType) { activity in // :93–96
+    guard let link = ReachySpotlightIndex.destination(for: activity) else { return }
+    follow(link)
+}
+```
+`follow(_:)` at `RootLifecycle.swift:145–150` is the single arrival path — `router.follow(link)` then `runningApp.requestExpansion(for: session)` for `.runningApp`. A Handoff continuation should land here too.
+
+Routing mechanism: **a router object in `@State` on the root**, passed down as a plain `let` *and* put in the environment. `ReachyRootView.swift:38` `@State private var router: ReachyRouter`; `:122` `.environment(router)`; `ReachyTabShell.swift:61–63` binds it: `@Bindable var router = router; TabView(selection: $router.tab)`.
+
+Root fork (`ReachyRootView.swift:98–113`, predicate at `:158–166`):
+```swift
+if isConnectedEnough { ReachyTabShell(…) } else { ConnectGate(session:router:progress:) }
+```
+`isConnectedEnough`: `.connected(identity)` only once `progress.displayed == .connected(identity)` and `!progress.holdsGate`; `.unreachable` → shell; `.idle`/`.connecting` → gate. Crossing the line destroys the subtree's `@State`, so a continued activity arriving while the gate is up can set `router.tab` safely (the router outlives the fork) but cannot rely on shell state.
+
+## 3. `Apps/Project.swift` — one shared infoPlist per target, not per platform
+
+`Apps/Project.swift:43–195` is the `ReachyMini` target: `destinations: [.iPhone, .iPad, .mac]`, **a single `infoPlist: .extendingDefault(with: [...])` (line 49) covering iOS *and* macOS**. Per-platform differences are done via build-setting SDK scoping only (`CODE_SIGN_ENTITLEMENTS[sdk=macosx*]` line 181, `ASSETCATALOG_…[sdk=iphone*]` 191–193) and `resources` inclusion conditions. There is no `Info.plist` file on disk for the app target and no macOS-specific plist dictionary — so a new key is automatically on both platforms.
+
+The declaration in question, `Apps/Project.swift:136–145`:
+```swift
+"NSUserActivityTypes": .array([
+    .string("com.apple.corespotlightitem"),
+]),
+```
+with a comment noting it is the literal value of `CSSearchableItemActionType`. `CFBundleURLTypes`/`reachy-mini-swift` at `:130–135`. `UIApplicationSceneManifest` with `UIApplicationSupportsMultipleScenes: false` and deliberately **no** `UISceneConfigurations` at `:120–122` (the delegate is built in code) — relevant if you ever reach for scene-level activity APIs.
+
+The widget target (`:199–231`) has its own infoPlist and no `NSUserActivityTypes`.
+
+## 4. The connected robot's identity at root level
+
+`RobotSession.phase` is the holder: `Sources/ReachyKit/Session/RobotSession.swift:10–15`
+```swift
+public enum ConnectionPhase: Equatable, Sendable {
+    case idle
+    case connecting(ConnectionStep)
+    case connected(RobotIdentity)
+    case unreachable(RobotIdentity)
+}
+```
+`RobotIdentity` (`Sources/ReachyKit/Model/RobotIdentity.swift`) is `Hashable, Sendable, **Codable**` with `hardwareID: String?`, `name: String?`, `daemonVersion: String?`, and `deduplicationKey: String { hardwareID ?? name ?? "unknown" }` (`:23–25`). Explicitly identity-not-address (doc comment `:5–6`, upstream #269).
+
+The existing precedent for reading it at root level is `RootLifecycle.swift:136–141`:
+```swift
+private var connectedRobotID: String? {
+    switch session.phase {
+    case let .connected(identity), let .unreachable(identity): identity.deduplicationKey
+    case .idle, .connecting: nil
+    }
+}
+```
+That is exactly the shape a Handoff payload should carry (`deduplicationKey`, or the full `Codable` `RobotIdentity`). `session.link` (`RobotSession.swift:24–38`) is `.none/.lan(RobotAddress)/.remote/.simulated` — do **not** put `.lan`'s address in the activity.
+
+Receiving side: the other device resolves identity → address through `KnownRobots` (`Sources/ReachyKit/Model/KnownRobot.swift:8–24`, `key`/`name`/`address`/`lastConnected`, keyed by `deduplicationKey`) and `CandidateSweep` (`Sources/ReachyUI/Connect/CandidateSweep.swift:85–99`, seeds `KnownRobots.lastAddress` first). Note `KnownRobots` is App-Group `UserDefaults`, per-device — a handed-off hardware ID may be unknown to the receiver, which is a case the plan has to name.
+
+## 5. Existing tests to follow
+
+- `Tests/ReachyKitTests/ReachyDeepLinkTests.swift` (59 lines) — round-trip over `allCases` (`:10–14`), scheme assertion, lowercase-host rule, OAuth-callback refusal, foreign scheme, unknown destination.
+- `Tests/ReachyUITests/SpotlightIndexTests.swift` (92 lines) — the closest template for a Handoff round-trip test. `identifiersRoundTrip()` (`:47–55`) and `refusesAForeignActivity()` (`:77–85`) build activities via a private helper:
+```swift
+private func searchActivity(identifier: String) -&gt; NSUserActivity {
+    let activity = NSUserActivity(activityType: CSSearchableItemActionType)
+    activity.userInfo = [CSSearchableItemActivityIdentifier: identifier]
+    return activity
+}
+```
+Swift Testing (`@Suite`/`@Test`/`#expect`), `@testable import ReachyUI`. The suite's header comment states the governing constraint: the index cannot be read back, so tests assert the pure functions that decide what is written and where a tap lands — same argument applies to an `NSUserActivity` builder/parser pair.
+
+There is no `ReachyRouterTests` file; `Tests/ReachyUITests/` would be the home for a router-level continuation test.
+
+## 6. macOS Handoff keys and other `NSUserActivity` usage
+
+- **No Handoff-relevant plist keys anywhere.** `NSUserActivityTypes` has exactly the one Spotlight entry; there is no `NSUbiquitousDisplaySet`, no `CFBundleDocumentTypes` continuation, no user-activity entries in either entitlements file. `Apps/ReachyMini/Entitlements/ReachyMini-macOS.entitlements` has sandbox, app-group `group.com.alexey1312.ReachyMini`, audio-input, bluetooth, network client + server, and nothing else. (Handoff needs no entitlement beyond a shared team prefix, but the activity type will need adding to that one array — for both platforms at once, per §3.)
+- **No `.userActivity(_:)`, `.userActivity(_:element:_:)`, `becomeCurrent()`, `isEligibleForHandoff`, `NSUserActivityDelegate` or `advertiseAppEntity` anywhere in the repo.** The only `NSUserActivity` mentions are `SpotlightIndex.destination(for:)`, `RootLifecycle`'s `onContinueUserActivity(CSSearchableItemActionType)`, and `SpotlightIndexTests`. `Sources/ReachyWidgetUI/EntityIndexing.swift` is `CSSearchableItemAttributeSet` for App Entities only, no activities.
+- macOS has a second scene (`Apps/ReachyMini/Sources/MenuBarScene.swift`) that opens the app through the same `onOpenURL`; it is a `MenuBarExtra`-style scene and would not be the continuation target.
+
+## Seams worth naming in the plan
+
+- One arrival funnel already exists (`RootLifecycle.follow(_:)`) — a Handoff continuation is a third caller, not a new path.
+- `ReachyDeepLink` cannot carry a robot, and widening it to take query items would also widen what the widget and Spotlight identifiers mean. A separate small `Codable` activity payload (`tab` string + `RobotIdentity`) that resolves *into* `ReachyRouter.Tab` + a connect request is the smaller diff and keeps `ReachyDeepLink`'s "exact parsing" property intact.
+- `ReachyRouter.Tab` needs a stable string spelling; `ReachyDeepLink` only covers 2 of the 5 tabs (`robot`, `apps`) — `live`, `moves`, `settings` have no wire representation today.
+- Per §3, the plist key lands on iOS and macOS simultaneously — no per-platform split to maintain.
+- Project rule 4 (identity, never address) is already enforced by `RootLifecycle.connectedRobotID`; reuse it rather than reading `session.link`.</result>
+<usage><subagent_tokens>143858</subagent_tokens><tool_uses>26</tool_uses><duration_ms>129758</duration_ms></usage>
+</task-notification>
