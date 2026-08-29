@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bd0nr6cju</task-id>
+<tool-use-id>toolu_0141Kukw2CdZmB1beXS7BfSg</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-live-tab-dark-theme-acc022/ea40aa9d-ff24-4b00-93ed-3a06d6796e70/tasks/bd0nr6cju.output</output-file>
+<status>failed</status>
+<summary>Background command "Wait then re-check daemon progress" failed with exit code 7</summary>
+</task-notification>
