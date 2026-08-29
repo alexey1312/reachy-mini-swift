@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bs9js8cql</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/f964d5cc-fabe-4d82-b1ab-2826dbc8dbc0/tasks/bs9js8cql.output</output-file>
+<status>completed</status>
+<summary>Background command "Resume ReachyWidget build in background (incremental)" completed (exit code 0)</summary>
+</task-notification>
