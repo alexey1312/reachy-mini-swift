@@ -413,6 +413,14 @@ their own generated message invites you to do, and it is the wrong reading of th
 `mise.toml` rather than installed globally, so all four exit 2 with "not found on your path" on a checkout where
 nothing put it on a bare PATH, and for `pre-push` that blocks every push. They try the bare call first (a Mac that
 has one behaves exactly as before) and fall through to `bin/mise x --`.
+**Entire chains onto these hooks, and it reinstalls itself at every agent turn.** `entire enable` renames each hook
+to `<name>.pre-entire`, writes its own wrapper under the original name, and the wrapper calls the renamed file last.
+Its session hooks repeat that check at every turn start, so folding the entire call into the tracked hook is undone
+within one turn — worse, the tracked file becomes the new `.pre-entire` and chains to a second entire call. The
+`.pre-entire` files are therefore tracked as well: git-lfs and hk live in those, the wrapper lives in the original
+name, and `entire configure --force` leaves both alone. Leave a `.pre-entire` out of the commit and the next
+checkout gets an entire-only `pre-push` with no git-lfs behind it — pointers with no data again. Entire takes the
+remote name alone and does not read stdin (measured), so `git lfs pre-push` still gets the whole ref list.
 Adding a reference image still needs an explicit `git add`: the LFS filter decides how a staged file is _stored_, and
 the pre-commit hook only re-stages what it reformatted (`*.swift`, `*.md`) — neither one stages a PNG for you.
 No CI job _compares_ references — local Xcode and the CI pin differ, so references recorded on one fail on the
