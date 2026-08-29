@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bzq2qwfz8</task-id>
+<tool-use-id>toolu_01CieDQRWZaEBCSQeDBLfi5D</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/c27357a6-efa0-41b0-a9a0-9f93efe009fe/tasks/bzq2qwfz8.output</output-file>
+<status>completed</status>
+<summary>Background command "Build, install and launch on the iPhone" completed (exit code 0)</summary>
+</task-notification>
