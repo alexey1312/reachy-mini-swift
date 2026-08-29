@@ -1,0 +1,145 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - .github/dependabot.yml
+  - .github/workflows/ci.yml
+  - Apps/Tuist.swift
+  - mise.toml
+
+Unified diff (only + lines are new):
+
+=== DIFF: .github/dependabot.yml ===
+@@ -0,0 +1,29 @@
++version: 2
++
++# Tools pinned in mise.toml are NOT covered here — Dependabot has no mise
++# ecosystem. They stay a manual bump (see AGENTS.md), and `mise outdated` will
++# not surface them either, because exact pins always match their own request.
++# Use `./bin/mise latest <tool>`.
++updates:
++  - package-ecosystem: github-actions
++    directory: "/"
++    schedule:
++      interval: weekly
++      day: monday
++    commit-message:
++      # cliff.toml skips `chore(deps)`, keeping bumps out of the changelog.
++      prefix: chore(deps)
++    groups:
++      actions:
++        patterns: ["*"]
++
++  - package-ecosystem: swift
++    directory: "/"
++    schedule:
++      interval: weekly
++      day: monday
++    commit-message:
++      prefix: chore(deps)
++    groups:
++      swift-openapi:
++        patterns: ["swift-openapi-*"]
+
+
+=== DIFF: .github/workflows/ci.yml ===
+@@ -71,3 +71,35 @@ jobs:
+       - name: Test
+         # Build tests separately to avoid hangs from concurrent build + test execution
+         run: swift test --skip-build --parallel 2>&1 | xcsift
++
++  # `swift build` never reaches Apps/ReachySpike — it is an Xcode target, not an SPM
++  # one, so nothing but SwiftLint ever looked at it. This job is the only thing that
++  # compiles the app shell and the Tuist manifest that generates it.
++  app-build:
++    name: App Build (ReachySpike, macOS)
++    runs-on: macos-15
++    needs: lint
++    timeout-minutes: 60
++    env:
++      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
++    steps:
++      - uses: actions/checkout@v7
++
++      - name: Install Swift 6.3 toolchain
++        run: |
++          curl -fLo swift-6.3.pkg "https://download.swift.org/swift-6.3-release/xcode/swift-6.3-RELEASE/swift-6.3-RELEASE-osx.pkg"
++          sudo installer -pkg swift-6.3.pkg -target /
++          TOOLCHAINS=$(plutil -extract CFBundleIdentifier raw /Library/Developer/Toolchains/swift-6.3-RELEASE.xctoolchain/Info.plist)
++          echo "TOOLCHAINS=$TOOLCHAINS" >> "$GITHUB_ENV"
++
++      - uses: jdx/mise-action@v4
++        with:
++          experimental: true
++          github_token: ${{ secrets.GITHUB_TOKEN }}
++
++      # `build:app` generates the project first (depends = ["project"]). No
++      # `tuist auth login`: Apps/Tuist.swift sets optionalAuthentication, so
++      # generation works without a tuist.dev session. This repo is not connected to
++      # the server project, so there is no binary cache to pull either.
++      - name: Build ReachySpike
++        run: mise run build:app
+
+
+=== DIFF: Apps/Tuist.swift ===
+@@ -2,5 +2,9 @@ import ProjectDescription
+ 
+ let tuist = Tuist(
+     fullHandle: "alexey1312/reachy-mini-desktop-app-swift",
+-    project: .tuist()
++    project: .tuist(
++        // A set `fullHandle` otherwise makes generation require a tuist.dev session,
++        // which CI has none of — this repo is not connected to the server project.
++        generationOptions: .options(optionalAuthentication: true)
++    )
+ )
+
+
+=== DIFF: mise.toml ===
+@@ -46,6 +46,22 @@ run = "swift build 2>&1 | xcsift"
+ description = "Build the Swift package (release)"
+ run = "swift build --configuration release 2>&1 | xcsift"
+ 
++# `build` and `test` are SwiftPM only — Apps/ReachySpike is an Xcode target and
++# nothing else compiles it. Signing is off: the runner has no team, and the
++# personal one lives in CLAUDE.local.md.
++[tasks."build:app"]
++description = "Build the ReachySpike app target (macOS)"
++depends = ["project"]
++run = '''
++set -o pipefail
++xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachySpike \
++  -destination 'platform=macOS' -configuration Debug \
++  -derivedDataPath Apps/DerivedData \
++  CODE_SIGNING_ALLOWED=NO \
++  -skipPackagePluginValidation -skipMacroValidation \
++  build 2>&1 | xcsift
++'''
++
+ [tasks.test]
+ description = "Run all tests (parallel)"
+ run = """
+@@ -63,12 +79,18 @@ description = "Integration tests against a running sim daemon (start with: mise
+ run = "REACHY_SIM_HOST=127.0.0.1 swift test --parallel --filter SimulatorIntegrationTests 2>&1 | xcsift"
+ 
+ [tasks.lint]
+-description = "Run SwiftLint and actionlint"
+-run = """
++description = "Run SwiftLint, actionlint, and the hk version lockstep check"
++run = '''
+ set -o pipefail
++PINNED="$(sed -nE 's/^hk = "([0-9.]+)".*/\1/p' mise.toml)"
++DRIFT="$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' hk.pkl | sort -u | grep -vFx "$PINNED" || true)"
++if [ -n "$DRIFT" ]; then
++  echo "hk.pkl references $DRIFT but mise.toml pins $PINNED — bump both together." >&2
++  exit 1
++fi
+ swiftlint lint --strict Sources Tests Apps/ReachySpike 2>&1 | xcsift
+ actionlint
+-"""
++'''
+ 
+ [tasks.format]
+ description = "Format all files (Swift + Markdown)"
+
+
+Investigate per the method in your instructions, then return the findings list.
