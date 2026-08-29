@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b9cspu5p2</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/b9cspu5p2.output</output-file>
+<status>completed</status>
+<summary>Background command "Build both app targets" completed (exit code 0)</summary>
+</task-notification>
