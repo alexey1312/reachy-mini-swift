@@ -1,0 +1,3 @@
+/Users/aleksei/Developer/shpora
+Можешь еще тут посмотреть, как я собирал /Users/aleksei/Developer/shpora 
+Настроен ли CI и тд
