@@ -1,0 +1,20 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - cliff.toml
+
+Unified diff (only + lines are new):
+
+=== DIFF: cliff.toml ===
+@@ -22,7 +22,7 @@ body = """
+     ### {{ group | striptags | trim | upper_first }}
+     {% for commit in commits %}
+         - {% if commit.scope %}**{{ commit.scope }}**: {% endif %}\
+-            {{ commit.message | upper_first }}\
++            {{ commit.message | split(pat="\n") | first | upper_first }}\
+             {% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}\
+             {% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }}){% endif %}
+     {% endfor %}
+
+
+Investigate per the method in your instructions, then return the findings list.
