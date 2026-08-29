@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bm2tgkjdj</task-id>
+<tool-use-id>toolu_012adDUJJdto6FjDCYS8T4sB</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ac3c8bb8-614c-448a-8f0a-b3c7cdad610d/tasks/bm2tgkjdj.output</output-file>
+<status>completed</status>
+<summary>Background command "Test seeding mechanics inside the worktree" completed (exit code 0)</summary>
+</task-notification>
