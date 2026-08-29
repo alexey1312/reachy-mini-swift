@@ -1,0 +1,2 @@
+Рассмотри возмоность доабить данный функционал к нам
+/Users/aleksei/Developer/Reachy_mini/docs/2026-08-07-reachy-mini-swift-direct-ssh-design.md
