@@ -1,0 +1,6 @@
+Установи сборку на мой телефон
+Затем продолжай
+Что осталось
+Блок E — онбординг (Sources/ReachyUI/Onboarding/): Welcome → Scan → PIN → Network → Joining → Naming → Handoff.
+Блок F — BLE-консоль восстановления и погребённый CMD_SOFTWARE_RESET.
+Шаг 0 плана — проверка длинной записи на живом роботе. Она по-прежнему гейтит всё, что строится поверх provisioning: теперь надо логировать обе цифры (.withResponse и .withoutResponse) и слать настоящий payload.
