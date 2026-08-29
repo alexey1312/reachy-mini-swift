@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bhsshykrq</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ac3c8bb8-614c-448a-8f0a-b3c7cdad610d/tasks/bhsshykrq.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-test hk path after explicit lock release" completed (exit code 0)</summary>
+</task-notification>
