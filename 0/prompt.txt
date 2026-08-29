@@ -1,0 +1,179 @@
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. **Primary Request and Intent:**
+
+   The user provided a detailed 10-milestone plan ("App Store + Hugging Face + Remote Access («Your Reachies») + виджеты — Phase 2 finale") and said "План есть - можно работать". The plan covers:
+   - **M1**: ReachyKit apps domain + client (`/api/apps/*`)
+   - **M2**: ReachyKit hf-auth surface of the daemon
+   - **M3**: Native HF sign-in (Keychain, PKCE, PAT fallback)
+   - **M4**: ReachyUI app store screen
+   - **M5**: Widgets (App Group + App Intents + widget extension)
+   - **M6**: ReachyUI HF account/sign-in card
+   - **M7**: ReachyKit central-server client
+   - **M8**: ReachyKit/ReachyMedia remote session transport
+   - **M9**: ReachyUI "Your Reachies" + remote connect
+   - **M10**: Documentation (spec, ADR-0003, research doc, rules updates)
+
+   Explicit user decisions during the work:
+   - App store gets its **own tab** in the tab bar (not a NavigationLink in RobotScreen)
+   - Search: `.searchable` in-screen + `.searchToolbarBehavior(.minimize)` under `#available(iOS 26)`
+   - Diagnostics tab removed; `SpikeView` **hidden** in Settings → Advanced → Developer tools
+   - Identity matching policy: "id, иначе нормализованный слаг" (Space id decides when both sides have one; otherwise normalized-name comparison mirroring the daemon)
+   - Two separate commits for M1 and M2
+   - HF auth code extracted as a separate SPM **target** (agreed after user asked about a separate package)
+   - Install builds on the user's physical device when there is something to look at
+   - **"Попробуй не запускать несколько тестов параллельно, подозреваю что дело в этом"** — do not run multiple test processes concurrently
+
+2. **Key Technical Concepts:**
+   - Swift 6 strict concurrency, actors, `AsyncStream`, `withCheckedThrowingContinuation`, `withTaskCancellationHandler`, structured concurrency deadlocks
+   - swift-openapi-generator; `Scripts/normalize-openapi.py` collapses `anyOf: [X, null]` making generated models non-optional
+   - SwiftPM multi-target package: `ReachyKit`, `ReachyMedia`, `ReachyScene`, `ReachyUI`, new `HuggingFaceAuth`, new `ReachyTestSupport` (non-product)
+   - Prefire + swift-snapshot-testing; Git LFS reference PNGs; `mise run project` must run before snapshot tasks
+   - WebRTC signaling (`webrtcsink` protocol), robot is offerer, STUN-only, no TURN
+   - Hugging Face OAuth: public client + PKCE (RFC 7636), `ASWebAuthenticationSession` non-ephemeral, Keychain `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`
+   - Central relay: SSE (`GET /events`) + `POST /send`, reply body carries the signaling answer, Bearer token in header only
+   - SwiftPM holds a single `.build` lock per worktree — concurrent invocations serialize and appear to hang
+
+3. **Files and Code Sections:**
+
+   **Committed (ddc93a7 — M1):**
+   - `Sources/ReachyKit/Model/RobotApps.swift` — `RobotApp` wrapping `Components.Schemas.AppInfo` verbatim (for `POST /install` round-trip), defensive `Card` parsing of `extra`, and the identity policy:
+     ```swift
+     func matches(installed: RobotApp) -> Bool {
+         if let mine = spaceID, let theirs = installed.spaceID {
+             return mine == theirs
+         }
+         let mine = Self.normalized(slug)
+         return !mine.isEmpty && mine == Self.normalized(installed.slug)
+     }
+     var slug: String { spaceID?.split(separator: "/").last.map(String.init) ?? name }
+     private static func normalized(_ name: String) -> String {
+         name.lowercased().replacingOccurrences(of: "_", with: "").replacingOccurrences(of: "-", with: "")
+     }
+     ```
+   - `Sources/ReachyKit/Model/RobotAppStatus.swift` — `RobotAppStatus`, `RobotAppLockStatus`, `AppUpdatesSummary`, all with `unknown(String)` tolerance
+   - `Sources/ReachyKit/Model/DaemonJob.swift` — extracted shared job model, `public typealias DaemonUpdateJob = DaemonJob`
+   - `Sources/ReachyKit/Session/RobotAppsClient.swift` — capability protocol with throwing defaults
+   - `Sources/ReachyKit/Transport/RobotConnection+Apps.swift` — generated client for most routes; raw `hubJSON`/`hubData` for `current-app-status` (literal null), `start-app`, `restart-current-app`, `robot-app-lock-status`, `job-status`
+   - `Sources/ReachyKit/Transport/RobotConnection.swift` — added `hubSession` (35 s) + `hubClient`
+   - `Sources/ReachyKit/Transport/JobLogStreamClient.swift` — renamed from `UpdateLogStreamClient`, two factories `daemonUpdate(address:jobID:)` and `appsManager(address:jobID:)`
+   - `Sources/ReachyKit/Session/AppJobMonitor.swift` — WS + polling reconciliation with one `emittedLines` cursor; outcomes `succeeded/failed/daemonRestarted/timedOut`
+   - `Sources/ReachyKit/Session/RobotSession+Apps.swift` — `canManageApps`, caches, `appJobEvents(jobID:configuration:)`
+
+   **Committed (b579cb9 — M2):** `Model/HFAuth.swift` (`HFAuthStatus`, `RelayStatus` with `.unavailable`, `RelayRefresh.didStart`, `CentralRobotStatusProxy`, `CentralRobot` with `id = installID ?? hardwareID ?? peerID`), `Session/HFAuthClient.swift`, `Transport/RobotConnection+HFAuth.swift`, `Session/RobotSession+HFAuth.swift`
+
+   **Committed (c1e8ec7 — M3), moved in 532fbb8 to `Sources/HuggingFaceAuth/`:** `HFOAuth.swift` (PKCE verified against RFC 7636 vector), `HFToken.swift`, `HFTokenExchanger.swift` (hand-rolled form encoding because `URLComponents` lets `+` through), `HFAccount.swift`, `KeychainHFTokenStore.swift`
+
+   **Committed (11518dc — M4):** `Sources/ReachyUI/Apps/{AppStoreModel,AppArtwork,AppStoreRow,AppStoreScreen,AppInstallModel,AppDetailSheet}.swift`, `Sources/ReachyUI/DeveloperScreen.swift` (environment key holding `(@MainActor () -> AnyView)?`), `ReachyRootView.swift` (tabs Robot/Live/Apps; generic renamed `Developer`), `SettingsScreen.swift` (Developer tools link + HF card), 28 new LFS snapshots + 31 re-recorded
+
+   **Committed (a19429f — M6):** `Sources/ReachyUI/Settings/{HFSignInModel,WebAuthenticationBrowser,HFAccountSection}.swift`, `Previews/HFAccountPreviews.swift`, `PreviewStoreFixtures.swift` (split out for file-length lint), `RobotSession.preview` now sets `session.client`
+
+   **Committed (da1001b — M7):** `Sources/ReachyKit/Central/CentralRelayClient.swift`:
+     ```swift
+     public actor CentralRelayClient {
+         public enum Failure: Error, Equatable, Sendable { case noToken, unauthorized, rateLimited, http(Int) }
+         public enum Event: Equatable, Sendable {
+             case connected(peerID: String), producers([Producer]),
+                  offer(sessionID: String, sdp: String),
+                  remoteCandidate(sessionID: String, candidate: String, sdpMLineIndex: Int32, sdpMid: String?),
+                  sessionEnded(sessionID: String, reason: String?), failed(Failure), disconnected
+         }
+         public enum SessionOutcome: Equatable, Sendable {
+             case started(sessionID: String), rejected(reason: String, activeApp: String?)
+         }
+         public static let defaultBaseURL = URL(string: "https://pollen-robotics-reachy-mini-central.hf.space")!
+     ```
+     `SignalingMessage` gained `sessionRejected`, `sessionStateChanged`, `endSession(sessionID:reason:)`, producer `isBusy`/`activeApp`; decoder split into `list(in:)` and `central(_:in:)` for lint. `StubURLProtocol` gained streaming (`init(statusCode:lines:staysOpen:)`, `DispatchQueue`-based chunk delivery, `@unchecked Sendable`).
+
+   **Committed (2eba19c — M8 first half):**
+   - `Sources/ReachyKit/Transport/RobotSignaling.swift` — protocol + `SignalingEvent` (`waitingForProducer`, `offer`, `remoteCandidate`, `sessionEnded(reason:)`, `failed(String)`); `extension CameraSignalingClient: RobotSignaling {}` (empty — client now speaks `SignalingEvent` natively, its private `Event` enum deleted)
+   - `Sources/ReachyKit/Central/CentralSignalingTransport.swift` — actor that negotiates via producer list, guards `isNegotiating`, maps refusals through `RemoteSessionEnd`
+   - `Sources/ReachyKit/Central/RemoteSessionEnd.swift` — reason→message + `isWorthRetrying` (false for `local_app_started`, `install_id_takeover`)
+   - `Sources/ReachyMedia/CameraSession.swift` — now `private let signaling: any RobotSignaling`, new `init(signaling:)`, handles `.sessionEnded(reason:)` and `.failed`
+
+   **Uncommitted (M8 second half, tests never passed yet):**
+   - `Sources/ReachyKit/Central/RemoteControlChannel.swift` — current state after simplification:
+     ```swift
+     public protocol RemoteDataChannel: Sendable {
+         func send(_ text: String) async throws
+         func messages() -> AsyncStream<String>
+     }
+     public enum RemoteValue: Equatable, Sendable, Encodable { case string, number, bool, array, object, null }
+     public actor RemoteControlChannel {
+         public enum Failure: Error, Equatable, Sendable { case robot(String), timedOut, closed }
+         // perform() now uses a single continuation + a deadline Task that calls expire(command),
+         // NOT a withThrowingTaskGroup race (which deadlocked: the group must await every child,
+         // and a continuation nothing resumes can never let it exit).
+     }
+     ```
+   - `Tests/ReachyKitTests/RemoteControlChannelTests.swift` — 7 tests; `FakeDataChannel` buffers emissions in `pending` until a continuation exists
+
+4. **Errors and fixes:**
+   - **`current-app-status` null**: generated model non-optional → hand-decoded via raw request. Verified against `apps.py` + `normalize-openapi.py`.
+   - **`.minimized` vs `.minimize`**: Apple's own doc example for `searchToolbarBehavior(_:)` shows `.minimized`, which does not compile; the real member is `.minimize`. Fixed and documented in code.
+   - **Preview factory arg order**: Prefire-generated test failed with "argument 'startupApp' must precede argument 'hasUpdate'" — previews only compile in Xcode targets.
+   - **25 snapshots moved after adding 14 previews**: proved on a clean HEAD that the suite passes, so the cause was mine; root cause = indeterminate `ProgressView` phase shifting with test position in the run. Re-recorded and documented in `AGENTS.md`.
+   - **Settings snapshot changed**: caused by `RobotSession.preview` now assigning `session.client`, which enabled `canConfigureWiFi`. Verified visually by comparing both PNGs (Network section appeared). Accepted as more faithful.
+   - **Fake browser didn't echo `state`**: the "successful sign-in" test failed with `stateMismatch` — correct behaviour, wrong test double. Fixed the double to echo the state like the real Hub.
+   - **`registersOnWelcome` failed**: announcement was sent after `.connected` was yielded, so cancelling at `.connected` lost the POST. Fixed by announcing **before** yielding `.connected`, mirroring the robot's relay ordering.
+   - **Swift 6 `sending` closure error in StubURLProtocol**: `Task { [weak self] ... }` rejected; switched to `DispatchQueue.async` + `@unchecked Sendable`.
+   - **THE MAJOR ERROR — false hang diagnosis**: RemoteControlChannel tests appeared to hang. I hypothesized an unresumable continuation in `withThrowingTaskGroup`, applied a fix without proving it, and the hang persisted. Running each test individually showed **all 7** hanging — the tell. A `sample` of the process revealed: *"Another instance of SwiftPM (PID: 71423) is already running using '.build', waiting until that process has finished execution..."* — my own earlier timed-out runs still held the lock. I then made it worse by killing processes and launching more concurrent runs. **User feedback: "Попробуй не запускать несколько тестов параллельно, подозреваю что дело в этом"** and later **"завис"**. I killed every leftover (16 PIDs) until `swift processes left: 0`, and restarted a single background build.
+   - **Piping through `tail` hid all output** until process end, which masked the lock-wait message repeatedly.
+
+5. **Problem Solving:**
+   - Verified every daemon contract by reading `.venv-sim/.../reachy_mini/` sources rather than trusting the plan (found ~8 discrepancies).
+   - Confirmed the data-channel reply contract from `daemon/backend/abstract.py`: `{"status":"ok","command":"wake_up","completed":true}` / `{"error":…,"command":"wake_up"}` — **correlation by echoed `command`, no request id**, therefore same-named commands must be serialized.
+   - Live smoke test: `GET https://pollen-robotics-reachy-mini-central.hf.space/health` → HTTP 200 in 1.4 s.
+   - Spawned a background task chip (task_ff664c6a) to investigate the Diagnostics screen on real hardware; that session has since ended.
+   - Ongoing: RemoteControlChannel tests have **never been run to completion**; a single background build (bi09uib6v) was just started with a clean process tree.
+
+6. **All user messages:**
+   - "План есть - можно работать" (with the full 10-milestone plan)
+   - "Мы ведь всю работу с hf делаем в отдельном табе?"
+   - "Я про UI, что у нас будет отдельная кнопка в таб баре / И в ios26 там не сть новая фича с поиском, в таб баре появляется кнопка поиска при определённых условиях"
+   - "Diagnostics к стати вообще лишний"
+   - "Продолжай"
+   - "1 - Прячем, но я последний раз когда запускал, с моим настоящим роботом это ни как не работало / 2 -Нету SDK для авторизации? Может нам сделать как отдельный пакет?"
+   - "Продолжай / Если есть что посмотреть, установи на мой девайс"
+   - "Как может работать магазин без авторизации?!"
+   - "Продолжай"
+   - "Продолжай"
+   - "Попробуй не запускать несколько тестов параллельно, подозреваю что дело в этом"
+   - "завис"
+
+7. **Pending Tasks:**
+   - Finish M8: get `RemoteControlChannelTests` green, then `RemoteRobotConnection` conforming to `RobotAPIClient`/`RobotAppsClient` over the data channel, `"pose"` channel with `seq` dedup, and a `RemoteDataChannel` implementation over `RTCDataChannel` in ReachyMedia
+   - M9 — "Your Reachies" screen + LINK→SESSION→WAKE-UP stepper
+   - M5 — widgets (App Group, App Intents, widget extension) — independent
+   - M10 — documentation (spec, ADR-0003, `docs/research/central-relay.md`, rules updates, README)
+   - Manual prerequisite for the user: register the public HF OAuth app (client_id is empty; only PAT sign-in works until then)
+
+8. **Current Work:**
+
+   Immediately before this summary I was recovering from the SwiftPM lock contention I had caused. After the user said "завис", I identified and killed every leftover process (final check printed `swift processes left: 0`), then started exactly one background build:
+   ```
+   ./bin/mise x -- swift build --build-tests 2>&1 | tail -5
+   ```
+   (background ID `bi09uib6v`, awaiting its completion notification).
+
+   The code under test is the simplified `RemoteControlChannel.perform`, which replaced the deadlocking task-group race:
+   ```swift
+   let deadline = Task { [timeout] in
+       try? await Task.sleep(for: timeout)
+       guard !Task.isCancelled else { return }
+       await self.expire(command)
+   }
+   defer { deadline.cancel() }
+   let reply = try await awaitReply(to: command, sending: text)
+   try Self.throwIfError(in: reply)
+   return reply
+   ```
+   Nothing of M8's second half is committed. My last statement to the user was: "Не закоммичу, пока не увижу зелёный прогон."
+
+9. **Optional Next Step:**
+
+   Wait for the single background build (`bi09uib6v`) to finish, then run **one** test invocation only — `swift test --no-parallel --filter 'RemoteControlChannelTests'` — writing output to a file rather than through a pipe, and read the verdict. This directly continues the work described in my last message ("прогон идёт прямо сейчас, я вернусь с результатом, когда он завершится") under the user's explicit constraint: *"Попробуй не запускать несколько тестов параллельно, подозреваю что дело в этом"*. If green, run the full suite once, then lint/format and commit M8's control channel; if it still hangs, resume root-cause investigation with a single process and unbuffered output.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/aleksei/.claude/projects/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-app-store-hf-remote-phase2-0463e5/13da7018-a7c0-4b05-8699-82396e070810.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
