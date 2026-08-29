@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>buyqwudw2</task-id>
+<tool-use-id>toolu_01DeVHyR5vXwKeLevGUDkBRi</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/f6220956-9852-4d9d-895b-09b1fa8e12e9/tasks/buyqwudw2.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for PR 83 CI to settle" completed (exit code 0)</summary>
+</task-notification>
