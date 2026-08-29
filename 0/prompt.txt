@@ -1,0 +1,4 @@
+1 - Обнови все тулы до послдених верий (в первую очередь касатеся mise, hk)
+2 - Исправь ошибку на CI 
+the running-before-ready race resolves once the probe passes: RobotSessionConnectionTests.swift#L221
+Expectation failed: (client.probeCalls → 2) == 3
