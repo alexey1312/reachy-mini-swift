@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bhvkg4c6m</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-floating-robot-window-tablets-ddf6c1/25f60957-b975-476b-b348-08db5dc7dcb9/tasks/bhvkg4c6m.output</output-file>
+<status>completed</status>
+<summary>Background command "Final gate after formatting" completed (exit code 0)</summary>
+</task-notification>
