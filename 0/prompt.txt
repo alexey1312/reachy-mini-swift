@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bo5vc3how</task-id>
+<tool-use-id>toolu_01MUX9MB8KMxL43FZM3Fx8ba</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-app-store-hf-remote-phase2-0463e5/13da7018-a7c0-4b05-8699-82396e070810/tasks/bo5vc3how.output</output-file>
+<status>completed</status>
+<summary>Background command "Build and run YourReachiesModel tests" completed (exit code 0)</summary>
+</task-notification>
