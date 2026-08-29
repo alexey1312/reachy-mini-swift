@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bzkpnekax</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/fc9341b2-b922-4e37-8815-29948bc2ccc9/tasks/bzkpnekax.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for macOS build 131 to appear" completed (exit code 0)</summary>
+</task-notification>
