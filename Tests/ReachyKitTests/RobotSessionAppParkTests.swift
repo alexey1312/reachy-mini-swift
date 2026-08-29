@@ -105,9 +105,16 @@ struct RobotSessionAppParkTests {
     /// **The duration is the assertion** (project rule 7). Awaiting the parking
     /// inline instead of spawning it satisfies every count above and shows up only
     /// as a Stop button frozen for the length of a `goto`.
+    ///
+    /// The bound clears runner jitter rather than hugging the work. 200 ms against a
+    /// 600 ms park went red on CI at 231 ms, having measured a loaded three-core
+    /// runner and nothing else. Only the right branch has jitter to speak of — the
+    /// wrong one sleeps the whole `neutralDelay` — so the gap buys less than the
+    /// headroom does, and `refusesAStoppedBackendWithoutWaiting` bounds the same
+    /// shape at the same two seconds.
     @Test("a stop returns before the parking has finished")
     func stopDoesNotWaitOutTheParking() async throws {
-        let client = AppLifecycleClient(neutralDelay: .milliseconds(600))
+        let client = AppLifecycleClient(neutralDelay: .seconds(5))
         let session = await AppLifecycle.connected(client)
         _ = try await session.startApp(named: AppLifecycle.installedApp)
 
@@ -115,7 +122,7 @@ struct RobotSessionAppParkTests {
         try await session.stopCurrentApp()
         let elapsed = start.duration(to: .now)
 
-        #expect(elapsed < .milliseconds(200))
+        #expect(elapsed < .seconds(2))
         await AppLifecycle.waitUntil(client.neutralCalls == 1)
         #expect(client.neutralCalls == 1)
         session.disconnect()

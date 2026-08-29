@@ -196,7 +196,9 @@ enum AppLifecycle {
     /// assertion about it is a condition to poll — never a duration to sleep out
     /// (project rule 7).
     static func waitUntil(_ condition: @autoclosure () -> Bool) async {
-        let deadline = ContinuousClock.now + .seconds(5)
+        // Past the longest `neutralDelay` any test here asks for, with room for a
+        // loaded runner on top: this is a safety net, never a timing assertion.
+        let deadline = ContinuousClock.now + .seconds(15)
         while !condition(), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(10))
         }
