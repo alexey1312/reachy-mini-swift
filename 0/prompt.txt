@@ -1,0 +1,2 @@
+<bash-stdout></bash-stdout><bash-stderr>log: failed to create archive: Device not configured (6)
+</bash-stderr>
