@@ -1,0 +1,82 @@
+## File: RemoteFile.swift
+
+  ### L52: [MEDIUM] Возможная ошибочная классификация каталогов и файлов как .other, если
+атрибут mode не содержит маску типа файла S_IFMT.
+
+В функции RemoteFile.kind(mode:longname:) ветка guard let mode проверяет биты mode & 0o170000. Если сервер SFTP или обёртка библиотеки передаёт только права доступа (например, 0o755 или
+  0o644 без битов типа файла 0o040000/0o100000), то mode & 0o170000 даёт 0, попадая в default:
+  return .other. Из-за этого папка или файл перестают быть открываемыми (isDirectory возвращает
+false). Повторная проверка символа longname.first при нулевом значении битовой маски предотвращает такую ошибку.
+
+Suggested change:
+
+        public static func kind(mode: UInt32?, longname: String) -> Kind {
+            guard let mode, (mode & 0o170000) != 0 else {
+                switch longname.first {
+                case "d": return .directory
+                case "l": return .symlink
+                case "-": return .file
+                default: return .other
+                }
+            }
+            switch mode & 0o170000 {
+            case 0o040000: return .directory
+            case 0o120000: return .symlink
+            case 0o100000: return .file
+            default: return .other
+            }
+        }
+    ──────
+  ## File: RobotFilesScreen.swift
+
+  ### L325: [MEDIUM] Синхронное чтение файла с диска в главном потоке @MainActor внутри
+обработчика fileImporter.
+
+Вызов Data(contentsOf: url) выполняются непосредственно в замыкании fileImporter, которое исполняется на главном потоке (@MainActor). При выборе крупных файлов это может блокировать интерфейс приложения. Выполнение чтения файла следует вынести внутрь асинхронной задачи Task, а также использовать defer для гарантированного освобождения SecurityScopedResource.
+
+Suggested change:
+
+                .fileImporter(isPresented: $isImporting, allowedContentTypes: [.data]) { result
+in
+                    guard case let .success(url) = result else {
+                        replacing = nil
+                        return
+                    }
+                    // The destination is the replaced file's own path, or the picked
+                    // name inside the current directory.
+                    let destination = replacing?.path ?? model.destination(forFileNamed: url.
+lastPathComponent)
+                    replacing = nil
+                    Task {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer {
+                            if scoped {
+                    url.stopAccessingSecurityScopedResource()
+                            }
+                }
+                guard let data = try? Data(contentsOf: url) else { return }
+                await model.upload(data, to: destination)
+                    }
+                }
+    ──────
+  ## File: SSHFileSystem.swift
+
+  ### L210: [LOW] Рассогласование в проверке равенства SSH host key между валидатором и
+обработчиком сопоставления ошибок.
+
+В validateHostKey (L257) проверка производится строго по открытому ключу:
+  pinned.openSSHPublicKey == offered.openSSHPublicKey. В mapConnectFailure (L210) используется
+  полное сравнение структур pinned != offered. Хотя openSSHPublicKey однозначно определяет хеш
+  sha256 и алгоритм, для единообразия логики лучше проверять pinned.openSSHPublicKey !=
+offered.openSSHPublicKey.
+
+Suggested change:
+
+            guard let offered = validator.offered else { return map(error) }
+    -       if let pinned = validator.pinned, pinned != offered {
+    +       if let pinned = validator.pinned, pinned.openSSHPublicKey != offered.
+  openSSHPublicKey {
+                return ReachySSHError.hostKeyChanged(pinned: pinned, offered: offered)
+            }
+
+Проверь комментарии ревьюера, есть ли что-то стоющее?
