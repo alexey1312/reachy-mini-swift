@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b5r5cojg5</task-id>
+<tool-use-id>toolu_01G8F9kSit6hUovvpqDiuU8A</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/13583d08-3102-46da-b3e3-f6ef29306f03/tasks/b5r5cojg5.output</output-file>
+<status>completed</status>
+<summary>Background command "Собрать и загрузить iOS в TestFlight" completed (exit code 0)</summary>
+</task-notification>
