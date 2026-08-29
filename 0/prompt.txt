@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b5tt2y4fx</task-id>
+<tool-use-id>toolu_018snM5sXgLm2WVoJSthhFhg</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/b5tt2y4fx.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-run only the two failing snapshot test classes" completed (exit code 0)</summary>
+</task-notification>
