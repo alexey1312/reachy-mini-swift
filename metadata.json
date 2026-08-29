@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M178952V4HRN8MAMDW6FFS37",
+  "strategy": "manual-commit",
+  "branch": "claude/xcode-27-contentbuilder-c39475",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/research/ios-27.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 10,
+    "cache_creation_tokens": 9019,
+    "cache_read_tokens": 1234873,
+    "output_tokens": 7503,
+    "api_call_count": 5
+  }
+}
