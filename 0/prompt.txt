@@ -1,0 +1,190 @@
+# Tools Update Command
+
+Update project tool versions from mise.toml, Gemfile, and GitHub Actions with changelog verification.
+
+## Arguments
+
+```text
+/tools:update [TASK_ID] [--exclude tool1,tool2]
+```
+
+- `TASK_ID` (optional): Jira/Linear issue ID for branch naming
+- `--exclude` (optional): Comma-separated list of tools to skip
+
+## Execution Plan
+
+### Phase 1: Project Analysis
+
+1. **Detect project configuration files:**
+
+   ```bash
+   ls -la mise.toml Gemfile .github/workflows/ bin/mise 2>/dev/null || true
+   ```
+
+2. **Auto-detect available configurations:**
+   - `mise.toml` — mise-managed tools
+   - `Gemfile` — Ruby gems
+   - `.github/workflows/*.yml` — GitHub Actions
+   - `bin/mise` — mise bootstrap script (optional)
+
+3. **Parse command arguments:**
+   - Extract `TASK_ID` if provided (first positional arg without `--`)
+   - Extract `--exclude` list if provided
+   - Default exclusions: `node, python, ruby, 1password-cli`
+
+### Phase 2: Branch Setup
+
+1. **Get current date:**
+
+   ```bash
+   date +%Y-%m
+   ```
+
+2. **Create update branch:**
+   - With TASK_ID: `feature/{TASK_ID}_tools_update_YYYY-MM`
+   - Without TASK_ID: `tools-update-YYYY-MM`
+
+   ```bash
+   git checkout -b <branch_name>
+   ```
+
+### Phase 3: Tool Discovery
+
+**Run these in parallel using Task tool:**
+
+1. **Parse mise.toml tools:**
+   - Read `[tools]` section
+   - Extract tool names, versions, and backends
+   - Identify version constraints (exact, range, latest)
+
+2. **Parse Gemfile gems:**
+   - Read gem declarations
+   - Extract gem names and version constraints
+   - Note: Skip gems without explicit versions
+
+3. **Scan GitHub Actions:**
+   - Read all `.github/workflows/*.yml` files
+   - Extract action references (`uses: org/action@version`)
+   - Group by action owner/repo
+
+### Phase 4: Changelog Analysis
+
+**For each tool/gem/action, spawn subagents to:**
+
+1. **Fetch changelog/release notes:**
+   - GitHub releases page
+   - CHANGELOG.md in repository
+   - Release notes in package registry
+
+2. **Analyze changes between current and latest:**
+   - Breaking changes (MAJOR)
+   - New features (MINOR)
+   - Bug fixes (PATCH)
+   - Security fixes (urgent)
+
+3. **Determine update safety:**
+   - Safe: PATCH updates, security fixes
+   - Review: MINOR updates with new features
+   - Dangerous: MAJOR updates, breaking changes
+
+### Phase 5: Safe Updates
+
+**For each tool marked as safe:**
+
+1. **Update version in config file:**
+   - Edit mise.toml, Gemfile, or workflow file
+   - Use exact version or appropriate constraint
+
+2. **Create atomic commit:**
+
+   ```bash
+   git add <config_file>
+   git commit -m "build(deps): update <tool> to <version>"
+   ```
+
+3. **Run installation/validation:**
+   - mise: `mise install` or `bin/mise bootstrap`
+   - Gemfile: `bundle install`
+   - Actions: No local install needed
+
+4. **Verify lock files:**
+   - Commit lock file changes in same commit
+   - Re-run install if lock changed
+
+### Phase 6: PR Creation
+
+1. **Prepare PR body with tables:**
+
+   **Applied Updates:**
+   | Tool | Previous | Updated | Type | Notes |
+   |------|----------|---------|------|-------|
+   | tool1 | 1.0.0 | 1.1.0 | mise | Changelog link |
+
+   **Skipped Updates:**
+   | Tool | Reason | Current | Latest |
+   |------|--------|---------|--------|
+   | tool2 | Breaking changes | 1.x | 2.x |
+
+2. **Create PR:**
+
+   ```bash
+   gh pr create --title "build(deps): update project tools YYYY-MM" --body "..."
+   ```
+
+## Default Exclusions
+
+The following tools are excluded by default (override with `--exclude ""` to include all):
+
+- `node` — Runtime managed separately
+- `python` — Runtime managed separately
+- `ruby` — Runtime managed separately
+- `1password-cli` — Security tool with specific requirements
+
+## Safety Rules
+
+1. **Never auto-update MAJOR versions** — Require explicit approval
+2. **Verify changelog before each update** — No blind updates
+3. **One commit per tool** — Easy to revert individual changes
+4. **Run tests after updates** — If test command available
+5. **Preserve version constraints** — Respect `~>`, `>=`, etc.
+
+## Example Output
+
+```text
+Analyzing project tools...
+
+Found configurations:
+  ✓ mise.toml (12 tools)
+  ✓ Gemfile (5 gems)
+  ✓ .github/workflows/ (8 actions)
+  ✗ bin/mise (not found, using system mise)
+
+Excluding: node, python, ruby, 1password-cli
+
+Analyzing changelogs (this may take a moment)...
+
+Updates ready:
+  ✓ swiftlint: 0.54.0 → 0.55.1 (bug fixes)
+  ✓ fastlane: 2.219.0 → 2.220.0 (minor features)
+  ✓ actions/checkout: v4.1.0 → v4.1.7 (patch)
+
+Skipped:
+  ⚠ cocoapods: 1.14 → 1.15 (breaking: plugin API changes)
+  ⊘ ruby: excluded by default
+
+Creating commits...
+  [1/3] build(deps): update swiftlint to 0.55.1
+  [2/3] build(deps): update fastlane to 2.220.0
+  [3/3] build(deps): update actions/checkout to v4.1.7
+
+PR created: https://github.com/org/repo/pull/123
+```
+
+## Notes
+
+- Use `--exclude mise,swiftlint` to skip specific tools
+- Provide `TASK_ID` for Jira-linked branches
+- Run `/tools:review` first to see current tool inventory
+
+
+ARGUMENTS: xcsift
