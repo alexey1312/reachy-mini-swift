@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bs3xsutiy</task-id>
+<tool-use-id>toolu_01Edi9teRD2Ceb4cCZuvpPAe</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-available-issues-review-0ce72a/34df061f-891e-474a-9d84-33e303d3b2f2/tasks/bs3xsutiy.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for PR 109 checks to conclude" completed (exit code 0)</summary>
+</task-notification>
