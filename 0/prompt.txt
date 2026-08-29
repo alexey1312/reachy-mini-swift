@@ -1,0 +1,296 @@
+<task-notification>
+<task-id>a475e9fa8ba62b47f</task-id>
+<tool-use-id>toolu_0199mdDmFGHABZ9vRnTRYTPB</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/ee2b8e9f-2599-46a1-9525-8204f94244fa/tasks/a475e9fa8ba62b47f.output</output-file>
+<status>completed</status>
+<summary>Agent "Design the Live Activity plan" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I traced the call framing end to end (`RobotCallController` → `CallLifecycle` → `RootCallLifecycle` → `CameraViewport`), the widget/appex split, both metadata guards, and the lockstep tests. Plan below.
+
+---
+
+## 1. Files to create, and why each lands where it does
+
+### `Sources/ReachyWidgetUI/CallControlInbox.swift` — **cross-platform, no `#if`**
+
+`CallControlInbox` (`@MainActor @Observable`, `static let shared`, monotonic `token: Int`, `Pending { control: CallControl, token: Int }`, `public func drop()`) plus `enum CallControl { case toggleMute, end }`.
+
+Why here: it is the only thing both the intent (which must be in a target the appex links) and the drainer (`ReachyUI`) can see. It is pure Foundation + Observation — nothing ActivityKit — so keeping it out of the `#if` buys three things: `Tests/ReachyWidgetUITests` can test it under `swift test` on macOS, `RootCallLifecycle` needs no platform fork to drain it, and the macOS `ReachyWidgetUI` still compiles the type.
+
+`drop()` is `public` here, unlike `CallRequestInbox.drop()`, because the drainer is in a different module.
+
+**Do not reuse `CallRequestInbox`.** That mailbox carries a `robotID`, a TTL and `CallRequestRouting`'s robot-matching rule, none of which apply to "mute the call that is already up". Two mailboxes, two payloads.
+
+### `Sources/ReachyWidgetUI/CallControlIntents.swift` — **whole file `#if os(iOS)`**
+
+`CallMuteIntent` and `CallEndIntent`, both `LiveActivityIntent`, both `static let isDiscoverable = false`, both `@MainActor func perform()` posting one `CallControl` into `CallControlInbox.shared` and returning `.result()`. Names chosen to read as a family with the existing `CallRobotIntent`.
+
+Why `#if os(iOS)`: `LiveActivityIntent` is unavailable on macOS. Why in `ReachyWidgetUI` and not the app target (where `CallRobotIntent` lives): the appex renders the `Button(intent:)`, so the appex must be able to *name* the type; the app must contain it to *run* it. Only `ReachyWidgetUI` is linked by both. The `CallRobotIntent` reasoning does not transfer — it is in the app target because `openAppWhenRun` errors in an appex, and these two set no such flag.
+
+`ReachyShortcuts` needs no edit: neither intent carries an `AppShortcut` phrase, so the 10/10 ceiling is untouched.
+
+### `Sources/ReachyWidgetUI/CallActivityAttributes.swift` — **whole file `#if os(iOS)`**
+
+`RobotCallAttributes: ActivityAttributes` with `struct ContentState { var isMuted: Bool }` and a static `let robotName: String?`.
+
+`robotName` is static, not dynamic: a robot change under an active call ends the call (`RobotCallController.robotChanged`), so it cannot vary over one activity's life. `robotID` is deliberately absent — the app has exactly one call, so the intents need nothing to address.
+
+Why here: `ActivityAttributes` must be identical in both processes, and this target is the one both link. Same placement rule as `RobotWidgetContent`.
+
+### `Sources/ReachyWidgetUI/CallActivityView.swift` — **whole file `#if os(iOS)`**
+
+Plain SwiftUI, no ActivityKit and no WidgetKit types in the signatures:
+- `CallActivityCard(robotName: String?, isMuted: Bool)` — the Lock Screen card.
+- `CallActivityExpanded…` region contents (leading/trailing/bottom), each a small view.
+- `CallActivityCompactLeading/Trailing/Minimal` — the glyphs.
+- `CallMuteButton` / `CallEndButton` — `Button(intent: CallMuteIntent())` etc., living **inside** the shared view so the snapshot suite captures the real buttons rather than stand-ins.
+
+Taking plain `String?`/`Bool` rather than `RobotCallAttributes.ContentState` keeps the previews free of ActivityKit ceremony. `#if os(iOS)` on the whole file because `Button(intent:)` names iOS-only types — same shape as `Apps/ReachyWidget/Sources/RobotActivityControls.swift`.
+
+Name collision to watch: `CallEndButton` already exists in `Sources/ReachyUI/CameraViewport.swift`. Different module, so it compiles, but call the new ones `CallActivityEndButton` / `CallActivityMuteButton` to keep grep honest.
+
+### `Apps/ReachyWidget/Sources/RobotCallActivity.swift` — **whole file `#if os(iOS)`**
+
+`struct RobotCallActivity: Widget` wrapping `ActivityConfiguration(for: RobotCallAttributes.self)`: the lock-screen closure returns `CallActivityCard(...)`, the `dynamicIsland:` closure builds `DynamicIsland` from the region views, plus `compactLeading`/`compactTrailing`/`minimal`.
+
+Why here and not in `ReachyWidgetUI`: `WidgetBundle` members live beside the other widgets, exactly as `RobotStatusWidget` (appex) sits over `RobotWidgetView` (library). This file is the only one holding WidgetKit container types, which is what keeps the view headless-renderable.
+
+### `Sources/ReachyUI/Navigation/CallLiveActivity.swift` — **cross-platform surface, `#if os(iOS)` bodies**
+
+`@MainActor enum CallLiveActivity` with three statics: `start(robotName:isMuted:)`, `update(isMuted:) async`, `end() async`.
+
+**Stateless on purpose** — it holds no stored activity. `Activity&lt;RobotCallAttributes&gt;.activities` *is* the handle, so `update` and `end` iterate it, and `start` ends any strays before requesting. That kills the zombie-card problem for free: an app killed mid-call leaves a Lock Screen card with live buttons and no call behind them, and the next `start` sweeps it. No `@State` on `ReachyRootView`, no `.shared`, nothing to inject.
+
+`ReachyUI/Navigation/` is the only place that can see both `RobotCallController` (via `ReachyMedia`) and `RobotCallAttributes` (via `ReachyWidgetUI`). The cross-platform-facade-with-forked-bodies shape is copied straight from `RobotCallController`, and it is what keeps `RootCallLifecycle` free of `#if`.
+
+`start` must swallow its throw and log: `ActivityAuthorizationInfo().areActivitiesEnabled` is a per-app user toggle, and a user who turned Live Activities off must not lose the call over its garnish — the same reasoning `CallLifecycle` records for `startFailed`.
+
+### `Sources/ReachyWidgetUI/Previews/CallActivityPreviews.swift`
+
+Covered in §5.
+
+### Edits to `Sources/ReachyUI/Navigation/RootCallLifecycle.swift`
+
+Two more `.onChange`s on a modifier that currently has five, and a private Equatable trigger — the file's existing `RoutingTrigger` shape:
+
+```
+private struct ActivityTrigger: Equatable {
+    let hasCall: Bool
+    let robotName: String?
+    let isMuted: Bool
+}
+```
+built from `call.activeCall` and `viewport.cameraSession?.isMicEnabled`. `.onChange(of: activityTrigger, initial: true)` compares old/new: no call → `end()`; call where there was none → `start()`; otherwise → `update(isMuted:)`. No extra stored state; the old value is the transition.
+
+`activeCall`, **not** `keepsSessionAlive`: the latter is true during the pending window, before the robot name exists. And `initial: true` is safe because `hasCall` is false at launch, so nothing tries `Activity.request` before foreground.
+
+The drain, `.onChange(of: inbox.pending?.token)` → drop the pending immediately, then `guard !previewMode, call.hasActiveCall`, then `.end` → `call.endCall()`, `.toggleMute` → `call.toggleMic(for: camera)` with `viewport.cameraSession` guarded.
+
+`body(content:)` goes from ~25 to ~35 lines against SwiftLint's `function_body_length` warning of 60. Fine.
+
+---
+
+## 2. How Mute/End reach `RobotCallController` without `ReachyWidgetUI` seeing `ReachyMedia`
+
+Concrete chain, five named types:
+
+1. **`CallMuteIntent` / `CallEndIntent`** (`ReachyWidgetUI`, `LiveActivityIntent`) — run in the app's process, know nothing about calls.
+2. **`CallControlInbox.shared`** (`ReachyWidgetUI`, `@MainActor @Observable`) — `receive(.toggleMute)` / `receive(.end)` bumps a token and publishes `Pending`.
+3. **`RootCallLifecycle`** (`ReachyUI/Navigation`) — the only place linking both sides; observes `inbox.pending?.token`.
+4. **`RobotCallController.endCall()` / `.toggleMic(for:)`** (`ReachyMedia`) — the existing methods.
+5. **`CallLifecycle`** — emits `EndConversationAction` / `MuteConversationAction`.
+
+The dependency arrow never reverses: `ReachyUI → ReachyWidgetUI` (already declared), and `ReachyWidgetUI` gains nothing. The mailbox is the seam, and it is the *same* seam `CallRobotIntent → CallRequestInbox → RootCallLifecycle` already uses — one more instance of an established pattern, not a new mechanism.
+
+Load-bearing: the End goes through `call.endCall()`, never at `CameraSession` directly, so the Live Activity's End, the Lock Screen's End and `CameraViewport`'s `CallEndButton` stay one `EndConversationAction` funnel. That invariant is the whole point of `Sources/ReachyMedia/AGENTS.md:64-71`.
+
+---
+
+## 3. Exact edits
+
+### `Apps/Project.swift` — one key
+
+In the `ReachyMini` target's `infoPlist` dictionary, beside `UIBackgroundModes`:
+
+```
+"NSSupportsLiveActivities": .boolean(true),
+```
+
+with a comment saying it is the app's key and not the extension's, and that macOS ignores it the way it ignores `UILaunchScreen` and `UIBackgroundModes`. **No `ReachyWidget` target edit at all** — `NSExtensionPointIdentifier = com.apple.widgetkit-extension` already hosts Live Activity UI. **No entitlement change** — local-only activities need none; push-updated ones would need the push capability, and nothing here pushes.
+
+Do *not* add `NSSupportsLiveActivitiesFrequentUpdates`: updates here are one per mute tap.
+
+### `Apps/ReachyWidget/Sources/ReachyWidgetBundle.swift` — a third builder property
+
+In the `#if os(iOS)` branch of `body`, add `activities` after `commands`; add a new `#if os(iOS)` `@WidgetBundleBuilder private var activities: some Widget { RobotCallActivity() }`.
+
+Deliberately **not** appended to `commands`: that property is at 9 of the 10-member `buildBlock` ceiling the file's own header comment warns about, and a one-line diff that lands exactly on the ceiling is a trap for whoever adds the next control. Three members in `body`, one in `activities`, `commands` left with headroom.
+
+### `Package.swift` — **no edit**
+
+`ReachyWidgetUI` already depends on `ReachyDesign, ReachyJSON, ReachyKit`; ActivityKit and WidgetKit are system frameworks auto-linked by `import`, and `ReachyUI` already links `ReachyWidgetUI`. The `Previews` exclusion already covers the new preview file by glob. Nothing to change.
+
+### `Scripts/check-appintents-metadata.sh` — a platform-scoped second list
+
+Add, beside `REQUIRED_APP_ACTIONS`:
+
+```python
+IOS_ONLY_APP_ACTIONS = ["CallMuteIntent", "CallEndIntent"]
+```
+
+and in the app-metadata branch, replace the bare `REQUIRED_APP_ACTIONS` iteration with a list computed from the bundle's own shape:
+
+```python
+is_macos = (target / "Contents" / "MacOS").is_dir()
+required = REQUIRED_APP_ACTIONS + ([] if is_macos else IOS_ONLY_APP_ACTIONS)
+```
+
+The discriminator works after the `.xcarchive` unwrap too, since `target` becomes the `.app` and a macOS `.app` has `Contents/MacOS` where an iOS one does not.
+
+Why guard them at all, given they are `isDiscoverable = false`: the appex's four configuration intents are also non-discoverable and are on the list anyway — the flag is a field in the file, not an absence from it. And the failure mode here is the one that script exists for: extraction failing is a warning, the archive stays green, and the Live Activity ships with two dead buttons. The `ControlWidgetButton` precedent (buttons survived metadata being discarded because the intent is held in code) is *evidence* they may still work, not a guarantee for a cross-process `LiveActivityIntent` dispatch, and four lines of insurance is cheaper than finding out from TestFlight.
+
+`REQUIRED_APPEX_ACTIONS` is untouched: the two new intents will also be extracted into the appex's metadata, and the script only asserts a minimum, never an exact set.
+
+### `Tests/ReachyUITests/CallProjectLockstepTests.swift` — a fourth test
+
+`NSSupportsLiveActivities` is precisely the class of hand-kept declaration that suite exists for: absent, the whole feature silently does not appear and nothing goes red. Add a test reading `Apps/Project.swift` for `"NSSupportsLiveActivities"` followed by `.boolean(true)`, in the shape the existing `declaresTheCallBackgroundModes` uses. Extend `metadataGuardCountsTheCallIntent` (or add a sibling) to assert the script contains `"CallMuteIntent"` and `"CallEndIntent"`.
+
+### `Sources/ReachyDesign/Resources/Localizable.xcstrings`
+
+Every new user-facing string with **de/es/fr/ru**. `Scripts/check-catalogue.py` scans source text and does not respect `#if`, so iOS-only strings are checked exactly like any other and `mise run lint` goes red until all four languages are filled. Expected keys: the card title, `"Mute"` / `"Unmute"`, `"End call"` (already in the catalogue from `CameraViewport` — reuse the key rather than minting a second), the muted caption, and the unnamed-robot fallback.
+
+### AGENTS.md
+
+`Sources/ReachyWidgetUI/AGENTS.md` gets the mailbox seam and the `#if os(iOS)` reasoning beside the existing Control Centre / accessory-family notes; `Sources/ReachyMedia/AGENTS.md` gets one line under "The call framing (#78)" naming the Live Activity as the fourth End funnel.
+
+---
+
+## 4. The macOS story
+
+ActivityKit is not available on native macOS, and `LiveActivityIntent` is not either. Since the app's `.mac` destination is native macOS (not Catalyst), `#if os(iOS)` is the correct fork and `#if canImport(ActivityKit)` is not — it would go true under Catalyst and mislead the next reader. This matches the repo's existing precedent, which is deliberately a *deployment-target* fork for `ControlWidget` and a *platform* fork for LiveCommunicationKit; this one is platform, like LiveCommunicationKit, and no macOS floor bump brings it back.
+
+**Whole-file `#if os(iOS)`:**
+- `Sources/ReachyWidgetUI/CallControlIntents.swift`
+- `Sources/ReachyWidgetUI/CallActivityAttributes.swift`
+- `Sources/ReachyWidgetUI/CallActivityView.swift`
+- `Apps/ReachyWidget/Sources/RobotCallActivity.swift`
+
+**Cross-platform, no fork:**
+- `Sources/ReachyWidgetUI/CallControlInbox.swift` — pure Foundation/Observation. Keeping it out of the fork is what lets `Tests/ReachyWidgetUITests` run it under `swift test` on the macOS host, and lets `RootCallLifecycle` drain without an `#if`.
+- `Sources/ReachyUI/Navigation/CallLiveActivity.swift` — cross-platform type, `#if os(iOS)` inside each body; on macOS all three are no-ops, exactly like `RobotCallController.endCall`.
+- `Sources/ReachyUI/Navigation/RootCallLifecycle.swift` — no fork. On macOS `call.activeCall` is permanently nil, so the trigger never fires a start and the drain never has a call to act on. Inert rather than absent, which is what the file already does for previews.
+- `Apps/Project.swift` — one plist, and macOS ignores the key.
+
+**`ReachyWidgetBundle.swift`** — `activities` goes inside the existing `#if os(iOS)` branch; the `#else` branch (`readings` only) is untouched, so the Mac widget gallery is unchanged.
+
+**`check-appintents-metadata.sh` macOS pass:** stays green because the two iOS-only intents are in `IOS_ONLY_APP_ACTIONS` and the macOS bundle is detected by `Contents/MacOS`. Without that split, adding them to `REQUIRED_APP_ACTIONS` would fail `Scripts/release-macos.sh` on every archive — the exact trap `CallRobotIntent`'s doc comment already records ("an `#if os(iOS)` here would fail the macOS release build").
+
+**Build coverage gap to know about:** `swift build` / `mise run build` compiles the package for the macOS host only, so it proves the `#if` did not break macOS and proves *nothing* about the iOS branch. The first real compile of the new code is `mise run build:app:ios`. Sequence the work accordingly (§6).
+
+---
+
+## 5. Previews and snapshots
+
+### Add `Sources/ReachyWidgetUI/Previews/CallActivityPreviews.swift`
+
+Already compiled by both `ReachyStorybook` and `ReachyUISnapshotTests` via the existing `"../Sources/ReachyWidgetUI/Previews/**"` globs, and both targets are `destinations: [.iPhone, .iPad]`, so no `#if` is needed in the preview file even though the views it names are iOS-only.
+
+Structure it like `RobotWidgetPreviews.swift`: a `CallActivityPreviewSize` enum beside `AppsPreviewSize`/`AccessoryPreviewSize`, and a `callActivityPreviewCard(...)` helper applying the frame and the `.rect(cornerRadius: 22)` container the real system draws and this process never sees.
+
+Sizes to seed (tune once, then they are frozen by the references):
+- lock screen: `CGSize(width: 338, height: 96)` — reuse the medium widget width so it sits beside the others in the storybook.
+- expanded island: `CGSize(width: 360, height: 120)`.
+- compact leading/trailing and minimal: small fixed boxes, ~`44×36` and `36×36`.
+
+`#Preview`s, one per state a user can land in (rule 8):
+- lock screen, live, named robot
+- lock screen, **muted** — the state the buttons exist for
+- lock screen, **unnamed robot** — daemon 1.9.0 reports an empty name and cannot be renamed, which the widget previews already treat as the common case
+- island expanded, live
+- island expanded, muted
+- island compact + minimal glyphs, live and muted
+
+No `Date()` anywhere — if you add an elapsed-time line to the card, take the start date from a fixed constant the way `robotWidgetPreviewDate` does, or every reference moves on every run. Better: **do not draw elapsed time at all.** A `Text(_:style: .timer)` renders live in a real activity and as a frozen arbitrary string in a snapshot, which is a reference image that will churn. The system already shows call duration in its own pill.
+
+Then `mise run test:snapshots:record`, review, `git add` the PNGs (no hook stages them). `mise run snapshots:build` compiles the previews without a runtime and is what CI runs.
+
+### What genuinely cannot be captured headless
+
+Say so explicitly in the preview file's header, the way `SceneViewport.ready` is called out:
+
+- **The aperture itself.** The suite renders the region *contents*; the black capsule, the corner-radius morph, the compact→expanded animation and `.keylineTint` are drawn by SpringBoard.
+- **Whether the island shows the activity at all while a LiveCommunicationKit call owns it** — the entire open question, and device-only.
+- **The WidgetKit container modifiers** — `.activityBackgroundTint`, `.activitySystemActionForegroundColor`, and the Lock Screen's own background material.
+- **The button actually dispatching.** A preview renders `Button(intent:)`; it never runs the intent, and nothing in the snapshot suite touches the inbox→controller path.
+
+So leave one runnable check for the logic the snapshots cannot see: `Tests/ReachyWidgetUITests/CallControlInboxTests.swift` — receive bumps the token, two identical receives produce two distinct `Equatable` values (the property the whole `onChange` mechanism rests on), `drop()` clears. Cross-platform, runs in `mise run test`. That plus the two lockstep tests is the whole non-visual surface.
+
+---
+
+## 6. Ordering, and the one device check
+
+1. `CallControlInbox.swift` + `CallControlInboxTests.swift`. `mise run test`. Nothing is wired; this is the seam.
+2. `CallActivityAttributes.swift` + `CallControlIntents.swift`. `mise run build` — proves the `#if` did not break the macOS package.
+3. `CallLiveActivity.swift` + the `RootCallLifecycle` wiring. Still nothing on screen: no `ActivityConfiguration` exists, so `Activity.request` will throw and be swallowed. That is deliberate — it proves the swallow works.
+4. `Apps/Project.swift` key + the lockstep test.
+5. `CallActivityView.swift` + `RobotCallActivity.swift` + the bundle's `activities`. **`mise run build:app:ios` — first compile of the iOS-only branch.** Expect the errors here, not earlier.
+6. Strings into `Localizable.xcstrings` with de/es/fr/ru; `mise run lint`.
+7. `CallActivityPreviews.swift`; `mise run test:snapshots:record`; `git add` the PNGs.
+8. `check-appintents-metadata.sh` edit. Then `mise run build:app:ios:release` **and** `mise run build:app:release`, running the script against both products. The macOS one is the pass that proves the split works.
+9. **Device check** (below).
+10. AGENTS.md.
+
+Steps 1–4 are safe to land as one commit; 5–7 as a second. Nothing user-visible ships until step 5.
+
+### The device check
+
+Start a call on a real iPhone with an island (14 Pro or later — the simulator's island does not host third-party activities faithfully, and a sysdiagnose from it proves nothing).
+
+**Correct: the Lock Screen half first.** Lock the phone. The card must be there, alongside the system's call banner, with Mute and End that work and a mute state that follows the in-app button both ways. If that holds, the feature has already paid for itself — the Lock Screen shows activities as a list and does not contend with the call.
+
+**Then the island.** Unlock, leave the app, long-press the pill. One of two outcomes:
+- the activity's expanded view appears (possibly reachable by swiping between it and the call pill) → the island half was worth it;
+- the pill stays `preferredLayoutMode: compact` for the call's whole life and the activity is never reachable → it was not.
+
+Confirm with the same lens you already used: pull a sysdiagnose during the call and look for an element owned by `com.alexey1312.ReachyMini` beside the `SBSystemApertureStatusBarPillElement` owned by `com.apple.springboard`. Zero such element is the negative result.
+
+**Important framing correction:** a negative result does not let you delete the island code. `ActivityConfiguration` requires *both* a lock-screen view and a `DynamicIsland` — there is no "Lock Screen only" configuration. What the check decides is whether to invest in the expanded layout's design, or to leave the three regions as one-line stubs and spend the effort on the card. Budget the island work as polish that this check may cancel, not as a half that can be cut.
+
+---
+
+## 7. What I think you have got wrong or are missing
+
+**a. "Lock Screen only" is not a shippable option.** As above — `dynamicIsland:` is a required closure. The island code gets written either way; only its ambition is at stake.
+
+**b. `NSSupportsLiveActivities` is not the only silent off-switch.** `ActivityAuthorizationInfo().areActivitiesEnabled` is a per-app user toggle (Settings → Hey Reachy → Live Activities), and `Activity.request` throws when it is off. `start()` must log and continue, never propagate. The repo already has the sentence for this: the framing is garnish, the microphone is the meal.
+
+**c. "A Live Activity's own process has no network access" is true but not the constraint you'll trip on.** The rendering happens in `ReachyWidget.appex`, which *does* have `com.apple.security.network.client` (added for the interactive widget buttons). Nothing here needs it: the card renders entirely from `ContentState`, pushed by the app. Say so in the file header, or someone will reach for `RobotSnapshotStore` and add an App Group read that cannot be correct — the app is right there and already knows.
+
+**d. You have no zombie-activity story, and you will hit it.** Kill the app mid-call and the Lock Screen keeps a card with two live buttons and no call behind them. The stateless `CallLiveActivity` design handles it: `start` sweeps `Activity&lt;RobotCallAttributes&gt;.activities` before requesting. Also end with `dismissalPolicy: .immediate` — the default leaves the card up for hours after hangup, which for a call reads as a bug.
+
+**e. Skip `staleDate`.** It is the wrong tool: it greys the card rather than removing it, and it would have to be re-armed on every update. The stray sweep plus `.immediate` covers the same ground with less machinery.
+
+**f. Two mute truths, and the card will lag by a round trip.** `CameraSession.isMicEnabled` is the mic; `MuteConversationAction` is the system's. `CallLifecycle` keeps them in step, but between `performMuteAction` and `performedMute` the track has not flipped. Read `isMicEnabled` for the card and accept the lag. Do not add a third `isMuted` to `RobotCallController` to smooth it — that is a new truth to keep in step with two others.
+
+**g. Watch the trigger source: `activeCall`, not `keepsSessionAlive`.** `keepsSessionAlive` is true from the tap that asks for the microphone, before the system hands the start back and before `robotName` exists. Starting an activity there produces a card naming nobody, then a second card when the real one starts. `RobotCallController` already documents this exact distinction for the viewport gate.
+
+**h. Both intents in `ReachyWidgetUI` means both are extracted into the appex's metadata too.** Harmless — the check script asserts a minimum, not an exact set, and `isDiscoverable = false` keeps them out of Shortcuts. But it is the one thing to look at first if a button on device does nothing: read the *app* bundle's `extract.actionsdata` and confirm both are there with `isDiscoverable: false`, using the `python3 -c` one-liner in `Sources/ReachyWidgetUI/AGENTS.md`.
+
+**i. `CallEndButton` already exists** in `Sources/ReachyUI/CameraViewport.swift`. Different module so it compiles, but name the new ones `CallActivityEndButton` / `CallActivityMuteButton`.
+
+**j. `check-catalogue.py` does not respect `#if`.** It strips comments and scans source text, so the iOS-only strings are checked like any other and `mise run lint` fails until de/es/fr/ru are all filled. This is not a problem, just a gate that will surprise you at step 6 if you expected the fork to hide them. Reuse the existing `"End call"` key from `CameraViewport` rather than minting a second.
+
+**k. Do not draw call duration on the card.** `Text(_:style: .timer)` is the natural thing to reach for and it makes the reference images churn — it renders live in a real activity and as a frozen arbitrary string in a snapshot. The system's own call pill already shows duration.
+
+---
+
+### Critical Files for Implementation
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/Sources/ReachyUI/Navigation/RootCallLifecycle.swift`
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/Apps/Project.swift`
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/Apps/ReachyWidget/Sources/ReachyWidgetBundle.swift`
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/Scripts/check-appintents-metadata.sh`
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/Sources/ReachyUI/Navigation/CallRequests.swift` (the mailbox pattern the new `CallControlInbox` copies)
+
+`Package.swift` needs no edit — stated above with the reasoning, so nobody re-derives it.</result>
+<usage><subagent_tokens>108779</subagent_tokens><tool_uses>40</tool_uses><duration_ms>471736</duration_ms></usage>
+</task-notification>
