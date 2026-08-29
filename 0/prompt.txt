@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bu10wlpkx</task-id>
+<tool-use-id>toolu_01HAQaPiwZQuUq12xeCsCCb5</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/c27357a6-efa0-41b0-a9a0-9f93efe009fe/tasks/bu10wlpkx.output</output-file>
+<status>completed</status>
+<summary>Background command "Run snapshot suite in background" completed (exit code 0)</summary>
+</task-notification>
