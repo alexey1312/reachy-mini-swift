@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>bkundrq2l</task-id>
+<tool-use-id>toolu_015Pv9M8uhWdvAEjbyA9bpvU</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/10f1d208-8719-4188-ab85-1898bc954618/tasks/bkundrq2l.output</output-file>
+<status>completed</status>
+<summary>Background command "Run snapshot tests to see which references move" completed (exit code 0)</summary>
+</task-notification>
