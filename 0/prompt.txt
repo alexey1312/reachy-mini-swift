@@ -1,0 +1,20 @@
+Review this change for security vulnerabilities.
+
+Changed files (you may Read these and any other file in the repo):
+  - Apps/Project.swift
+
+Unified diff (only + lines are new):
+
+=== DIFF: Apps/Project.swift ===
+@@ -28,7 +28,7 @@ let project = Project(
+         base: [
+             // Beta: the first tag is 0.1.0, and the tag and the shipped version
+             // have to be the same number to be worth reading.
+-            "MARKETING_VERSION": "0.2.2",
++            "MARKETING_VERSION": "0.2.3",
+             "CURRENT_PROJECT_VERSION": "1",
+         ],
+         configurations: [
+
+
+Investigate per the method in your instructions, then return the findings list.
