@@ -41,6 +41,14 @@ public extension View {
     /// Worth asking for only where the content is dense and unbroken — a log tail
     /// under a navigation bar. A grouped `Form` already ends in its own background,
     /// and softening that edge blurs a boundary the reader uses.
+    ///
+    /// **iOS 27 revised `.automatic`, and the override still earns its place.**
+    /// Measured on an iPhone 17 Pro running 27.0, over a plain `List` of monospaced
+    /// lines scrolled under an inline bar: `.automatic`, `.hard` and no modifier at all
+    /// render the same frame to the byte, and only `.soft` differs — across the first
+    /// 150 pt, which is where the effect draws. What the other three add there is a
+    /// hairline under the bar, and over a log tail that reads as one more row
+    /// separator, which the list hides everywhere else.
     @ViewBuilder
     func reachySoftScrollEdge(_ edges: Edge.Set) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {

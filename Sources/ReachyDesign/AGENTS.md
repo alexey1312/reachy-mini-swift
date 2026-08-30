@@ -202,6 +202,13 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
      reference, which is why `FloatingViewport` uses it.
   4. **Glass laid over a `Color.clear` does the same** — there is no backdrop to refract. It goes over the opaque
      `baseFill`, which is where `ReachySurfaceFill` puts it.
+- **The scroll edge effect is the other thing no reference can see, and for a different reason.** It draws only where
+  content passes under a bar, and a preview renders no bar — so `Console-installer-log-iPhone-16-Pro` is a plain page
+  of log text, and a recorded variant would compare two identical images. Settled with a probe instead (#114):
+  on an iPhone 17 Pro running 27.0, `.automatic`, `.hard` and no modifier at all give **the same frame to the byte**,
+  and only `.soft` differs, over the first 150 pt. What the other three add there is a hairline under the bar. That
+  is why `reachySoftScrollEdge` keeps its override over a log tail, where the list hides every other separator, and
+  why it is still wrong over a grouped `Form`, which ends in its own background.
 - **Wrapping something in `.opacity()` moves its reference, at opacity 1 and with nothing else changed.** SwiftUI
   composites that subtree offscreen and blends it back, and the round-trip lands within 1 bit. Measured when the
   floating viewport's edge glyphs became fadeable: 14 references moved, 3990 px each on an iPhone capture, **max
