@@ -135,16 +135,16 @@ Apple has announced no deadline for the iOS 27 SDK. The floor is still Xcode 26 
 
 Each row was checked against the tree.
 
-| Gap                                             | Where                                                                                                                           | Note                                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Resizability audit                              | `Sources/ReachyUI/FloatingViewportModifier.swift:142-180`                                                                       | **Analysed, no change made.** See §2.1                                                 |
-| The `.soft` scroll edge effect                  | `Sources/ReachyDesign/ReachyChrome.swift:47`, one consumer at `Sources/ReachyUI/LogConsoleView.swift:74`                        | **Open, but a device check rather than a code task.** See §2.1                         |
-| Menu icons ~~needs `preferredImageVisibility`~~ | `Menu {` in `LogConsoleView`, `SceneViewport`, `SoundboardScreen`, `AppStoreScreen`, `LiveTab`, `RobotFilesScreen`              | **Closed — nothing to do.** See §2.1                                                   |
-| Tooling matrix                                  | `mise.toml` — swiftlint, swiftformat, swift-syntax, and Prefire pinned `.exact` to 5.7.0 behind a forked `PreviewTests.stencil` | #57 moves the CI image but not the parsers, and the `@State` macro passes through them |
-| Snapshot coverage is two fixed sizes            | `Apps/.prefire.yml` (`iPhone 16 Pro`, `iPad Pro 11`)                                                                            | under resizability no reference exercises a narrow or a wide window                    |
-| The combined privacy prompt                     | camera, microphone, Bluetooth, local network and location in one dialog                                                         | the first-run gate and the smoke test that walks it may both shift                     |
-| Stricter TLS                                    | `ws://<host>:8443`, `Sources/ReachyKit/Transport/CameraSignalingClient.swift:4`, plus `NSAllowsLocalNetworking`                 | signaling is plaintext                                                                 |
-| macOS 27 drops Intel                            | `Scripts/release-macos.sh`                                                                                                      | the universal slice stops being obligatory                                             |
+| Gap                                             | Where                                                                                                                           | Note                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Resizability audit                              | `Sources/ReachyUI/FloatingViewportModifier.swift:149-182`                                                                       | **Measured, and it costs nothing.** See §2.1                                                        |
+| The `.soft` scroll edge effect                  | `Sources/ReachyDesign/ReachyChrome.swift:47`, one consumer at `Sources/ReachyUI/LogConsoleView.swift:74`                        | **Settled on a running app: `.soft` stays.** See §2.1                                               |
+| Menu icons ~~needs `preferredImageVisibility`~~ | `Menu {` in `LogConsoleView`, `SceneViewport`, `SoundboardScreen`, `AppStoreScreen`, `LiveTab`, `RobotFilesScreen`              | **Closed — nothing to do.** See §2.1                                                                |
+| Tooling matrix                                  | `mise.toml` — swiftlint, swiftformat, swift-syntax, and Prefire pinned `.exact` to 5.7.0 behind a forked `PreviewTests.stencil` | #57 moves the CI image but not the parsers, and the `@State` macro passes through them              |
+| Snapshot coverage is two fixed sizes            | `Apps/.prefire.yml` (`iPhone 16 Pro`, `iPad Pro 11`)                                                                            | still open: a third size costs +816 references and ~100 MB of LFS, so #114 measured it and declined |
+| The combined privacy prompt                     | camera, microphone, Bluetooth, local network and location in one dialog                                                         | the first-run gate and the smoke test that walks it may both shift                                  |
+| Stricter TLS                                    | `ws://<host>:8443`, `Sources/ReachyKit/Transport/CameraSignalingClient.swift:4`, plus `NSAllowsLocalNetworking`                 | signaling is plaintext                                                                              |
+| macOS 27 drops Intel                            | `Scripts/release-macos.sh`                                                                                                      | the universal slice stops being obligatory                                                          |
 
 ### §2.1 The three visual rows, resolved
 
@@ -154,26 +154,49 @@ exposes no counterpart — its `swiftinterface` has no `ImageVisibility` of any 
 are `menuOrder`, `menuActionDismissBehavior` and `menuIndicator`. Every menu here is a SwiftUI `Menu`, so there is
 no knob to set. Re-open this row only when SwiftUI ships one.
 
-**The `.soft` scroll edge — open, and not a code task.** The modifier survives in the 27 SDK
-(`ScrollEdgeEffectStyle.automatic` / `.hard` / `.soft`), so the availability gate needs nothing. Whether `.soft` is
-still the better choice than the revised `.automatic` cannot be settled here: the effect draws where content passes
-under a bar, and the preview renders no bar. `Console-installer-log-iPhone-16-Pro` is a plain page of log text.
-Re-recording a variant would compare two identical images. This needs the app on a device, with the log console
-open, exactly as glass does.
+**The `.soft` scroll edge — settled, and `.soft` stays.** The modifier survives in the 27 SDK
+(`ScrollEdgeEffectStyle.automatic` / `.hard` / `.soft`), so the availability gate needs nothing. No reference could
+answer the rest: the effect draws where content passes under a bar, and the preview renders no bar —
+`Console-installer-log-iPhone-16-Pro` is a plain page of log text, so re-recording a variant would compare two
+identical images. A standalone probe answered it instead, replicating the console's list — monospaced lines under an
+inline navigation bar, scrolled by the app because the simulator here takes no touches. On an iPhone 17 Pro running
+27.0, `.automatic`, `.hard` and no modifier at all render **the same frame to the byte**; only `.soft` differs, over
+the first 150 pt, which is the band the effect draws in. What the other three put there is a hairline under the bar,
+and over a log tail that reads as one more row separator — which the list hides on every other row. The revision
+therefore did not make the override redundant; it left `.soft` as the only value that removes the rule.
 
-**Resizability and `dockBleed` — analysed, and left alone.** The concern is real in shape: `dockBleed` picks its
-edge from `UIWindowScene.interfaceOrientation`, and under 27 orientation is a preference. But the failure degrades
-to nothing rather than to something wrong, because the branch only chooses _which_ side, while the amount always
-comes from `geometry.safeAreaInsets`:
+**Resizability and `dockBleed` — measured, and it costs nothing.** The concern was real in shape: `dockBleed` picks
+its edge from the window scene's interface orientation, and under 27 orientation is a preference. The analysis said
+the failure degrades to nothing rather than to something wrong, because the branch only chooses _which_ side while
+the amount always comes from `geometry.safeAreaInsets`. That is now a measurement, taken with the standalone probe
+`Sources/ReachyUI/AGENTS.md` describes, extended to print both orientation readings beside the insets:
 
-- a mis-reported orientation falls to `default: .none`, which is the neutral value;
-- a window away from the screen edge has no safe-area inset, so either side bleeds by zero.
+| Configuration                            | reader     | insets            | orientation    | bleed         |
+| ---------------------------------------- | ---------- | ----------------- | -------------- | ------------- |
+| iPhone 17 Pro, full screen, portrait     | 402 × 778  | t62 b34 **l0 r0** | portrait       | none          |
+| iPhone 17 Pro, landscapeLeft             | 750 × 382  | **l62 r62**       | landscapeLeft  | leading 62    |
+| iPhone 17 Pro, landscapeRight            | 750 × 382  | **l62 r62**       | landscapeRight | trailing 62   |
+| iPad Pro 11, window, no request          | 417 × 1158 | t32 b20 **l0 r0** | portrait       | none          |
+| iPad Pro 11, window, landscape requested | 1210 × 397 | t10 b10 **l0 r0** | landscapeLeft  | leading **0** |
+| iPad Pro 11, `UIRequiresFullScreen` set  | unchanged  | unchanged         | unchanged      | unchanged     |
 
-The wrong-side case would need a window at a screen edge _and_ an orientation reported for the opposite one. Not
-measured, because nothing here reaches a resized window: no preview forces landscape, and
-`FloatingViewportGeometryTests` takes `bleed` as a value already decided — which the source comment at
-`FloatingViewportModifier.swift:130-148` states outright. What would settle it is an XCUITest that sets
-`XCUIDevice.shared.orientation`, or the app in iPhone Mirroring. Until then this is reasoning, not a measurement.
+The first two rows reproduce the figures already recorded in `FloatingViewportModifier.swift`, which is what
+certifies the probe before any of its new numbers are believed. Three things follow:
+
+- **The resized window is harmless.** Requesting landscape on iPadOS 27 rotates the interface inside a window whose
+  shape on the display does not change — orientation as a preference, in one screenshot — and the horizontal insets
+  there are zero. The inset only exists where a cutout does, and that is a full-screen iPhone, where the window _is_
+  the display.
+- **`UIWindowScene.interfaceOrientation` is deprecated in the 27 SDK**, `ios(13.0, 26.0)`, in favour of
+  `effectiveGeometry.interfaceOrientation`, which is available from iOS 16 and so needs no gate at this deployment
+  target. The two answered alike in every configuration above, so the swap moves nothing; it stops the app asking a
+  question the system has stopped promising to answer. Done.
+- **`UIRequiresFullScreen` no longer works**, so the iPad half of the probe recipe in `AGENTS.md` was corrected
+  along with it. An iPad measurement under 27 is a window measurement, whatever the plist says.
+
+No test was added. The mapping lives under `#if !os(macOS)` and `mise run test` is SwiftPM on macOS, so it has no
+runner short of the XCUITest bundle — and reaching a docked floating viewport there needs a live video source. The
+probe is what caught the inverted mapping in the first place, and it is what settled this.
 
 Searched for and **absent**, so not problems: `UIScreen.main`, `userInterfaceIdiom`, the deprecated `UIApplication`
 status-bar accessors, `MXMetricManager`, On Demand Resources, `.onMove`.
@@ -206,5 +229,6 @@ Ordered by how close each sits to something the app already does.
 
 ## §4 Order
 
-`#57` → the resizability audit → `#56` → chrome and `.soft` → `preferredImageVisibility`. Everything in §3 waits
+`#57` → the resizability audit → `#56` → chrome and `.soft` → `preferredImageVisibility`. Everything up to and
+including `.soft` is done (#114); `preferredImageVisibility` is closed as not applicable. Everything in §3 waits
 until the tree is green again.

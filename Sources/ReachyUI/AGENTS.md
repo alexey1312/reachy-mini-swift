@@ -83,8 +83,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
       screen, that `Form` covers a stream that goes on running behind it, which it did on every platform for as long
       as it shipped.
   - **`dockBleed(in:)` in the same file is the second branch on how the device is held, and it passes the same test.**
-    It reads `UIInterfaceOrientation`, and it asks neither "how wide" nor "how tall" but **"which end of this screen
-    has no cutout in it"** — because that is the one thing no amount of geometry will say. iOS reports the landscape
+    It reads `UIInterfaceOrientation` — through `scene.effectiveGeometry`, because the scene's own
+    `interfaceOrientation` is deprecated in the 27 SDK and the compiler names that replacement — and it asks neither
+    "how wide" nor "how tall" but **"which end of this screen has no cutout in it"** — because that is the one thing no amount of geometry will say. iOS reports the landscape
     safe-area inset on both sides whatever side the Dynamic Island is physically on, so a docked tab reaching for the
     glass has to be told which end to reach at or it goes under the island. It forks no layout: one point moves by up
     to 62 pt, and everything else about the overlay is unchanged. A third branch owes an answer of the same kind —
@@ -117,6 +118,16 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
         The tell is a resize grab handle in the bottom-trailing corner of the screenshot. With the key set the same
         probe reported 834 × 1210, which is the figure every conclusion here rests on. `UILaunchScreen` does not
         cover this: they are two different ways to be given a viewport that is not the device's.
+        - **That escape hatch is gone in 27.** The same probe, rebuilt against the 27 SDK on an iPad Pro 11 running
+          27.0, reported the same 417 pt window with and without the key — traffic lights, resize handle and all.
+          So an iPad measurement there is a window measurement, and the only way to read the display is
+          `scene.screen`, which the windowed run gave as 834 × 1210 against the window's 417 × 1158.
+      - **The resized window costs `dockBleed` nothing, and that is measured rather than argued** (#114). Ask the
+        scene for landscape with `requestGeometryUpdate` and iPadOS 27 rotates the interface inside a window whose
+        shape on the display does not change — orientation as a preference, in one screenshot. The probe read
+        1210 × 397 with **`l0 r0`**, so the bleed is zero at either end. The horizontal inset only exists where a
+        cutout does, and that is a full-screen iPhone, where the window _is_ the display. The two orientation
+        readings, deprecated and `effectiveGeometry`, agreed in every configuration reachable here.
 - **Navigation is `ReachyRouter` plus two destinations.** `ReachyRootView` owns what outlives a screen and picks the
   gate or the shell; `Navigation/` holds the router, the effect cluster and the sheet stack; `Shell/` holds the five
   tabs. The five are unconditional — a tab that comes and goes forces the shell to catch its disappearance and drag

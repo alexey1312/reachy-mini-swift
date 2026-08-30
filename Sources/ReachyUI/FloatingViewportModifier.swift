@@ -139,9 +139,19 @@ private struct FloatingViewportModifier: ViewModifier {
     /// in both and looks plausible in both, and the geometry tests cannot see it at all
     /// because `bleed` reaches `tabCentre` as a number that has already been decided.
     /// It was measured instead — a standalone probe on a booted simulator, forced into
-    /// each orientation through `UISupportedInterfaceOrientations` and screenshotted.
+    /// each orientation and screenshotted.
     ///
     /// Portrait needs no case: there is no horizontal inset there to give back.
+    ///
+    /// **A resized window degrades this to nothing, and that too is measured.** Under
+    /// iOS 27 an app is resizable and its orientation is a preference, so a window can
+    /// carry a landscape interface while the display stays portrait — which is the one
+    /// case that could send the bleed to the wrong end. It cannot: the same probe on an
+    /// iPad Pro 11 running 27.0 reported 1210 × 397 with `l0 r0`, so the amount is zero
+    /// whichever side the switch picks. The horizontal inset exists only where a cutout
+    /// does, and that is a full-screen iPhone, where the window *is* the display. The
+    /// iPad's own escape hatch is gone as well: `UIRequiresFullScreen` is ignored in 27,
+    /// and the same build reported the same window with the key set.
     ///
     /// **This is the target's second branch on how the device is held**, after
     /// `hasTabBar`, and `AGENTS.md` carries why neither is a layout fork. It asks where
@@ -164,6 +174,14 @@ private struct FloatingViewportModifier: ViewModifier {
         /// the closure runs again with the orientation already settled, and there is no
         /// notification to subscribe to and unsubscribe from.
         ///
+        /// **`effectiveGeometry`, not the scene's own `interfaceOrientation`.** That
+        /// spelling is deprecated in the 27 SDK — the compiler names this replacement —
+        /// and it is the reading iOS 27 defines for a window whose shape and whose
+        /// orientation can disagree. The two answered alike in every configuration
+        /// reachable here, iPhone and windowed iPad alike, so the swap changes no
+        /// placement; it stops the app asking a question the system has stopped
+        /// promising to answer.
+        ///
         /// **Any window scene, deliberately not the `foregroundActive` one.**
         /// `WebAuthenticationBrowser` filters on that and is right to — it is choosing a
         /// window to present in. Here the filter is a silent failure: measured on an
@@ -177,7 +195,7 @@ private struct FloatingViewportModifier: ViewModifier {
             UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .first?
-                .interfaceOrientation ?? .portrait
+                .effectiveGeometry.interfaceOrientation ?? .portrait
         }
     #endif
 }
