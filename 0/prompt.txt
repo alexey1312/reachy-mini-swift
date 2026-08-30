@@ -1,0 +1,3 @@
+https://github.com/alexey1312/reachy-mini-swift/issues/114
+
+Ты на локальном устройстве, разбери данные issue

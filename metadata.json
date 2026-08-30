@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M18XQ2ZW7QFNYX9K7JTNN4KM",
+  "strategy": "manual-commit",
+  "branch": "claude/issue-114-review-584890",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "Sources/ReachyDesign/AGENTS.md",
+    "Sources/ReachyDesign/ReachyChrome.swift",
+    "Sources/ReachyUI/AGENTS.md",
+    "Sources/ReachyUI/FloatingViewportModifier.swift",
+    "docs/research/ios-27.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 230,
+    "cache_creation_tokens": 286204,
+    "cache_read_tokens": 27471908,
+    "output_tokens": 103381,
+    "api_call_count": 115
+  }
+}
