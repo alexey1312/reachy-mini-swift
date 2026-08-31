@@ -1,0 +1,6 @@
+https://github.com/pollen-robotics/reachy-mini-desktop-app
+
+https://github.com/pollen-robotics/reachy-mini-desktop-app
+Изучи все последние изменения которые вошли в последних версиях
+Чего нету в нашем приложении
+Составь план по их добавлению и интеграцию к нам
