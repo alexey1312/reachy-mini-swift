@@ -95,6 +95,12 @@ import SwiftUI
     PreviewScene.updateCard(.idle)
 }
 
+// The beta channel closed. Reachable only on a robot whose daemon predates the
+// PyPI ranking fix, so it is seeded rather than waited for.
+#Preview("System update — pre-release refused") {
+    PreviewScene.updateCard(.upToDate(current: "1.9.0"), daemonVersion: "1.9.0")
+}
+
 #Preview("System update — checking") {
     PreviewScene.updateCard(.checking)
 }

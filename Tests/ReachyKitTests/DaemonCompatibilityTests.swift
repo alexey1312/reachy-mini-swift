@@ -57,4 +57,18 @@ struct DaemonCompatibilityTests {
     func unknown(version: String?) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .unknown(reported: version))
     }
+
+    @Test("a daemon is known older only on evidence", arguments: [
+        ("1.9.0", true), ("1.9.0rc1", true), ("1.8.4", true),
+        ("1.10.0", false), ("1.10.0rc5", false), ("1.11.0", false),
+        ("dev", false), ("", false),
+    ])
+    func knownOlder(version: String, expected: Bool) {
+        #expect(DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: version) == expected)
+    }
+
+    @Test("no version at all is not evidence of an old one")
+    func knownOlderWithoutAVersion() {
+        #expect(DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: nil) == false)
+    }
 }

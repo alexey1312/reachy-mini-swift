@@ -104,9 +104,16 @@ extension PreviewScene {
         .preview()
     }
 
-    static func updateCard(_ state: SystemUpdateModel.State, log: [String] = []) -> some View {
+    static func updateCard(
+        _ state: SystemUpdateModel.State,
+        log: [String] = [],
+        daemonVersion: String? = nil
+    ) -> some View {
         Form {
-            SystemUpdateCard(session: .preview(), model: .preview(state: state, log: log))
+            SystemUpdateCard(
+                session: .preview(status: .preview(version: daemonVersion)),
+                model: .preview(state: state, log: log)
+            )
         }
         .formStyle(.grouped)
         .preview()

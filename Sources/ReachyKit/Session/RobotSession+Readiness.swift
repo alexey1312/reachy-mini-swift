@@ -102,6 +102,17 @@ public extension RobotSession {
         address != nil
     }
 
+    /// Whether the beta channel is closed to this robot.
+    ///
+    /// Daemons before 1.10.0 rank the PyPI pre-release list as strings, so `1.9.0rc1`
+    /// outranks `1.10.0rc5`: `/update/available` answers "up to date" and
+    /// `/update/start` refuses with 400. The daemon-side fix ships in the very
+    /// version those robots cannot reach, so the toggle is inert until a stable
+    /// update carries them past it.
+    var refusesPreReleaseUpdates: Bool {
+        DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
+    }
+
     /// `/wifi/*` and `/update/*` are mounted only under `--wireless-version`, so a
     /// Lite robot answers 404 to all of them. Hide those controls rather than let
     /// the user press a button that cannot work.

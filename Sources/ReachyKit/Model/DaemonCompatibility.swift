@@ -30,6 +30,16 @@ public enum DaemonCompatibilityPolicy {
     /// and `FullState.imu` are new, and rule 3 already covers an unread field.
     public static let testedVersion = "1.10.0"
 
+    /// Whether the daemon is *known* to be older than `floor`.
+    ///
+    /// False for a version this client cannot read, and false for none at all: a
+    /// feature is withheld on evidence, never on the absence of it.
+    public static func isKnownOlder(than floor: String, reported: String?) -> Bool {
+        guard let reported, let current = SemanticVersion(reported), let floor = SemanticVersion(floor)
+        else { return false }
+        return current < floor
+    }
+
     public static func evaluate(_ reported: String?) -> DaemonCompatibility {
         guard let reported, let current = SemanticVersion(reported),
               let minimum = SemanticVersion(minimumVersion),
