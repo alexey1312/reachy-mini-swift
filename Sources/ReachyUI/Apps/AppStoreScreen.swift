@@ -111,6 +111,7 @@ struct AppStoreScreen: View {
         .contentLoading(isPresented: model.isContentLoading, title: .reachy("Browsing the robot app aisle…"))
         .navigationTitle(.reachy("Apps"))
         .searchable(text: $model.searchText, prompt: String(localized: .reachy("Search apps")))
+        .refreshable { await reload(refresh: true) }
         // No running-app inset here any more: the dock is mounted on the root
         // `TabView`, below the tab bar, and is on screen for every tab. A second
         // copy on this one would be the same control twice.
