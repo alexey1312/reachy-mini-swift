@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1CE8RP95A6N0F8JM1JD3PN3",
+  "strategy": "manual-commit",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Model/DaemonCompatibility.swift",
+    "Sources/ReachyKit/Preview/PreviewDaemonStatus.swift",
+    "Sources/ReachyKit/Session/RobotSession+Readiness.swift",
+    "Sources/ReachyUI/Previews/PreviewSettingsScenes.swift",
+    "Sources/ReachyUI/Previews/SettingsPreviews.swift",
+    "Sources/ReachyUI/Settings/SystemUpdateCard.swift",
+    "Tests/ReachyKitTests/DaemonCompatibilityTests.swift",
+    "Tests/ReachyKitTests/RobotSessionCompatibilityGateTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 176,
+    "cache_creation_tokens": 86788,
+    "cache_read_tokens": 31486489,
+    "output_tokens": 47473,
+    "api_call_count": 88,
+    "subagent_tokens": {
+      "input_tokens": 148,
+      "cache_creation_tokens": 495534,
+      "cache_read_tokens": 8477807,
+      "output_tokens": 43950,
+      "api_call_count": 74
+    }
+  }
+}
