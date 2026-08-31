@@ -10,14 +10,27 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
     private let availability: DaemonUpdateAvailability
     private let startError: Error?
     private var starts: [Bool] = []
+    /// What `/update/info` answers, one status per call. An exhausted script throws,
+    /// which is the daemon going down — the ordinary end of an update.
+    private var jobStatuses: [DaemonJob.Status]
+    private var infoCalls = 0
 
-    init(availability: DaemonUpdateAvailability, startError: Error? = nil) {
+    init(
+        availability: DaemonUpdateAvailability,
+        startError: Error? = nil,
+        jobStatuses: [DaemonJob.Status] = []
+    ) {
         self.availability = availability
         self.startError = startError
+        self.jobStatuses = jobStatuses
     }
 
     var startedPreReleaseFlags: [Bool] {
         lock.withLock { starts }
+    }
+
+    var updateInfoCalls: Int {
+        lock.withLock { infoCalls }
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -56,6 +69,15 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
         lock.withLock { starts.append(preRelease) }
         return "job-1"
     }
+
+    func updateInfo(jobID _: String) async throws -> DaemonUpdateJob {
+        let next: DaemonJob.Status? = lock.withLock {
+            infoCalls += 1
+            return jobStatuses.isEmpty ? nil : jobStatuses.removeFirst()
+        }
+        guard let next else { throw URLError(.cannotConnectToHost) }
+        return DaemonJob(command: "update", status: next, logs: [])
+    }
 }
 
 @MainActor
@@ -81,7 +103,8 @@ struct SystemUpdateModelTests {
                     continuation.finish()
                 }
             },
-            reconnect: { version }
+            reconnect: { version },
+            jobPollInterval: .zero
         )
     }
 
@@ -178,5 +201,33 @@ struct SystemUpdateModelTests {
 
         #expect(model.state == .upToDate(current: "1.9.0"))
         #expect(client.startedPreReleaseFlags.isEmpty)
+    }
+
+    /// A Wi-Fi blip closes the same socket a restart does. The register is the only
+    /// thing that can tell them apart, so a job still running is followed rather
+    /// than announced as a restart.
+    @Test("a socket that closes while the job runs is followed, not believed")
+    func followsAJobThatOutlivesItsSocket() async {
+        let client = UpdateStubClient(
+            availability: .available(current: "1.9.0", latest: "1.10.0"),
+            jobStatuses: [.inProgress, .inProgress]
+        )
+        let model = await makeModel(client)
+        await model.check(preRelease: false)
+        await model.install(preRelease: false)
+        #expect(model.state == .finished(version: "1.10.0"))
+        #expect(client.updateInfoCalls == 3)
+    }
+
+    @Test("a register that reports the job failed stops the run")
+    func failsWhenTheRegisterReportsAFailure() async {
+        let client = UpdateStubClient(
+            availability: .available(current: "1.9.0", latest: "1.10.0"),
+            jobStatuses: [.failed]
+        )
+        let model = await makeModel(client)
+        await model.check(preRelease: false)
+        await model.install(preRelease: false)
+        #expect(model.state == .failed(String(localized: .reachy("The robot reported that the update failed."))))
     }
 }

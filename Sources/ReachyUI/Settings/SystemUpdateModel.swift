@@ -32,13 +32,21 @@ final class SystemUpdateModel {
     /// WebSocket, the other waits out a real reboot. Injected by tests only.
     private let makeEvents: (String) throws -> AsyncStream<UpdateLogEvent>
     private let reconnect: () async -> String?
+    /// How long `settleJob` waits between probes, and how long it keeps probing. The
+    /// budget is generous because it bounds a wedged daemon, not a normal install.
+    private let jobPollInterval: Duration
+    private let jobPollBudget: Duration
 
     init(
         session: RobotSession,
         events: ((String) throws -> AsyncStream<UpdateLogEvent>)? = nil,
-        reconnect: (() async -> String?)? = nil
+        reconnect: (() async -> String?)? = nil,
+        jobPollInterval: Duration = .seconds(3),
+        jobPollBudget: Duration = .seconds(20 * 60)
     ) {
         self.session = session
+        self.jobPollInterval = jobPollInterval
+        self.jobPollBudget = jobPollBudget
         makeEvents = events ?? { [session] jobID in try session.updateLog(jobID: jobID) }
         self.reconnect = reconnect ?? { [session] in await session.reconnectAfterUpdate() }
     }
@@ -100,8 +108,37 @@ final class SystemUpdateModel {
             return
         }
 
+        guard await settleJob(jobID) else { return }
         state = .restarting
         await confirmRestart(from: current)
+    }
+
+    /// Whether the closed socket really was the daemon going down.
+    ///
+    /// `RobotSession.updateInfo` can never confirm success — the restart takes the
+    /// in-memory job register with it — but it answers the other question: is the
+    /// job still running? A Wi-Fi blip closes the same socket a restart does, and
+    /// without this the screen announced a restart that never happened and then
+    /// blamed the release for a version that had not moved.
+    ///
+    /// An unreachable daemon is the ordinary ending and keeps the old behaviour.
+    /// So does a status this client does not recognise: the socket stays the end
+    /// signal wherever the register says nothing useful.
+    private func settleJob(_ jobID: String) async -> Bool {
+        let deadline = ContinuousClock.now + jobPollBudget
+        while ContinuousClock.now < deadline, !Task.isCancelled {
+            guard let job = try? await session.updateInfo(jobID: jobID) else { return true }
+            switch job.status {
+            case .failed:
+                state = .failed(String(localized: .reachy("The robot reported that the update failed.")))
+                return false
+            case .pending, .inProgress:
+                try? await Task.sleep(for: jobPollInterval)
+            case .done, .unknown:
+                return true
+            }
+        }
+        return true
     }
 
     private func confirmRestart(from previous: String) async {

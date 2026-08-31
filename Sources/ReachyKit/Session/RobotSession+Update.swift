@@ -21,6 +21,15 @@ public extension RobotSession {
         try await withUpdateClient { try await $0.startUpdate(preRelease: preRelease) }
     }
 
+    /// What the job register says about an update in flight.
+    ///
+    /// Never a success signal — see ``reconnectAfterUpdate(timeout:pollInterval:)``
+    /// for why the register cannot survive to report one. It answers the other
+    /// question: whether the job is still running.
+    func updateInfo(jobID: String) async throws -> DaemonUpdateJob {
+        try await withUpdateClient { try await $0.updateInfo(jobID: jobID) }
+    }
+
     func updateLog(jobID: String) throws -> AsyncStream<UpdateLogEvent> {
         guard let address else { throw ReachyKitError.notConnected }
         return try JobLogStreamClient.daemonUpdate(address: address, jobID: jobID).events()
