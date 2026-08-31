@@ -88,6 +88,7 @@ struct TelepresenceSheet: View {
             }
             if presence.isTracking {
                 followStrength
+                faceReading
             }
             if let lastError = presence.lastError {
                 Text(lastError)
@@ -103,6 +104,26 @@ struct TelepresenceSheet: View {
             Text(.reachy("The robot does not report these, so they show what this app last asked for."))
         }
         .disabled(presence.busy)
+    }
+
+    /// The one honest reading in this section, so it claims only what it knows:
+    /// whether the robot has somebody to follow. It says nothing about the switch
+    /// above — a tracker that sees nobody looks exactly like one that is off — and
+    /// it is silent before the first answer and after a failed poll.
+    @ViewBuilder
+    private var faceReading: some View {
+        switch presence.seesFace {
+        case true:
+            Label(.reachy("Following someone"), systemImage: "eye.fill")
+                .font(Typography.status)
+                .foregroundStyle(Tone.success.style)
+        case false:
+            Label(.reachy("No one in view"), systemImage: "eye.slash")
+                .font(Typography.status)
+                .foregroundStyle(.secondary)
+        case nil:
+            EmptyView()
+        }
     }
 
     /// Only under a switch that is on, because the daemon takes the weight as a

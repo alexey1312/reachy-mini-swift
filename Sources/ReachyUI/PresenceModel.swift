@@ -15,6 +15,7 @@ import ReachyKit
 final class PresenceModel {
     typealias SetWobbling = @MainActor (RobotSession, Bool) async throws -> Void
     typealias SetFaceTracking = @MainActor (RobotSession, Bool, Double) async throws -> Bool
+    typealias TrackedFace = @MainActor (RobotSession) async throws -> RobotFaceTarget?
 
     /// How much of the tracked aim reaches the head. **The floor is not zero, and that
     /// is the one decision in this file that the daemon does not make for us.**
@@ -31,6 +32,13 @@ final class PresenceModel {
 
     private(set) var isWobbling = false
     private(set) var isTracking = false
+    /// Whether the robot can see somebody, or nil for "no answer yet".
+    ///
+    /// The one thing on this model that is a reading rather than a request, and it
+    /// stays nil while tracking is off — the route reports the tracker's last aim, so
+    /// asking a stopped tracker would report whoever it saw before it stopped.
+    /// A failed poll returns it to nil rather than to false: unknown is not "nobody".
+    private(set) var seesFace: Bool?
     private(set) var busy = false
     private(set) var lastError: String?
 
@@ -46,15 +54,24 @@ final class PresenceModel {
     private var appliedWeight: Double = 1
 
     private var standingDown = false
+    private var faceWatch: Task<Void, Never>?
     private let setWobblingCall: SetWobbling
     private let setFaceTrackingCall: SetFaceTracking
+    private let trackedFaceCall: TrackedFace
+    /// A status line, not an animation: once a second is enough to tell somebody the
+    /// robot found them, and it costs the daemon a cached variable per poll.
+    private let facePollInterval: Duration
 
     init(
         setWobbling: @escaping SetWobbling = { try await $0.setWobbling($1) },
-        setFaceTracking: @escaping SetFaceTracking = { try await $0.setFaceTracking($1, weight: $2) }
+        setFaceTracking: @escaping SetFaceTracking = { try await $0.setFaceTracking($1, weight: $2) },
+        trackedFace: @escaping TrackedFace = { try await $0.trackedFace() },
+        facePollInterval: Duration = .seconds(1)
     ) {
         setWobblingCall = setWobbling
         setFaceTrackingCall = setFaceTracking
+        trackedFaceCall = trackedFace
+        self.facePollInterval = facePollInterval
     }
 
     /// The flag follows the call rather than the tap: a switch showing a state the
@@ -81,6 +98,33 @@ final class PresenceModel {
                 lastError = String(
                     localized: .reachy("This robot has no camera available for face tracking.")
                 )
+            }
+        }
+        watchFace(session: session)
+    }
+
+    /// Follows the tracker for as long as it is running, and only that long.
+    private func watchFace(session: RobotSession) {
+        // A weight commit is `setFaceTracking(true)` with a different number, so it
+        // lands here too. Restarting on it would blank the line for a poll every time
+        // the slider settles, which reads as the robot losing the face.
+        if isTracking, faceWatch != nil {
+            return
+        }
+        faceWatch?.cancel()
+        faceWatch = nil
+        seesFace = nil
+        guard isTracking else { return }
+        faceWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, isTracking else { return }
+                do {
+                    seesFace = try await trackedFaceCall(session) != nil
+                } catch {
+                    seesFace = nil
+                }
+                guard !Task.isCancelled else { return }
+                try? await Task.sleep(for: facePollInterval)
             }
         }
     }
@@ -162,7 +206,8 @@ final class PresenceModel {
             wobbling: Bool = false,
             tracking: Bool = false,
             weight: Double = 1,
-            error: String? = nil
+            error: String? = nil,
+            seesFace: Bool? = nil
         ) -> PresenceModel {
             let model = PresenceModel()
             model.isWobbling = wobbling
@@ -170,6 +215,7 @@ final class PresenceModel {
             model.trackingWeight = weight
             model.appliedWeight = weight
             model.lastError = error
+            model.seesFace = seesFace
             return model
         }
     }

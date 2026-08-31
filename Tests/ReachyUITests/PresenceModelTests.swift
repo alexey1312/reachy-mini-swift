@@ -17,6 +17,10 @@ struct PresenceModelTests {
         private(set) var weights: [Double] = []
         /// What the robot answers `setFaceTracking` with — false is a camera-less one.
         var trackingTakes = true
+        /// What `/media/tracking/face` answers, and how often it has been asked.
+        var face: RobotFaceTarget?
+        var faceFailure: (any Error)?
+        private(set) var faceReads = 0
         var failure: (any Error)?
         /// Holds `setWobbling` open so a second hand-off really does overlap the first.
         /// The latch is only reachable while a call is in flight, which a sequential
@@ -40,6 +44,18 @@ struct PresenceModelTests {
                 weights.append(weight)
             }
             return value && trackingTakes
+        }
+
+        func readFace() throws -> RobotFaceTarget? {
+            lock.withLock { faceReads += 1 }
+            if let faceFailure {
+                throw faceFailure
+            }
+            return face
+        }
+
+        var faceReadCount: Int {
+            lock.withLock { faceReads }
         }
     }
 
@@ -78,7 +94,11 @@ struct PresenceModelTests {
     private func model(_ calls: Calls) -> PresenceModel {
         PresenceModel(
             setWobbling: { _, value in try await calls.wobble(value) },
-            setFaceTracking: { _, value, weight in try calls.track(value, weight: weight) }
+            setFaceTracking: { _, value, weight in try calls.track(value, weight: weight) },
+            trackedFace: { _ in try calls.readFace() },
+            // Small rather than zero: the loop must yield often enough for the test to
+            // observe it, without spinning the one actor both of them run on.
+            facePollInterval: .milliseconds(5)
         )
     }
 
@@ -298,5 +318,39 @@ struct PresenceModelTests {
         // Off, so the commit is skipped for that reason rather than for the weight's.
         await model.commitTrackingWeight(session: session)
         #expect(calls.weights == [0.5])
+    }
+
+    @Test("the tracker is read only while it is running")
+    func readsTheFaceOnlyWhileTracking() async throws {
+        let calls = Calls()
+        calls.face = RobotFaceTarget(x: 0.1, y: -0.2, roll: 0)
+        let model = model(calls)
+        let session = RobotSession.preview()
+        #expect(model.seesFace == nil)
+        #expect(calls.faceReadCount == 0)
+
+        await model.setFaceTracking(true, session: session)
+        await waitUntil("the robot reports a face") { model.seesFace == true }
+
+        await model.setFaceTracking(false, session: session)
+        // Unknown again rather than "nobody": the route reports the tracker's last
+        // aim, and a stopped tracker has nothing current to say.
+        #expect(model.seesFace == nil)
+        let settled = calls.faceReadCount
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(calls.faceReadCount == settled)
+    }
+
+    @Test("an empty frame reads as nobody, a failed read as unknown")
+    func separatesNobodyFromUnknown() async {
+        let calls = Calls()
+        let model = model(calls)
+        let session = RobotSession.preview()
+
+        await model.setFaceTracking(true, session: session)
+        await waitUntil("the first read lands") { model.seesFace == false }
+
+        calls.faceFailure = URLError(.timedOut)
+        await waitUntil("the failure clears the reading") { model.seesFace == nil }
     }
 }

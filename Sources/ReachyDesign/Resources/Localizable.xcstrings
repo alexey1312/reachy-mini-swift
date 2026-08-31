@@ -4293,6 +4293,35 @@
         }
       }
     },
+    "Following someone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgt jemandem"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiendo a alguien"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suit quelqu'un"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следит за человеком"
+          }
+        }
+      }
+    },
     "Follow strength": {
       "extractionState": "manual",
       "localizations": {
@@ -8001,6 +8030,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложений пока нет. Откройте Reachy Mini, чтобы загрузить приложения робота."
+          }
+        }
+      }
+    },
+    "No one in view": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niemand im Bild"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay nadie a la vista"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personne en vue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В кадре никого"
           }
         }
       }

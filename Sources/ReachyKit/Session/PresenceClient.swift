@@ -24,6 +24,12 @@ public protocol PresenceClient: Sendable {
     ///   with no camera answers `enabled: false` under a 200.
     @discardableResult
     func setFaceTracking(_ enabled: Bool, weight: Double) async throws -> Bool
+
+    /// Where the tracker is aimed, or nil when it sees nobody.
+    ///
+    /// The one thing here that *is* a reading. It cannot say whether tracking is on
+    /// — see the note above — only whether the robot has a face to follow.
+    func trackedFace() async throws -> RobotFaceTarget?
 }
 
 extension RobotConnection: PresenceClient {}
@@ -48,6 +54,10 @@ public extension RobotSession {
     @discardableResult
     func setFaceTracking(_ enabled: Bool, weight: Double = 1) async throws -> Bool {
         try await withPresenceClient { try await $0.setFaceTracking(enabled, weight: weight) }
+    }
+
+    func trackedFace() async throws -> RobotFaceTarget? {
+        try await withPresenceClient { try await $0.trackedFace() }
     }
 }
 
