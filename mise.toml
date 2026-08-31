@@ -562,7 +562,7 @@ if [ ! -x "$VENV/bin/mjpython" ] || [ "$INSTALLED" != "$EXPECTED" ]; then
   uv pip install --quiet --python "$VENV/bin/python" --requirement "$REQUIREMENTS"
   printf '%s' "$EXPECTED" > "$STAMP"
 fi
-"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.9.0"'
+"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.10.0"'
 # `gstreamer_python`'s libgstpython.dylib segfaults while GStreamer scans plugins.
 # Forked (the default) that only surfaces as "External plugin loader failed" and
 # the daemon then hangs before binding :8000; with GST_REGISTRY_FORK=no the
