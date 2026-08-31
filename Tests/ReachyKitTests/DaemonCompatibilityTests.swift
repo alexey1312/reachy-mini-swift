@@ -32,7 +32,28 @@ struct DaemonCompatibilityTests {
         ))
     }
 
-    @Test("missing or malformed versions degrade to unknown", arguments: [nil, "", "dev", "1.9"] as [String?])
+    /// PyPI writes a pre-release with no separator, so the daemon reports `1.10.0rc5`
+    /// and the patch arrives glued to its suffix. An RC carries the API of the release
+    /// it precedes, so it answers as that release does.
+    @Test("PEP 440 pre-releases read as the release they precede", arguments: [
+        "1.10.0rc5", "1.10.0a1", "1.10.0b2", "1.10.0.dev3", "1.10.0+local", "v1.10.0rc5",
+    ])
+    func preRelease(version: String) {
+        #expect(DaemonCompatibilityPolicy.evaluate(version) == .supported)
+    }
+
+    @Test("a pre-release below the minimum is blocked like its release")
+    func preReleaseBelowTheMinimum() {
+        #expect(DaemonCompatibilityPolicy.evaluate("1.8.9rc1") == .unsupported(
+            reported: "1.8.9rc1",
+            minimum: DaemonCompatibilityPolicy.minimumVersion
+        ))
+    }
+
+    @Test(
+        "missing or malformed versions degrade to unknown",
+        arguments: [nil, "", "dev", "1.9", "rc5", "1.10.rc5"] as [String?]
+    )
     func unknown(version: String?) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .unknown(reported: version))
     }
