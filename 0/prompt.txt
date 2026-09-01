@@ -291,3 +291,13 @@
 <status>completed</status>
 <summary>Background command "Re-run the snapshot comparison" completed (exit code 0)</summary>
 </task-notification>
+
+---
+
+<task-notification>
+<task-id>bwr5n3r7c</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-xcode-27-contentbuilder-c39475/7445c067-9172-47bb-8e80-24e5890a0c5e/tasks/bwr5n3r7c.output</output-file>
+<status>completed</status>
+<summary>Background command "Rebuild and compare after removing the stray task" completed (exit code 0)</summary>
+</task-notification>
