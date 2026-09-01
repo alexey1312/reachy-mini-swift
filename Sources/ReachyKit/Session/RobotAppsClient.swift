@@ -8,6 +8,15 @@ import Foundation
 /// `/wifi/*` at all, so the capability split is what lets a screen ask whether a
 /// thing is possible instead of finding out from an error.
 public protocol RobotAppsClient: Sendable {
+    /// Whether this transport can browse and change what is installed.
+    ///
+    /// Conformance is no longer the whole answer. Daemon 1.10.0 put `apps.*` on
+    /// the data channel — start, stop, status and install — so a relayed session
+    /// can run an app and say which one is running, while the catalogue, the
+    /// removals and the update jobs stay HTTP. This separates "can control the
+    /// app that is there" from "can change which apps are there".
+    var offersAppStore: Bool { get }
+
     /// Everything the daemon can offer, catalogue and installed together.
     func availableApps() async throws -> [RobotApp]
     func installedApps() async throws -> [RobotApp]
@@ -38,6 +47,11 @@ public protocol RobotAppsClient: Sendable {
 
 /// Defaults keep test doubles focused on the behaviour they exercise.
 public extension RobotAppsClient {
+    /// True unless a transport says otherwise: every daemon serves `/api/apps/*`.
+    var offersAppStore: Bool {
+        true
+    }
+
     func availableApps() async throws -> [RobotApp] {
         throw URLError(.unsupportedURL)
     }

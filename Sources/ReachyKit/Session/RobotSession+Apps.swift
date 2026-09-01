@@ -3,11 +3,23 @@ import Foundation
 /// The robot's app store, reached through the session so the UI never builds a
 /// URL of its own.
 public extension RobotSession {
+    /// Whether there is an app *store* to show: a catalogue to browse, installs,
+    /// removals and the jobs behind them.
+    ///
     /// Every daemon serves `/api/apps/*` over the LAN, so unlike `canConfigureWiFi`
-    /// this is not gated on a wireless robot. It is still a question worth asking:
-    /// a remote session reaches the robot through a data channel that carries only
-    /// part of this surface.
+    /// this is not gated on a wireless robot. The relay is the case it excludes,
+    /// and it excludes it by asking the transport rather than by guessing at the
+    /// link — see ``RobotAppsClient/offersAppStore``.
     var canManageApps: Bool {
+        (client as? any RobotAppsClient)?.offersAppStore == true
+    }
+
+    /// Whether the app already running can be watched and stopped from here.
+    ///
+    /// A narrower question than the store, and the relay answers yes: daemon 1.10.0
+    /// put `apps.status`, `apps.start` and `apps.stop` on the data channel, which
+    /// is the half that matters when the robot is nowhere near you.
+    var canControlRunningApp: Bool {
         client is any RobotAppsClient
     }
 

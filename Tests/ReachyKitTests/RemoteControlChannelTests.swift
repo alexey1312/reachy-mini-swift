@@ -263,6 +263,54 @@ struct RemoteControlChannelTests {
         fake.emit(#"{"type":"log_line","line":"hello"}"#)
         #expect(await lines.next() != nil)
     }
+
+    /// Daemon 1.10.0 puts the apps API behind JSON-RPC on this same channel. Its
+    /// replies name neither a command nor a type, so the id is the whole of the
+    /// correlation.
+    @Test("a JSON-RPC reply is matched to its call by id")
+    func matchesRPCByID() async throws {
+        let (control, fake) = channel()
+
+        async let reply: Data = control.call("apps.status")
+        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        let sent = try #require(fake.sent.first)
+        #expect(sent.contains("\"method\""))
+        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"state":"idle"}}"#)
+
+        #expect(try await !reply.isEmpty)
+    }
+
+    /// The failure is an object here, not the `error` string the other protocol
+    /// uses, and the daemon's own `reason` is what tells a busy robot from a broken
+    /// one.
+    @Test("a JSON-RPC error carries the robot's reason")
+    func throwsRPCErrorWithReason() async {
+        let (control, fake) = channel()
+
+        let call = Task { try await control.call("apps.start", params: ["name": .string("busy")]) }
+        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        fake.emit(
+            #"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"#
+                + #""message":"an app holds the robot","data":{"reason":"already_running"}}}"#
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.robot(
+            "an app holds the robot (already_running)"
+        )) {
+            _ = try await call.value
+        }
+    }
+
+    /// A frame with no id is the running app talking, fanned out by the daemon.
+    @Test("a JSON-RPC notification reaches its subscribers")
+    func deliversRPCNotifications() async {
+        let (control, fake) = channel()
+        var turns = await control.broadcasts(ofType: "conversation.turn").makeAsyncIterator()
+
+        fake.emit(#"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"listening"}}"#)
+
+        #expect(await turns.next() != nil)
+    }
 }
 
 /// Nonisolated, unlike `ConnectProgressModelTests`' copy: every condition here

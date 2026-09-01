@@ -73,6 +73,7 @@ public actor RemoteControlChannel {
         case closed
     }
 
+    private var lastRPCID = 0
     private let channel: any RemoteDataChannel
     private let timeout: Duration
     /// The robot is the one that opens the channel, and only once a negotiation
@@ -145,6 +146,30 @@ public actor RemoteControlChannel {
         let reply = try await awaitReply(to: token, sending: text)
         try Self.throwIfError(in: reply)
         return reply
+    }
+
+    /// Ids are per channel and monotonic, which is all JSON-RPC asks of them.
+    private var nextID: Int {
+        lastRPCID + 1
+    }
+
+    func nextRPCID() -> Int {
+        lastRPCID = nextID
+        return lastRPCID
+    }
+
+    /// The waiting half of ``call(_:params:timeout:)``, here because the state it
+    /// touches is the actor's.
+    func awaitRPCReply(id: Int, sending text: String, timeout: Duration?) async throws -> Data {
+        startReading()
+        let token = Self.rpcToken(id)
+        let deadline = Task { [budget = timeout ?? currentTimeout] in
+            try? await Task.sleep(for: budget)
+            guard !Task.isCancelled else { return }
+            self.expire(token)
+        }
+        defer { deadline.cancel() }
+        return try await awaitReply(to: token, sending: text)
     }
 
     private func expire(_ token: String) {
@@ -287,6 +312,21 @@ public actor RemoteControlChannel {
     private func deliver(_ text: String) {
         let data = Data(text.utf8)
         guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else { return }
+        // JSON-RPC first: it names neither a `type` nor a `command`, and its keys
+        // — `jsonrpc`, `result`, `id` — would otherwise fall to the key match below
+        // and answer whichever waiter happened to be tokened `result`.
+        if envelope.isRPC {
+            if let id = envelope.rpcID {
+                resume(Self.rpcToken(id), with: .success(data))
+            } else if let method = envelope.method {
+                // No id: a notification the running app pushed, fanned out by the
+                // daemon to every client. Delivered to subscribers by its method.
+                for continuation in listeners[method]?.values ?? [:].values {
+                    continuation.yield(data)
+                }
+            }
+            return
+        }
         // A `type` used to be proof that nobody asked, which is what separates
         // `{"state": …}`, an answer, from `{"type": "daemon_status", …, "state": …}`,
         // which is not. Daemon 1.10.0 ended that: `get_imu` is answered with
@@ -343,40 +383,6 @@ public actor RemoteControlChannel {
         let next = line.removeFirst()
         queued[command] = line
         next.resume()
-    }
-
-    /// Just enough of a message to route it, without modelling every shape the
-    /// daemon can send.
-    private struct Envelope: Decodable {
-        let type: String?
-        let command: String?
-        let keys: Set<String>
-
-        init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: AnyKey.self)
-            keys = Set(container.allKeys.map(\.stringValue))
-            type = try? container.decodeIfPresent(String.self, forKey: AnyKey("type"))
-            command = try? container.decodeIfPresent(String.self, forKey: AnyKey("command"))
-        }
-
-        private struct AnyKey: CodingKey {
-            let stringValue: String
-            var intValue: Int? {
-                nil
-            }
-
-            init(_ value: String) {
-                stringValue = value
-            }
-
-            init?(stringValue: String) {
-                self.init(stringValue)
-            }
-
-            init?(intValue _: Int) {
-                nil
-            }
-        }
     }
 
     private static func throwIfError(in data: Data) throws {

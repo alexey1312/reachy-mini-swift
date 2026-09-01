@@ -17,7 +17,13 @@ public struct RobotAppStatus: Sendable, Equatable, Decodable {
         case unknown(String)
 
         public init(from decoder: any Decoder) throws {
-            switch try decoder.singleValueContainer().decode(String.self) {
+            try self.init(wire: decoder.singleValueContainer().decode(String.self))
+        }
+
+        /// The same mapping, for a caller that already has the daemon's word out of
+        /// a payload this type does not decode — the relay's `apps.status` reply.
+        public init(wire: String) {
+            switch wire {
             case "starting": self = .starting
             case "running": self = .running
             case "done": self = .done

@@ -298,8 +298,12 @@ final class RunningAppModel {
 
     /// The app capability appears as soon as a handshake installs its client. Wait
     /// until compatibility and readiness have accepted that client before using it.
+    ///
+    /// The narrower gate on purpose: the dock watches the app that is *running* and
+    /// offers to stop it, which the relay carries — the store it cannot show is a
+    /// different question and `canManageApps` is the one that asks it.
     func canPoll(_ session: RobotSession) -> Bool {
-        guard session.canManageApps else { return false }
+        guard session.canControlRunningApp else { return false }
         return switch session.phase {
         case .connected, .unreachable: true
         case .idle, .connecting: false

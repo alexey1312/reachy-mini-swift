@@ -14646,31 +14646,31 @@
         }
       }
     },
-    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network as the robot to install and start apps.": {
+    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network to browse and install. An app already running still shows below, and can be stopped there.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Relay überträgt die Befehle des Roboters und seine Kamera, nicht seinen App-Store. Verbinde dich mit demselben Netzwerk wie der Roboter, um Apps zu installieren und zu starten."
+            "value": "Das Relay überträgt die Befehle des Roboters und seine Kamera, nicht seinen App-Store. Verbinden Sie sich im selben Netzwerk, um zu stöbern und zu installieren. Eine bereits laufende App wird unten weiterhin angezeigt und kann dort gestoppt werden."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El relé transporta los comandos del robot y su cámara, no su tienda de apps. Conéctate a la misma red que el robot para instalar e iniciar apps."
+            "value": "El relé transporta los comandos del robot y su cámara, no su tienda de aplicaciones. Conéctese a la misma red para explorar e instalar. Una aplicación que ya se está ejecutando sigue apareciendo abajo y puede detenerse ahí."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le relais transporte les commandes du robot et sa caméra, pas sa boutique d'apps. Connectez-vous au même réseau que le robot pour installer et démarrer des apps."
+            "value": "Le relais transporte les commandes du robot et sa caméra, pas sa logithèque. Connectez-vous au même réseau pour parcourir et installer. Une application déjà en cours reste affichée en bas et peut y être arrêtée."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ретранслятор передаёт команды робота и его камеру, но не магазин приложений. Подключитесь к той же сети, что и робот, чтобы устанавливать и запускать приложения."
+            "value": "Ретранслятор несёт команды робота и его камеру, но не магазин приложений. Подключитесь к той же сети, чтобы смотреть и устанавливать. Уже запущенное приложение по-прежнему видно ниже, и там же его можно остановить."
           }
         }
       }
