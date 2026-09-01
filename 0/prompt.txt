@@ -759,3 +759,12 @@ Someone will "simplify" this back and get a green build, which is the worst kind
 ---
 
 Доделывай пункт 2, пункт 3 отдельным коммитом
+
+---
+
+ты запушл?
+
+---
+
+Не погоди, я думал ты в этот же ПР добавишь измнения
+https://github.com/alexey1312/reachy-mini-swift/pull/117
