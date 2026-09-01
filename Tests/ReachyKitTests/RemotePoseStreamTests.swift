@@ -98,4 +98,43 @@ struct RemotePoseStreamTests {
         #expect(update.hearing?.speechDetected == true)
         #expect(update.hearing?.angle == 2.9)
     }
+
+    /// The one failure on this channel that is otherwise invisible: frames arrive,
+    /// none of them decode, and the model simply stops moving. After a second of
+    /// that the stream gives up and asks `get_state` instead, which is slower and
+    /// works.
+    @Test("a channel this build cannot read is abandoned for the polled one")
+    func fallsBackToPolling() async throws {
+        let control = FakeDataChannel(replies: [
+            "get_state": #"{"state":{"body_yaw":0.9,"antennas":[0,0],"motor_mode":"disabled"}}"#,
+        ])
+        let pose = FakeDataChannel()
+        let stream = RemotePoseStream(
+            connection: RemoteRobotConnection(channel: control, timeout: .seconds(5)),
+            channel: pose
+        )
+        var frames = stream.updates(.visualization).makeAsyncIterator()
+
+        // A second of a channel talking nonsense, at the rate the robot publishes.
+        for _ in 0 ..< 30 {
+            pose.emit(#"{"unreadable":true}"#)
+        }
+
+        let update = try #require(await frames.next())
+        #expect(update.frame?.bodyYaw == 0.9)
+    }
+
+    /// And it does not give up on one bad frame: a single malformed message, or one
+    /// from a version this build predates, has to be stepped over rather than taken
+    /// as proof the channel is useless.
+    @Test("one unreadable frame is not enough to abandon the channel")
+    func keepsTheChannelAfterOneBadFrame() async {
+        let (stream, pose) = stream()
+        var frames = stream.updates(.visualization).makeAsyncIterator()
+
+        pose.emit("not json at all")
+        pose.emit(frame(seq: 1, yaw: 0.42))
+
+        #expect(await frames.next()?.frame?.bodyYaw == 0.42)
+    }
 }

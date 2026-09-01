@@ -25,6 +25,13 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
     private var subscribers: [UUID: AsyncStream<StateStreamUpdate>.Continuation] = [:]
     private var reader: Task<Void, Never>?
 
+    /// How many unreadable frames in a row before the channel is written off.
+    ///
+    /// Generous: the robot publishes at about 30 Hz, so this is a second of a
+    /// channel saying nothing intelligible — long enough that one malformed frame,
+    /// or one from a version this build predates, cannot trigger it.
+    private static let patience = 30
+
     public init(connection: RemoteRobotConnection, channel: any RemoteDataChannel) {
         self.connection = connection
         self.channel = channel
@@ -84,6 +91,14 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
                     from: Data(text.utf8)
                 ) else {
                     diagnostics.decodeFailures += 1
+                    // A channel that talks and says nothing this build can read is
+                    // the one failure here that is invisible: the model would stop
+                    // moving, which looks like a still robot rather than a bug.
+                    // Give up on it and ask instead — polling is slower and works.
+                    if diagnostics.decodedFrames == 0, diagnostics.decodeFailures >= Self.patience {
+                        await self.pollInstead(diagnostics: diagnostics)
+                        return
+                    }
                     continue
                 }
                 guard frame.seq > newest else {
@@ -100,6 +115,20 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
             }
             self.finishAll()
         }
+    }
+
+    /// Hands every subscriber over to the polled stream and keeps them there: a
+    /// channel that spoke unintelligibly is not going to start making sense.
+    private func pollInstead(diagnostics: StateStreamDiagnostics) async {
+        try? await connection.unsubscribeFromPose()
+        var carried = diagnostics
+        for await update in RemoteStateStream(connection: connection).updates(.visualization) {
+            guard !Task.isCancelled else { break }
+            carried.receivedFrames += 1
+            carried.decodedFrames += update.frame == nil ? 0 : 1
+            broadcast(StateStreamUpdate(frame: update.frame, diagnostics: carried))
+        }
+        finishAll()
     }
 
     private func broadcast(_ update: StateStreamUpdate) {
