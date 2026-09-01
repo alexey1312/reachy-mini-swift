@@ -155,3 +155,13 @@
 <status>completed</status>
 <summary>Background command "Read the snapshot failures in detail" completed (exit code 0)</summary>
 </task-notification>
+
+---
+
+<task-notification>
+<task-id>b4fsev9pd</task-id>
+<tool-use-id>toolu_01QSoQ31m7dAhhiHE3Wba8dw</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-xcode-27-contentbuilder-c39475/7445c067-9172-47bb-8e80-24e5890a0c5e/tasks/b4fsev9pd.output</output-file>
+<status>completed</status>
+<summary>Background command "Full snapshot comparison" completed (exit code 0)</summary>
+</task-notification>
