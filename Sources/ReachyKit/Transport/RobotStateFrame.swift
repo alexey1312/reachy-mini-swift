@@ -37,6 +37,24 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
     public var headPose: HeadPose?
     /// Twenty-one values, and only from a Placo-backed daemon.
     public var passiveJoints: [Double]?
+    /// Where the robot last heard a voice.
+    ///
+    /// Carried here rather than read off the generated `FullState` alone, because
+    /// the relay has no `FullState` to offer: its snapshot is decoded by hand, and
+    /// this is the field the hearing indicator needs from it. The socket leaves it
+    /// nil and `StateStreamUpdate.hearing` reads the generated half instead.
+    public var directionOfArrival: DirectionOfArrival?
+
+    public struct DirectionOfArrival: Sendable, Equatable {
+        /// Radians, 0 at the robot's left and π at its right.
+        public let angle: Double
+        public let speechDetected: Bool
+
+        public init(angle: Double, speechDetected: Bool) {
+            self.angle = angle
+            self.speechDetected = speechDetected
+        }
+    }
 
     private enum CodingKeys: String, CodingKey {
         case timestamp
@@ -62,6 +80,7 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         headJoints: [Double]? = nil,
         antennas: [Double]? = nil,
         headPose: HeadPose? = nil,
+        directionOfArrival: DirectionOfArrival? = nil,
         passiveJoints: [Double]? = nil
     ) {
         self.timestamp = timestamp
@@ -69,6 +88,7 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         self.headJoints = headJoints
         self.antennas = antennas
         self.headPose = headPose
+        self.directionOfArrival = directionOfArrival
         self.passiveJoints = passiveJoints
     }
 

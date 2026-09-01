@@ -59,7 +59,12 @@ final class ViewportModel {
     }
 
     private(set) var content: Content = .scene
-    private(set) var sceneModel: RobotSceneModel?
+    /// `internal(set)` rather than `private(set)`: the relay's half lives in a
+    /// sibling file, and a `private` setter is scoped to this one — the same reason
+    /// `RobotSession` gives for its own.
+    internal(set) var sceneModel: RobotSceneModel?
+    /// Shared between the scene and the hearing indicator; see `remotePoseStream`.
+    var poseStream: RemotePoseStream?
     private(set) var cameraSession: CameraSession?
     /// Where the robot last heard a voice.
     ///
@@ -72,7 +77,7 @@ final class ViewportModel {
     ///
     /// Nil over the relay: no HTTP API means no state stream, the same reason there
     /// is no scene there.
-    private(set) var hearing: DirectionOfArrivalModel?
+    internal(set) var hearing: DirectionOfArrivalModel?
     /// Set when a transport could not even be constructed — a bad address, not a
     /// failure to reach the robot.
     private(set) var setupError: String?
@@ -162,6 +167,7 @@ final class ViewportModel {
         // held reading would be the previous one's.
         stopHearing()
         hearing = nil
+        poseStream = nil
         source = nil
         setupError = nil
     }
@@ -192,8 +198,15 @@ final class ViewportModel {
         // Outside the switch on purpose: it is wanted under both contents, and the
         // one thing that decides it is whether this connection has a state stream
         // at all.
-        if case let .lan(address) = source {
+        switch source {
+        case let .lan(address):
             startHearing(at: address)
+        case let .remote(camera, connection):
+            startRemoteHearing(connection, camera: camera)
+        case .simulated:
+            // The simulator publishes its own state and has no microphones to
+            // report a direction from.
+            break
         }
         switch (content, source) {
         case let (.scene, .lan(address)):
@@ -259,41 +272,6 @@ final class ViewportModel {
         }
         sceneModel?.start()
         sceneModel?.resumeStream()
-    }
-
-    /// The scene over the relay: the robot's shape out of this app, its pose off
-    /// the data channel.
-    ///
-    /// Paused rather than stopped when the camera takes over, the same trade the
-    /// LAN path makes — except that here what is kept is meshes read from the
-    /// bundle, so the saving is decoding rather than download.
-    private func startRemoteScene(_ connection: RemoteRobotConnection, camera: CameraSession) {
-        if sceneModel == nil {
-            sceneModel = RobotSceneModel(
-                stream: Self.remotePose(connection: connection, camera: camera),
-                client: BundledGeometryClient()
-            )
-        }
-        sceneModel?.start()
-        sceneModel?.resumeStream()
-    }
-
-    /// Pushed where the robot offers it, asked for where it does not.
-    ///
-    /// Daemon 1.10.0 opens a second data channel labelled `pose` during the same
-    /// negotiation that brings up the control one, so by the time a scene is
-    /// started the answer is already known. A daemon before that opens no such
-    /// channel and never will, which is exactly what `isOpen` reports.
-    ///
-    /// The consequence of guessing wrong is a missed optimisation rather than a
-    /// broken scene: polling works against both.
-    private static func remotePose(
-        connection: RemoteRobotConnection,
-        camera: CameraSession
-    ) -> any RobotStateStreaming {
-        camera.poseChannel.isOpen
-            ? RemotePoseStream(connection: connection, channel: camera.poseChannel)
-            : RemoteStateStream(connection: connection)
     }
 
     private func startScene(at address: RobotAddress) {

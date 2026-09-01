@@ -128,7 +128,7 @@ final class DirectionOfArrivalModel {
         // A frame that failed to decode, or a daemon that carries no array, says
         // nothing about the room — it must neither light the indicator nor retire a
         // reading somebody is still looking at.
-        guard let doa = update.state?.doa else { return }
+        guard let doa = update.hearing else { return }
         isSupported = true
         let date = now()
         if doa.speechDetected {

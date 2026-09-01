@@ -90,7 +90,10 @@ public extension RobotSession {
             compatibilityWarning = handshake.compatibility.warningMessage
             // A property of the daemon, not of how it was reached, so it is set for
             // a remote session too — where the answer is simply always no.
-            supportsRename = handshake.supportsRename
+            // The relay's handshake reports false because no HTTP route answers
+            // there, and daemon 1.10.0 put `set_robot_name` on the data channel —
+            // so the transport is the second half of the answer.
+            supportsRename = handshake.supportsRename || client is any RobotRenameClient
             if case let .lan(address) = link {
                 KnownRobots.lastAddress = address
                 KnownRobots.remember(identity: handshake.identity, address: address)

@@ -14,27 +14,41 @@ struct RemoteStateSnapshot: Decodable {
     let bodyYaw: Double?
     /// `(left, right)`, radians.
     let antennas: [Double]?
-    /// Radians, 0 at the robot's left and π at its right. Absent on a robot with
-    /// no ReSpeaker, and on a daemon before 1.10.0.
-    let doa: Double?
-    let speechDetected: Bool?
+    /// Absent on a robot with no ReSpeaker, and on a daemon before 1.10.0 — which
+    /// is why it is optional rather than merely quiet.
+    let doa: DoaSnapshot?
+
+    struct DoaSnapshot: Decodable {
+        /// Radians, 0 at the robot's left and π at its right.
+        let angle: Double
+        let speechDetected: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case angle
+            case speechDetected = "speech_detected"
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
         case headPose = "head_pose"
         case bodyYaw = "body_yaw"
         case antennas
         case doa
-        case speechDetected = "speech_detected"
     }
 
     /// Nil where the robot sent no pose at all, which is a backend that is down
-    /// rather than an error to report.
+    /// rather than an error to report. A snapshot carrying only a direction still
+    /// counts: the hearing indicator has something to say even while the robot is
+    /// not moving.
     var frame: RobotStateFrame? {
-        guard headPose != nil || bodyYaw != nil || antennas != nil else { return nil }
+        guard headPose != nil || bodyYaw != nil || antennas != nil || doa != nil else { return nil }
         return RobotStateFrame(
             bodyYaw: bodyYaw,
             antennas: antennas,
-            headPose: headPose.map { .matrix($0.flatMap(\.self)) }
+            headPose: headPose.map { .matrix($0.flatMap(\.self)) },
+            directionOfArrival: doa.map {
+                .init(angle: $0.angle, speechDetected: $0.speechDetected)
+            }
         )
     }
 }

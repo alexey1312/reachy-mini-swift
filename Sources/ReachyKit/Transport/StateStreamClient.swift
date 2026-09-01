@@ -13,6 +13,23 @@ public struct StateStreamDiagnostics: Equatable, Sendable {
     public init() {}
 }
 
+public extension StateStreamUpdate {
+    /// Where the robot last heard a voice, from whichever half of the frame carries
+    /// it.
+    ///
+    /// The socket fills `state` with the generated `FullState`; the relay has no
+    /// such type and fills `frame` by hand. Both say the same thing, and a reader
+    /// that had to know which is a reader that works on one transport only — which
+    /// is exactly how the indicator came to be LAN-only.
+    var hearing: RobotStateFrame.DirectionOfArrival? {
+        if let doa = frame?.directionOfArrival {
+            return doa
+        }
+        guard let doa = state?.doa else { return nil }
+        return .init(angle: doa.angle, speechDetected: doa.speechDetected)
+    }
+}
+
 /// One WebSocket frame and the diagnostics accumulated through that frame.
 public struct StateStreamUpdate: Sendable {
     public let state: Components.Schemas.FullState?
