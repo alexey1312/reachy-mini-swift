@@ -10,7 +10,7 @@ import Foundation
 /// accepts it in every state and simply records that it was asked. And
 /// **`stop-current-app` answers before the daemon has let go**, so the app is
 /// still named for `stoppingReads` more readings.
-final class AppLifecycleClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsClient, @unchecked Sendable {
     enum Step: Equatable {
         case motorMode(Components.Schemas.MotorControlMode)
         case wakeUp

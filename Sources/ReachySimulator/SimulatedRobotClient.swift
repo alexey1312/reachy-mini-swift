@@ -27,7 +27,7 @@ import ReachyKit
 ///   account and its caches all belong to a machine that does not exist.
 /// - **Recorded moves** — Hugging Face datasets the daemon fetches. `canPlayMoves`
 ///   is `address != nil`, which stays false, so the screen is already right.
-public final class SimulatedRobotClient: RobotAPIClient, @unchecked Sendable {
+public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     /// What the handshake claims. 1.9.0 is this app's supported baseline, so
     /// `DaemonCompatibilityPolicy` passes it without a warning — a simulator that
     /// claimed a newer version would put a compatibility banner over itself.
@@ -160,6 +160,20 @@ public final class SimulatedRobotClient: RobotAPIClient, @unchecked Sendable {
     public func stopMove(uuid: String) async throws {
         lock.withLock { _ = moveUUIDs.remove(uuid) }
     }
+
+    /// There is no move library here and no Hugging Face to fetch one from: the
+    /// simulator moves when it is driven, and a recorded dance is an asset the
+    /// daemon downloads. An empty list is the honest answer, not a failure.
+    public func listMoves(dataset _: String) async throws -> [String] {
+        []
+    }
+
+    public func playMove(dataset _: String, move _: String) async throws -> String {
+        throw ReachyKitError.movesUnavailable
+    }
+
+    /// No media player either, so nothing is ever playing to be stopped.
+    public func stopSound() async throws {}
 
     public func urdf() async throws -> String {
         try geometry.urdf()

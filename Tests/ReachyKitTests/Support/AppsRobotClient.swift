@@ -8,7 +8,9 @@ import Testing
 /// Shared rather than private to one suite: what a session writes into the App
 /// Group is checked from more than one angle, and each angle needs a robot that
 /// answers `/api/apps/*`.
-final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceClient, @unchecked Sendable {
+final class AppsRobotClient: RobotAPIClient, RobotAppsClient, CacheMaintenanceClient, MovePlaybackClient,
+    @unchecked Sendable
+{
     private let lock = NSLock()
     private(set) var catalogueCalls = 0
     private(set) var installedCalls = 0

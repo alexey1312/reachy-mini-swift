@@ -4,7 +4,7 @@ import Testing
 
 /// A client that speaks the soundboard, and one that does not — the pair is what the
 /// capability gate is tested with.
-private class SoundlessRobotClient: RobotAPIClient, @unchecked Sendable {
+private class SoundlessRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     private var status: Components.Schemas.DaemonStatus {
         let json = """
         {"robot_name":"testbot","state":"running","wireless_version":false,

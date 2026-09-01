@@ -96,7 +96,11 @@ public struct RobotAppLauncher: Sendable {
             }
             return try await Readiness(client.daemonStatus())
         }
-        park = { _ = try? await client.gotoNeutral(duration: configuration.recentreDuration) }
+        // Parking is playback work, and a transport without it simply stays where
+        // the app left the robot — the same trade `RobotSession.recentre` makes.
+        park = { [moves = client as? any MovePlaybackClient] in
+            _ = try? await moves?.gotoNeutral(duration: configuration.recentreDuration)
+        }
     }
 
     /// Test seam: the four things this needs, with no client to build them from.

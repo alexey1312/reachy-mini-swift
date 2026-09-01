@@ -41,7 +41,11 @@ public struct RobotMovePlayer: Sendable {
         }
     }
 
-    private let moves: any RobotAPIClient
+    /// Optional because the surface moved off ``RobotAPIClient``: an intent only
+    /// ever runs against a LAN connection, which carries it, and a transport that
+    /// does not is refused where the play is asked for rather than at construction
+    /// — an initialiser that can fail would spread through every intent.
+    private let moves: (any MovePlaybackClient)?
     private let power: RobotPower
     private let readiness: @Sendable () async throws -> RobotAppLauncher.Readiness
     private let recentreDuration: TimeInterval
@@ -55,7 +59,7 @@ public struct RobotMovePlayer: Sendable {
         configuration: RobotSession.Configuration = .widgetIntent,
         assumeAwake: Bool?
     ) {
-        moves = client
+        moves = client as? any MovePlaybackClient
         power = RobotPower(client: client, configuration: configuration)
         recentreDuration = configuration.recentreDuration
         readiness = {
@@ -68,7 +72,7 @@ public struct RobotMovePlayer: Sendable {
 
     /// Test seam, the shape `RobotAppLauncher`'s has.
     init(
-        moves: any RobotAPIClient,
+        moves: any MovePlaybackClient,
         power: RobotPower,
         readiness: @escaping @Sendable () async throws -> RobotAppLauncher.Readiness,
         recentreDuration: TimeInterval = 1
@@ -101,6 +105,7 @@ public struct RobotMovePlayer: Sendable {
 
         try Task.checkCancellation()
         try await clearTheFloor(parking: false)
+        guard let moves else { throw ReachyKitError.movesUnavailable }
         return try await Outcome(uuid: moves.playMove(dataset: dataset, move: move), woke: woke)
     }
 
@@ -126,6 +131,7 @@ public struct RobotMovePlayer: Sendable {
     /// about.
     @discardableResult
     private func clearTheFloor(parking: Bool) async throws -> Bool {
+        guard let moves else { throw ReachyKitError.movesUnavailable }
         let running = try await moves.runningMoveUUIDs()
         guard !running.isEmpty else { return false }
         for uuid in running {

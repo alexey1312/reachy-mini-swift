@@ -7,7 +7,7 @@ import ReachyKit
 /// this one models the single move slot, and the two share none of their state.
 /// `RobotAPIClient` ships throwing defaults, so anything not implemented here
 /// throwing is the assertion that it was never called.
-final class StubMovesClient: RobotAPIClient, @unchecked Sendable {
+final class StubMovesClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     enum Call: Equatable {
         case daemonStatus
         case setMotorMode(Components.Schemas.MotorControlMode)

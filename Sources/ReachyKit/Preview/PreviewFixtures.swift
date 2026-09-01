@@ -67,7 +67,19 @@
     /// `RobotScreen` decides whether to offer the joystick and the log console by testing the
     /// client for these, exactly as it decides everything else — so a preview of a LAN robot
     /// needs a client that speaks them. Both are inert: a preview must never open a socket.
-    extension PreviewRobotClient: TeleopClient, DaemonLogClient {
+    extension PreviewRobotClient: TeleopClient, DaemonLogClient, MovePlaybackClient {
+        /// Inert, like the two protocols beside it: a preview must never move a
+        /// robot, and `listMoves` above is the only one whose answer is looked at.
+        public func playMove(dataset _: String, move _: String) async throws -> String {
+            "preview-move"
+        }
+
+        public func stopMove(uuid _: String) async throws {}
+
+        public func gotoNeutral(duration _: TimeInterval) async throws -> String {
+            "preview-neutral"
+        }
+
         public func makeTeleop() throws -> any TeleopChannel {
             PreviewTeleopChannel()
         }

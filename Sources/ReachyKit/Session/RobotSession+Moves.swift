@@ -6,12 +6,29 @@ import Foundation
 /// are: `RobotSession` reached SwiftLint's length limit. The three phases of
 /// `MoveActivity` and every rule about the daemon's single move slot live here.
 extension RobotSession {
+    /// The transport's playback surface, or nil where it has none.
+    ///
+    /// `canPlayMoves` asks the same question and this is the answer it gets, so a
+    /// screen that offers the library and a session that refuses the play cannot
+    /// disagree.
+    var movesClient: (any MovePlaybackClient)? {
+        client as? any MovePlaybackClient
+    }
+
+    func withMovesClient<T>(_ call: (any MovePlaybackClient) async throws -> T) async throws -> T {
+        guard let client else { throw ReachyKitError.notConnected }
+        guard let moves = client as? any MovePlaybackClient else {
+            throw ReachyKitError.movesUnavailable
+        }
+        return try await call(moves)
+    }
+
     /// Returns a session-scoped cached dataset index. Actual move assets stay daemon-side.
     public func moves(in dataset: String, refresh: Bool = false) async throws -> [String] {
         if !refresh, let cached = moveCache[dataset] {
             return cached
         }
-        let moves = try await withClient { try await $0.listMoves(dataset: dataset) }
+        let moves = try await withMovesClient { try await $0.listMoves(dataset: dataset) }
         moveCache[dataset] = moves
         await persistMoveIndex()
         return moves
@@ -20,7 +37,7 @@ extension RobotSession {
     /// Throws rather than reporting: a move that would not play is the moves
     /// screen's news, and `MovesModel` is what puts it on screen.
     public func playMove(dataset: String, move: String) async throws {
-        guard let client else { throw ReachyKitError.notConnected }
+        guard let client = movesClient else { throw ReachyKitError.movesUnavailable }
         // Whatever the robot is doing has to be off the daemon's task list before
         // the new move is asked for: `play_move` takes its guard non-blocking
         // (`backend/abstract.py`) and simply returns when something else is
@@ -47,7 +64,7 @@ extension RobotSession {
     /// One miss settles it here, against the poll's two: this is asked after a gap
     /// rather than in the moments a play is still being registered.
     public func refreshMoveActivity() async {
-        guard let client, let activity = moveActivity, !isStoppingMove else { return }
+        guard let client = movesClient, let activity = moveActivity, !isStoppingMove else { return }
         guard let running = try? await client.runningMoveUUIDs() else { return }
         guard moveActivity?.uuid == activity.uuid, !running.contains(activity.uuid) else { return }
         await finish(activity, client: client)
@@ -62,7 +79,7 @@ extension RobotSession {
     /// robot back before parking it. Parking is skipped here because the
     /// transition *is* the parking.
     func releaseMove() async {
-        guard moveActivity != nil, let client else { return }
+        guard moveActivity != nil, let client = movesClient else { return }
         await clearTheFloor(client: client)
     }
 
@@ -71,7 +88,7 @@ extension RobotSession {
     /// Parking is deliberately skipped: it is a move task of its own, so returning
     /// to neutral here would occupy the robot for a second and have the daemon
     /// refuse the very play this is clearing the way for.
-    private func clearTheFloor(client: any RobotAPIClient) async {
+    private func clearTheFloor(client: any MovePlaybackClient) async {
         switch moveActivity {
         case .playing, .stopping:
             _ = await stopMove(parking: false)
@@ -101,7 +118,7 @@ extension RobotSession {
     /// start — see `clearTheFloor`.
     @discardableResult
     private func stopMove(parking: Bool) async -> [String] {
-        guard let client, let playback = currentMove, !isStoppingMove else { return [] }
+        guard let client = movesClient, let playback = currentMove, !isStoppingMove else { return [] }
         moveActivity = .stopping(playback)
         movePollTask?.cancel()
         movePollTask = nil
@@ -183,7 +200,7 @@ extension RobotSession {
     /// Not `private`: an app releasing the robot parks it the same way
     /// (`RobotSession+AppLifecycle`), and a second implementation of "go back to
     /// base" is the one that would drift from the phase this claims on screen.
-    func recentre(client: any RobotAPIClient) async -> [String] {
+    func recentre(client: any MovePlaybackClient) async -> [String] {
         do {
             let uuid = try await client.gotoNeutral(duration: configuration.recentreDuration)
             // Anything that claimed the robot while the request was in flight owns
@@ -210,7 +227,7 @@ extension RobotSession {
     ///
     /// `/api/move/running` carries UUIDs alone, so an adopted move has no
     /// `identity` and the screen says so rather than guessing a name.
-    func restoreActiveMove(client: any RobotAPIClient) {
+    func restoreActiveMove(client: any MovePlaybackClient) {
         moveRestoreTask?.cancel()
         // `wake_up` and `goto_sleep` reach the daemon through `create_move_task`
         // exactly as a dance does, so `/api/move/running` cannot tell them apart.
@@ -266,7 +283,7 @@ extension RobotSession {
     /// Parking is followed the same way rather than timed against
     /// `recentreDuration`: a `goto` can be cancelled or fail, and the phase has to
     /// end when the task does, not when its nominal duration is up.
-    private func startMonitoring(_ activity: MoveActivity, client: any RobotAPIClient) {
+    private func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
         movePollTask?.cancel()
         let uuid = activity.uuid
         movePollTask = Task { [configuration] in
@@ -294,7 +311,7 @@ extension RobotSession {
     }
 
     /// What the end of a daemon task means, which depends on which task it was.
-    private func finish(_ activity: MoveActivity, client: any RobotAPIClient) async {
+    private func finish(_ activity: MoveActivity, client: any MovePlaybackClient) async {
         switch activity {
         case .playing:
             // The sound player is a separate daemon task and outlives the motion,

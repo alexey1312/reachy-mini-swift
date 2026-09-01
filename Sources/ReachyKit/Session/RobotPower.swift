@@ -104,7 +104,9 @@ public struct RobotPower: Sendable {
             // exists to prevent (the session-side twin already continues here).
             // A remote connection still exits at once: it reports no running
             // moves by answering [] successfully, not by throwing.
-            guard let running = try? await client.runningMoveUUIDs() else {
+            guard let moves = client as? any MovePlaybackClient,
+                  let running = try? await moves.runningMoveUUIDs()
+            else {
                 try? await Task.sleep(for: configuration.movePollInterval)
                 continue
             }

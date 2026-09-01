@@ -85,11 +85,13 @@ public extension RobotSession {
     /// Ends whatever the daemon's media player is playing — a soundboard tap or the
     /// music a recorded move started, which are one player and one Stop.
     ///
-    /// On ``RobotAPIClient`` rather than on ``SoundboardClient`` because it was
-    /// already there: `RobotSession+Moves` sends it when a dance ends, since nothing
-    /// on the robot stops a track that outlives its move.
+    /// On ``MovePlaybackClient`` rather than on ``SoundboardClient``, because the
+    /// caller that cannot do without it is `RobotSession+Moves`: nothing on the
+    /// robot stops a track that outlives its move, so ending playback means ending
+    /// both. A soundboard tap is the other caller and either protocol would serve
+    /// it.
     func stopSound() async throws {
-        try await withClient { try await $0.stopSound() }
+        try await withMovesClient { try await $0.stopSound() }
     }
 }
 

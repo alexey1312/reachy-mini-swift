@@ -12,13 +12,6 @@ public protocol RobotAPIClient: Sendable {
     func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws
     func startDaemon(wakeUp: Bool) async throws
     func stopDaemon(gotoSleep: Bool) async throws
-    func listMoves(dataset: String) async throws -> [String]
-    func playMove(dataset: String, move: String) async throws -> String
-    func runningMoveUUIDs() async throws -> Set<String>
-    /// Walks the robot back to its zero pose; returns the move task's UUID.
-    func gotoNeutral(duration: TimeInterval) async throws -> String
-    func stopMove(uuid: String) async throws
-    func stopSound() async throws
     func urdf() async throws -> String
     func stlAsset(named filename: String) async throws -> Data
     func kinematicsInfo() async throws -> KinematicsInfo
@@ -60,30 +53,6 @@ public extension RobotAPIClient {
         throw URLError(.unsupportedURL)
     }
 
-    func listMoves(dataset _: String) async throws -> [String] {
-        throw URLError(.unsupportedURL)
-    }
-
-    func playMove(dataset _: String, move _: String) async throws -> String {
-        throw URLError(.unsupportedURL)
-    }
-
-    func runningMoveUUIDs() async throws -> Set<String> {
-        throw URLError(.unsupportedURL)
-    }
-
-    func gotoNeutral(duration _: TimeInterval) async throws -> String {
-        throw URLError(.unsupportedURL)
-    }
-
-    func stopMove(uuid _: String) async throws {
-        throw URLError(.unsupportedURL)
-    }
-
-    func stopSound() async throws {
-        throw URLError(.unsupportedURL)
-    }
-
     func urdf() async throws -> String {
         throw URLError(.unsupportedURL)
     }
@@ -118,3 +87,6 @@ public extension RobotAPIClient {
 }
 
 extension RobotConnection: RobotAPIClient {}
+
+/// Every `/api/move/*` route and the sound player beside them, over HTTP.
+extension RobotConnection: MovePlaybackClient {}

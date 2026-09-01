@@ -8,7 +8,7 @@ import Testing
 /// It models the one thing that makes the ordering hard: `stop-current-app`
 /// answers 200 while the app is still being taken down, so the daemon goes on
 /// naming it for a few more readings (`apps/manager.py:283`, `:355`).
-private final class SleepClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+private final class SleepClient: RobotAPIClient, MovePlaybackClient, RobotAppsClient, @unchecked Sendable {
     enum Step: Equatable {
         case stopApp
         case gotoSleep

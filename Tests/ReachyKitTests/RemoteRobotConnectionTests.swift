@@ -282,8 +282,8 @@ struct RemoteRobotConnectionTests {
         await #expect(throws: (any Error).self) {
             _ = try await connection.urdf()
         }
-        await #expect(throws: (any Error).self) {
-            _ = try await connection.listMoves(dataset: "default")
-        }
+        // Moves used to throw here; now they are not on this type at all. The
+        // absence is the assertion — `canPlayMoves` asks exactly this question.
+        #expect(!(connection is any MovePlaybackClient))
     }
 }

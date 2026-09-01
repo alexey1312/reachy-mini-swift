@@ -239,10 +239,10 @@ extension RobotSession {
         recordSnapshot(identity: identity)
         startPolling(identity: identity)
         startPathMonitor(identity: identity)
-        if let client {
+        if let moves = movesClient {
             // Off the connect path on purpose: adopting a move the robot was
             // already playing is worth one round trip, but not a slower gate.
-            restoreActiveMove(client: client)
+            restoreActiveMove(client: moves)
         }
         return true
     }
