@@ -6,7 +6,7 @@ import Testing
 /// rather than measured — so the arithmetic is what these pin.
 @Suite("RobotIMUReading")
 struct RobotIMUReadingTests {
-    private func reading(quaternion: [Double]) -> RobotIMUReading {
+    private func reading(quaternion: [Double]) -> RobotIMUReading? {
         RobotIMUReading(
             accelerometer: [0, 0, 9.81],
             gyroscope: [0, 0, 0],
@@ -16,7 +16,7 @@ struct RobotIMUReadingTests {
     }
 
     private func tilt(_ quaternion: [Double]) -> Double? {
-        reading(quaternion: quaternion).tiltDegrees
+        reading(quaternion: quaternion)?.tiltDegrees
     }
 
     @Test("a robot standing straight leans nowhere")
@@ -33,10 +33,7 @@ struct RobotIMUReadingTests {
         #expect(abs(degrees) < 0.001)
     }
 
-    /// `Double(0.5).squareRoot()` rather than `(2.0).squareRoot() / 2`: swiftformat
-    /// strips the parentheses off a float literal, and `2.0.squareRoot()` does not
-    /// parse — the same trap `preferKeyPath` sets for `#expect`.
-    private static let cos45 = Double(0.5).squareRoot()
+    private static let cos45 = 0.5.squareRoot()
 
     @Test("a quarter turn onto its side reads as ninety degrees", arguments: [
         [cos45, cos45, 0, 0],
@@ -63,10 +60,23 @@ struct RobotIMUReadingTests {
         #expect(abs(degrees) < 0.001)
     }
 
-    @Test("a quaternion this build cannot read answers nothing", arguments: [
+    /// Refused at construction rather than answered with a nil tilt: a reading that
+    /// exists has four components, so every reader is spared the check and "this
+    /// frame is malformed" stops being spelled the same way as "no sensor".
+    @Test("a quaternion this build cannot read is not a reading", arguments: [
         [] as [Double], [1, 0, 0], [1, 0, 0, 0, 0],
     ])
     func refusesAMalformedQuaternion(quaternion: [Double]) {
-        #expect(tilt(quaternion) == nil)
+        #expect(reading(quaternion: quaternion) == nil)
+    }
+
+    @Test("a vector of the wrong width is not a reading either")
+    func refusesAMalformedVector() {
+        #expect(RobotIMUReading(
+            accelerometer: [0, 9.81],
+            gyroscope: [0, 0, 0],
+            quaternion: [1, 0, 0, 0],
+            temperatureCelsius: 31.5
+        ) == nil)
     }
 }

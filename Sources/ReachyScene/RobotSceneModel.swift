@@ -42,7 +42,7 @@ public final class RobotSceneModel {
     /// reads it, so an inert model builds and renders its geometry and simply never
     /// moves.
     private let stream: (any RobotStateStreaming)?
-    private let client: any RobotAPIClient
+    private let client: any RobotGeometryClient
     private let cache: GeometryCache
     private var graph: RobotSceneGraph?
     private var solver: PassiveJointSolver?
@@ -56,7 +56,7 @@ public final class RobotSceneModel {
 
     public init(
         stream: (any RobotStateStreaming)?,
-        client: any RobotAPIClient,
+        client: any RobotGeometryClient,
         cache: GeometryCache = .default
     ) {
         self.stream = stream

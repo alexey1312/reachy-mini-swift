@@ -139,9 +139,7 @@ struct RobotHealthScreen: View {
     private var motionSection: some View {
         if let imu = model.imu {
             Section {
-                if let tilt = imu.tiltDegrees {
-                    LabeledContent(.reachy("Lean"), value: HealthFormat.degrees(tilt))
-                }
+                LabeledContent(.reachy("Lean"), value: HealthFormat.degrees(imu.tiltDegrees))
                 LabeledContent(.reachy("Sensor"), value: HealthFormat.celsius(imu.temperatureCelsius))
             } header: {
                 Text(.reachy("Motion"))

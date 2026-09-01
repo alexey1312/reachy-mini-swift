@@ -2,7 +2,7 @@ import Foundation
 
 /// The daemon surface `RobotSession` needs — abstracted so session logic is
 /// testable without a network.
-public protocol RobotAPIClient: Sendable {
+public protocol RobotAPIClient: RobotGeometryClient {
     func handshake() async throws -> RobotConnection.Handshake
     func daemonStatus() async throws -> Components.Schemas.DaemonStatus
     func probeBackendReady() async throws
@@ -12,8 +12,6 @@ public protocol RobotAPIClient: Sendable {
     func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws
     func startDaemon(wakeUp: Bool) async throws
     func stopDaemon(gotoSleep: Bool) async throws
-    func urdf() async throws -> String
-    func stlAsset(named filename: String) async throws -> Data
     func kinematicsInfo() async throws -> KinematicsInfo
     func volume() async throws -> AudioLevel
     func setVolume(_ percent: Int) async throws -> AudioLevel
@@ -50,14 +48,6 @@ public extension RobotAPIClient {
     }
 
     func stopDaemon(gotoSleep _: Bool) async throws {
-        throw URLError(.unsupportedURL)
-    }
-
-    func urdf() async throws -> String {
-        throw URLError(.unsupportedURL)
-    }
-
-    func stlAsset(named _: String) async throws -> Data {
         throw URLError(.unsupportedURL)
     }
 

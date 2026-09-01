@@ -27,23 +27,23 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         }
     }
 
-    public var timestamp: Date?
-    public var bodyYaw: Double?
+    public let timestamp: Date?
+    public let bodyYaw: Double?
     /// Seven values: `[body_yaw, stewart_1 ... stewart_6]`. Absent unless the
     /// stream was opened with `StateStreamOptions.headJoints`.
-    public var headJoints: [Double]?
+    public let headJoints: [Double]?
     /// Two values, `(left, right)`, radians.
-    public var antennas: [Double]?
-    public var headPose: HeadPose?
+    public let antennas: [Double]?
+    public let headPose: HeadPose?
     /// Twenty-one values, and only from a Placo-backed daemon.
-    public var passiveJoints: [Double]?
+    public let passiveJoints: [Double]?
     /// Where the robot last heard a voice.
     ///
     /// Carried here rather than read off the generated `FullState` alone, because
     /// the relay has no `FullState` to offer: its snapshot is decoded by hand, and
     /// this is the field the hearing indicator needs from it. The socket leaves it
     /// nil and `StateStreamUpdate.hearing` reads the generated half instead.
-    public var directionOfArrival: DirectionOfArrival?
+    public let directionOfArrival: DirectionOfArrival?
 
     public struct DirectionOfArrival: Sendable, Equatable {
         /// Radians, 0 at the robot's left and π at its right.
@@ -100,6 +100,9 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         antennas = try container.decodeIfPresent([Double].self, forKey: .antennas)
         passiveJoints = try container.decodeIfPresent([Double].self, forKey: .passiveJoints)
         headPose = try Self.decodeHeadPose(from: container)
+        // Spelled out now the properties are `let`: the socket's own frame carries no
+        // `doa`, and `StateStreamUpdate.hearing` reads the generated half for it.
+        directionOfArrival = nil
     }
 
     /// `head_pose` is an `anyOf` whose shape follows the stream's `use_pose_matrix`

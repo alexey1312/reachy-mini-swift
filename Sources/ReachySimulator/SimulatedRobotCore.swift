@@ -212,27 +212,32 @@ public struct SimulatedRobotCore: Sendable {
     /// `DirectionOfArrivalModel` reads a null reading as "no array" already.
     public func frame(at timestamp: Date, options: StateStreamOptions) -> RobotStateFrame {
         let headPose = headPoseMatrix()
-        var frame = RobotStateFrame(timestamp: timestamp)
-        if options.bodyYaw != false {
-            frame.bodyYaw = pose.bodyYaw
-        }
-        if options.headJoints == true, let stewart = ik.solve(headPose: headPose, bodyYaw: pose.bodyYaw) {
-            frame.headJoints = [pose.bodyYaw] + stewart
-        }
-        if options.antennaPositions != false {
+        let stewart = options.headJoints == true
+            ? ik.solve(headPose: headPose, bodyYaw: pose.bodyYaw)
+            : nil
+        return RobotStateFrame(
+            timestamp: timestamp,
+            bodyYaw: options.bodyYaw != false ? pose.bodyYaw : nil,
+            headJoints: stewart.map { [pose.bodyYaw] + $0 },
             // Wire order is `[right, left]`, which `RobotJointState.resolve` reads
             // back the same way round.
-            frame.antennas = [pose.antennaRight, pose.antennaLeft]
-        }
-        if options.headPose != false {
-            frame.headPose = options.poseAsMatrix == true
-                ? .matrix(rowMajor(headPose))
-                : .euler(
-                    x: pose.x, y: pose.y, z: pose.z,
-                    roll: pose.roll, pitch: pose.pitch, yaw: pose.yaw
-                )
-        }
-        return frame
+            antennas: options.antennaPositions != false ? [pose.antennaRight, pose.antennaLeft] : nil,
+            headPose: options.headPose != false ? reportedHeadPose(headPose, options: options) : nil
+        )
+    }
+
+    /// Whichever of the two shapes the stream asked for; both describe the same
+    /// pose, and `use_pose_matrix` is what picks between them.
+    private func reportedHeadPose(
+        _ matrix: simd_double4x4,
+        options: StateStreamOptions
+    ) -> RobotStateFrame.HeadPose {
+        options.poseAsMatrix == true
+            ? .matrix(rowMajor(matrix))
+            : .euler(
+                x: pose.x, y: pose.y, z: pose.z,
+                roll: pose.roll, pitch: pose.pitch, yaw: pose.yaw
+            )
     }
 
     /// The pose as the daemon reports it: base frame, height offset already taken

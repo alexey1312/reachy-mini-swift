@@ -61,9 +61,9 @@ import SwiftUI
 #Preview("State — leaning") {
     PreviewScene.robotHealth(.preview(
         imu: RobotIMUReading(
-            accelerometer: [0.51, 0.04, 9.79],
-            gyroscope: [0.001, 0, 0.002],
-            quaternion: [0.9986, 0.0524, 0, 0],
+            accelerometer: SIMD3(0.51, 0.04, 9.79),
+            gyroscope: SIMD3(0.001, 0, 0.002),
+            quaternion: SIMD4(0.9986, 0.0524, 0, 0),
             temperatureCelsius: 34.2
         )
     ))
