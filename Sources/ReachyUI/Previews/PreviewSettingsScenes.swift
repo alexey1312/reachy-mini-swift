@@ -78,6 +78,20 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The same card over the relay, where the robot half shrinks to the one control
+    /// the data channel carries. `PreviewRemoteRobotClient` speaks `RobotUnlinkClient`
+    /// and not `HFAuthClient`, which is exactly the shape a relayed session has.
+    static func hfAccountOverTheRelay(model: HFSignInModel? = nil) -> some View {
+        Form {
+            HFAccountSection(
+                session: .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()),
+                model: model ?? .preview(state: .signedIn(username: "alexey1312"))
+            )
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     /// The account card on its own. The robot half only renders when the session's
     /// client speaks `HFAuthClient`, so the preview client is the one that does.
     static func hfAccount(

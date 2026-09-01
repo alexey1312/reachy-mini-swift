@@ -11,6 +11,13 @@ public extension RobotSession {
         client is any HFAuthClient
     }
 
+    /// Taking the token away is reachable from further than putting one there:
+    /// the data channel carries `delete_hf_token` and nothing else about the
+    /// account, so a relayed session can unlink a robot it can never link.
+    var canUnlinkRobot: Bool {
+        client is any RobotUnlinkClient
+    }
+
     /// Cached for the life of the connection: the daemon answers this by running
     /// `whoami` against the Hub every time, which is a network round trip to learn
     /// something that changes when the user says so.
@@ -42,8 +49,17 @@ public extension RobotSession {
     /// Removes the robot's token. This app's own sign-in is untouched — signing
     /// out here would leave the robot reachable from outside with a token the
     /// user thinks they revoked.
+    ///
+    /// Through the narrow client, so it reaches a relayed robot too. **Over the
+    /// relay it ends the session**: the token is what keeps the robot registered
+    /// with central, and nothing short of re-provisioning it in person brings it
+    /// back.
     func unlinkRobot() async throws {
-        try await withHFAuthClient { try await $0.deleteHFToken() }
+        guard let client else { throw ReachyKitError.notConnected }
+        guard let unlink = client as? any RobotUnlinkClient else {
+            throw ReachyKitError.wirelessFeaturesUnavailable
+        }
+        try await unlink.deleteHFToken()
         hfAccountCache = nil
     }
 

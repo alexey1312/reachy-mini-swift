@@ -152,3 +152,81 @@ struct RobotSessionHFAuthTests {
         #expect(session.canLinkHuggingFace)
     }
 }
+
+/// Taking a token away reaches further than putting one there: the data channel
+/// carries `delete_hf_token` and no other part of the account.
+@MainActor
+@Suite("Unlinking over the relay")
+struct RobotSessionUnlinkTests {
+    /// Conforms to the narrow protocol alone, the way `RemoteRobotConnection` does.
+    private final class RelayClient: RobotAPIClient, RobotUnlinkClient, @unchecked Sendable {
+        private let lock = NSLock()
+        private var deletions = 0
+
+        var deleteCount: Int {
+            lock.withLock { deletions }
+        }
+
+        func handshake() async throws -> RobotConnection.Handshake {
+            .init(identity: .preview, status: .preview())
+        }
+
+        func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
+            .preview()
+        }
+
+        func wakeUp() async throws -> String {
+            ""
+        }
+
+        func gotoSleep() async throws -> String {
+            ""
+        }
+
+        func deleteHFToken() async throws {
+            lock.withLock { deletions += 1 }
+        }
+    }
+
+    /// A double that speaks neither protocol, which is what a Lite robot's client
+    /// looks like to this question.
+    private struct MuteClient: RobotAPIClient {
+        func handshake() async throws -> RobotConnection.Handshake {
+            .init(identity: .preview, status: .preview())
+        }
+
+        func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
+            .preview()
+        }
+
+        func wakeUp() async throws -> String {
+            ""
+        }
+
+        func gotoSleep() async throws -> String {
+            ""
+        }
+    }
+
+    @Test("a relayed robot can be unlinked but not linked")
+    func offersOnlyTheUnlink() {
+        let session = RobotSession.preview(client: RelayClient())
+        #expect(session.canUnlinkRobot)
+        #expect(!session.canLinkHuggingFace)
+    }
+
+    @Test("the call reaches the narrow client")
+    func sendsTheDeletion() async throws {
+        let client = RelayClient()
+        let session = RobotSession.preview(client: client)
+        try await session.unlinkRobot()
+        #expect(client.deleteCount == 1)
+    }
+
+    @Test("a client that speaks neither protocol refuses rather than pretending")
+    func refusesWithoutTheCapability() async {
+        let session = RobotSession.preview(client: MuteClient())
+        #expect(!session.canUnlinkRobot)
+        await #expect(throws: (any Error).self) { try await session.unlinkRobot() }
+    }
+}

@@ -108,7 +108,10 @@
     /// none of the HTTP surface. Its conformances are `RemoteRobotConnection`'s — no apps, no
     /// Wi-Fi, no update, no robot Hugging Face account — so a preview of a remote robot closes
     /// the same screens the real one does.
-    public struct PreviewRemoteRobotClient: RobotAPIClient, TeleopClient, DaemonLogClient {
+    /// `RobotUnlinkClient` because the real relay carries `delete_hf_token` and
+    /// nothing else about the account — without it the one control a relayed
+    /// session offers there is missing from every reference.
+    public struct PreviewRemoteRobotClient: RobotAPIClient, TeleopClient, DaemonLogClient, RobotUnlinkClient {
         public var identity: RobotIdentity
         public var status: Components.Schemas.DaemonStatus
         public var logLines: [String]

@@ -6120,6 +6120,35 @@
         }
       }
     },
+    "Take the robot off the relay?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter vom Relay trennen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar el robot del relé?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer le robot du relais ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить робота от ретранслятора?"
+          }
+        }
+      }
+    },
     "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
       "extractionState": "manual",
       "localizations": {
@@ -6174,6 +6203,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пароль шифруется для этого робота перед отправкой. Отправка разрывает эту связь: робот переходит в другую сеть, и приложение находит его снова."
+          }
+        }
+      }
+    },
+    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter verwirft sein Token und verlässt das Relay. Von hier aus ist er erst wieder erreichbar, wenn ihn jemand vor Ort einrichtet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot descarta su token y sale del relé. Desde aquí no se le puede volver a alcanzar hasta que alguien lo configure en persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot supprime son jeton et quitte le relais. Plus rien ici ne peut l'atteindre tant que quelqu'un ne le configure pas sur place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот сбрасывает токен и уходит с ретранслятора. Отсюда до него будет не достучаться, пока его не настроят на месте."
           }
         }
       }
@@ -6348,6 +6406,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет ни камеры, ни магазина приложений, ни Wi-Fi — всё это принадлежит машине, которой нет."
+          }
+        }
+      }
+    },
+    "Unlinking takes the robot off the relay: it goes offline and comes back only once somebody sets it up again in person.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Trennen nimmt den Roboter vom Relay: Er geht offline und kommt erst zurück, wenn ihn jemand vor Ort neu einrichtet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desvincularlo lo quita del relé: se desconecta y no vuelve hasta que alguien lo configure de nuevo en persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dissociation retire le robot du relais : il passe hors ligne et ne revient que lorsque quelqu'un le reconfigure sur place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отвязка убирает робота с ретранслятора: он уходит в офлайн и вернётся, только когда его настроят заново на месте."
           }
         }
       }

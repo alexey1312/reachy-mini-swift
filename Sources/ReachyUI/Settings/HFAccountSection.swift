@@ -19,6 +19,7 @@ struct HFAccountSection: View {
     @State private var linkError: String?
     @State private var isLinking = false
     @State private var showsTokenField = false
+    @State private var confirmingUnlink = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
     init(
@@ -55,6 +56,61 @@ struct HFAccountSection: View {
 
         if session.canLinkHuggingFace {
             robotSection
+        } else if session.canUnlinkRobot {
+            relayRobotSection
+        }
+    }
+
+    // MARK: This robot, over the relay
+
+    /// What a relayed session can honestly say about the robot's account: it holds
+    /// a token, and that token can be taken away.
+    ///
+    /// "Linked" is an inference rather than a reading, and a sound one — this
+    /// session arrived through central, which lists a robot only while it holds a
+    /// token. Everything else on the full card needs routes the data channel does
+    /// not carry, so none of it is shown rather than shown broken.
+    ///
+    /// Confirmed, unlike the same button on the local card. There the robot is on
+    /// the network in front of you and linking it again is the row above; here the
+    /// robot leaves the relay and only somebody standing next to it can undo that.
+    private var relayRobotSection: some View {
+        Section {
+            LabeledContent(.reachy("This robot"), value: String(localized: .reachy("Linked")))
+            if let linkError {
+                Text(linkError)
+                    .font(Typography.status)
+                    .foregroundStyle(Tone.danger.style)
+            }
+            Button(.reachy("Unlink this robot"), role: .destructive) {
+                confirmingUnlink = true
+            }
+            .disabled(isLinking)
+        } header: {
+            Text(.reachy("Robot account"))
+        } footer: {
+            Text(
+                .reachy(
+                    // swiftlint:disable:next line_length
+                    "Unlinking takes the robot off the relay: it goes offline and comes back only once somebody sets it up again in person."
+                )
+            )
+        }
+        .confirmationDialog(
+            .reachy("Take the robot off the relay?"),
+            isPresented: $confirmingUnlink,
+            titleVisibility: .visible
+        ) {
+            Button(.reachy("Unlink this robot"), role: .destructive) {
+                Task { await unlink() }
+            }
+        } message: {
+            Text(
+                .reachy(
+                    // swiftlint:disable:next line_length
+                    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person."
+                )
+            )
         }
     }
 

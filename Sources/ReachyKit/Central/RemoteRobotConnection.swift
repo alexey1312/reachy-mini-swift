@@ -12,7 +12,7 @@ import ReachyJSON
 ///
 /// The command names and their fields are `reachy_mini/io/protocol.py`; the reply
 /// shapes are `process_command` in `daemon/backend/abstract.py`.
-public actor RemoteRobotConnection: RobotAPIClient {
+public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
     let control: RemoteControlChannel
     /// No command answers the robot's name, so it comes from the central listing
     /// that got us to this robot — the same place the user picked it from.
@@ -178,6 +178,10 @@ public actor RemoteRobotConnection: RobotAPIClient {
     /// sitting out its whole timeout on a move that finished before it was told.
     public func runningMoveUUIDs() async throws -> Set<String> {
         []
+    }
+
+    public func deleteHFToken() async throws {
+        try await control.perform("delete_hf_token")
     }
 
     public func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws {
