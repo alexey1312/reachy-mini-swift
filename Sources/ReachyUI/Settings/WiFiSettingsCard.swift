@@ -2,10 +2,12 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// What the robot is on, what it remembers, and why the last attempt failed.
+/// What the robot is on, what it remembers, why the last attempt failed — and the way
+/// to move it somewhere else.
 ///
-/// Read-only apart from forgetting: joining a network is the provisioning flow's job, and
-/// it works over Bluetooth as well, which is the case that actually needs it.
+/// Moving it is the same handover the Bluetooth flow does, over the connection this
+/// session already has: the robot answers and then takes the link down, so the sheet
+/// hands back to discovery rather than waiting.
 struct WiFiSettingsCard: View {
     let session: RobotSession
 
@@ -14,6 +16,7 @@ struct WiFiSettingsCard: View {
     @State private var loadFailure: String?
     @State private var busy = false
     @State private var confirmingForgetAll = false
+    @State private var joining = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
     init(session: RobotSession, status: WiFiStatus? = nil, joinError: String? = nil, loadFailure: String? = nil) {
@@ -40,6 +43,8 @@ struct WiFiSettingsCard: View {
                     .buttonStyle(.borderless)
                 }
             }
+            Button(.reachy("Change network")) { joining = true }
+                .disabled(busy)
             ForEach(status?.known ?? [], id: \.self) { network in
                 LabeledContent(network) {
                     Button(.reachy("Forget"), role: .destructive) {
@@ -77,6 +82,17 @@ struct WiFiSettingsCard: View {
         .task {
             guard !previewMode else { return }
             await load()
+        }
+        .sheet(isPresented: $joining) {
+            NavigationStack {
+                WiFiJoinSheet(session: session) { joining = false }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(.reachy("Cancel")) { joining = false }
+                        }
+                    }
+            }
+            .reachySheet()
         }
         .confirmationDialog(
             .reachy("Forget every saved network?"),

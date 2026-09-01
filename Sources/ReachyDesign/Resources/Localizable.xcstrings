@@ -320,6 +320,35 @@
         }
       }
     },
+    "A wrong code is the usual reason. The robot counts them itself and starts making you wait, so there is nothing to do but try again more slowly.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meist ist der Code falsch. Der Roboter zählt die Versuche selbst und lässt Sie dann warten — versuchen Sie es einfach langsamer noch einmal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo habitual es que el código sea incorrecto. El robot cuenta los intentos y luego le hace esperar, así que solo queda repetirlo más despacio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En général le code est faux. Le robot compte lui-même les tentatives et vous fait ensuite patienter : réessayez plus lentement."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обычно дело в неверном коде. Робот считает попытки сам и начинает заставлять ждать — остаётся повторить медленнее."
+          }
+        }
+      }
+    },
     "About": {
       "extractionState": "manual",
       "localizations": {
@@ -1132,6 +1161,35 @@
         }
       }
     },
+    "Back to the robot list": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück zur Roboterliste"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la lista de robots"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour à la liste des robots"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "К списку роботов"
+          }
+        }
+      }
+    },
     "Backend": {
       "extractionState": "manual",
       "localizations": {
@@ -1795,6 +1853,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удаётся получить доступ к файлам робота"
+          }
+        }
+      }
+    },
+    "Change network": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Netzwerk wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar de red"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer de réseau"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сменить сеть"
           }
         }
       }
@@ -6062,6 +6149,93 @@
         }
       }
     },
+    "The password is encrypted for this robot before it is sent. Sending it takes this link down: the robot switches networks and the app finds it again afterwards.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Passwort wird für diesen Roboter verschlüsselt, bevor es gesendet wird. Das Senden trennt diese Verbindung: Der Roboter wechselt das Netzwerk, und die App findet ihn danach wieder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La contraseña se cifra para este robot antes de enviarse. Al enviarla se pierde esta conexión: el robot cambia de red y la aplicación vuelve a encontrarlo después."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mot de passe est chiffré pour ce robot avant l'envoi. L'envoi coupe cette liaison : le robot change de réseau et l'application le retrouve ensuite."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль шифруется для этого робота перед отправкой. Отправка разрывает эту связь: робот переходит в другую сеть, и приложение находит его снова."
+          }
+        }
+      }
+    },
+    "The robot joins this network and then talks to this app over it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter tritt diesem Netzwerk bei und spricht danach darüber mit dieser App."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot se une a esta red y después habla con esta aplicación a través de ella."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot rejoint ce réseau et communique ensuite avec cette application par ce biais."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот подключается к этой сети и дальше общается с приложением через неё."
+          }
+        }
+      }
+    },
+    "The robot refused the network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hat das Netzwerk abgelehnt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot rechazó la red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot a refusé le réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот отклонил сеть."
+          }
+        }
+      }
+    },
     "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
       "extractionState": "manual",
       "localizations": {
@@ -6087,6 +6261,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот ищет на Hugging Face под вашей учётной записью, и его сессия завершилась. Установленные приложения продолжают работать."
+          }
+        }
+      }
+    },
+    "The robot took the network and is moving to it now. A password it cannot use puts it back on the one it was on, so nothing here is lost either way.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hat das Netzwerk angenommen und wechselt jetzt dorthin. Mit einem Passwort, das nicht funktioniert, kehrt er in das vorherige Netzwerk zurück — verloren geht dabei nichts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot aceptó la red y está cambiando a ella. Si la contraseña no le sirve, vuelve a la red anterior, así que no se pierde nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot a accepté le réseau et y bascule maintenant. Si le mot de passe ne fonctionne pas, il revient au réseau précédent : rien n'est perdu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот принял сеть и переходит в неё. Если пароль не подойдёт, он вернётся в прежнюю сеть — так что ничего не теряется."
           }
         }
       }

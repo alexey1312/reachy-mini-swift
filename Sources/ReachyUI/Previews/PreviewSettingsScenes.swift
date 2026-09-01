@@ -104,6 +104,15 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The sheet that moves the robot to another network. `NavigationHost` for the
+    /// title, and a seeded model because the scan is skipped in preview mode.
+    static func wifiJoin(_ model: WiFiJoinModel) -> some View {
+        NavigationHost {
+            WiFiJoinSheet(session: .preview(), model: model) {}
+        }
+        .preview()
+    }
+
     static func updateCard(
         _ state: SystemUpdateModel.State,
         log: [String] = [],
