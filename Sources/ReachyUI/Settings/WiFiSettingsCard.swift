@@ -11,60 +11,58 @@ import SwiftUI
 struct WiFiSettingsCard: View {
     let session: RobotSession
 
-    @State private var status: WiFiStatus?
-    @State private var joinError: String?
-    @State private var loadFailure: String?
-    @State private var busy = false
+    @State private var model: WiFiSettingsModel
+    /// The dialog and the sheet are the card's own business: nothing outside the view
+    /// reads them and no test can reach them, so they stay here.
     @State private var confirmingForgetAll = false
     @State private var joining = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
-    init(session: RobotSession, status: WiFiStatus? = nil, joinError: String? = nil, loadFailure: String? = nil) {
+    /// `@MainActor` because `WiFiSettingsModel` is: a defaulted argument whose value
+    /// is main-actor-isolated compiles in the SwiftPM targets and not in the `Apps/`
+    /// ones, where it is evaluated nonisolated.
+    @MainActor
+    init(session: RobotSession, model: WiFiSettingsModel? = nil) {
         self.session = session
-        _status = State(initialValue: status)
-        _joinError = State(initialValue: joinError)
-        _loadFailure = State(initialValue: loadFailure)
+        _model = State(initialValue: model ?? WiFiSettingsModel())
     }
 
     var body: some View {
         Section {
-            LabeledContent(.reachy("Mode"), value: modeText)
-            if let connected = status?.connected {
+            LabeledContent(.reachy("Mode"), value: model.modeText)
+            if let connected = model.status?.connected {
                 LabeledContent(.reachy("Network"), value: connected)
             }
-            if let joinError {
+            if let joinError = model.joinError {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(joinError)
                         .font(Typography.detail)
                         .foregroundStyle(Tone.warning.style)
                     Button(.reachy("Clear this error")) {
-                        Task { await clearError() }
+                        Task { await model.clearError(session: session) }
                     }
                     .buttonStyle(.borderless)
                 }
             }
             Button(.reachy("Change network")) { joining = true }
-                .disabled(busy)
-            ForEach(status?.known ?? [], id: \.self) { network in
+                .disabled(model.busy)
+            ForEach(model.status?.known ?? [], id: \.self) { network in
                 LabeledContent(network) {
                     Button(.reachy("Forget"), role: .destructive) {
-                        Task { await forget(network) }
+                        Task { await model.forget(network, session: session) }
                     }
                     .buttonStyle(.borderless)
-                    .disabled(busy)
+                    .disabled(model.busy)
                 }
             }
-            // `/wifi/forget_all` rather than a loop over the rows: the robot does
-            // it in one `nmcli` operation, and the per-network route answers 409
-            // while another one runs, so a loop would race itself.
-            if let known = status?.known, known.count > 1 {
+            if model.offersForgetAll {
                 Button(.reachy("Forget all"), role: .destructive) {
                     confirmingForgetAll = true
                 }
                 .buttonStyle(.borderless)
-                .disabled(busy)
+                .disabled(model.busy)
             }
-            if let loadFailure {
+            if let loadFailure = model.loadFailure {
                 Text(loadFailure)
                     .font(Typography.status)
                     .foregroundStyle(Tone.danger.style)
@@ -81,7 +79,7 @@ struct WiFiSettingsCard: View {
         }
         .task {
             guard !previewMode else { return }
-            await load()
+            await model.load(session: session)
         }
         .sheet(isPresented: $joining) {
             NavigationStack {
@@ -95,61 +93,10 @@ struct WiFiSettingsCard: View {
             titleVisibility: .visible
         ) {
             Button(.reachy("Forget all"), role: .destructive) {
-                Task { await forgetAll() }
+                Task { await model.forgetAll(session: session) }
             }
         } message: {
             Text(.reachy("The robot falls back to its own hotspot at the next restart."))
-        }
-    }
-
-    private var modeText: String {
-        switch status?.mode {
-        case .wlan: String(localized: .reachy("On a network"))
-        case .hotspot: String(localized: .reachy("Its own hotspot"))
-        case .disconnected: String(localized: .reachy("Not connected"))
-        case .busy: "Working…"
-        case nil: status == nil ? "—" : "Unknown"
-        }
-    }
-
-    private func load() async {
-        do {
-            status = try await session.wifiStatus()
-            joinError = try await session.lastWiFiError()
-            loadFailure = nil
-        } catch {
-            loadFailure.recordDaemonFailure(error)
-        }
-    }
-
-    private func forget(_ ssid: String) async {
-        busy = true
-        defer { busy = false }
-        do {
-            try await session.forgetWiFi(ssid: ssid)
-            await load()
-        } catch {
-            loadFailure.recordDaemonFailure(error)
-        }
-    }
-
-    private func forgetAll() async {
-        busy = true
-        defer { busy = false }
-        do {
-            try await session.forgetAllWiFi()
-            await load()
-        } catch {
-            loadFailure.recordDaemonFailure(error)
-        }
-    }
-
-    private func clearError() async {
-        do {
-            try await session.resetWiFiError()
-            joinError = nil
-        } catch {
-            loadFailure.recordDaemonFailure(error)
         }
     }
 }

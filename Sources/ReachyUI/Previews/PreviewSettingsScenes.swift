@@ -109,9 +109,12 @@ extension PreviewScene {
                     )
                 ),
                 model: model ?? .preview(),
-                robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
-                relay: relay ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
-                linkError: linkError
+                robotLink: .preview(
+                    robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
+                    relay: relay
+                        ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
+                    linkError: linkError
+                )
             )
         }
         .formStyle(.grouped)
@@ -167,9 +170,7 @@ extension PreviewScene {
         Form {
             WiFiSettingsCard(
                 session: .preview(),
-                status: status,
-                joinError: joinError,
-                loadFailure: loadFailure
+                model: .preview(status: status, joinError: joinError, loadFailure: loadFailure)
             )
         }
         .formStyle(.grouped)

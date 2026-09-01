@@ -14,26 +14,21 @@ struct HFAccountSection: View {
     let session: RobotSession
 
     @State private var model: HFSignInModel
-    @State private var robotAccount: HFAuthStatus?
-    @State private var relay: RelayStatus?
-    @State private var linkError: String?
-    @State private var isLinking = false
+    @State private var robotLink: RobotHFLinkModel
+    /// Which control is on screen, and nothing about either account: the disclosure
+    /// and the dialog are the card's own business.
     @State private var showsTokenField = false
     @State private var confirmingUnlink = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
-    init(
-        session: RobotSession,
-        model: HFSignInModel,
-        robotAccount: HFAuthStatus? = nil,
-        relay: RelayStatus? = nil,
-        linkError: String? = nil
-    ) {
+    /// `@MainActor` because `RobotHFLinkModel` is: a defaulted argument whose value
+    /// is main-actor-isolated compiles in the SwiftPM targets and not in the `Apps/`
+    /// ones, where it is evaluated nonisolated.
+    @MainActor
+    init(session: RobotSession, model: HFSignInModel, robotLink: RobotHFLinkModel? = nil) {
         self.session = session
         _model = State(initialValue: model)
-        _robotAccount = State(initialValue: robotAccount)
-        _relay = State(initialValue: relay)
-        _linkError = State(initialValue: linkError)
+        _robotLink = State(initialValue: robotLink ?? RobotHFLinkModel())
     }
 
     var body: some View {
@@ -77,7 +72,7 @@ struct HFAccountSection: View {
     private var relayRobotSection: some View {
         Section {
             LabeledContent(.reachy("This robot"), value: String(localized: .reachy("Linked")))
-            if let linkError {
+            if let linkError = robotLink.linkError {
                 Text(linkError)
                     .font(Typography.status)
                     .foregroundStyle(Tone.danger.style)
@@ -85,7 +80,7 @@ struct HFAccountSection: View {
             Button(.reachy("Unlink this robot"), role: .destructive) {
                 confirmingUnlink = true
             }
-            .disabled(isLinking)
+            .disabled(robotLink.isLinking)
         } header: {
             Text(.reachy("Robot account"))
         } footer: {
@@ -102,7 +97,7 @@ struct HFAccountSection: View {
             titleVisibility: .visible
         ) {
             Button(.reachy("Unlink this robot"), role: .destructive) {
-                Task { await unlink() }
+                Task { await robotLink.unlink(session: session) }
             }
         } message: {
             Text(
@@ -204,31 +199,31 @@ struct HFAccountSection: View {
 
     private var robotSection: some View {
         Section {
-            LabeledContent(.reachy("This robot"), value: robotAccountText)
-            if let relay {
-                LabeledContent(.reachy("Remote access"), value: relayText(relay))
+            LabeledContent(.reachy("This robot"), value: robotLink.accountText)
+            if let relayCaption = robotLink.relayCaption {
+                LabeledContent(.reachy("Remote access"), value: relayCaption)
             }
-            if let linkError {
+            if let linkError = robotLink.linkError {
                 Text(linkError)
                     .font(Typography.status)
                     .foregroundStyle(Tone.danger.style)
             }
-            if robotAccount?.isLoggedIn == true {
+            if robotLink.isLinked {
                 Button(.reachy("Unlink this robot"), role: .destructive) {
-                    Task { await unlink() }
+                    Task { await robotLink.unlink(session: session) }
                 }
-                .disabled(isLinking)
+                .disabled(robotLink.isLinking)
             } else if case .signedIn = model.account.state {
                 Button {
-                    Task { await link() }
+                    Task { await robotLink.link(session: session, token: model.account.currentToken()) }
                 } label: {
-                    if isLinking {
+                    if robotLink.isLinking {
                         ProgressView()
                     } else {
                         Label(.reachy("Link this robot"), systemImage: "link")
                     }
                 }
-                .disabled(isLinking)
+                .disabled(robotLink.isLinking)
             }
         } header: {
             Text(.reachy("Robot account"))
@@ -245,68 +240,7 @@ struct HFAccountSection: View {
         }
         .task {
             guard !previewMode else { return }
-            await loadRobotState()
-        }
-    }
-
-    private var robotAccountText: String {
-        guard let robotAccount else { return "…" }
-        if robotAccount.isLoggedIn {
-            return robotAccount.username.map { String(localized: .reachy("Linked to \($0)")) }
-                ?? String(localized: .reachy("Linked"))
-        }
-        return String(localized: .reachy("Not linked"))
-    }
-
-    private func relayText(_ relay: RelayStatus) -> String {
-        switch relay.state {
-        case .connected: String(localized: .reachy("Online"))
-        case .connecting, .reconnecting: String(localized: .reachy("Connecting…"))
-        case .waitingForToken: String(localized: .reachy("Waiting for a token"))
-        case .stopped: String(localized: .reachy("Off"))
-        case .unavailable: relay.message ?? String(localized: .reachy("Not available on this robot"))
-        case .error: relay.message ?? String(localized: .reachy("Error"))
-        // The daemon's own word for a state this app does not know — runtime
-        // text, which is what keeps this slot a String (rule 9).
-        case let .unknown(state): state
-        }
-    }
-
-    private func loadRobotState() async {
-        robotAccount = try? await session.robotHFAccount()
-        relay = try? await session.relayStatus()
-    }
-
-    private func link() async {
-        guard let token = await model.account.currentToken() else {
-            linkError = String(localized: .reachy("This app has no valid token to share. Sign in again."))
-            return
-        }
-        isLinking = true
-        linkError = nil
-        defer { isLinking = false }
-        do {
-            let refresh = try await session.linkRobot(token: token)
-            robotAccount = try? await session.robotHFAccount(refresh: true)
-            // `skipped` means no reconnect was started, so waiting for the relay to
-            // change state would wait forever — the daemon's own docstring calls
-            // that trap out by name.
-            relay = refresh.didStart ? try? await session.relayStatus() : relay
-        } catch {
-            linkError.recordDaemonFailure(error)
-        }
-    }
-
-    private func unlink() async {
-        isLinking = true
-        linkError = nil
-        defer { isLinking = false }
-        do {
-            try await session.unlinkRobot()
-            robotAccount = try? await session.robotHFAccount(refresh: true)
-            relay = try? await session.relayStatus()
-        } catch {
-            linkError.recordDaemonFailure(error)
+            await robotLink.load(session: session)
         }
     }
 }
