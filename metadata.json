@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1E33X1489Q04FBJA2YGAWDZ",
+  "strategy": "manual-commit",
+  "branch": "claude/trusting-bose-e71bef",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "Sources/ReachyKit/Model/RobotFaceTarget.swift",
+    "Tests/ReachyKitTests/RobotFaceTargetTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1710,
+    "cache_creation_tokens": 3497583,
+    "cache_read_tokens": 513531521,
+    "output_tokens": 533300,
+    "api_call_count": 856
+  }
+}
