@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DM3DA4G76HBGG35WD542X9",
+  "strategy": "manual-commit",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPhone-16-Pro.1.png",
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Session/RobotSession+WiFi.swift",
+    "Sources/ReachyUI/Previews/PreviewSettingsScenes.swift",
+    "Sources/ReachyUI/Previews/SettingsPreviews.swift",
+    "Sources/ReachyUI/Settings/WiFiJoinModel.swift",
+    "Sources/ReachyUI/Settings/WiFiJoinSheet.swift",
+    "Sources/ReachyUI/Settings/WiFiSettingsCard.swift",
+    "Tests/ReachyUITests/WiFiJoinModelTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 726,
+    "cache_creation_tokens": 1562448,
+    "cache_read_tokens": 139691765,
+    "output_tokens": 251399,
+    "api_call_count": 363,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  }
+}

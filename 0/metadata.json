@@ -1,0 +1,99 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DM3DA4G76HBGG35WD542X9",
+  "session_id": "7445c067-9172-47bb-8e80-24e5890a0c5e",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T04:37:09.417636Z",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 3,
+  "save_step_count": 4,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-failed-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-on-a-network-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-own-hotspot-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-status-unavailable-iPhone-16-Pro.1.png",
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Session/RobotSession+WiFi.swift",
+    "Sources/ReachyUI/Previews/PreviewSettingsScenes.swift",
+    "Sources/ReachyUI/Previews/SettingsPreviews.swift",
+    "Sources/ReachyUI/Settings/WiFiJoinModel.swift",
+    "Sources/ReachyUI/Settings/WiFiJoinSheet.swift",
+    "Sources/ReachyUI/Settings/WiFiSettingsCard.swift",
+    "Tests/ReachyUITests/WiFiJoinModelTests.swift"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "a32eab3cc0df",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 726,
+    "cache_creation_tokens": 1562448,
+    "cache_read_tokens": 139691765,
+    "output_tokens": 251399,
+    "api_call_count": 363,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  },
+  "session_metrics": {
+    "turn_count": 17
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T04:37:09.181289Z",
+    "agent_lines": 702,
+    "agent_removed": 38,
+    "human_added": 132,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 834,
+    "total_lines_changed": 872,
+    "agent_percentage": 84.86238532110092,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 7
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 7
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 702,
+      "agent_lines_removed": 54
+    }
+  ]
+}
