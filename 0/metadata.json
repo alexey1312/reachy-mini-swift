@@ -1,0 +1,125 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DTVQ5QAHST18DW1XK14KFY",
+  "session_id": "7445c067-9172-47bb-8e80-24e5890a0c5e",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T06:35:17.467479Z",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 3,
+  "save_step_count": 4,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-over-the-relay-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-over-the-relay-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-live-tab-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-live-tab-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-no-3D-over-the-relay-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-no-3D-over-the-relay-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-no-3D-over-the-relay-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-no-3D-over-the-relay-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-remote-camera-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-remote-camera-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-remote-camera-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ViewportPreviewsTests.generated/Viewport-remote-camera-iPhone-16-Pro.1.png",
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Central/RemoteRobotConnection.swift",
+    "Sources/ReachyKit/Central/RemoteStateStream.swift",
+    "Sources/ReachyKit/Preview/PreviewFixtures.swift",
+    "Sources/ReachyKit/Session/RobotSession+Readiness.swift",
+    "Sources/ReachyUI/BundledGeometryClient.swift",
+    "Sources/ReachyUI/Navigation/RootLifecycle.swift",
+    "Sources/ReachyUI/Previews/ReachyRootViewPreviews.swift",
+    "Sources/ReachyUI/Previews/ViewportPreviews.swift",
+    "Sources/ReachyUI/ViewportContent.swift",
+    "Sources/ReachyUI/ViewportModel.swift",
+    "Tests/ReachyKitTests/RobotSessionRemoteConnectTests.swift",
+    "Tests/ReachyUITests/ViewportModelTests.swift"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "359dc7463b61",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1112,
+    "cache_creation_tokens": 1742964,
+    "cache_read_tokens": 272399576,
+    "output_tokens": 363410,
+    "api_call_count": 556,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-claude-code-goal-2026-09-01T05:29:36.699695Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "goal"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "dc25e0a4cb4c",
+      "timestamp": "2026-09-01T05:29:36.699695Z",
+      "native": {
+        "command": "/goal"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/goal",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 28
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T06:35:17.142493Z",
+    "agent_lines": 236,
+    "agent_removed": 147,
+    "human_added": 24,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 260,
+    "total_lines_changed": 407,
+    "agent_percentage": 94.1031941031941,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 238,
+      "agent_lines_removed": 115
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 237,
+      "agent_lines_removed": 156
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 237,
+      "agent_lines_removed": 156
+    }
+  ]
+}
