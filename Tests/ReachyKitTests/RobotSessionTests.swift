@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Mock daemon whose probe outcomes are scripted per call.
-private final class MockRobotClient: RobotAPIClient, @unchecked Sendable {
+private final class MockRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     enum Probe { case ok, fail }
 
     /// Every daemon call in order, so tests can assert the wake/sleep sequence.

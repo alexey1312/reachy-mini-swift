@@ -67,7 +67,19 @@
     /// `RobotScreen` decides whether to offer the joystick and the log console by testing the
     /// client for these, exactly as it decides everything else — so a preview of a LAN robot
     /// needs a client that speaks them. Both are inert: a preview must never open a socket.
-    extension PreviewRobotClient: TeleopClient, DaemonLogClient {
+    extension PreviewRobotClient: TeleopClient, DaemonLogClient, MovePlaybackClient {
+        /// Inert, like the two protocols beside it: a preview must never move a
+        /// robot, and `listMoves` above is the only one whose answer is looked at.
+        public func playMove(dataset _: String, move _: String) async throws -> String {
+            "preview-move"
+        }
+
+        public func stopMove(uuid _: String) async throws {}
+
+        public func gotoNeutral(duration _: TimeInterval) async throws -> String {
+            "preview-neutral"
+        }
+
         public func makeTeleop() throws -> any TeleopChannel {
             PreviewTeleopChannel()
         }
@@ -108,7 +120,39 @@
     /// none of the HTTP surface. Its conformances are `RemoteRobotConnection`'s — no apps, no
     /// Wi-Fi, no update, no robot Hugging Face account — so a preview of a remote robot closes
     /// the same screens the real one does.
-    public struct PreviewRemoteRobotClient: RobotAPIClient, TeleopClient, DaemonLogClient {
+    /// `RobotUnlinkClient` because the real relay carries `delete_hf_token` and
+    /// nothing else about the account — without it the one control a relayed
+    /// session offers there is missing from every reference.
+    /// A channel that is open and answers nothing.
+    ///
+    /// Enough to build a `RemoteRobotConnection` for a preview or a test that only
+    /// needs one to exist — the viewport's source carries one, and a frozen preview
+    /// must not be able to send anything anywhere.
+    public struct SilentDataChannel: RemoteDataChannel {
+        public var isOpen: Bool {
+            true
+        }
+
+        public init() {}
+
+        public func send(_: String) async throws {}
+
+        public func messages() -> AsyncStream<String> {
+            AsyncStream { $0.finish() }
+        }
+    }
+
+    public extension RemoteRobotConnection {
+        /// Attached to a channel that never answers, so every command times out
+        /// rather than pretending. Previews park state directly instead.
+        static func preview() -> RemoteRobotConnection {
+            RemoteRobotConnection(channel: SilentDataChannel(), timeout: .milliseconds(1))
+        }
+    }
+
+    public struct PreviewRemoteRobotClient:
+        RobotAPIClient, TeleopClient, DaemonLogClient, RobotUnlinkClient, MovePlaybackClient
+    {
         public var identity: RobotIdentity
         public var status: Components.Schemas.DaemonStatus
         public var logLines: [String]
@@ -138,6 +182,10 @@
         public func gotoSleep() async throws -> String {
             ""
         }
+
+        /// Accepted and does nothing: a preview must draw the control the relay
+        /// really offers, without a robot to take a token from.
+        public func deleteHFToken() async throws {}
 
         public func makeTeleop() throws -> any TeleopChannel {
             PreviewTeleopChannel()

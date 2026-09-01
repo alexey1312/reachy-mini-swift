@@ -25,7 +25,7 @@ enum MoveFailure: Error, LocalizedError, CustomStringConvertible {
     }
 }
 
-final class MoveRobotClient: RobotAPIClient, @unchecked Sendable {
+final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     private let lock = NSLock()
     private var nextUUID = 0
     private var running: [MoveProbe]

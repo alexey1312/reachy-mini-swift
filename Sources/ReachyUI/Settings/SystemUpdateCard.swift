@@ -23,7 +23,7 @@ struct SystemUpdateCard: View {
         Section {
             statusRow
             Toggle(.reachy("Include pre-release versions"), isOn: $preRelease)
-                .disabled(model?.isBusy ?? true)
+                .disabled((model?.isBusy ?? true) || session.refusesPreReleaseUpdates)
                 .onChange(of: preRelease) { _, newValue in
                     Task { await model?.check(preRelease: newValue) }
                 }
@@ -31,7 +31,18 @@ struct SystemUpdateCard: View {
         } header: {
             Text(.reachy("System update"))
         } footer: {
-            Text(.reachy("The robot downloads updates itself and restarts when one finishes."))
+            // One view, not two: given a bare pair of `Text`s the section footer
+            // rendered only the first, and the warning vanished with no error
+            // anywhere.
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(.reachy("The robot downloads updates itself and restarts when one finishes."))
+                if session.refusesPreReleaseUpdates {
+                    Text(.reachy(
+                        // swiftlint:disable:next line_length
+                        "Pre-release versions need daemon 1.10.0. An older robot finds the wrong version and refuses to install it."
+                    ))
+                }
+            }
         }
         .task {
             guard model == nil else { return }

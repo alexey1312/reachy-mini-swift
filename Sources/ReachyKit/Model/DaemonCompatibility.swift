@@ -30,6 +30,21 @@ public enum DaemonCompatibilityPolicy {
     /// and `FullState.imu` are new, and rule 3 already covers an unread field.
     public static let testedVersion = "1.10.0"
 
+    /// Whether the daemon is *known* to be older than `floor`.
+    ///
+    /// False for a version this client cannot read, and false for none at all: a
+    /// feature is withheld on evidence, never on the absence of it.
+    public static func isKnownOlder(than floor: String, reported: String?) -> Bool {
+        guard let parsedFloor = SemanticVersion(floor) else {
+            // Every caller passes a literal, so an unreadable floor is a typo — and
+            // one that disables the gate it was written to close, silently.
+            assertionFailure("unreadable version floor: \(floor)")
+            return false
+        }
+        guard let reported, let current = SemanticVersion(reported) else { return false }
+        return current < parsedFloor
+    }
+
     public static func evaluate(_ reported: String?) -> DaemonCompatibility {
         guard let reported, let current = SemanticVersion(reported),
               let minimum = SemanticVersion(minimumVersion),
@@ -55,13 +70,23 @@ private struct SemanticVersion: Comparable, Sendable {
         guard let core = normalized.split(separator: "-", maxSplits: 1).first else { return nil }
         let components = core.split(separator: ".")
         guard components.count >= 3,
-              let major = Int(components[0]),
-              let minor = Int(components[1]),
-              let patch = Int(components[2])
+              let major = Self.leadingNumber(components[0]),
+              let minor = Self.leadingNumber(components[1]),
+              let patch = Self.leadingNumber(components[2])
         else { return nil }
         self.major = major
         self.minor = minor
         self.patch = patch
+    }
+
+    /// The digits a component starts with, or nil when it starts with none.
+    ///
+    /// PyPI spells a pre-release with no separator at all, so the daemon reports
+    /// `1.10.0rc5` and the patch arrives glued to its suffix. Reading the digits
+    /// off the front treats an RC as the release it precedes, which is what the
+    /// compatibility question asks: `1.10.0rc5` carries the 1.10.0 API.
+    private static func leadingNumber(_ component: Substring) -> Int? {
+        Int(component.prefix(while: \.isNumber))
     }
 
     static func < (lhs: Self, rhs: Self) -> Bool {

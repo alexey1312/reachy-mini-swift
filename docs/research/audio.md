@@ -3,6 +3,28 @@
 Measured on 2026-08-27 against a Wireless unit (daemon 1.9.0, audio board firmware 2.1.2) and
 against the vendored daemon source in `.venv-sim`.
 
+> **Daemon 1.10.0 ships audio firmware 2.1.4 — but shipping it is not installing it.** Re-read on
+> 2026-09-01 against a Wireless unit already on daemon 1.10.0: its board still answers
+> `VERSION → [2, 1, 2]`. So the numbers below still describe that robot, and the way to check any
+> other one is a single call:
+>
+> ```
+> curl http://reachy-mini.local:8000/api/audio/config/parameter/VERSION
+> ```
+>
+> Every configured microphone register was re-read at the same time and **none had moved**:
+> `PP_AGCDESIREDLEVEL` 0.0045, `PP_AGCMAXGAIN` 64, `PP_LIMITPLIMIT` 0.47, `PP_MIN_NS` 0.15,
+> `PP_MIN_NN` 0.51. Only `PP_AGCGAIN` differed (7.996 against 4.93), which is the one this page
+> already calls a reading of the moment rather than a setting. The three profiles in
+> `AudioParameter.swift` are therefore still right.
+>
+> What 2.1.4 changes when a board does get it: **+6 dB of maximum speaker output**, which is
+> exactly the finding this page is named after — "no headroom either" — so re-measure the speaker
+> section then. The microphone side has no reason to move.
+>
+> The ten-band EQ is not something this app can reach at all: it lives in `daemon_config.json` on
+> the robot and needs a daemon restart, with no route to read or write it.
+
 The question: a call sounds much louder from the robot's speaker than a robot app or a move,
 "as if a limiter is fitted". Also, does the robot suppress noise, and can it hear better?
 

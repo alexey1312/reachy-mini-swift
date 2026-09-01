@@ -38,13 +38,13 @@ public enum GeometryLoadProgress: Sendable, Equatable {
 /// front of the user, so a hardware revision or a differently coloured shell is
 /// drawn correctly without shipping anyone else's assets.
 public actor RobotGeometryProvider {
-    private let client: any RobotAPIClient
+    private let client: any RobotGeometryClient
     private let cache: GeometryCache
     /// The robot's Wi-Fi is the slow link here; a handful of parallel requests
     /// saturates it without starving the state stream sharing the connection.
     private let concurrentDownloads = 4
 
-    public init(client: any RobotAPIClient, cache: GeometryCache = .default) {
+    public init(client: any RobotGeometryClient, cache: GeometryCache = .default) {
         self.client = client
         self.cache = cache
     }

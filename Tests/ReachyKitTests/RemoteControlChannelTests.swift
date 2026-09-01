@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -234,6 +235,139 @@ struct RemoteControlChannelTests {
         let object = try JSONSerialization.jsonObject(with: Data(sent.utf8)) as? [String: Any]
         #expect(object?["type"] as? String == "set_volume")
         #expect(object?["volume"] as? Double == 42)
+    }
+
+    /// Daemon 1.10.0 answers `get_imu` with the same `imu_data` frame the robot also
+    /// publishes on its own, so a `type` stopped being proof that nobody asked.
+    @Test("a reply that names a type answers the command waiting on it")
+    func matchesByReplyType() async throws {
+        let (control, fake) = channel()
+
+        async let reply: Data = control.perform("get_imu", correlation: .typed("imu_data"))
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
+        // Routing is by `type` alone, so the frame carries nothing else: what the
+        // payload decodes into is `RemoteRobotConnection`'s business, not this one's.
+        fake.emit(#"{"type":"imu_data","temperature":30}"#)
+
+        let payload = try await reply
+        #expect(!payload.isEmpty)
+    }
+
+    /// And everything else keeps going to subscribers: the type-matched path may
+    /// only claim a frame somebody is actually waiting for.
+    @Test("a broadcast nobody waits on still reaches its subscribers")
+    func leavesUnclaimedBroadcastsToListeners() async {
+        let (control, fake) = channel()
+        // The stream buffers, so subscribing before the emit is enough — no second
+        // task, and nothing to race against.
+        var lines = await control.broadcasts(ofType: "log_line").makeAsyncIterator()
+        fake.emit(#"{"type":"log_line","line":"hello"}"#)
+        #expect(await lines.next() != nil)
+    }
+
+    /// Daemon 1.10.0 puts the apps API behind JSON-RPC on this same channel. Its
+    /// replies name neither a command nor a type, so the id is the whole of the
+    /// correlation.
+    @Test("a JSON-RPC reply is matched to its call by id")
+    func matchesRPCByID() async throws {
+        let (control, fake) = channel()
+
+        async let reply: Data = control.call("apps.status")
+        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        let sent = try #require(fake.sent.first)
+        #expect(sent.contains("\"method\""))
+        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"state":"idle"}}"#)
+
+        #expect(try await !reply.isEmpty)
+    }
+
+    /// The failure is an object here, not the `error` string the other protocol
+    /// uses, and the daemon's own `reason` is what tells a busy robot from a broken
+    /// one.
+    @Test("a JSON-RPC error carries the robot's reason")
+    func throwsRPCErrorWithReason() async {
+        let (control, fake) = channel()
+
+        let call = Task { try await control.call("apps.start", params: ["name": .string("busy")]) }
+        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        fake.emit(
+            #"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"#
+                + #""message":"an app holds the robot","data":{"reason":"already_running"}}}"#
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.robot(
+            "an app holds the robot (already_running)"
+        )) {
+            _ = try await call.value
+        }
+    }
+
+    /// A frame with no id is the running app talking, fanned out by the daemon.
+    @Test("a JSON-RPC notification reaches its subscribers")
+    func deliversRPCNotifications() async {
+        let (control, fake) = channel()
+        var turns = await control.broadcasts(ofType: "conversation.turn").makeAsyncIterator()
+
+        fake.emit(#"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"listening"}}"#)
+
+        #expect(await turns.next() != nil)
+    }
+
+    /// The guarantee this framing exists for, and the one a single-call test cannot
+    /// see: `apps.install` runs for minutes and a status poll must not queue behind
+    /// it, so the id is what pairs a reply with its call. Make `nextRPCID` return a
+    /// constant and every other RPC test still passes while these two cross.
+    @Test("two calls in flight are answered by id, in either order")
+    func matchesConcurrentRPCCallsByID() async throws {
+        let (control, fake) = channel()
+
+        async let install: Data = control.call("apps.install")
+        await waitUntil("the first call is on the wire") { fake.sent.count == 1 }
+        async let status: Data = control.call("apps.status")
+        await waitUntil("the second call is on the wire") { fake.sent.count == 2 }
+
+        let ids = try fake.sent.map { try Self.sentRPCID(in: $0) }
+        #expect(ids[0] != ids[1])
+
+        // The later call answered first: nothing may serialise behind the install.
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(ids[1]),"result":{"state":"idle"}}"#)
+        #expect(try await Self.replyState(in: status) == "idle")
+
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(ids[0]),"result":{"state":"installed"}}"#)
+        #expect(try await Self.replyState(in: install) == "installed")
+    }
+
+    /// JSON-RPC names neither a `type` nor a `command`, and its own keys —
+    /// `jsonrpc`, `result`, `id` — are exactly what a `.replyKey` waiter matches on.
+    /// Move the RPC branch below the key match in `deliver` and this frame answers
+    /// a command that never asked for it.
+    @Test("a JSON-RPC frame does not satisfy a waiter keyed on result")
+    func rpcFrameDoesNotSatisfyAKeyedWaiter() async throws {
+        let (control, fake) = channel(timeout: .milliseconds(200))
+
+        let pending = Task { try await control.perform("some_command", correlation: .replyKey("result")) }
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
+        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"state":"idle"}}"#)
+
+        await #expect(throws: RemoteControlChannel.Failure.timedOut) { _ = try await pending.value }
+    }
+
+    private static func sentRPCID(in frame: String) throws -> Int {
+        struct Sent: Decodable {
+            let id: Int
+        }
+        return try JSONCodec.daemon.decode(Sent.self, from: Data(frame.utf8)).id
+    }
+
+    private static func replyState(in data: Data) throws -> String {
+        struct Reply: Decodable {
+            struct Result: Decodable {
+                let state: String
+            }
+
+            let result: Result
+        }
+        return try JSONCodec.daemon.decode(Reply.self, from: data).result.state
     }
 }
 

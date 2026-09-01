@@ -77,29 +77,63 @@ public extension RobotSession {
         isRemote || lastStatus?.cameraSpecsName?.isEmpty == false
     }
 
-    /// The 3D model is built from URDF and STL, which a relay session cannot reach
-    /// — the one feature ADR 0003 gives up outright.
+    /// The 3D model needs a description, meshes and a pose. The first two come out
+    /// of the app on every link that cannot fetch them — the simulator and the relay
+    /// both read them from the bundle — and the pose comes off the data channel
+    /// where there is no socket to open.
     ///
-    /// On the link rather than on `address != nil`, because a simulator has no
-    /// address and serves both out of its own bundle. The relay is the case this
-    /// excludes, and it is excluded by name.
+    /// So this is every link but none. ADR 0003 gave the scene up over the relay
+    /// because the routes are HTTP; the shape of a Reachy Mini turned out not to be
+    /// something a client has to be told.
     var canRenderScene: Bool {
         switch link {
-        case .lan, .simulated: true
-        case .none, .remote: false
+        case .lan, .simulated, .remote: true
+        case .none: false
         }
     }
 
-    /// Recorded moves are `/api/move/play/*` and the dataset index beside them,
-    /// both HTTP-only. The data channel can play an *uploaded* move and nothing
-    /// from the robot's own library.
+    /// Whether this robot has dances to offer and a way to play them.
     ///
-    /// Derived from the link rather than probed with `client is any MovesClient`
-    /// because `listMoves` and friends still live on `RobotAPIClient` behind
-    /// throwing defaults; lifting them onto a sub-protocol touches every test
-    /// double and belongs in its own change.
+    /// Asked of the transport rather than of the address, which stood in for it and
+    /// hid a relayed robot: a relayed session has no address and plays perfectly
+    /// well. `MovePlaybackClient.offersMoveLibrary` is the question itself.
     var canPlayMoves: Bool {
-        address != nil
+        movesClient?.offersMoveLibrary == true
+    }
+
+    /// Whether the daemon is known to predate the data channel's 1.10.0 command
+    /// set — `set_robot_name`, `apps.*` and `get_imu`.
+    ///
+    /// The relay carries those commands only from that version, and 1.9.0 is still
+    /// this app's minimum, so a relayed 1.9.0 robot would otherwise be offered a
+    /// name field and an app dock that spend the whole reply budget and then report
+    /// nothing. Withheld on evidence, like every other gate here: a version this
+    /// client cannot read leaves the feature offered.
+    var predatesRelayCommands: Bool {
+        DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
+    }
+
+    /// The robot's inertial reading, or nil where there is none to read.
+    ///
+    /// Not cached and not polled here: it changes when somebody moves the robot,
+    /// which is not on any schedule this session keeps.
+    func imuReading() async throws -> RobotIMUReading? {
+        guard let client else { throw ReachyKitError.notConnected }
+        // `get_imu` is a 1.10.0 command on the relay, and asking an older daemon
+        // for it costs the reply budget on every pull-to-refresh.
+        guard !predatesRelayCommands else { return nil }
+        return try await client.imuReading()
+    }
+
+    /// Whether the beta channel is closed to this robot.
+    ///
+    /// Daemons before 1.10.0 rank the PyPI pre-release list as strings, so `1.9.0rc1`
+    /// outranks `1.10.0rc5`: `/update/available` answers "up to date" and
+    /// `/update/start` refuses with 400. The daemon-side fix ships in the very
+    /// version those robots cannot reach, so the toggle is inert until a stable
+    /// update carries them past it.
+    var refusesPreReleaseUpdates: Bool {
+        DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
     }
 
     /// `/wifi/*` and `/update/*` are mounted only under `--wireless-version`, so a

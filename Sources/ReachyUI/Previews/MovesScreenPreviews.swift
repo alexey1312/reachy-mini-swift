@@ -6,6 +6,13 @@ import SwiftUI
     PreviewScene.movesScreen(.preview())
 }
 
+// Over the relay the data channel carries the play and the list is the one this app
+// kept off the same robot's own network, so the screen is the LAN screen. The
+// capture is here to say that it is reachable at all.
+#Preview("Moves — over the relay") {
+    PreviewScene.movesScreen(.preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()))
+}
+
 #Preview("Moves — dances loading") {
     PreviewScene.movesScreen(.preview(), model: .preview(moves: [], loading: true))
 }

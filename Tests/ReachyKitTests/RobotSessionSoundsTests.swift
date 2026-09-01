@@ -4,7 +4,7 @@ import Testing
 
 /// A client that speaks the soundboard, and one that does not — the pair is what the
 /// capability gate is tested with.
-private class SoundlessRobotClient: RobotAPIClient, @unchecked Sendable {
+private class SoundlessRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     private var status: Components.Schemas.DaemonStatus {
         let json = """
         {"robot_name":"testbot","state":"running","wireless_version":false,
@@ -38,7 +38,7 @@ private class SoundlessRobotClient: RobotAPIClient, @unchecked Sendable {
     }
 }
 
-private final class SoundRobotClient: SoundlessRobotClient, SoundboardClient {
+private final class SoundRobotClient: SoundlessRobotClient, SoundboardClient, @unchecked Sendable {
     private let lock = NSLock()
     /// Every call in order, which is what the upload-then-play sequence is asserted on.
     private(set) var calls: [String] = []

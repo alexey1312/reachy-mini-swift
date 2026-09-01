@@ -20,6 +20,17 @@ import SwiftUI
     PreviewScene.telepresence(presence: .preview(tracking: true, weight: 0.5))
 }
 
+// The one reading in this section, in both of its states. It reports whether the robot
+// has a face to follow and nothing about the switch above — a tracker watching an empty
+// room looks exactly like one that is off, which is the confusion the line ends.
+#Preview("Presence — a face in view") {
+    PreviewScene.telepresence(presence: .preview(tracking: true, seesFace: true))
+}
+
+#Preview("Presence — nobody in view") {
+    PreviewScene.telepresence(presence: .preview(tracking: true, seesFace: false))
+}
+
 // A robot with no camera answers `enabled: false` under a 200, so the switch springs
 // back and the section says why rather than leaving a claim on screen.
 #Preview("Presence — no camera for tracking") {

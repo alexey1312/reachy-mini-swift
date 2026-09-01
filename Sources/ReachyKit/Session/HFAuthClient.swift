@@ -1,5 +1,25 @@
 import Foundation
 
+/// Taking the robot's token away, which is the one part of its Hugging Face
+/// account a relayed session can reach.
+///
+/// Split out of ``HFAuthClient`` because the data channel carries this command and
+/// none of the others: the robot cannot be *asked* about its account over the
+/// relay, and it cannot be given a token there either. It can be told to drop the
+/// one it has — and the relay is exactly where an owner who is nowhere near the
+/// robot needs that.
+///
+/// **The robot goes offline and stays there.** Its token is what registers it with
+/// central, so dropping it ends this session and every future one until somebody
+/// re-provisions the robot over Bluetooth or through the page it serves itself.
+/// Conforming *is* the capability — `RobotSession.canUnlinkRobot` asks nothing
+/// else — so there is deliberately no default here. One that threw would let every
+/// conformer advertise a button that fails, which is what these narrow protocols
+/// exist to prevent.
+public protocol RobotUnlinkClient: Sendable {
+    func deleteHFToken() async throws
+}
+
 /// The robot's own Hugging Face account: the token it stores, the relay that
 /// token buys it, and central's robot list proxied through it.
 ///
@@ -7,14 +27,13 @@ import Foundation
 /// They exist for a browser pointed at the robot, and they redirect back to
 /// `reachy-mini.local` — a flow this app has no use for, because it signs in
 /// natively and hands the robot a token it already holds.
-public protocol HFAuthClient: Sendable {
+public protocol HFAuthClient: RobotUnlinkClient {
     func hfAuthStatus() async throws -> HFAuthStatus
     /// Stores the token on the robot. The daemon validates it against the Hub
     /// first and answers 400 if the Hub refuses it. Returns the account name it
     /// resolved to.
     @discardableResult
     func saveHFToken(_ token: String) async throws -> String?
-    func deleteHFToken() async throws
     func relayStatus() async throws -> RelayStatus
     /// Asks the relay to reconnect. Check `didStart` before waiting on anything.
     @discardableResult
@@ -31,10 +50,6 @@ public extension HFAuthClient {
 
     @discardableResult
     func saveHFToken(_: String) async throws -> String? {
-        throw URLError(.unsupportedURL)
-    }
-
-    func deleteHFToken() async throws {
         throw URLError(.unsupportedURL)
     }
 

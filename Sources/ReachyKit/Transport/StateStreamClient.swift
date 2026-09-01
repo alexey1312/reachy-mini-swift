@@ -6,11 +6,34 @@ public struct StateStreamDiagnostics: Equatable, Sendable {
     public var receivedFrames = 0
     public var decodedFrames = 0
     public var decodeFailures = 0
+    /// A frame this client cannot use: an unknown WebSocket frame kind, or a reply
+    /// that carries no pose because the robot's backend is down. Not a decode
+    /// failure, which is this client failing to read what the robot sent.
     public var unsupportedFrames = 0
+    /// A pose frame older than one already delivered. The pose channel is
+    /// unordered by design, so this counts the design working, not a fault.
+    public var staleFrames = 0
     public var lastFailureDescription: String?
     public var lastFailureAt: Date?
 
     public init() {}
+}
+
+public extension StateStreamUpdate {
+    /// Where the robot last heard a voice, from whichever half of the frame carries
+    /// it.
+    ///
+    /// The socket fills `state` with the generated `FullState`; the relay has no
+    /// such type and fills `frame` by hand. Both say the same thing, and a reader
+    /// that had to know which is a reader that works on one transport only — which
+    /// is exactly how the indicator came to be LAN-only.
+    var hearing: RobotStateFrame.DirectionOfArrival? {
+        if let doa = frame?.directionOfArrival {
+            return doa
+        }
+        guard let doa = state?.doa else { return nil }
+        return .init(angle: doa.angle, speechDetected: doa.speechDetected)
+    }
 }
 
 /// One WebSocket frame and the diagnostics accumulated through that frame.

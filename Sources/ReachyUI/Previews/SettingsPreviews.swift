@@ -89,10 +89,61 @@ import SwiftUI
     PreviewScene.maintenanceCard(.preview(error: "The robot rejected the request (HTTP 500)."))
 }
 
+// MARK: - Wi-Fi join
+
+// The scan is the whole list here, unlike the Bluetooth flow's: the HTTP route is not
+// squeezed into one 180-byte message, so a name missing from it really is a network
+// that stayed quiet.
+#Preview("Wi-Fi join — networks found") {
+    PreviewScene.wifiJoin(.preview(networks: ["Pollen HQ", "Pollen Guest", "eduroam"], selected: "Pollen HQ"))
+}
+
+// "Other network…" is a choice rather than a fallback, so it gets its own capture: the
+// name field appears only under it.
+#Preview("Wi-Fi join — typed name") {
+    PreviewScene.wifiJoin(.preview(networks: ["Pollen HQ"], manualSSID: "Attic", code: "AB12C"))
+}
+
+#Preview("Wi-Fi join — scanning") {
+    PreviewScene.wifiJoin(.preview(scanning: true))
+}
+
+// Reachable for as long as the robot takes to answer, and the robot answers before it
+// switches — so this is a short state with a real picture.
+#Preview("Wi-Fi join — sending") {
+    PreviewScene.wifiJoin(.preview(phase: .sending, networks: ["Pollen HQ"], selected: "Pollen HQ", code: "AB12C"))
+}
+
+#Preview("Wi-Fi join — scan failed") {
+    PreviewScene.wifiJoin(.preview(scanFailure: "The robot did not answer in time."))
+}
+
+// The end of the flow and the end of the session with it: nothing on this screen waits
+// for the robot, because the link it would wait over is the one going down.
+#Preview("Wi-Fi join — sent") {
+    PreviewScene.wifiJoin(.preview(phase: .sent(ssid: "Pollen HQ")))
+}
+
+#Preview("Wi-Fi join — refused") {
+    PreviewScene.wifiJoin(.preview(phase: .refused("The robot could not read the Wi-Fi password. Check the PIN.")))
+}
+
+// The outcome that is neither: the link went away before the robot answered, which
+// is also what an accepted password does.
+#Preview("Wi-Fi join — uncertain") {
+    PreviewScene.wifiJoin(.preview(phase: .uncertain(ssid: "Pollen HQ")))
+}
+
 // MARK: - System update
 
 #Preview("System update — idle") {
     PreviewScene.updateCard(.idle)
+}
+
+// The beta channel closed. Reachable only on a robot whose daemon predates the
+// PyPI ranking fix, so it is seeded rather than waited for.
+#Preview("System update — pre-release refused") {
+    PreviewScene.updateCard(.upToDate(current: "1.9.0"), daemonVersion: "1.9.0")
 }
 
 #Preview("System update — checking") {

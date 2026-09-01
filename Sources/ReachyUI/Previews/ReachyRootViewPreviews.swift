@@ -156,7 +156,11 @@ import SwiftUI
     let link = RemoteRobotLink.preview()
     return PreviewScene.root(
         .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()),
-        viewport: .preview(content: .camera, cameraSession: link.camera, source: .remote(link.camera)),
+        viewport: .preview(
+            content: .camera,
+            cameraSession: link.camera,
+            source: .remote(link.camera, connection: .preview())
+        ),
         hfAccount: PreviewScene.account(in: .signedIn(username: "alexey1312")),
         remoteLink: link
     )
@@ -167,7 +171,11 @@ import SwiftUI
     let link = RemoteRobotLink.preview()
     return PreviewScene.root(
         .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()),
-        viewport: .preview(content: .camera, cameraSession: link.camera, source: .remote(link.camera)),
+        viewport: .preview(
+            content: .camera,
+            cameraSession: link.camera,
+            source: .remote(link.camera, connection: .preview())
+        ),
         tab: .live,
         hfAccount: PreviewScene.account(in: .signedIn(username: "alexey1312")),
         remoteLink: link

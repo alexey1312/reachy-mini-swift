@@ -261,7 +261,7 @@ enum RootViewportTarget {
         guard session.isBackendRunning else { return nil }
         switch session.link {
         case let .lan(address): return .lan(address)
-        case .remote: return remoteLink.map { .remote($0.camera) }
+        case .remote: return remoteLink.map { .remote($0.camera, connection: $0.client) }
         // The client itself is the source: it serves the geometry out of the app's
         // bundle and publishes the state stream, so there is no address to carry
         // and nothing else to look it up from.

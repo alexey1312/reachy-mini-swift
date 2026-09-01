@@ -1,2 +1,2 @@
 # Tested daemon baseline. Keep in sync with DaemonCompatibilityPolicy.
-reachy-mini[mujoco]==1.9.0
+reachy-mini[mujoco]==1.10.0

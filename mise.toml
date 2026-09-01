@@ -55,6 +55,7 @@ uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
 description = "Build the Swift package (debug)"
 run = """
 set -o pipefail
+. Scripts/swiftpm-env.sh
 swift build 2>&1 | xcsift
 """
 
@@ -62,6 +63,7 @@ swift build 2>&1 | xcsift
 description = "Build the Swift package (release)"
 run = """
 set -o pipefail
+. Scripts/swiftpm-env.sh
 swift build --configuration release 2>&1 | xcsift
 """
 
@@ -194,6 +196,7 @@ description = "Run all tests (parallel)"
 # --skip-build against a separate build step: building and testing at once hangs.
 run = """
 set -o pipefail
+. Scripts/swiftpm-env.sh
 swift build --build-tests 2>&1 | xcsift
 swift test --skip-build --parallel 2>&1 | xcsift
 """
@@ -202,6 +205,7 @@ swift test --skip-build --parallel 2>&1 | xcsift
 description = "Run tests with filter (usage: mise run test:filter ReachyKitTests)"
 run = """
 set -o pipefail
+. Scripts/swiftpm-env.sh
 swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
 """
 
@@ -248,6 +252,7 @@ xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
 description = "Integration tests against a running sim daemon (start with: mise run sim-daemon)"
 run = """
 set -o pipefail
+. Scripts/swiftpm-env.sh
 REACHY_SIM_HOST=127.0.0.1 swift test --parallel --filter SimulatorIntegrationTests 2>&1 | xcsift
 """
 
@@ -557,7 +562,7 @@ if [ ! -x "$VENV/bin/mjpython" ] || [ "$INSTALLED" != "$EXPECTED" ]; then
   uv pip install --quiet --python "$VENV/bin/python" --requirement "$REQUIREMENTS"
   printf '%s' "$EXPECTED" > "$STAMP"
 fi
-"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.9.0"'
+"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.10.0"'
 # `gstreamer_python`'s libgstpython.dylib segfaults while GStreamer scans plugins.
 # Forked (the default) that only surfaces as "External plugin loader failed" and
 # the daemon then hangs before binding :8000; with GST_REGISTRY_FORK=no the

@@ -4,13 +4,24 @@ import ReachyKit
 import Testing
 
 /// Internal rather than private: `MovesCacheTests` needs the same robot.
-final class MovesUIClient: RobotAPIClient, @unchecked Sendable {
+final class MovesUIClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var listCalls = 0
     private(set) var played: [(String, String)] = []
     private let movesByDataset: [String: [String]]
     private var failingDatasets: Set<String> = []
+    /// Whether this transport carries an index route at all. False is the relay's
+    /// case, and the one the session answers from its kept index.
+    private var indexRoute = true
     private var playFailure: (any Error)?
+
+    var offersMoveIndex: Bool {
+        lock.withLock { indexRoute }
+    }
+
+    func setIndexRoute(_ offered: Bool) {
+        lock.withLock { indexRoute = offered }
+    }
 
     func setPlayFailure(_ error: (any Error)?) {
         lock.withLock { playFailure = error }

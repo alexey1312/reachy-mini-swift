@@ -78,6 +78,20 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The same card over the relay, where the robot half shrinks to the one control
+    /// the data channel carries. `PreviewRemoteRobotClient` speaks `RobotUnlinkClient`
+    /// and not `HFAuthClient`, which is exactly the shape a relayed session has.
+    static func hfAccountOverTheRelay(model: HFSignInModel? = nil) -> some View {
+        Form {
+            HFAccountSection(
+                session: .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()),
+                model: model ?? .preview(state: .signedIn(username: "alexey1312"))
+            )
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     /// The account card on its own. The robot half only renders when the session's
     /// client speaks `HFAuthClient`, so the preview client is the one that does.
     static func hfAccount(
@@ -95,18 +109,37 @@ extension PreviewScene {
                     )
                 ),
                 model: model ?? .preview(),
-                robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
-                relay: relay ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
-                linkError: linkError
+                robotLink: .preview(
+                    robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
+                    relay: relay
+                        ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
+                    linkError: linkError
+                )
             )
         }
         .formStyle(.grouped)
         .preview()
     }
 
-    static func updateCard(_ state: SystemUpdateModel.State, log: [String] = []) -> some View {
+    /// The sheet that moves the robot to another network. `NavigationHost` for the
+    /// title, and a seeded model because the scan is skipped in preview mode.
+    static func wifiJoin(_ model: WiFiJoinModel) -> some View {
+        NavigationHost {
+            WiFiJoinSheet(session: .preview(), model: model) {}
+        }
+        .preview()
+    }
+
+    static func updateCard(
+        _ state: SystemUpdateModel.State,
+        log: [String] = [],
+        daemonVersion: String? = nil
+    ) -> some View {
         Form {
-            SystemUpdateCard(session: .preview(), model: .preview(state: state, log: log))
+            SystemUpdateCard(
+                session: .preview(status: .preview(version: daemonVersion)),
+                model: .preview(state: state, log: log)
+            )
         }
         .formStyle(.grouped)
         .preview()
@@ -137,9 +170,7 @@ extension PreviewScene {
         Form {
             WiFiSettingsCard(
                 session: .preview(),
-                status: status,
-                joinError: joinError,
-                loadFailure: loadFailure
+                model: .preview(status: status, joinError: joinError, loadFailure: loadFailure)
             )
         }
         .formStyle(.grouped)

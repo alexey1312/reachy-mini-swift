@@ -262,11 +262,13 @@ final class AppStoreModel {
         // older load finishing last.
         let lock = try? await session.appLockStatus()
         let startupApp = try? await session.startupApp()
-        let updates = try? await session.appUpdates()
+        // `force` goes past the cache the daemon keeps: only a Refresh the user asked for.
+        let updates = try? await session.appUpdates(force: refresh)
         guard loadID == requestID, !Task.isCancelled else { return }
         self.lock = lock
         self.startupApp = startupApp
-        self.updates = updates
+        // Kept on failure: cleared badges would assert that everything is up to date.
+        self.updates = updates ?? self.updates
     }
 
     /// Whether the context menu may offer Start.

@@ -25,12 +25,13 @@ import ReachyKit
 /// - **`PresenceClient`, `HFAuthClient`, `WiFiConfigClient`, `DaemonUpdateClient`,
 ///   `CacheMaintenanceClient`** — a robot's Wi-Fi, its software, its Hugging Face
 ///   account and its caches all belong to a machine that does not exist.
-/// - **Recorded moves** — Hugging Face datasets the daemon fetches. `canPlayMoves`
-///   is `address != nil`, which stays false, so the screen is already right.
-public final class SimulatedRobotClient: RobotAPIClient, @unchecked Sendable {
-    /// What the handshake claims. 1.9.0 is this app's supported baseline, so
-    /// `DaemonCompatibilityPolicy` passes it without a warning — a simulator that
-    /// claimed a newer version would put a compatibility banner over itself.
+/// - **Recorded moves** — Hugging Face datasets the daemon fetches. This client
+///   conforms to `MovePlaybackClient` because parking and the power path need it,
+///   and answers `offersMoveLibrary` false, which is what keeps the screen right.
+public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
+    /// What the handshake claims. 1.9.0 is this app's minimum and sits below the
+    /// tested baseline, so `DaemonCompatibilityPolicy` passes it without a warning —
+    /// a simulator claiming a version newer than tested would banner itself.
     public static let daemonVersion = "1.9.0"
 
     private let lock = NSLock()
@@ -160,6 +161,25 @@ public final class SimulatedRobotClient: RobotAPIClient, @unchecked Sendable {
     public func stopMove(uuid: String) async throws {
         lock.withLock { _ = moveUUIDs.remove(uuid) }
     }
+
+    /// No daemon, so no Hugging Face and no datasets to fetch: the simulator moves
+    /// when it is driven, and a recorded dance is an asset a robot downloads.
+    public var offersMoveLibrary: Bool {
+        false
+    }
+
+    /// Never reached while `offersMoveLibrary` is false, and empty rather than
+    /// throwing if it ever is: there are no moves here, which is not a failure.
+    public func listMoves(dataset _: String) async throws -> [String] {
+        []
+    }
+
+    public func playMove(dataset _: String, move _: String) async throws -> String {
+        throw ReachyKitError.movesUnavailable
+    }
+
+    /// No media player either, so nothing is ever playing to be stopped.
+    public func stopSound() async throws {}
 
     public func urdf() async throws -> String {
         try geometry.urdf()

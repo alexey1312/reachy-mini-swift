@@ -6,7 +6,7 @@ import ReachyKit
 /// `RobotAPIClient` and `RobotAppsClient` both ship throwing defaults, so this
 /// only implements what a toggle actually touches — anything else throwing is the
 /// assertion that it was never called.
-final class StubAppsClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient, @unchecked Sendable {
     enum Call: Equatable {
         case currentAppStatus
         case stopCurrentApp

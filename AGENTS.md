@@ -310,6 +310,17 @@ They are wired now; the entries are here because each failure reads as something
   the scanner binary (it executes fine from either path) and was not identified; the shared-cache experiment is a
   dead end, not an unfinished idea. Probe readiness on `/api/daemon/status` — **there is no `/api/status`**, so a
   poll for it reports a healthy daemon as down.
+  **On 1.10.0 every start takes about five minutes and the WebRTC leg needs the open internet.** GStreamer's
+  external plugin scanner reports "External plugin loader failed" and the registry is scanned in-process instead;
+  1.10.0 carries four gstreamer wheels rather than one, so that scan is minutes of `dlopen` and the daemon binds
+  :8000 only at the end of it. Nothing caches it either: the second start costs the same as the first, measured
+  twice. Wait it out rather than
+  concluding the daemon is wedged: `sample <pid>` shows `gst_registry_scan_plugin_file`, which is work, not a hang. Separately, `test:sim`'s WebRTC case
+  ("negotiates up to the robot's SDP offer") times out at 60 s wherever **`turn.fastrtc.org`** does not resolve:
+  1.10.0 fetches short-lived Cloudflare TURN credentials from it before registering a producer, logs
+  `Failed to fetch TURN credentials`, and the listener waits for an offer that never comes. The other seven cases
+  pass. That is the daemon reaching the internet, not our client — the tell `mise.toml` names beside
+  `GST_PLUGIN_SCANNER`, `No caps found for stream audio_0`, is absent.
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both

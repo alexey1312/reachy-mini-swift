@@ -61,7 +61,6 @@ struct ViewportModelTests {
         #expect(model.content == .scene)
         #expect(model.sceneModel != nil)
         #expect(model.cameraSession == nil)
-        #expect(model.sceneUnavailableReason == nil)
         // No address, so no second socket for the direction-of-arrival badge —
         // which is right: there are no microphones either.
         #expect(model.hearing == nil)
@@ -129,7 +128,7 @@ struct ViewportModelTests {
         let camera = CameraSession.preview(.streaming)
         let model = ViewportModel()
         model.setActive(true)
-        model.attach(to: .remote(camera))
+        model.attach(to: .remote(camera, connection: .preview()))
 
         model.setActive(false)
 
@@ -143,7 +142,7 @@ struct ViewportModelTests {
         let camera = CameraSession.preview(.streaming)
         let model = ViewportModel()
         model.setActive(true)
-        model.attach(to: .remote(camera))
+        model.attach(to: .remote(camera, connection: .preview()))
 
         model.detach()
 
@@ -159,27 +158,28 @@ struct ViewportModelTests {
         let model = ViewportModel()
         model.setActive(true)
 
-        model.attach(to: .remote(camera))
+        model.attach(to: .remote(camera, connection: .preview()))
 
         #expect(model.cameraSession === camera)
         #expect(model.content == .camera)
     }
 
-    /// The URDF and the STL meshes are HTTP-only, so there is no 3D model to switch
-    /// to — and the switcher must not offer one.
-    @Test("a remote source offers no scene")
-    func remoteOffersNoScene() {
+    /// The URDF and the STL meshes are HTTP routes the relay cannot reach, so the
+    /// app carries them here as it does for the simulator. The switcher offers both
+    /// contents and lands on the camera, which is what a call is for.
+    @Test("a remote source offers the scene out of the app's own bundle")
+    func remoteOffersTheBundledScene() {
         let model = ViewportModel()
         model.setActive(true)
-        model.attach(to: .remote(.preview(.streaming)))
+        model.attach(to: .remote(.preview(.streaming), connection: .preview()))
 
-        #expect(!model.offersScene)
-        #expect(model.sceneUnavailableReason != nil)
+        #expect(model.offersScene)
+        #expect(model.content == .camera)
 
         model.setContent(.scene)
 
-        #expect(model.content == .camera)
-        #expect(model.sceneModel == nil)
+        #expect(model.content == .scene)
+        #expect(model.sceneModel != nil)
     }
 
     /// The pad over the 3D model is the simulator's alone. Every other source's
@@ -195,7 +195,7 @@ struct ViewportModelTests {
         model.attach(to: lan)
         #expect(!model.offersSceneTeleop)
 
-        model.attach(to: .remote(.preview(.streaming)))
+        model.attach(to: .remote(.preview(.streaming), connection: .preview()))
         #expect(!model.offersSceneTeleop)
 
         try model.attach(to: simulated())
@@ -212,7 +212,6 @@ struct ViewportModelTests {
         model.attach(to: lan)
 
         #expect(model.offersScene)
-        #expect(model.sceneUnavailableReason == nil)
         model.detach()
     }
 
@@ -223,7 +222,7 @@ struct ViewportModelTests {
         let camera = CameraSession.preview(.streaming)
         let model = ViewportModel()
         model.setActive(true)
-        model.attach(to: .remote(camera))
+        model.attach(to: .remote(camera, connection: .preview()))
 
         model.attach(to: lan)
 

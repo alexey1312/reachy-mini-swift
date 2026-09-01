@@ -7,7 +7,7 @@ import Testing
 /// the head wherever it happens to be.
 @Suite("Robot power", .timeLimit(.minutes(1)))
 struct RobotPowerTests {
-    private final class Client: RobotAPIClient, @unchecked Sendable {
+    private final class Client: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
         private let lock = NSLock()
         private var calls: [String] = []
         var running: Set<String> = []

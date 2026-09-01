@@ -7,7 +7,7 @@ import Testing
 @MainActor
 @Suite("Session snapshot", .timeLimit(.minutes(1)))
 struct RobotSessionSnapshotTests {
-    private final class Client: RobotAPIClient, @unchecked Sendable {
+    private final class Client: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
         let identity = RobotIdentity(hardwareID: "hw-widget", name: "kitchen", daemonVersion: "1.9.0")
         var motorMode: Components.Schemas.MotorControlMode = .enabled
 

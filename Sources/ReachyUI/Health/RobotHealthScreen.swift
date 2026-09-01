@@ -35,13 +35,19 @@ struct RobotHealthScreen: View {
     var body: some View {
         Form {
             controlLoopSection
+            motionSection
             systemSection
         }
         .formStyle(.grouped)
         .navigationTitle(.reachy("State"))
+        .refreshable {
+            guard !previewMode else { return }
+            await model.refreshIMU()
+        }
         .task {
             // A frozen preview must not open a socket.
             guard !previewMode else { return }
+            await model.refreshIMU()
             await model.start()
         }
         // Unlike the daemon's half, which rides a status the session fetches
@@ -121,6 +127,25 @@ struct RobotHealthScreen: View {
             // the operating system below is still worth the trip.
             Text(.reachy("This robot's backend reports no control loop."))
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - What the robot feels
+
+    /// Absent rather than empty on the three robots that report no IMU — a Lite
+    /// unit, the simulator and a relayed session. A section headed "Motion" over
+    /// two dashes would read as a sensor that broke.
+    @ViewBuilder
+    private var motionSection: some View {
+        if let imu = model.imu {
+            Section {
+                LabeledContent(.reachy("Lean"), value: HealthFormat.degrees(imu.tiltDegrees))
+                LabeledContent(.reachy("Sensor"), value: HealthFormat.celsius(imu.temperatureCelsius))
+            } header: {
+                Text(.reachy("Motion"))
+            } footer: {
+                Text(.reachy("Read when this screen opens, and again when you pull it down."))
+            }
         }
     }
 

@@ -376,6 +376,22 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
 - All robot interaction goes through `RobotSession` / `RobotBrowser` from ReachyKit — no direct URLSession here.
 - Screen logic belongs in a `@MainActor @Observable` model beside the view (`MovesModel`, `LogConsoleModel`), covered
   by `Tests/ReachyUITests`; the view stays thin. `@Observable` does honour `didSet`, so derived caches can live there.
+- **The threshold is a second step, not a second line.** A view earns a model when it coordinates a call that reads
+  something back (`WiFiSettingsModel.forget` re-reads the list), when it reports a failure to the user, or when it
+  derives text from what the robot said. Pure display state stays in the view's `@State`: which sheet is up, which
+  dialog is confirming, which disclosure is open — `WiFiSettingsCard` keeps `confirmingForgetAll` and `joining` and
+  nothing else. A model that only copies session properties buys nothing, which is why the many views reading
+  `session.snapshot` directly are right as they are.
+- **The seam is a closure with a default, not a protocol.** `WiFiJoinModel`, `WiFiSettingsModel` and
+  `RobotHFLinkModel` take `typealias Forget = @MainActor (RobotSession, String) async throws -> Void`, defaulted to
+  the session call. A test then drives the model with no stub client, and previews seed it through
+  `#if DEBUG static func preview(…)`. That costs less than a protocol and adds no conformance to `RobotSession`.
+  It also catches what a recorded image cannot: the second call, the `defer`, and the branch that must _not_ run —
+  `RobotHFLinkModelTests.doesNotRereadASkippedRelay`.
+- **A model reaches its view as an optional argument the init defaults.** `model: WiFiSettingsModel? = nil` with
+  `_model = State(initialValue: model ?? WiFiSettingsModel())`, and the init is `@MainActor`: a defaulted argument
+  whose value is main-actor-isolated compiles in the SwiftPM targets and not in the `Apps/` ones (`MaintenanceCard`
+  carries the same note). Adopting the argument into `@State` is also what makes the `.sheet` rule below survivable.
 - **A model must never be constructed inside a `.sheet` content closure.** SwiftUI re-runs that closure on every
   update of the view the sheet hangs off, so the model is silently replaced by a fresh, empty one — and `.task` does
   not run a second time, so nothing refills it. `RootSheets` hangs off `ReachyRootView`, whose body reads
@@ -551,7 +567,7 @@ haptic on.
 
 **An error is shown by the screen whose action caused it.** A daemon failure goes into the slot on that screen's
 model — `AppStoreModel.lastError`, `MovesModel.lastError`, `AudioSettingsModel.errorMessage`,
-`SystemUpdateModel.state`, `WiFiSettingsCard.loadFailure`, `HFAccountSection.linkError`. `RobotSession.robotError`
+`SystemUpdateModel.state`, `WiFiSettingsModel.loadFailure`, `RobotHFLinkModel.linkError`. `RobotSession.robotError`
 is **not** a fallback for anything: it holds the robot's connection and power, which are the only failures with no
 screen of their own, and `RobotScreen` / `ConnectionScreen` are its only readers. It used to be `lastError` and
 every funnel wrote to it, which is how an Apps failure — and before that a _cancelled_ Apps call — ended up printed

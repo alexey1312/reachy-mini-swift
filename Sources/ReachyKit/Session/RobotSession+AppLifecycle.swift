@@ -119,7 +119,8 @@ extension RobotSession {
     ///   to the throwing default in `RobotAPIClient`.
     private func returnToBase(client: any RobotAPIClient) async {
         guard isAwake, !isRemote, moveActivity == nil else { return }
-        _ = await recentre(client: client)
+        guard let moves = client as? any MovePlaybackClient else { return }
+        _ = await recentre(client: moves)
     }
 
     /// Notices an app letting go of the robot, from one reading to the next.

@@ -58,3 +58,10 @@ import SwiftUI
         linkError: "The daemon rejected the request (HTTP 400)"
     )
 }
+
+// Over the relay the robot half is one row and one button: the data channel carries
+// `delete_hf_token` and nothing else about the account, so "Linked" is inferred from
+// the session existing at all — central lists a robot only while it holds a token.
+#Preview("Hugging Face — robot over the relay") {
+    PreviewScene.hfAccountOverTheRelay()
+}

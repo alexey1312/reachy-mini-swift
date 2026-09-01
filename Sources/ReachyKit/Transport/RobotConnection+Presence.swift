@@ -22,6 +22,17 @@ public extension RobotConnection {
         }
     }
 
+    /// Where the tracker is aimed right now, or nil when it sees nobody.
+    ///
+    /// Cheap enough to poll: the daemon answers from a cached target the tracking
+    /// worker writes, so this reads a variable rather than a camera frame.
+    func trackedFace() async throws -> RobotFaceTarget? {
+        let payload = try await client
+            .getTrackedFaceApiMediaTrackingFaceGet()
+            .ok.body.json.additionalProperties.value
+        return RobotFaceTarget.decoded(from: payload)
+    }
+
     /// Daemon-side visual face tracking.
     ///
     /// - Returns: whether the robot is now tracking. Unlike wobbling this answer is

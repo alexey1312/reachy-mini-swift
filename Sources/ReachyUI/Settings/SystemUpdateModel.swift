@@ -32,13 +32,21 @@ final class SystemUpdateModel {
     /// WebSocket, the other waits out a real reboot. Injected by tests only.
     private let makeEvents: (String) throws -> AsyncStream<UpdateLogEvent>
     private let reconnect: () async -> String?
+    /// How long `settleJob` waits between probes, and how long it keeps probing. The
+    /// budget is generous because it bounds a wedged daemon, not a normal install.
+    private let jobPollInterval: Duration
+    private let jobPollBudget: Duration
 
     init(
         session: RobotSession,
         events: ((String) throws -> AsyncStream<UpdateLogEvent>)? = nil,
-        reconnect: (() async -> String?)? = nil
+        reconnect: (() async -> String?)? = nil,
+        jobPollInterval: Duration = .seconds(3),
+        jobPollBudget: Duration = .seconds(20 * 60)
     ) {
         self.session = session
+        self.jobPollInterval = jobPollInterval
+        self.jobPollBudget = jobPollBudget
         makeEvents = events ?? { [session] jobID in try session.updateLog(jobID: jobID) }
         self.reconnect = reconnect ?? { [session] in await session.reconnectAfterUpdate() }
     }
@@ -100,8 +108,67 @@ final class SystemUpdateModel {
             return
         }
 
-        state = .restarting
-        await confirmRestart(from: current)
+        await finish(settleJob(jobID), from: current)
+    }
+
+    private func finish(_ outcome: JobOutcome, from current: String) async {
+        switch outcome {
+        case .restarted:
+            state = .restarting
+            await confirmRestart(from: current)
+        case .stillRunning, .cancelled, .failed:
+            // `stillRunning` leaves `installing` on screen, which is what is true:
+            // announcing a restart here blamed the release for a job still going.
+            return
+        }
+    }
+
+    /// What the closed socket turned out to mean.
+    private enum JobOutcome {
+        /// The register cannot be reached, or says the job is over — the daemon
+        /// went down, which is the ordinary ending.
+        case restarted
+        /// Still running past the budget.
+        case stillRunning
+        /// The screen went away. A cancelled call leaves the state exactly as it
+        /// was, the rule ``fail(on:)`` keeps and this path used to break by
+        /// telling the user to power-cycle a robot mid-install.
+        case cancelled
+        /// The daemon reported a failure and `state` already says so.
+        case failed
+    }
+
+    /// Whether the closed socket really was the daemon going down.
+    ///
+    /// `RobotSession.updateInfo` can never confirm success — the restart takes the
+    /// in-memory job register with it — but it answers the other question: is the
+    /// job still running? A Wi-Fi blip closes the same socket a restart does, and
+    /// without this the screen announced a restart that never happened and then
+    /// blamed the release for a version that had not moved.
+    ///
+    /// An unreachable daemon is the ordinary ending and keeps the old behaviour.
+    /// So does a status this client does not recognise: the socket stays the end
+    /// signal wherever the register says nothing useful.
+    private func settleJob(_ jobID: String) async -> JobOutcome {
+        let deadline = ContinuousClock.now + jobPollBudget
+        while ContinuousClock.now < deadline {
+            guard !Task.isCancelled else { return .cancelled }
+            guard let job = try? await session.updateInfo(jobID: jobID) else { return .restarted }
+            switch job.status {
+            case .failed:
+                state = .failed(String(localized: .reachy("The robot reported that the update failed.")))
+                return .failed
+            case .pending, .inProgress:
+                do {
+                    try await Task.sleep(for: jobPollInterval)
+                } catch {
+                    return .cancelled
+                }
+            case .done, .unknown:
+                return .restarted
+            }
+        }
+        return .stillRunning
     }
 
     private func confirmRestart(from previous: String) async {

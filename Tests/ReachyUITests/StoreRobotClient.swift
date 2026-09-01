@@ -7,7 +7,7 @@ import Testing
 /// of them installed under a different name.
 ///
 /// Internal rather than private: `AppStoreCacheTests` needs the same robot.
-final class StoreRobotClient: RobotAPIClient, RobotAppsClient, HFAuthClient, @unchecked Sendable {
+final class StoreRobotClient: RobotAPIClient, MovePlaybackClient, RobotAppsClient, HFAuthClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var started: [String] = []
     private(set) var stopCalls = 0
@@ -51,6 +51,8 @@ final class StoreRobotClient: RobotAPIClient, RobotAppsClient, HFAuthClient, @un
     func runningMoveUUIDs() async throws -> Set<String> {
         []
     }
+
+    func deleteHFToken() async throws {}
 
     func hfAuthStatus() async throws -> HFAuthStatus {
         hfStatus

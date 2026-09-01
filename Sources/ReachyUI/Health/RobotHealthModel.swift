@@ -33,6 +33,9 @@ final class RobotHealthModel {
         case failed(String)
     }
 
+    /// Optional so that a relayed session — which has no address to dial —
+    /// constructs a model that is honest about having nothing to offer, rather than
+    /// one holding a file system it can never connect.
     private let files: (any RobotFileSystem)?
     private let credentials: any SSHCredentialStore
     private let robot: String
@@ -43,13 +46,16 @@ final class RobotHealthModel {
     private(set) var phase: Phase
     private(set) var system = LinuxSystemSnapshot()
     private(set) var loop: ControlLoopStats?
+    /// What the robot feels. Nil on a Lite unit, in simulation and over the relay —
+    /// see ``RobotIMUReading`` for why absent is an ordinary answer here.
+    private(set) var imu: RobotIMUReading?
 
     private(set) var frequency = MetricSeries()
     private(set) var cpu = MetricSeries()
     private(set) var memory = MetricSeries()
     private(set) var temperature = MetricSeries()
 
-    /// The password field. Not `private(set)`: the sign-in form binds to it.
+    /// Not `private(set)`: the sign-in form binds to both of these.
     var username: String
     var password = ""
 
@@ -63,14 +69,17 @@ final class RobotHealthModel {
     /// is the same slot, and both fill it through `SSHPasswordForm`.
     private(set) var lastError: String?
 
+    private let readIMUCall: ReadIMU
     private var reader: SystemMetricsReader?
     private var sampling: Task<Void, Never>?
     private var hasLoadedCredentials = false
 
-    /// `files` is optional so that a relayed session — which has no address to dial
-    /// — constructs a model that is honest about having nothing to offer, rather
-    /// than one holding a file system it can never connect.
+    /// Injected rather than reached through the session, so a preview can seed a
+    /// lean without a robot to tilt.
+    typealias ReadIMU = @MainActor () async throws -> RobotIMUReading?
+
     init(
+        readIMU: @escaping ReadIMU = { nil },
         files: (any RobotFileSystem)? = nil,
         credentials: any SSHCredentialStore = KeychainSSHCredentialStore(),
         robot: String = "",
@@ -78,6 +87,7 @@ final class RobotHealthModel {
         port: Int = SSHCredentials.defaultPort,
         interval: Duration = .seconds(5)
     ) {
+        readIMUCall = readIMU
         self.files = files
         self.credentials = credentials
         self.robot = robot
@@ -113,6 +123,23 @@ final class RobotHealthModel {
     func record(loop: ControlLoopStats?) {
         self.loop = loop
         frequency.append(loop?.frequencyHz)
+    }
+
+    /// Read when the screen opens and when the reader pulls, rather than on a
+    /// clock. Nothing here changes on a schedule: the robot leans over when
+    /// somebody moves it, and its sensor warms over minutes.
+    ///
+    /// A failed read leaves the last one standing. The daemon spells "no IMU" and
+    /// "stale" the same way it spells "here is a reading", so blanking on a refused
+    /// call would turn a network blip into a missing sensor.
+    func refreshIMU() async {
+        do {
+            // A read that answered nil is a robot with no IMU, and that clears the
+            // row. Only a read that *failed* leaves the last one standing.
+            imu = try await readIMUCall()
+        } catch {
+            _ = RobotSession.message(for: error)
+        }
     }
 
     // MARK: - The operating system's half
@@ -293,9 +320,14 @@ final class RobotHealthModel {
                 errorCount: 0,
                 motorController: "ControlLoopStats(period=~20.02ms, read_dt=~1.95 ms, write_dt=~0.44 ms)"
             ),
-            history: Bool = true
+            history: Bool = true,
+            imu: RobotIMUReading? = nil
         ) -> RobotHealthModel {
-            let model = RobotHealthModel(files: phase == .unavailable ? nil : PreviewFileSystem())
+            let model = RobotHealthModel(
+                readIMU: { imu },
+                files: phase == .unavailable ? nil : PreviewFileSystem()
+            )
+            model.imu = imu
             model.phase = phase
             model.system = system
             model.loop = loop

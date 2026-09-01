@@ -45,8 +45,10 @@ final class ViewportModel {
         case lan(RobotAddress)
         /// A relay session. The camera is the peer connection that is *already up*
         /// and carrying the robot's commands, so this model borrows it and must
-        /// never stop it. There is no HTTP API here, so there is no scene.
-        case remote(CameraSession)
+        /// never stop it. The connection rides along because the scene is reachable
+        /// here too — out of the app's own bundle, with the pose off the data
+        /// channel rather than from a socket that does not exist.
+        case remote(CameraSession, connection: RemoteRobotConnection)
         /// A simulator in this very process. It is its own geometry server and its
         /// own state stream, so the scene needs nothing but the object; there is no
         /// camera, because there is nothing to point one at.
@@ -57,7 +59,12 @@ final class ViewportModel {
     }
 
     private(set) var content: Content = .scene
-    private(set) var sceneModel: RobotSceneModel?
+    /// Not `private(set)`: the relay's half lives in a sibling file, and a private
+    /// setter is scoped to this one — the same reason `RobotSession` gives for its
+    /// own.
+    var sceneModel: RobotSceneModel?
+    /// Shared between the scene and the hearing indicator; see `remotePoseStream`.
+    var poseStream: RemotePoseStream?
     private(set) var cameraSession: CameraSession?
     /// Where the robot last heard a voice.
     ///
@@ -68,9 +75,12 @@ final class ViewportModel {
     /// `RobotSceneModel`, which already receives the frames, would have made it a
     /// property of the 3D tab.
     ///
-    /// Nil over the relay: no HTTP API means no state stream, the same reason there
-    /// is no scene there.
-    private(set) var hearing: DirectionOfArrivalModel?
+    /// Nil where nothing carries a direction: a simulator, which has no
+    /// microphones, and a robot on a daemon before 1.10.0, which puts none in the
+    /// state it pushes. The relay used to be on that list and is not any more.
+    ///
+    /// Settable from the sibling file for the reason `sceneModel` is.
+    var hearing: DirectionOfArrivalModel?
     /// Set when a transport could not even be constructed — a bad address, not a
     /// failure to reach the robot.
     private(set) var setupError: String?
@@ -111,11 +121,12 @@ final class ViewportModel {
     }
 
     /// Which sources have a 3D model at all: the switcher is not what decides
-    /// whether to offer one — the source is. Only the relay has none.
+    /// whether to offer one — the source is. Every source has one now, the relay
+    /// included, which draws from the app's own bundled geometry.
     var offersScene: Bool {
         switch source {
-        case .lan, .simulated: true
-        case .remote, nil: false
+        case .lan, .simulated, .remote: true
+        case nil: false
         }
     }
 
@@ -132,16 +143,6 @@ final class ViewportModel {
         case .simulated: true
         case .lan, .remote, nil: false
         }
-    }
-
-    /// Why there is no 3D model, where there is a reason rather than a wait.
-    var sceneUnavailableReason: String? {
-        guard case .remote = source else { return nil }
-        return String(
-            localized: .reachy(
-                "The robot's 3D description is served over its own network, which a relay session cannot reach."
-            )
-        )
     }
 
     /// Re-attaching to the same source is a no-op, so a SwiftUI redraw cannot
@@ -170,6 +171,7 @@ final class ViewportModel {
         // held reading would be the previous one's.
         stopHearing()
         hearing = nil
+        poseStream = nil
         source = nil
         setupError = nil
     }
@@ -200,17 +202,23 @@ final class ViewportModel {
         // Outside the switch on purpose: it is wanted under both contents, and the
         // one thing that decides it is whether this connection has a state stream
         // at all.
-        if case let .lan(address) = source {
+        switch source {
+        case let .lan(address):
             startHearing(at: address)
+        case let .remote(camera, connection):
+            startRemoteHearing(connection, camera: camera)
+        case .simulated:
+            // The simulator publishes its own state and has no microphones to
+            // report a direction from.
+            break
         }
         switch (content, source) {
         case let (.scene, .lan(address)):
             stopCamera()
             startScene(at: address)
-        case (.scene, .remote):
-            // Nothing to start. `sceneUnavailableReason` is what the view renders,
-            // rather than a spinner that would never resolve.
-            break
+        case let (.scene, .remote(camera, connection)):
+            stopCamera()
+            startRemoteScene(connection, camera: camera)
         case let (.camera, .lan(address)):
             // Paused rather than stopped: the meshes stay in memory, so coming
             // back to 3D does not re-download the robot's description.
@@ -226,7 +234,7 @@ final class ViewportModel {
             // arm exists because a source change must not be able to land here
             // silently.
             break
-        case let (.camera, .remote(session)):
+        case let (.camera, .remote(session, _)):
             // Already running — `RemoteRobotLink` started it, and it is the same
             // connection the commands are on. Adopted, never started or stopped.
             cameraSession = session
@@ -317,7 +325,9 @@ extension ViewportModel.Source: Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case let (.lan(lhs), .lan(rhs)): lhs == rhs
-        case let (.remote(lhs), .remote(rhs)): lhs === rhs
+        // The camera decides identity: the connection is the same peer's, so two
+        // sources naming one camera are one source.
+        case let (.remote(lhs, _), .remote(rhs, _)): lhs === rhs
         case let (.simulated(lhs), .simulated(rhs)): lhs === rhs
         default: false
         }

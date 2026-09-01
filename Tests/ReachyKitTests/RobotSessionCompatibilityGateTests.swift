@@ -142,3 +142,25 @@ struct RobotSessionCompatibilityGateTests {
         #expect(requirement(of: session) == nil)
     }
 }
+
+@MainActor
+@Suite("Pre-release channel readiness")
+struct PreReleaseReadinessTests {
+    @Test("a daemon below 1.10.0 has the beta channel closed to it")
+    func closedBelowTheRankingFix() {
+        let session = RobotSession.preview(status: .preview(version: "1.9.0"))
+        #expect(session.lastStatus?.version == "1.9.0")
+        #expect(session.refusesPreReleaseUpdates)
+    }
+
+    @Test("1.10.0 and its release candidates can take a pre-release", arguments: ["1.10.0", "1.10.0rc5", "1.11.0"])
+    func openFromTheRankingFix(version: String) {
+        #expect(RobotSession.preview(status: .preview(version: version)).refusesPreReleaseUpdates == false)
+    }
+
+    /// A daemon that reported no version is not evidence of an old one.
+    @Test("an unreported version keeps the channel open")
+    func openWithoutAVersion() {
+        #expect(RobotSession.preview(status: .preview()).refusesPreReleaseUpdates == false)
+    }
+}

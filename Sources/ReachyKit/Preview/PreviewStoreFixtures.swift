@@ -206,6 +206,9 @@ import ReachyJSON
             try await base.gotoSleep()
         }
 
+        /// Accepted and does nothing: there is no robot here to take a token from.
+        public func deleteHFToken() async throws {}
+
         public func hfAuthStatus() async throws -> HFAuthStatus {
             account
         }

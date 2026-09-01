@@ -4,6 +4,38 @@ import Testing
 
 /// A daemon that is already reachable — the shape a remote session arrives in,
 /// where the transport was built before the session ever saw it.
+/// The relay's actual apps shape: `apps.status`, `apps.start` and `apps.stop` on the
+/// data channel, and no catalogue route. This is the only client where the two apps
+/// flags disagree, which is the whole reason they are two.
+private final class RunningAppOnlyClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+    let identity = RobotIdentity(hardwareID: "hw-relay", name: "kitchen", daemonVersion: "1.10.0")
+    private let version: String?
+
+    init(version: String? = "1.10.0") {
+        self.version = version
+    }
+
+    var offersAppStore: Bool {
+        false
+    }
+
+    func handshake() async throws -> RobotConnection.Handshake {
+        try await RobotConnection.Handshake(identity: identity, status: daemonStatus())
+    }
+
+    func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
+        .preview(state: .running, wirelessVersion: false, version: version)
+    }
+
+    func wakeUp() async throws -> String {
+        ""
+    }
+
+    func gotoSleep() async throws -> String {
+        ""
+    }
+}
+
 private final class SuppliedClient: RobotAPIClient, @unchecked Sendable {
     let identity = RobotIdentity(hardwareID: "hw-remote", name: "kitchen", daemonVersion: "1.9.0")
     private let handshakeFailure: (any Error)?
@@ -139,7 +171,9 @@ struct RobotSessionRemoteConnectTests {
         #expect(!session.canConfigureWiFi)
         #expect(!session.canUpdateDaemon)
         #expect(!session.canLinkHuggingFace)
-        #expect(!session.canRenderScene)
+        // The one that moved: the scene needs a shape and a pose, and neither has
+        // to come off the robot's own network any more.
+        #expect(session.canRenderScene)
         #expect(!session.canPlayMoves)
         // `SuppliedClient` is a bare `RobotAPIClient`, so it speaks neither of the
         // two new protocols — `RemoteRobotConnection` is what conforms, and its own
@@ -147,6 +181,44 @@ struct RobotSessionRemoteConnectTests {
         // rather than the address.
         #expect(!session.canReadDaemonLogs)
         #expect(!session.canTeleoperate)
+    }
+
+    /// The two apps flags read the same client and must still disagree: conformance
+    /// answers "the running app can be watched", `offersAppStore` answers "there is
+    /// a catalogue". Every double in the repository takes the protocol default for
+    /// the second, so without this client the two are indistinguishable and either
+    /// one can be reverted into the other with the suite still green.
+    @Test("the relay can watch the running app without offering a store")
+    func separatesTheStoreFromTheRunningApp() async {
+        let session = session()
+
+        await session.connect(using: RunningAppOnlyClient())
+
+        #expect(!session.canManageApps)
+        #expect(session.canControlRunningApp)
+    }
+
+    /// `apps.*` arrived in daemon 1.10.0 and 1.9.0 is still the minimum, so a
+    /// relayed robot on the older one carries the conformance and answers none of
+    /// the three. Polling it costs a full reply budget per tick and reports nothing.
+    @Test("a relayed daemon older than the commands is not offered them")
+    func withholdsRelayCommandsFromAnOlderDaemon() async {
+        let session = session()
+
+        await session.connect(using: RunningAppOnlyClient(version: "1.9.0"))
+
+        #expect(!session.canControlRunningApp)
+    }
+
+    /// Withheld on evidence, never on the absence of it: a version this client
+    /// cannot read leaves the feature offered rather than hidden.
+    @Test("an unreadable version leaves the relay commands offered")
+    func offersRelayCommandsWhenTheVersionIsUnknown() async {
+        let session = session()
+
+        await session.connect(using: RunningAppOnlyClient(version: nil))
+
+        #expect(session.canControlRunningApp)
     }
 
     /// A LAN session is the control: the same flags, answered the other way.

@@ -200,7 +200,13 @@ extension RobotSession {
     /// Polls the daemon's authoritative running-move list until `uuid` is gone.
     /// A timeout returns normally: parking the motors matters more than proof
     /// that the animation ran to completion.
+    ///
+    /// A transport that cannot list moves cannot wait for one either, and returns
+    /// at once — which is right rather than a shortcut: such a transport answers
+    /// `wake_up` only once the animation has finished, so there is nothing left to
+    /// wait for by the time this could be called. `RobotPower` keeps the same guard.
     func waitForMoveToFinish(_ uuid: String, client: any RobotAPIClient) async {
+        guard let client = client as? any MovePlaybackClient else { return }
         let deadline = ContinuousClock.now + configuration.moveCompletionTimeout
         while ContinuousClock.now < deadline, !Task.isCancelled {
             try? await Task.sleep(for: configuration.movePollInterval)

@@ -13,5 +13,11 @@
         public func setFaceTracking(_ enabled: Bool, weight _: Double) async throws -> Bool {
             enabled
         }
+
+        /// Nobody in front of a preview's camera. The states worth drawing are seeded
+        /// on `PresenceModel` itself, which is where the poll's answer lands.
+        public func trackedFace() async throws -> RobotFaceTarget? {
+            nil
+        }
     }
 #endif

@@ -59,6 +59,18 @@ public final class CameraSession {
     /// right there and says more.
     public let dataChannel = WebRTCDataChannel()
 
+    /// The robot's pose, pushed rather than asked for.
+    ///
+    /// Daemon 1.10.0 opens a second channel labelled `pose` and, once subscribed,
+    /// writes the state snapshot to it at about 30 Hz. It is deliberately
+    /// unreliable and unordered — a dropped frame is replaced a thirtieth of a
+    /// second later, and waiting for it would be worse than missing it — which is
+    /// exactly why it is not carried on the control channel.
+    ///
+    /// Separate from ``dataChannel`` and not a replacement: commands still go over
+    /// `data`, where a lost frame would matter.
+    public let poseChannel = WebRTCDataChannel()
+
     /// Not `.streaming` for this long after an offer → drop and re-negotiate (upstream value).
     private static let streamTimeout: Duration = .seconds(10)
 
@@ -123,6 +135,7 @@ public final class CameraSession {
         guard let eventsTask else { return }
         eventsTask.cancel()
         dataChannel.close()
+        poseChannel.close()
         let signaling = signaling
         Task { await signaling.disconnect() }
         Task { @MainActor in MediaAudioSession.shared.cameraSessionStopped() }
@@ -153,6 +166,7 @@ public final class CameraSession {
         eventsTask = nil
         teardownPeer()
         dataChannel.close()
+        poseChannel.close()
         MediaAudioSession.shared.cameraSessionStopped()
         phase = .connecting
         let signaling = signaling
@@ -210,10 +224,12 @@ public final class CameraSession {
                 return
             }
             dataChannel.close()
+            poseChannel.close()
             phase = .failed(RemoteSessionEnd(reason: reason).message)
         case let .failed(message):
             teardownPeer()
             dataChannel.close()
+            poseChannel.close()
             phase = .failed(message)
         }
     }
@@ -319,17 +335,26 @@ public final class CameraSession {
         }
     }
 
-    /// The robot opens exactly one channel and labels it `"data"`; anything else
-    /// is not the daemon's control surface and is left alone.
+    /// The robot opens two: `data` for commands and `pose` for the live state it
+    /// pushes. Anything else belongs to neither and is left alone.
+    ///
+    /// A daemon before 1.10.0 opens only the first, which is why the pose channel
+    /// is allowed to stay unattached rather than being waited for. `isOpen` is what
+    /// a caller reads to choose between the pushed pose and the polled one — see
+    /// `ViewportModel.remotePose`.
     func adopt(_ channel: RTCDataChannel) {
-        guard channel.label == "data" else { return }
-        dataChannel.attach(channel)
+        switch channel.label {
+        case "data": dataChannel.attach(channel)
+        case "pose": poseChannel.attach(channel)
+        default: return
+        }
     }
 
     private func teardownPeer() {
         watchdogTask?.cancel()
         watchdogTask = nil
         dataChannel.detachPeer()
+        poseChannel.detachPeer()
         peerConnection?.close()
         peerConnection = nil
         delegateAdapter = nil

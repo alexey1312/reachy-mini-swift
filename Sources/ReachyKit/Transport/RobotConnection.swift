@@ -289,6 +289,28 @@ public actor RobotConnection {
         _ = try await client.stopSoundApiMediaStopSoundPost().ok
     }
 
+    /// The robot's inertial reading.
+    ///
+    /// Nil for the three answers that are not failures: a Lite unit and the
+    /// simulator have no BMI088, and a wireless robot whose cached reading has gone
+    /// stale reports none either. The daemon spells all three `null`, which the
+    /// generated client cannot decode into a required-field struct — so a decoding
+    /// failure here is that null and nothing else, and it is reported as absence.
+    ///
+    /// Only the decode is forgiven. A 503 from a restarting daemon escapes as an
+    /// error, because swallowing it made a robot that has an IMU read exactly like
+    /// a Lite unit that has none — on the one screen whose job is saying which.
+    public func imuReading() async throws -> RobotIMUReading? {
+        let response = try await client.getImuApiStateImuGet()
+        guard let payload = try? response.ok.body.json else { return nil }
+        return RobotIMUReading(
+            accelerometer: payload.accelerometer,
+            gyroscope: payload.gyroscope,
+            quaternion: payload.quaternion,
+            temperatureCelsius: payload.temperature
+        )
+    }
+
     // MARK: Audio levels
 
     public func volume() async throws -> AudioLevel {

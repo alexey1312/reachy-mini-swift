@@ -42,7 +42,7 @@ struct AppsUnavailableView: View {
             String(
                 localized: .reachy(
                     // swiftlint:disable:next line_length
-                    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network as the robot to install and start apps."
+                    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network to browse and install. An app already running still shows below, and can be stopped there."
                 )
             )
         } else {

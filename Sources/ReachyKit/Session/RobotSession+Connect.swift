@@ -88,9 +88,13 @@ public extension RobotSession {
             self.client = client
             lastStatus = handshake.status
             compatibilityWarning = handshake.compatibility.warningMessage
-            // A property of the daemon, not of how it was reached, so it is set for
-            // a remote session too — where the answer is simply always no.
+            // A property of the daemon, not of how it was reached. The relay's
+            // handshake reports false because no HTTP route answers there, and
+            // daemon 1.10.0 put `set_robot_name` on the data channel — so the
+            // transport is the second half of the answer, and the version is the
+            // third: an older relayed daemon has no such command.
             supportsRename = handshake.supportsRename
+                || (client is any RobotRenameClient && !predatesRelayCommands)
             if case let .lan(address) = link {
                 KnownRobots.lastAddress = address
                 KnownRobots.remember(identity: handshake.identity, address: address)
@@ -239,10 +243,10 @@ extension RobotSession {
         recordSnapshot(identity: identity)
         startPolling(identity: identity)
         startPathMonitor(identity: identity)
-        if let client {
+        if let moves = movesClient {
             // Off the connect path on purpose: adopting a move the robot was
             // already playing is worth one round trip, but not a slower gate.
-            restoreActiveMove(client: client)
+            restoreActiveMove(client: moves)
         }
         return true
     }
