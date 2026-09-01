@@ -73,12 +73,12 @@ developer side of the same project.
 </p>
 
 <p align="center">
-  <a href="https://github.com/alexey1312/reachy-mini-swift/raw/main/docs/media/demo.mp4">
-    <img src="docs/media/demo-poster.jpg" width="320" alt="One minute with a live Reachy Mini Wireless" />
+  <a href="https://alexey1312.github.io/reachy-mini-swift/#demo">
+    <img src="docs/media/demo.gif" width="400" alt="A Reachy Mini Wireless moving while the 3D twin on the iPad follows it" />
   </a>
 </p>
 
-<p align="center"><em>One minute with a Reachy Mini Wireless on a desk — <a href="https://github.com/alexey1312/reachy-mini-swift/raw/main/docs/media/demo.mp4">watch it</a>.</em></p>
+<p align="center"><em>Eight seconds from the desk — the <a href="https://alexey1312.github.io/reachy-mini-swift/#demo">full minute plays on the site</a>.</em></p>
 
 ## Try it
 
