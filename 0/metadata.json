@@ -1,0 +1,135 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DYS82KQVTFRPNYCB3C1HHK",
+  "session_id": "7445c067-9172-47bb-8e80-24e5890a0c5e",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T07:43:50.818277Z",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 6,
+  "save_step_count": 7,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-moves-tab-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-moves-tab-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-moves-tab-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/ReachyRootViewPreviewsTests.generated/Root-relay-moves-tab-iPhone-16-Pro.1.png",
+    "Sources/ReachyKit/Central/RemoteRobotConnection.swift",
+    "Sources/ReachyKit/Preview/PreviewFixtures.swift",
+    "Sources/ReachyKit/Session/MovePlaybackClient.swift",
+    "Sources/ReachyKit/Session/RobotSession+Moves.swift",
+    "Sources/ReachyKit/Session/RobotSession+Readiness.swift",
+    "Sources/ReachySimulator/SimulatedRobotClient.swift",
+    "Sources/ReachyUI/Previews/MovesScreenPreviews.swift",
+    "Tests/ReachyKitTests/RemoteRobotConnectionTests.swift",
+    "Tests/ReachyUITests/MovesCacheTests.swift",
+    "Tests/ReachyUITests/MovesModelTests.swift"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "4e27a7d6bd69",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1320,
+    "cache_creation_tokens": 1824595,
+    "cache_read_tokens": 357107969,
+    "output_tokens": 417800,
+    "api_call_count": 660,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-claude-code-goal-2026-09-01T05:29:36.699695Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "goal"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "dc25e0a4cb4c",
+      "timestamp": "2026-09-01T05:29:36.699695Z",
+      "native": {
+        "command": "/goal"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/goal",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 34
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T07:43:50.456732Z",
+    "agent_lines": 232,
+    "agent_removed": 43,
+    "human_added": 24,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 256,
+    "total_lines_changed": 299,
+    "agent_percentage": 91.9732441471572,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 216,
+      "agent_lines_removed": 34
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 228,
+      "agent_lines_removed": 36
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 227,
+      "agent_lines_removed": 47
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 227,
+      "agent_lines_removed": 47
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 233,
+      "agent_lines_removed": 48
+    }
+  ]
+}
