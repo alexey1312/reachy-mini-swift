@@ -1,0 +1,59 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1EGY05V6KWXYV09PP3Z00Z5",
+  "strategy": "manual-commit",
+  "branch": "claude/mvvm-architecture-review-5934c8",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/System-update-pre-release-refused-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/System-update-pre-release-refused-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/System-update-pre-release-refused-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/System-update-pre-release-refused-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-networks-found-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-networks-found-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-networks-found-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-networks-found-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-refused-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-refused-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-refused-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-refused-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scan-failed-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scan-failed-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scan-failed-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scan-failed-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scanning-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scanning-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scanning-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-scanning-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sending-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sending-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sent-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sent-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sent-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-sent-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-typed-name-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-typed-name-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-typed-name-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-typed-name-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-uncertain-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-uncertain-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-uncertain-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/SettingsPreviewsTests.generated/Wi-Fi-join-uncertain-iPhone-16-Pro.1.png"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 228,
+    "cache_creation_tokens": 573191,
+    "cache_read_tokens": 28282793,
+    "output_tokens": 106202,
+    "api_call_count": 114
+  }
+}

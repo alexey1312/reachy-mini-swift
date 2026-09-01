@@ -1,0 +1,105 @@
+https://www.avanderlee.com/swiftui/mvvm-architectural-coding-pattern-to-structure-views/
+Изучи данную статью
+Прими во внимание https://github.com/alexey1312/reachy-mini-swift/pull/117
+Что стоит сделать в проекте?
+
+---
+
+<task-notification>
+<task-id>b3ryh2bmk</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/b3ryh2bmk.output</output-file>
+<status>completed</status>
+<summary>Background command "Run the snapshot suite" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b6f2ge4ua</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/b6f2ge4ua.output</output-file>
+<status>failed</status>
+<summary>Background command "Re-run the full snapshot suite" failed with exit code 65</summary>
+</task-notification>
+
+---
+
+готово?
+
+---
+
+<task-notification>
+<task-id>b1vut5ii6</task-id>
+<tool-use-id>toolu_016H5sEZovE19uvbNzXh5BRu</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/b1vut5ii6.output</output-file>
+<status>completed</status>
+<summary>Background command "Targeted snapshot run for the changed views" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Подтяни последние изменения из remoute
+Прогони тесты (возможно перепишутся) затем комить и пуш в туже ветку
+
+---
+
+<task-notification>
+<task-id>bma0nrefo</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/bma0nrefo.output</output-file>
+<status>completed</status>
+<summary>Background command "Full snapshot comparison run" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Погоди, сейчас точно подлились изменения
+
+---
+
+https://github.com/alexey1312/reachy-mini-swift/pull/117
+
+---
+
+<task-notification>
+<task-id>bjt44dyi9</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/bjt44dyi9.output</output-file>
+<status>failed</status>
+<summary>Background command "Lint then full snapshot run on the new base" failed with exit code 65</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bg5lhp8ff</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/bg5lhp8ff.output</output-file>
+<status>completed</status>
+<summary>Background command "Baseline: run SettingsPreviewsTests on clean upstream" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Чини снепшоты
+
+---
+
+<task-notification>
+<task-id>bhmk40yd5</task-id>
+<tool-use-id>toolu_01F9WcCy1bN1sEhFWQcuFa33</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/bhmk40yd5.output</output-file>
+<status>failed</status>
+<summary>Background command "Re-record the missing references" failed with exit code 65</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b65pt3b46</task-id>
+<tool-use-id>toolu_019FSRdy2QJ4gKxWXbRdKydu</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-mvvm-architecture-review-5934c8/23895aae-745a-4978-a0ff-d73aef9e1417/tasks/b65pt3b46.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify the whole snapshot suite is green" completed (exit code 0)</summary>
+</task-notification>
