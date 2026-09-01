@@ -27,6 +27,40 @@
     "output_tokens": 32045,
     "api_call_count": 26
   },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01UpD9hxBpkZTeMw2f8DB3Gu",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "claude-in-chrome"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "23bfadb52917",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 276,
+        "end": 277,
+        "entry_ids": [
+          "9733ec8c-223d-43ab-894d-a4a4cecf04d0"
+        ],
+        "tool_use_id": "toolu_01UpD9hxBpkZTeMw2f8DB3Gu"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01UpD9hxBpkZTeMw2f8DB3Gu"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: claude-in-chrome",
+        "default_collapsed": true
+      }
+    }
+  ],
   "session_metrics": {
     "turn_count": 2
   },
