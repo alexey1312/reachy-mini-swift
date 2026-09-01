@@ -201,6 +201,29 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
         )
     }
 
+    /// One pose reading, for a viewer that has no socket to open.
+    ///
+    /// Built by hand rather than decoded: `StateSnapshot` and the WebSocket frame
+    /// name the same values differently — `antennas` against `antennas_position`,
+    /// a nested 4x4 against a flat sixteen — so this is a translation, and
+    /// ``RobotStateFrame``'s public initialiser exists for producers like this one.
+    ///
+    /// Nil where the robot sent no pose at all, which is a robot with its backend
+    /// down rather than an error to report.
+    public func stateFrame() async throws -> RobotStateFrame? {
+        let state = try await control.perform(
+            "get_state",
+            correlation: .replyKey("state"),
+            expecting: StateReply.self
+        ).state
+        guard state.headPose != nil || state.bodyYaw != nil || state.antennas != nil else { return nil }
+        return RobotStateFrame(
+            bodyYaw: state.bodyYaw,
+            antennas: state.antennas,
+            headPose: state.headPose.map { .matrix($0.flatMap(\.self)) }
+        )
+    }
+
     public func deleteHFToken() async throws {
         try await control.perform("delete_hf_token")
     }
@@ -278,9 +301,20 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
 
         struct State: Decodable {
             let motorMode: String
+            /// Row-major 4x4, as `StateSnapshot` sends it — nested rather than the
+            /// flat sixteen the WebSocket stream carries under `m`.
+            let headPose: [[Double]]?
+            let bodyYaw: Double?
+            /// `(left, right)`, radians. Named `antennas` here and
+            /// `antennas_position` on the socket, which is why neither reply can be
+            /// decoded straight into ``RobotStateFrame``.
+            let antennas: [Double]?
 
             enum CodingKeys: String, CodingKey {
                 case motorMode = "motor_mode"
+                case headPose = "head_pose"
+                case bodyYaw = "body_yaw"
+                case antennas
             }
         }
     }

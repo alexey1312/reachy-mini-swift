@@ -139,7 +139,9 @@ struct RobotSessionRemoteConnectTests {
         #expect(!session.canConfigureWiFi)
         #expect(!session.canUpdateDaemon)
         #expect(!session.canLinkHuggingFace)
-        #expect(!session.canRenderScene)
+        // The one that moved: the scene needs a shape and a pose, and neither has
+        // to come off the robot's own network any more.
+        #expect(session.canRenderScene)
         #expect(!session.canPlayMoves)
         // `SuppliedClient` is a bare `RobotAPIClient`, so it speaks neither of the
         // two new protocols — `RemoteRobotConnection` is what conforms, and its own

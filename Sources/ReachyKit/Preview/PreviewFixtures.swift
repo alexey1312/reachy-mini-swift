@@ -111,6 +111,33 @@
     /// `RobotUnlinkClient` because the real relay carries `delete_hf_token` and
     /// nothing else about the account — without it the one control a relayed
     /// session offers there is missing from every reference.
+    /// A channel that is open and answers nothing.
+    ///
+    /// Enough to build a `RemoteRobotConnection` for a preview or a test that only
+    /// needs one to exist — the viewport's source carries one, and a frozen preview
+    /// must not be able to send anything anywhere.
+    public struct SilentDataChannel: RemoteDataChannel {
+        public var isOpen: Bool {
+            true
+        }
+
+        public init() {}
+
+        public func send(_: String) async throws {}
+
+        public func messages() -> AsyncStream<String> {
+            AsyncStream { $0.finish() }
+        }
+    }
+
+    public extension RemoteRobotConnection {
+        /// Attached to a channel that never answers, so every command times out
+        /// rather than pretending. Previews park state directly instead.
+        static func preview() -> RemoteRobotConnection {
+            RemoteRobotConnection(channel: SilentDataChannel(), timeout: .milliseconds(1))
+        }
+    }
+
     public struct PreviewRemoteRobotClient: RobotAPIClient, TeleopClient, DaemonLogClient, RobotUnlinkClient {
         public var identity: RobotIdentity
         public var status: Components.Schemas.DaemonStatus

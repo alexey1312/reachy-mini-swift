@@ -8208,35 +8208,6 @@
         }
       }
     },
-    "No 3D model": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kein 3D-Modell"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin modelo 3D"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun modèle 3D"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет 3D-модели"
-          }
-        }
-      }
-    },
     "No app in this section is filed under that heading.": {
       "extractionState": "manual",
       "localizations": {
@@ -15570,35 +15541,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот отвечал слишком долго. Проверьте список приложений, прежде чем пробовать снова."
-          }
-        }
-      }
-    },
-    "The robot's 3D description is served over its own network, which a relay session cannot reach.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die 3D-Beschreibung des Roboters wird über sein eigenes Netzwerk bereitgestellt, das eine Relay-Sitzung nicht erreichen kann."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La descripción 3D del robot se sirve por su propia red, a la que una sesión por relé no puede llegar."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La description 3D du robot est servie via son propre réseau, qu'une session par relais ne peut pas atteindre."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "3D-описание робота раздаётся по его собственной сети, до которой сеанс через ретранслятор не достаёт."
           }
         }
       }

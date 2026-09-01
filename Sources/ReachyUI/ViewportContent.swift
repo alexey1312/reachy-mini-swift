@@ -35,15 +35,7 @@ struct ViewportContent: View {
         } else {
             switch model.content {
             case .scene:
-                if let reason = model.sceneUnavailableReason {
-                    // A reason, not a wait: nothing is coming, so a spinner here
-                    // would never resolve.
-                    ContentUnavailableView(
-                        .reachy("No 3D model"),
-                        systemImage: "cube.transparent",
-                        description: Text(reason)
-                    )
-                } else if let sceneModel = model.sceneModel {
+                if let sceneModel = model.sceneModel {
                     SceneViewport(
                         model: sceneModel,
                         makeTeleop: model.offersSceneTeleop ? makeTeleop : nil,

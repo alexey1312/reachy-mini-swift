@@ -45,8 +45,10 @@ final class ViewportModel {
         case lan(RobotAddress)
         /// A relay session. The camera is the peer connection that is *already up*
         /// and carrying the robot's commands, so this model borrows it and must
-        /// never stop it. There is no HTTP API here, so there is no scene.
-        case remote(CameraSession)
+        /// never stop it. The connection rides along because the scene is reachable
+        /// here too now — out of the app's own bundle, with the pose polled off the
+        /// data channel rather than read from a socket that does not exist.
+        case remote(CameraSession, connection: RemoteRobotConnection)
         /// A simulator in this very process. It is its own geometry server and its
         /// own state stream, so the scene needs nothing but the object; there is no
         /// camera, because there is nothing to point one at.
@@ -114,8 +116,8 @@ final class ViewportModel {
     /// whether to offer one — the source is. Only the relay has none.
     var offersScene: Bool {
         switch source {
-        case .lan, .simulated: true
-        case .remote, nil: false
+        case .lan, .simulated, .remote: true
+        case nil: false
         }
     }
 
@@ -132,16 +134,6 @@ final class ViewportModel {
         case .simulated: true
         case .lan, .remote, nil: false
         }
-    }
-
-    /// Why there is no 3D model, where there is a reason rather than a wait.
-    var sceneUnavailableReason: String? {
-        guard case .remote = source else { return nil }
-        return String(
-            localized: .reachy(
-                "The robot's 3D description is served over its own network, which a relay session cannot reach."
-            )
-        )
     }
 
     /// Re-attaching to the same source is a no-op, so a SwiftUI redraw cannot
@@ -207,10 +199,9 @@ final class ViewportModel {
         case let (.scene, .lan(address)):
             stopCamera()
             startScene(at: address)
-        case (.scene, .remote):
-            // Nothing to start. `sceneUnavailableReason` is what the view renders,
-            // rather than a spinner that would never resolve.
-            break
+        case let (.scene, .remote(_, connection)):
+            stopCamera()
+            startRemoteScene(connection)
         case let (.camera, .lan(address)):
             // Paused rather than stopped: the meshes stay in memory, so coming
             // back to 3D does not re-download the robot's description.
@@ -226,7 +217,7 @@ final class ViewportModel {
             // arm exists because a source change must not be able to land here
             // silently.
             break
-        case let (.camera, .remote(session)):
+        case let (.camera, .remote(session, _)):
             // Already running — `RemoteRobotLink` started it, and it is the same
             // connection the commands are on. Adopted, never started or stopped.
             cameraSession = session
@@ -265,6 +256,23 @@ final class ViewportModel {
             // bundle and publishes the state stream itself, which is the whole
             // reason the `RobotStateStreaming` seam exists.
             sceneModel = RobotSceneModel(stream: client, client: client)
+        }
+        sceneModel?.start()
+        sceneModel?.resumeStream()
+    }
+
+    /// The scene over the relay: the robot's shape out of this app, its pose off
+    /// the data channel.
+    ///
+    /// Paused rather than stopped when the camera takes over, the same trade the
+    /// LAN path makes — except that here what is kept is meshes read from the
+    /// bundle, so the saving is decoding rather than download.
+    private func startRemoteScene(_ connection: RemoteRobotConnection) {
+        if sceneModel == nil {
+            sceneModel = RobotSceneModel(
+                stream: RemoteStateStream(connection: connection),
+                client: BundledGeometryClient()
+            )
         }
         sceneModel?.start()
         sceneModel?.resumeStream()
@@ -317,7 +325,9 @@ extension ViewportModel.Source: Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
         case let (.lan(lhs), .lan(rhs)): lhs == rhs
-        case let (.remote(lhs), .remote(rhs)): lhs === rhs
+        // The camera decides identity: the connection is the same peer's, so two
+        // sources naming one camera are one source.
+        case let (.remote(lhs, _), .remote(rhs, _)): lhs === rhs
         case let (.simulated(lhs), .simulated(rhs)): lhs === rhs
         default: false
         }

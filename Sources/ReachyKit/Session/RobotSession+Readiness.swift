@@ -77,16 +77,18 @@ public extension RobotSession {
         isRemote || lastStatus?.cameraSpecsName?.isEmpty == false
     }
 
-    /// The 3D model is built from URDF and STL, which a relay session cannot reach
-    /// — the one feature ADR 0003 gives up outright.
+    /// The 3D model needs a description, meshes and a pose. Two of those come out
+    /// of the app on every link that cannot fetch them — the simulator has served
+    /// them from its bundle all along, and the relay now does the same — and the
+    /// pose is polled off the data channel where there is no socket to open.
     ///
-    /// On the link rather than on `address != nil`, because a simulator has no
-    /// address and serves both out of its own bundle. The relay is the case this
-    /// excludes, and it is excluded by name.
+    /// So this is now every link but none: ADR 0003 gave the scene up over the
+    /// relay because the routes are HTTP, and the shape of a Reachy Mini turned out
+    /// not to be something a client has to be told.
     var canRenderScene: Bool {
         switch link {
-        case .lan, .simulated: true
-        case .none, .remote: false
+        case .lan, .simulated, .remote: true
+        case .none: false
         }
     }
 
