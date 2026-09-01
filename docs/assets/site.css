@@ -390,6 +390,32 @@ pre code {
   font-weight: 600;
 }
 
+/* ---------- demo video ---------- */
+
+.demo {
+  text-align: center;
+}
+
+/* The recording is a phone-shaped 720×1280, so it is bounded by height rather than
+   width: unbounded it fills the first screen and pushes everything else off it. */
+.demo-video {
+  display: block;
+  margin: 0 auto;
+  width: auto;
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  background: var(--card);
+}
+
+.demo-caption {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
 /* ---------- markdown pages ---------- */
 
 .page {
