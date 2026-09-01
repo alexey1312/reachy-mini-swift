@@ -59,10 +59,10 @@ final class ViewportModel {
     }
 
     private(set) var content: Content = .scene
-    /// `internal(set)` rather than `private(set)`: the relay's half lives in a
-    /// sibling file, and a `private` setter is scoped to this one — the same reason
-    /// `RobotSession` gives for its own.
-    internal(set) var sceneModel: RobotSceneModel?
+    /// Not `private(set)`: the relay's half lives in a sibling file, and a private
+    /// setter is scoped to this one — the same reason `RobotSession` gives for its
+    /// own.
+    var sceneModel: RobotSceneModel?
     /// Shared between the scene and the hearing indicator; see `remotePoseStream`.
     var poseStream: RemotePoseStream?
     private(set) var cameraSession: CameraSession?
@@ -75,9 +75,12 @@ final class ViewportModel {
     /// `RobotSceneModel`, which already receives the frames, would have made it a
     /// property of the 3D tab.
     ///
-    /// Nil over the relay: no HTTP API means no state stream, the same reason there
-    /// is no scene there.
-    internal(set) var hearing: DirectionOfArrivalModel?
+    /// Nil where nothing carries a direction: a simulator, which has no
+    /// microphones, and a robot on a daemon before 1.10.0, which puts none in the
+    /// state it pushes. The relay used to be on that list and is not any more.
+    ///
+    /// Settable from the sibling file for the reason `sceneModel` is.
+    var hearing: DirectionOfArrivalModel?
     /// Set when a transport could not even be constructed — a bad address, not a
     /// failure to reach the robot.
     private(set) var setupError: String?

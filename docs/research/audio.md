@@ -3,6 +3,15 @@
 Measured on 2026-08-27 against a Wireless unit (daemon 1.9.0, audio board firmware 2.1.2) and
 against the vendored daemon source in `.venv-sim`.
 
+> **Every number below is from firmware 2.1.2, and daemon 1.10.0 ships 2.1.4.** That release
+> raises the speaker's maximum by 6 dB and adds a ten-band EQ on the daemon side, so the finding
+> this page is named after — "no headroom either" — is the one most likely to have moved. The
+> microphone registers in `AudioParameter.swift` are the same measurements and carry the same
+> caveat. Re-measure before trusting a figure here; nothing has been re-taken.
+>
+> The EQ itself is not something this app can reach: it lives in `daemon_config.json` on the
+> robot and needs a daemon restart, with no route to read or write it.
+
 The question: a call sounds much louder from the robot's speaker than a robot app or a move,
 "as if a limiter is fitted". Also, does the robot suppress noise, and can it hear better?
 
