@@ -1,0 +1,297 @@
+1. Lots of WebRTC work for app builders, better sound, steadier face tracking. App control over WebRTC One JSON-RPC 2.0 protocol over the data channel and /ws/sdk: any client (TS SDK, browser, phone) can start, stop and talk to on-robot apps. TS SDK: rpcCall() / onNotification(). Cloud backends Hardware-free ReachyCentralConsumer (aiortc): an HF Space or any Python backend can subscribe to camera and mic and drive the robot without daemon or GStreamer. Cloudflare TURN relay for restrictive NATs. pip install "reachy_mini[central-consumer]" Better audio Firmware 2.1.4: +6 dB max volume, mic no longer goes silent after a USB reset. New daemon-side 10-band EQ fixes the "boxy" head-shell resonance, configurable in daemon_config.json. Smoother face tracking Adaptive filter in the daemon-side tracker damps jitter without slowing real movement. Same API. Live pose stream ~30 Hz push on a dedicated lossy pose channel instead of polling get_state. No more stutter on bad Wi-Fi. JS SDK: subscribePose(). Rename your robot live From the app or BLE setup, no restart, survives reboots. getRobotName() / setRobotName(). WebRTC resilience TS SDK auto-reconnects through ICE blips and network changes, and no longer hangs against older daemons. Also: recorded moves over the data channel (playRecordedMove()), ReSpeaker DOA in the robot state, BMI088 IMU via get_imu, signOut() to unlink a robot remotely, face tracking fixed on macOS/Windows/Linux without V4L2, robot_name resolves via mDNS. Update: Wireless: Settings → Reachy Mini Update. Lite: pip install -U reachy-mini or Reachy Mini Control (Settings → Daemon Update). Full notes: https://github.com/pollen-robotics/reachy_mini/releases/tag/v1.10.0 Thanks to FabienDanieau, pierre-rouanet, tfrere, RemiFabre, jrubiosainz, alozowski, andimarafioti and ai-ag2026. Questions in ⁠discussion or ⁠general-chat
+
+
+
+
+Посмотри все новые измнения - поддреживаем ли мы все?
+
+---
+
+Погоди, ты сейчас в форке, раота в том git tree продложиается, верно?
+
+---
+
+Тот worktree работет, что получается нам еще надо сделать что бы быть в париетет с пасториммом?
+
+---
+
+Тот воркт три, уже почти закончил пункт 7
+Тебе необходимо в туже ветку доделать ВСЕ оставшиеся пункты для паритета
+Продолжая работать в этом же ворктири
+
+---
+
+<task-notification>
+<task-id>biq4ndlbl</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/biq4ndlbl.output</output-file>
+<status>completed</status>
+<summary>Background command "Add the pushed pose stream and build" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bauz6srbi</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bauz6srbi.output</output-file>
+<status>completed</status>
+<summary>Background command "Prefer the pushed pose stream" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b905hn2fh</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/b905hn2fh.output</output-file>
+<status>completed</status>
+<summary>Background command "Test the pose stream's ordering" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bif1d1pc8</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bif1d1pc8.output</output-file>
+<status>completed</status>
+<summary>Background command "Mutate the ordering check" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bbzd1o83t</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bbzd1o83t.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify and inspect the tree" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>byby0wcmq</task-id>
+<tool-use-id>toolu_015f8hsdcXBUHyGkcmkakua9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/byby0wcmq.output</output-file>
+<status>completed</status>
+<summary>Background command "Carry the direction on the hand-decoded frame" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bfsn27b4v</task-id>
+<tool-use-id>toolu_01EUCgtts7sdRA2PRXb32oxG</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bfsn27b4v.output</output-file>
+<status>completed</status>
+<summary>Background command "Read the direction from either transport" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bzct17b8g</task-id>
+<tool-use-id>toolu_01RzxAr2mkAK15a75k6iEXkC</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bzct17b8g.output</output-file>
+<status>completed</status>
+<summary>Background command "Fan the pose stream out to several subscribers" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b5x7bukn5</task-id>
+<tool-use-id>toolu_019u53Z9oBtT7oaVq5E4U5Zt</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/b5x7bukn5.output</output-file>
+<status>completed</status>
+<summary>Background command "Test the fan-out and the direction" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bl1s7y7mp</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bl1s7y7mp.output</output-file>
+<status>completed</status>
+<summary>Background command "Start the hearing indicator over the relay" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b6jwopcrv</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/b6jwopcrv.output</output-file>
+<status>completed</status>
+<summary>Background command "Drop the impossible branch" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bzfyyxe3j</task-id>
+<tool-use-id>toolu_01QdBokPudhDJbgFAb7yxWtE</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bzfyyxe3j.output</output-file>
+<status>completed</status>
+<summary>Background command "Rename the robot over the relay" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+В том worktree все закончили, можешь подтянуть
+Ослась данные момент:
+
+Три хвоста закрыты решением, а не кодом
+
+TURN — апстрим сам пишет в webrtc_utils.py: «no consumer-side credential to manage». Наши STUN — правильная сторона топологии.
+
+start_update над relay — канал даёт команду запуска и не даёт способа узнать, нужно ли обновление; логов установки там тоже нет. Вышла бы слепая многоминутная операция с перезагрузкой робота, которого не видно.
+
+Флаг первого пробуждения — существует под мастер мобильного приложения Pollen. У нас онбординг идёт по BLE до того, как робот вообще в сети, так что спросить его по каналу нельзя. Принять флаг значило бы придумать мастер под флаг.
+
+Ещё два пункта отпали при чтении кода: single-flight каталогу не нужен (кнопка уже .disabled), а semver в confirmRestart после починки PEP 440 сломал бы обновление rc→финал.
+
+Что осталось за границей плана
+
+Сцена над relay опрашивает get_state, а не подписана на subscribe_pose — это второй RTCDataChannel и заметно дешевле по трафику; в коде помечено как оптимизация с объяснением, почему опрос работает (канал очередует по имени команды).
+
+И главное: весь удалённый блок проверен юнит-тестами и превью, но не живым роботом через central. Ветка не запушена — PR не открывал, вы этого не просили.
+
+
+
+Что удмаешь, надо ли что-то делать?
+
+---
+
+<task-notification>
+<task-id>bamyowp24</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bamyowp24.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify before committing" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>btvyyyszr</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/btvyyyszr.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify the split" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bbm1718km</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bbm1718km.output</output-file>
+<status>completed</status>
+<summary>Background command "Split the file by hand and build" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bmip1pbio</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bmip1pbio.output</output-file>
+<status>completed</status>
+<summary>Background command "Rebuild and lint after the split" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bdei06ehg</task-id>
+<tool-use-id>toolu_01YBEgqAok7G1asUSkcZpZTq</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bdei06ehg.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify the combined branch" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Установи сборку на мой iPhone и делай ПР
+
+---
+
+<task-notification>
+<task-id>bubj9oq92</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bubj9oq92.output</output-file>
+<status>completed</status>
+<summary>Background command "Build, install and launch on the iPhone" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Опиши тест кейсы что надо посмотерть
+
+---
+
+А локально имя можно менять?
+
+---
+
+<task-notification>
+<task-id>brmx1hn02</task-id>
+<tool-use-id>toolu_01VHX2PVs2PmqAkQVBLSkA7h</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/brmx1hn02.output</output-file>
+<status>completed</status>
+<summary>Background command "Build previews and compare all references" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bac9rgpdl</task-id>
+<tool-use-id>toolu_014wz2jMC9oUfUaySS4NLATz</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bac9rgpdl.output</output-file>
+<status>completed</status>
+<summary>Background command "Build and install on the documented test iPhone" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>byloi6b6q</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/byloi6b6q.output</output-file>
+<status>completed</status>
+<summary>Background command "Drop the redundant access modifiers" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>brcggfm2i</task-id>
+<tool-use-id>toolu_01Sv7JD8vorRj5ZF4rrmMNHm</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/brcggfm2i.output</output-file>
+<status>completed</status>
+<summary>Background command "Read the nested face target and test it" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bow32axq4</task-id>
+<tool-use-id>toolu_01GH5SqpqS1nyyFgPP9fzE97</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bow32axq4.output</output-file>
+<status>completed</status>
+<summary>Background command "Verify before committing the fix" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b4m2p6qpt</task-id>
+<tool-use-id>toolu_016YTiXApiTXXsCALUHbGPKV</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/b4m2p6qpt.output</output-file>
+<status>completed</status>
+<summary>Background command "Build the app for the simulator" completed (exit code 0)</summary>
+</task-notification>
