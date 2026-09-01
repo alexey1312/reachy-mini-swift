@@ -25,11 +25,19 @@ public struct RobotFaceTarget: Sendable, Equatable {
     /// Nil covers both an undetected face and a payload missing the numbers: the
     /// daemon leaves the last aim in place between detections, so a point without
     /// `detected` behind it is stale rather than current.
+    ///
+    /// **The reading is nested.** The route answers
+    /// `{"status": "ok", "face_target": {…}}`, not the target on its own — measured
+    /// against a Wireless robot on daemon 1.10.0, after a version that read the top
+    /// level found nothing there and would have reported an empty room for ever.
+    /// The outer object is accepted too, so a daemon that ever flattens it is not a
+    /// regression.
     static func decoded(from payload: [String: (any Sendable)?]) -> RobotFaceTarget? {
-        guard (payload["detected"] ?? nil) as? Bool == true,
-              let x = number(payload["x"]), let y = number(payload["y"])
+        let target = (payload["face_target"] ?? nil) as? [String: (any Sendable)?] ?? payload
+        guard (target["detected"] ?? nil) as? Bool == true,
+              let x = number(target["x"]), let y = number(target["y"])
         else { return nil }
-        return RobotFaceTarget(x: x, y: y, roll: number(payload["roll"]) ?? 0)
+        return RobotFaceTarget(x: x, y: y, roll: number(target["roll"]) ?? 0)
     }
 
     /// A JSON number decodes to `Int` or `Double` depending on its value rather than
