@@ -44,9 +44,9 @@ public struct AudioParameter: Sendable, Equatable {
 /// register reaches `ReSpeaker.write` as `1.0` and `struct.pack("i", 1.0)` throws.
 /// The daemon counts that as a failure and answers `{"applied": false}`; `verify:
 /// false` does not help, because the write itself is what fails. So `PP_AGCONOFF`
-/// and `PP_LIMITONOFF` cannot be moved from here — measured against firmware 2.1.2
-/// (daemon 1.10.0 ships 2.1.4 and none of this has been re-measured on it; see
-/// `docs/research/audio.md`),
+/// and `PP_LIMITONOFF` cannot be moved from here — measured against firmware 2.1.2,
+/// and re-read unchanged on a daemon-1.10.0 robot whose board is still 2.1.2
+/// (`GET /api/audio/config/parameter/VERSION`; see `docs/research/audio.md`),
 /// where every integer register refused and every float register took. Both are on
 /// already, and neither profile wants them off.
 public enum MicrophoneProfile: String, Sendable, CaseIterable, Identifiable {
