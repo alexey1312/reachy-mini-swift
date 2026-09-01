@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DRG5X40BDS68SC51VX7RNR",
+  "strategy": "manual-commit",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Model/RobotIMUReading.swift",
+    "Sources/ReachyKit/Session/RobotAPIClient.swift",
+    "Sources/ReachyKit/Session/RobotSession+Readiness.swift",
+    "Sources/ReachyKit/Transport/RobotConnection.swift",
+    "Sources/ReachyUI/Health/HealthFormat.swift",
+    "Sources/ReachyUI/Health/RobotHealthModel.swift",
+    "Sources/ReachyUI/Health/RobotHealthScreen.swift",
+    "Sources/ReachyUI/Previews/RobotHealthPreviews.swift",
+    "Sources/ReachyUI/RobotScreen.swift",
+    "Tests/ReachyKitTests/RobotIMUReadingTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 962,
+    "cache_creation_tokens": 1684248,
+    "cache_read_tokens": 216656454,
+    "output_tokens": 328419,
+    "api_call_count": 481,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  }
+}

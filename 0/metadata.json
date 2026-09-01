@@ -1,0 +1,97 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DRG5X40BDS68SC51VX7RNR",
+  "session_id": "7445c067-9172-47bb-8e80-24e5890a0c5e",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T05:54:02.227253Z",
+  "branch": "feat/upstream-parity-1.10.0",
+  "checkpoints_count": 3,
+  "save_step_count": 2,
+  "files_touched": [
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyKit/Model/RobotIMUReading.swift",
+    "Sources/ReachyKit/Session/RobotAPIClient.swift",
+    "Sources/ReachyKit/Session/RobotSession+Readiness.swift",
+    "Sources/ReachyKit/Transport/RobotConnection.swift",
+    "Sources/ReachyUI/Health/HealthFormat.swift",
+    "Sources/ReachyUI/Health/RobotHealthModel.swift",
+    "Sources/ReachyUI/Health/RobotHealthScreen.swift",
+    "Sources/ReachyUI/Previews/RobotHealthPreviews.swift",
+    "Sources/ReachyUI/RobotScreen.swift",
+    "Tests/ReachyKitTests/RobotIMUReadingTests.swift"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5",
+  "turn_id": "0844b9af3b1d",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 962,
+    "cache_creation_tokens": 1684248,
+    "cache_read_tokens": 216656454,
+    "output_tokens": 328419,
+    "api_call_count": 481,
+    "subagent_tokens": {
+      "input_tokens": 0,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 0,
+      "output_tokens": 0,
+      "api_call_count": 0
+    }
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "prompt-skill-claude-code-goal-2026-09-01T05:29:36.699695Z",
+      "event_type": "prompt_invocation",
+      "skill": {
+        "name": "goal"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "prompt_slash_command",
+        "confidence": "explicit"
+      },
+      "turn_id": "dc25e0a4cb4c",
+      "timestamp": "2026-09-01T05:29:36.699695Z",
+      "native": {
+        "command": "/goal"
+      },
+      "collapse": {
+        "target": "user_message",
+        "label": "/goal",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 25
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T05:54:01.925742Z",
+    "agent_lines": 338,
+    "agent_removed": 2,
+    "human_added": 126,
+    "human_modified": 5,
+    "human_removed": 0,
+    "total_committed": 469,
+    "total_lines_changed": 499,
+    "agent_percentage": 68.13627254509018,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 344,
+      "agent_lines_removed": 3
+    }
+  ]
+}
