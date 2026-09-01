@@ -31,6 +31,7 @@ defaults:
   - scope:
       path: ""
     values:
-      # Square rather than a screenshot: the shots are 1206×2622, and a link preview
-      # crops that shape to nothing.
-      image: /media/icon.png
+      # 1280×640 with a 40pt safe border, which is GitHub's repo-card template: one file
+      # serves the link previews here and Settings → Social preview. The screenshots are
+      # 1206×2622 and a preview crops that shape to nothing.
+      image: /media/og.png

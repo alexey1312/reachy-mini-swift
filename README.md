@@ -72,7 +72,13 @@ developer side of the same project.
   <img src="docs/media/robot.jpg" width="220" alt="Robot tab: connected over the LAN, wake, sleep and power off" />
 </p>
 
-_A one-minute demo video from a live robot is on its way._
+<p align="center">
+  <a href="https://github.com/alexey1312/reachy-mini-swift/raw/main/docs/media/demo.mp4">
+    <img src="docs/media/demo-poster.jpg" width="320" alt="One minute with a live Reachy Mini Wireless" />
+  </a>
+</p>
+
+<p align="center"><em>One minute with a Reachy Mini Wireless on a desk — <a href="https://github.com/alexey1312/reachy-mini-swift/raw/main/docs/media/demo.mp4">watch it</a>.</em></p>
 
 ## Try it
 
