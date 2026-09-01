@@ -1,0 +1,89 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1DX8KKJCCZNR05EHW8QJ3MF",
+  "session_id": "9f4ec0e8-06c7-4e9c-ad88-5b77258627b3",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-01T07:17:17.907435Z",
+  "branch": "docs/demo-video",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "docs/index.html",
+    "docs/media/demo.gif"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-opus-5[1m]",
+  "turn_id": "725a8c5da018",
+  "checkpoint_transcript_start": 341,
+  "transcript_lines_at_start": 341,
+  "compact_transcript_start": 40,
+  "token_usage": {
+    "input_tokens": 18,
+    "cache_creation_tokens": 12290,
+    "cache_read_tokens": 1400269,
+    "output_tokens": 11225,
+    "api_call_count": 9
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_01UpD9hxBpkZTeMw2f8DB3Gu",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "claude-in-chrome"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "23bfadb52917",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 276,
+        "end": 277,
+        "entry_ids": [
+          "9733ec8c-223d-43ab-894d-a4a4cecf04d0"
+        ],
+        "tool_use_id": "toolu_01UpD9hxBpkZTeMw2f8DB3Gu"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_01UpD9hxBpkZTeMw2f8DB3Gu"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: claude-in-chrome",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-01T07:17:17.708647Z",
+    "agent_lines": 4,
+    "agent_removed": 4,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "total_lines_changed": 8,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 9,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        ".conductor/settings.local.toml": 4,
+        ".sc/last-chat-settings.json": 5
+      }
+    }
+  ]
+}
