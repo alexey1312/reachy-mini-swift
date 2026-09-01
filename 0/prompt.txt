@@ -1,0 +1,757 @@
+/pr-review-toolkit:review-pr
+
+---
+
+<task-notification>
+<task-id>a53563a3d260441bd</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/a53563a3d260441bd.output</output-file>
+<status>completed</status>
+<summary>Agent "Type design analysis" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Verdicts by impact
+
+---
+
+### 1. `RemotePoseStream` — `Sources/ReachyKit/Central/RemotePoseStream.swift`
+**Verdict: the one type here that needs changes before merge.** Correct in the happy path, but its lifecycle invariant ("at most one reader, and it owns the subscription") is maintained by convention across three methods rather than by construction, and `@unchecked Sendable` is doing real work.
+
+Problems:
+
+- **`RemotePoseStream.swift:70` — the reader `Task` captures `self` strongly.** The capture list `[connection, channel]` is undone by `self.broadcast(...)` at `:96` and `self.finishAll()` at `:101`. Task → self → `reader` → Task is a retain cycle for as long as the channel is open, so `deinit` at `:33` can never run while a reader exists. That `deinit { reader?.cancel() }` is dead code, and it also reads `reader` outside the lock — the only unsynchronised access in the file. Use `[weak self]` at `:70` and the cycle and the unsafe read both go.
+- **`:59-64` / `:68` — subscribe/unsubscribe can invert.** `remove` sets `reader = nil` and cancels; the cancelled task's `defer { Task { try? await connection.unsubscribeFromPose() } }` (`:75`) is *detached* and unordered. A new subscriber arriving in that window passes the `reader == nil` guard, sends `subscribe_pose`, and then the old task's `unsubscribe_pose` lands on top of it — the new subscriber gets a stream that never yields. `deinit`/cancel ordering is not enough here; the unsubscribe needs to be sequenced against the next subscribe (a single serialising actor, or an `await` on the retiring task before a restart).
+- **`:68-70` — a completed reader is not distinguishable from a live one.** If the channel closes while nobody is subscribed, `finishAll()` runs, no `onTermination` fires (no subscribers), and `reader` stays non-nil forever. The next `updates(_:)` returns a stream that never yields and never finishes. `reader == nil` is the wrong predicate for "no one is reading".
+- **`:91` — a stale frame increments `diagnostics.unsupportedFrames`.** Out-of-order is neither unsupported nor a decode failure; it will read as daemon incompatibility in the health screen. Either add a counter or reuse none.
+- `@unchecked Sendable` at `:21` is honest about the mechanism (NSLock over both mutable fields) but not enforced by the type — an actor holding the subscriber table, with the reader as a child task, would remove `@unchecked`, the manual `startReadingLocked` naming convention, and both races above. That is the recommendation, not a nice-to-have.
+
+Encapsulation 6/10 · Invariant expression 4/10 · Usefulness 9/10 (the fan-out is genuinely needed — `messages()` really is single-consumer)
+
+---
+
+### 2. `MovePlaybackClient` + `RemoteRobotConnection`'s playback half — `Sources/ReachyKit/Session/MovePlaybackClient.swift`, `Sources/ReachyKit/Central/RemoteRobotConnection.swift:187-241`
+**Verdict: the protocol split is right; the capability model on it is now three-valued and the relay's move UUIDs are counterfeit.**
+
+Problems:
+
+- **Three different ways to say "I can't", and callers use all three.** Not conforming (`ReachyKitError.movesUnavailable` via `withMovesClient`), `offersMoveLibrary == false` (simulator), and a thrown `URLError(.unsupportedURL)` from the extension defaults (`MovePlaybackClient.swift:57-81`). The project's stated convention is "conforming *is* the capability" (`Sources/ReachyKit/AGENTS.md:198-199`); this type keeps the throwing defaults *and* adds a flag. Result: `RobotSession+Moves.swift:31` has to detect "this transport cannot list moves" by **catching a URLError code** — `catch let error as URLError where error.code == .unsupportedURL` — which is capability detection through an error value. Any unrelated `.unsupportedURL` (a malformed URL built inside `RobotConnection`) silently serves a week-old disk cache instead of surfacing.
+- **`offersMoveLibrary` answers two questions with one bool.** Its doc (`MovePlaybackClient.swift:23-26`) concedes it: the relay "conforms with no index route and answers true anyway". So the flag means "offer the moves screen", not "has a library". Split it (`offersMoveLibrary` for the index, conformance for playback) and the `URLError` catch above becomes `guard client.offersMoveLibrary`.
+- **`playMove`/`gotoNeutral` mint UUIDs that identify nothing** (`RemoteRobotConnection.swift:202-203`, `:240-241`). `stopMove(uuid _:)` at `:226` ignores its argument, and `gotoNeutral` overwrites a live play's handle. The type's contract — "a UUID identifies one move task" — is false on this transport, and the only thing preventing a bug is that `RobotSession` happens to keep one activity at a time. If the handle cannot identify anything, the protocol should say so: `func playMove(...) async throws -&gt; MoveHandle` where `MoveHandle` is `case daemon(String)` / `case opaque` would make the relay's limitation checkable rather than papered over with a `UUID()`.
+- `runningMoveUUIDs()` at `:210-220` answers "*some* move is running" as "*your* move is running". A dance started from another client keeps a finished handle alive indefinitely. Documented at `:206-208`, but the doc is the enforcement.
+
+Encapsulation 7/10 · Invariant expression 4/10 · Usefulness 8/10
+
+---
+
+### 3. `Envelope` — `Sources/ReachyKit/Central/RemoteControlChannelEnvelope.swift`
+**Verdict: a bag of optionals where the domain is a sum type.** Six independent fields encode four mutually exclusive frame kinds, and the discrimination is re-derived by hand in `RemoteControlChannel.deliver` (`:315-340`).
+
+Problems:
+
+- `isRPC`/`rpcID`/`method` at `:17-19` carry an unexpressed invariant: `isRPC` implies exactly one of `rpcID` or `method`. Nothing enforces it, and the failure is silent — an RPC frame whose `id` is a JSON *string* (legal per JSON-RPC 2.0) decodes as `isRPC = true, rpcID = nil, method = nil` and is dropped at `RemoteControlChannel.swift:322-329`, leaving the caller to time out with no diagnostic. A computed `var route: Route` (`.rpcReply(Int)` / `.rpcNotification(String)` / `.typed(String)` / `.command(String)` / `.keyed(Set&lt;String&gt;)`) puts the whole routing decision in the type and lets `deliver` be a single switch.
+- `:24-28` — four `try?` swallow every decode error. Given `AnyKey` and `decodeIfPresent` these can only fail on a type mismatch, which is exactly the string-`id` case above. Worth at least not being invisible.
+- Moving the type from `private` (nested in `RemoteControlChannel`) to **module-internal file scope under the bare name `Envelope`** widens it more than the stated reason (file length) requires. `RemoteControlChannel.Envelope` in an extension would have kept the namespace.
+
+Encapsulation 6/10 · Invariant expression 3/10 · Usefulness 8/10
+
+---
+
+### 4. `RemoteStateSnapshot` — `Sources/ReachyKit/Central/RemoteStateSnapshot.swift`
+**Verdict: good type, and its own doc comment is already untrue.** `:10` says "This is the translation, in one place rather than two" — but `RemoteRobotConnection.StateReply.State` (`:365-390`) is a second decoder of the same daemon `StateSnapshot` (`head_pose`, `body_yaw`, `antennas`), and `RemoteRobotConnection.stateFrame()` (`:279-291`) is a second hand-rolled translation of it. The two have already diverged: the polled path drops `doa`, which is why the hearing badge is push-only. Make `StateReply.State` hold a `RemoteStateSnapshot` plus `motor_mode`/`is_move_running` and `stateFrame()` becomes `snapshot.frame`.
+
+Otherwise clean: `let` throughout, the "no pose at all" case is a computed `frame` returning nil rather than a sentinel (`:43-53`), and `RemotePoseFrame` (`:57-62`) pairs the snapshot with the ordering key rather than leaving `seq` loose.
+
+Encapsulation 9/10 · Invariant expression 8/10 · Usefulness 9/10
+
+---
+
+### 5. `RobotUnlinkClient` / `RobotRenameClient` — `Sources/ReachyKit/Session/HFAuthClient.swift:15-24`, `Sources/ReachyKit/Session/RobotRenameClient.swift:11`
+**Verdict: two capability protocols in one PR, using two opposite idioms, and one of them is unsound.**
+
+- **`RobotUnlinkClient` has a throwing default (`HFAuthClient.swift:19-23`) *and* is used as a conformance test**: `RobotSession+HFAuth.swift:17-18` is `client is any RobotUnlinkClient`. Since `HFAuthClient: RobotUnlinkClient` (`:32`), every HF client advertises unlink whether or not it implements it — `canUnlinkRobot` returns true and the button then throws `unsupportedURL`. That is precisely the "button that fails" failure the codebase's own note at `AGENTS.md:198-199` says the capability protocols exist to prevent. Drop the default, or gate on a flag like `offersAppStore`.
+- **`RobotRenameClient` is an empty marker** with no requirements at all, satisfied by conformance alone (`RobotRenameClient.swift:11-13`) — the correct idiom, and the opposite of the one above. Both are defensible; having both in one change is what makes the surface hard to read. `supportsRename = handshake.supportsRename || client is any RobotRenameClient` (`RobotSession+Connect.swift:96`) is fine and honest.
+
+Encapsulation n/a · Invariant expression 4/10 (unlink) / 7/10 (rename) · Usefulness 7/10
+
+---
+
+### 6. `WiFiJoinModel` — `Sources/ReachyUI/Settings/WiFiJoinModel.swift`
+**Verdict: the state machine is right — this is the best-modelled new type in the PR.** `Phase` (`:15-21`) has no illegal combinations, `.sent(ssid:)` carries the payload only the terminal state has, `canSend` (`:58-60`) is derived from the phase rather than from a second `isSending` bool, and every derived value (`ssid` at `:52`) is computed.
+
+Problems:
+
+- **`:92 — `password = ""` runs on the refusal path too.** The sheet's "Try again" (`WiFiJoinSheet.swift:135`) returns to `.editing` with an empty password field, and the documented usual failure is a wrong *code* (`:140`). Clear it on `.sent` only.
+- `:62-77 — `scan` has no re-entrancy guard.** Two overlapping scans (the `.task` plus a fast "Scan again" tap) let the first one's `defer` clear `isScanning` while the second is still running. The button is disabled on `isScanning`, so it takes a race to reach; `.editing`-style phase gating or a task handle would close it.
+- `.refused(String)` (`:20`) stores an already-localised message, so the state carries presentation. Consistent with the project's `String(localized:)` rule for model properties, so acceptable — noting it only because it makes `Phase: Equatable` compare user-visible text.
+
+Encapsulation 8/10 · Invariant expression 9/10 · Usefulness 9/10
+
+---
+
+### 7. `BundledGeometryClient` — `Sources/ReachyUI/BundledGeometryClient.swift`
+**Verdict: right idea, wrong protocol — and this PR built the tool to fix it.** The doc at `:7` states the invariant exactly: "`RobotGeometryProvider` reads exactly two things off its client". So it should take `any RobotGeometryClient { urdf(); stlAsset(named:) }` — the same surgery `MovePlaybackClient` just performed on moves. Instead it conforms to all of `RobotAPIClient` and pays for it with four `throw ReachyKitError.notConnected` stubs (`:30-44`) plus every inherited throwing default; a type whose whole point is that it is not a robot is typed as one. The two-method protocol is satisfied unchanged by `RobotConnection`, `SimulatedRobotClient` and this.
+
+Also: `private let geometry = BundledRobotGeometry()` (`:16`) makes a fresh instance per client value; harmless for a struct built once, worth knowing if it ever caches.
+
+Encapsulation 7/10 · Invariant expression 4/10 · Usefulness 8/10
+
+---
+
+### 8. `RobotIMUReading` — `Sources/ReachyKit/Model/RobotIMUReading.swift`
+**Verdict: honest and immutable, but the vectors are unbounded arrays.** `accelerometer`/`gyroscope`/`quaternion` (`:10-14`) accept any length from the memberwise `init` at `:17`; the 3/3/4 invariant lives only in the doc. `tiltDegrees` then has to defend itself at `:42` (`guard quaternion.count == 4`) and returns `nil` — pushing "this reading is malformed" onto every reader as an optional indistinguishable from "no IMU". `SIMD3&lt;Double&gt;` and `simd_quatd` (or a validating `init?`) make `tiltDegrees` non-optional and delete the guard. Everything else is good: `let` throughout, the clamp at `:47` is justified in one line, and deriving lean from the quaternion rather than the accelerometer (`:33-38`) is the right call.
+
+Encapsulation 8/10 · Invariant expression 5/10 · Usefulness 9/10
+
+---
+
+### 9. `RobotFaceTarget` — `Sources/ReachyKit/Model/RobotFaceTarget.swift`
+**Verdict: fine.** Immutable, the "no face" case is `nil` from a failable static decoder (`:28-33`) rather than a `detected: Bool` field, which is exactly right — there is no `RobotFaceTarget` with nothing detected. Two small things: the −1…1 range at `:11` is documented, not enforced (a validating `init?` would cost little); and `roll` defaults to `0` at `:32` when the payload omits it, so "no roll reported" and "head level" are the same value.
+
+Encapsulation 9/10 · Invariant expression 7/10 · Usefulness 8/10
+
+---
+
+### 10. `DaemonCompatibilityPolicy.isKnownOlder` — `Sources/ReachyKit/Model/DaemonCompatibility.swift:33-42`
+**Verdict: correct semantics, stringly-typed signature.** Failing open on an unparseable *reported* version is deliberate and documented ("a feature is withheld on evidence"). But the **`floor` argument fails open too**: a typo'd literal at the one call site (`RobotSession+Readiness.swift:120`, `"1.10.0"`) silently disables the gate with no compile-time or runtime signal. `SemanticVersion` is `private`, so a typed parameter means promoting it; a cheap middle ground is a `precondition`/assert that the floor parsed, since the floor is always a literal under the author's control.
+
+`leadingNumber` (`:78-80`) is a good fix for PyPI's `1.10.0rc5`. Minor: `Character.isNumber` admits non-ASCII digits that `Int(_:)` then rejects, so such a version parses as *unreadable* rather than as its leading digits — fails safe, but `isASCII &amp;&amp; isWholeNumber` says what is meant.
+
+Encapsulation 8/10 · Invariant expression 6/10 · Usefulness 9/10
+
+---
+
+### 11. Smaller notes
+
+- **`RemoteValue`** (`Sources/ReachyKit/Central/RemoteValue.swift`) — no findings. `Encodable`-only is the right asymmetry (replies decode into concrete types), the enum is closed over JSON's actual cases, `Equatable`/`Sendable` are synthesised and honest. 9/9/9.
+- **`RobotStateFrame.DirectionOfArrival`** (`Sources/ReachyKit/Transport/RobotStateFrame.swift:+45-55`) — the nested struct is `let`-only, but it is added as a `public var` on a `Decodable` frame that is *not* in `CodingKeys`, so it is permanently invisible to the socket decoder while looking assignable from anywhere in the module. Deliberate per the doc, but `RobotStateFrame`'s stored properties being `var` at all is what makes it look like a field you could set post-decode. `let` + the existing memberwise `init` loses nothing.
+- **`RemoteControlChannel.Correlation.typed(_:)`** (`RemoteControlChannel.swift:+58-63`, `:334-337`) — a waiter now *steals* a broadcast frame from `listeners[type]`, which are not notified. Fine for `imu_data`; state it, because the next `.typed` correlation on a type someone subscribes to will silently starve that subscriber.
+- **`ViewportModel.Source.remote(CameraSession, connection:)`** (`ViewportModel.swift:+48`) — `Equatable` compares the camera only (`:324-326`). Justified in the comment, but it means two sources with the *same* camera and *different* connections compare equal; that is an invariant of the enclosing system, not of the enum, and nothing enforces it.
+- **`ViewportModel.poseStream`** (`ViewportModel.swift:+66`) — declared plain `var`, unlike the `internal(set)` neighbours it sits with. It is written from `ViewportModel+Remote.swift:70` only; `internal(set)` matches the sibling-file rationale given two lines above it.
+- **`RemoteRobotConnection+Apps.swift:11`** — stray `//` line left in the header comment block.
+
+---
+
+**Overall.** The direction is right and consistent: capability protocols split off the fat `RobotAPIClient`, transports asked instead of addresses guessed, readings modelled as `nil`-when-absent rather than as sentinels. Three things to fix before merge: the `RemotePoseStream` lifecycle (items 1), the `RobotUnlinkClient` default that makes `canUnlinkRobot` lie (item 5), and the `URLError`-as-capability-probe in `RobotSession+Moves` (item 2). The rest is refinement.</result>
+<usage><subagent_tokens>164900</subagent_tokens><tool_uses>22</tool_uses><duration_ms>313145</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ae9b69e254129eab7</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/ae9b69e254129eab7.output</output-file>
+<status>completed</status>
+<summary>Agent "Test coverage analysis" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Summary
+
+The new relay layer is **half-tested**: the pieces with a natural pure-function seam (PEP 440 parsing, `tiltDegrees`, `RobotFaceTarget.decoded`, `RemotePoseStream` ordering, the moves-cache fallback, `WiFiJoinModel`) got careful, behaviour-first suites. The pieces that needed a fake channel or a fake session — the whole `RemoteRobotConnection` playback and IMU surface, the JSON-RPC framing's concurrency guarantees, and the four capability flags that decide which screens open over the relay — got almost nothing. Several of the flags would pass every test in the repo if reverted to their pre-PR form.
+
+Preview/reference coverage (rule 8) is good for what has previews: 13 new previews × 4 references, all present. Three new user-visible states have none.
+
+---
+
+## Critical gaps (8–10)
+
+**1. The relay's entire move-playback surface has no test.** `Sources/ReachyKit/Central/RemoteRobotConnection.swift:193–243`
+`preload`, `playMove`, `runningMoveUUIDs`, `stopMove`, `gotoNeutral` — the whole of commit `c85558e6` — are exercised nowhere. `runningMoveUUIDs` (line 210) is genuinely stateful: it mints a local handle, reads `is_move_running`, and clears the handle on a false. Delete the `if !running { self.playbackHandle = nil }` and a finished dance never leaves the "playing" phase; invert `guard let playbackHandle else { return [] }` and it crashes. Nothing goes red. The one test that touches this area (`RemoteRobotConnectionTests.swift:290`) only asserts that `listMoves` *throws*.
+*Rating 9.* Add a `FakeDataChannel` suite: play → handle non-empty; `is_move_running:false` → empty set and the handle cleared; `stopMove` clears it and sends `stop_move`; `playMove` puts `move_name`/`dataset_name` on the wire.
+
+**2. `RemoteControlChannel.call` id uniqueness and non-serialisation are unproven.** `Sources/ReachyKit/Central/RemoteControlChannel+RPC.swift:21`, `RemoteControlChannel.swift:156`
+The doc states the design guarantee outright: "an id is unique per call, so two calls are never each other's reply… `apps.install` runs for minutes and a status poll must not queue behind it." Both tests (`matchesRPCByID`, `throwsRPCErrorWithReason`) issue a **single** call and hard-code `"id":1`. Make `nextRPCID()` return a constant and both still pass — while two concurrent calls would then cross-match replies, silently returning an install's result to a status poll.
+*Rating 9.* Two concurrent `call`s, answer the second's id first, assert each got its own payload — and that the first is not blocked.
+
+**3. The RPC-first ordering in `deliver` has no test.** `Sources/ReachyKit/Central/RemoteControlChannel.swift:318`
+The comment names the exact bug the branch placement prevents: RPC keys "`jsonrpc`, `result`, `id` — would otherwise fall to the key match below and answer whichever waiter happened to be tokened `result`." Move the `if envelope.isRPC` block below the key match and every test still passes.
+*Rating 8.* One test: a pending `perform(correlation: .replyKey("result"))` must not be satisfied by an inbound JSON-RPC frame.
+
+**4. `canManageApps`'s semantic change is invisible to the suite.** `Sources/ReachyKit/Session/RobotSession+Apps.swift:13`
+Changed from `client is any RobotAppsClient` to `offersAppStore == true`. Every apps double in the repo (`AppsRobotClient`, `AppLifecycleClient`, `AppsCapablePreviewClient` in `Tests/ReachyUITests/RunningAppModelTests.swift:6`) takes the protocol default `offersAppStore == true`, and every "no store" test uses a client that is not a `RobotAppsClient` at all. Revert the line and nothing fails — but the relay would offer an App Store whose catalogue, installs and removals all throw.
+*Rating 8.* A session-level double conforming to `RobotAppsClient` with `offersAppStore == false`, asserting `canManageApps == false`.
+
+**5. The `canManageApps` / `canControlRunningApp` split is never exercised.** `Sources/ReachyKit/Session/RobotSession+Apps.swift:22`, `Sources/ReachyUI/Apps/RunningAppModel.swift:306`
+Same root cause as (4): no test builds a session where the two flags disagree, which is exactly the relay case and the entire point of commit `885169ac`. `skipsRefreshWithoutTheCapability` (`RunningAppModelTests.swift:274`) uses a bare `RobotSession()` with no client, so it proves only that a disconnected session is not polled. Swap `canControlRunningApp` back to `canManageApps` in `canPoll` and the suite is green, while the dock stops watching the running app over the relay.
+*Rating 8.*
+
+**6. `supportsRename` over the relay is untested and uncaptured.** `Sources/ReachyKit/Session/RobotSession+Connect.swift:96`
+`supportsRename = handshake.supportsRename || client is any RobotRenameClient` — the `||` clause has no test. `RobotSessionRenameTests` only drives `Handshake.supportsRename`, and the relay's own handshake still returns `false` (`RemoteRobotConnection.swift:57`), so the clause is the *only* thing making the field editable. Delete it and renaming silently greys out over the relay.
+*Rating 8.* Also uncaptured: `PreviewRemoteRobotClient` does not conform to `RobotRenameClient`, and `RobotSession.preview` defaults `supportsRename: true` (`PreviewFixtures.swift:310`), so the relay settings reference would look identical either way.
+
+---
+
+## Important improvements (5–7)
+
+**7. `RemoteRobotConnection.imuReading()` / `stateFrame()` / `deleteHFToken()`.** `RemoteRobotConnection.swift:256, 279, 293`
+`matchesByReplyType` proves the channel routes `imu_data`, but nothing proves the reply is mapped into a `RobotIMUReading` with the right fields. `stateFrame()` has a real nil-guard (line 285) and a nested-4×4 flattening that duplicates `RemoteStateSnapshot.frame` — despite that type's doc claiming "the translation, in one place rather than two". Neither the nil case nor the flattening is asserted. `deleteHFToken` over the relay is covered only by a hand-rolled `RelayClient` double, never by the real connection. *Rating 7.*
+
+**8. `RemoteControlChannel.call` has no timeout test.** `RemoteControlChannel.swift:163`
+`perform` has three (`expectTimeout`, lines 87/97/108); `call` has none, and the `timeout: Duration?` override is dead in tests. This is precisely rule 7's "the duration is the assertion" shape and the helper already exists. *Rating 6.*
+
+**9. `throwIfRPCError`'s other two branches.** `RemoteControlChannel+RPC.swift:89–94`
+Only the with-reason path is tested. An error with no `data.reason` and an error with no `message` (the `"The robot refused the call"` fallback) are both untested — and the second is the string a user reads. *Rating 5.*
+
+**10. `waitForMoveToFinish`'s new early return.** `Sources/ReachyKit/Session/RobotSession+Power.swift:208–209`
+`guard let client = client as? any MovePlaybackClient else { return }` replaced the old guarantee that `RemoteRobotConnection.runningMoveUUIDs() -&gt; []` gave. Both paths end the same way; they differ only in whether the caller sits out `moveCompletionTimeout`. There is no test of this function at all — remove the guard and wake/sleep silently stall for the full budget on any non-playback transport. *Rating 6, and it is the textbook rule-7 case: measure a `ContinuousClock` span.*
+
+**11. `ViewportModel`'s relay wiring.** `Sources/ReachyUI/ViewportModel+Remote.swift:36, 50, 62`
+- `remotePose` picks pushed-vs-polled off `camera.poseChannel.isOpen` — untested in both directions.
+- `remotePoseStream` memoises `poseStream` **precisely** because `WebRTCDataChannel.messages()` hands its stream to one reader and finishes the previous one. Remove the memo and the scene and the hearing indicator each open a reader, the second stealing the first's frames. `RemotePoseStreamTests.fansOutToEverySubscriber` tests the stream's fan-out, not the model's sharing of it, so it would not catch this.
+- `startRemoteHearing`'s `hearing == nil, poseChannel.isOpen` guard, and `detach()` clearing `poseStream` (`ViewportModel.swift:170`), are untested.
+*Rating 7 for the memo, 5 for the rest.*
+
+**12. `PresenceModel.watchFace`'s weight-commit guard.** `Sources/ReachyUI/PresenceModel.swift:111`
+`if isTracking, faceWatch != nil { return }` exists solely so a slider commit does not blank the line — the comment says so. Neither new test commits a weight while tracking. Delete the guard and "Following someone" flickers to nothing on every slider release. *Rating 6.*
+
+**13. `AppStoreModel`'s forced refresh.** `Sources/ReachyUI/Apps/AppStoreModel.swift:266`
+`session.appUpdates(force: refresh)` is the whole of commit `cd7922ba`. `StoreRobotClient.appUpdates(force _: Bool)` ignores the flag, so no test records it. Revert to `force: false` and the pull-to-refresh gesture silently returns the daemon's cache. *Rating 6.*
+
+**14. `RobotConnection.imuReading()` swallows every failure as "no IMU".** `Sources/ReachyKit/Transport/RobotConnection.swift:299`
+`guard let payload = try? await client.getImuApiStateImuGet().ok.body.json else { return nil }` — the doc claims "a decoding failure here is that null and nothing else", but `try?` also eats a timeout, a 500, and an `.ok` mismatch. Untested. Combined with `RobotHealthModel.refreshIMU` (`Health/RobotHealthModel.swift:133`), which treats nil as "keep the last reading", a robot whose IMU genuinely disappears keeps showing a stale lean forever. *Rating 6.*
+
+**15. `RobotHealthModel.refreshIMU` and `HealthFormat.degrees` have no tests at all.** `RobotHealthModel.swift:132`, `HealthFormat.swift:42`
+`Tests/ReachyUITests/RobotHealthModelTests.swift` is unchanged by this branch. The documented "a failed read leaves the last one standing" behaviour, and the rounding in `degrees`, are both unasserted. *Rating 5.*
+
+**16. `WiFiJoinModel.canSend`'s phase guard.** `Sources/ReachyUI/Settings/WiFiJoinModel.swift:58`
+`phase == .editing` is what stops a second tap while a join is in flight. `refusesAnIncompleteForm` only varies the SSID and code. Drop the phase clause and a double-tap sends two joins to a robot that is already switching networks. Also: `password = ""` is asserted only on the success path (`WiFiJoinModelTests.swift:69`), not after a refusal — a credential-hygiene path worth one line. *Rating 5.*
+
+**17. Widget: the new nil-`moves` paths.** `Sources/ReachyWidgetUI/RobotMovePlayer.swift:108, 134`; `RobotAppLauncher.swift:101`
+Both `guard let moves else { throw .movesUnavailable }` branches are unreachable from the tests, because the test seam (`RobotMovePlayer.init(moves:power:…)`) takes a non-optional. `RobotAppLauncher.park` silently becomes a no-op for a non-playback client, with no test. *Rating 5.*
+
+**18. `CameraSession.adopt`'s `pose` label routing is untested — and carries a live defect.** `Sources/ReachyMedia/CameraSession.swift:227–228, 233–234, 346`
+`poseChannel.close()` is written **twice** in both the `.closed` and `.failed` arms. Harmless today, but it is direct evidence that nothing exercises those paths. The `case "pose"` routing at line 349 is the single point on which the whole pushed-pose feature hangs and has no coverage. *Rating 5 for tests; the duplicate lines are a straight cleanup.*
+
+---
+
+## Test quality issues
+
+- **Conformance assertions dressed as behaviour.** `Tests/ReachyKitTests/RemoteRobotRenameTests.swift:41` (`#expect(connection is any RobotRenameClient)`) and `RemoteRobotConnectionTests.swift:295` (`#expect(connection is any MovePlaybackClient)`) assert a static fact the compiler already knows. Worse, the rename one's doc comment says "the relay's own handshake says **no**" directly above an assertion that it says yes — the comment describes `Handshake.supportsRename`, the assertion describes the marker protocol. Replace both with the behaviour they stand in for (`session.supportsRename == true` after connecting a `RemoteRobotConnection`; `session.canPlayMoves == true`).
+
+- **Assertions that any frame satisfies.** `RemoteControlChannelTests.swift:280` (`#expect(!payload.isEmpty)`) and `:296` (`#expect(try await !reply.isEmpty)`) pass for literally any non-empty reply, including one matched to the wrong waiter. Decode and assert a field.
+
+- **A fixed sleep before an absence assertion.** `Tests/ReachyUITests/PresenceModelTests.swift:339–340` reads `calls.faceReadCount`, sleeps 60 ms, and asserts it did not move. The in-flight `readFace()` can increment after `settled` is captured, so a loaded runner flakes red. Capture the count *after* draining, or make the double refuse further reads and assert on that instead.
+
+- **A capability table proved against the wrong double.** `Tests/ReachyKitTests/RobotSessionRemoteConnectTests.swift:130–150` calls itself "the whole point of the change, as one table", but `SuppliedClient` is a bare `RobotAPIClient`. Five of its eight assertions (`!canManageApps`, `!canLinkHuggingFace`, `!canPlayMoves`, `!canReadDaemonLogs`, `!canTeleoperate`) are true because the client conforms to nothing, not because the relay lacks the routes. Its own comment admits this. Connect a real `RemoteRobotConnection` over a `FakeDataChannel` and the table becomes the regression guard it claims to be.
+
+---
+
+## Preview / reference gaps (rule 8)
+
+Every new preview has its four references, and the WiFi-join flow (7 states), presence face reading (2 states), HF-over-relay, pre-release-refused and health-leaning captures are exemplary. Three states are missing:
+
+1. **The 3D viewport over the relay.** `Sources/ReachyUI/Previews/ViewportPreviews.swift` — `Viewport — no 3D over the relay` was deleted (4 references removed) and nothing replaced it. The relay now offers the scene, which is the headline of commit `0494f34d`, and the switcher offering both contents is a new user-visible state. `SceneViewport.ready` is deliberately uncaptured per CLAUDE.md, but the *building* state is captured for LAN (`Viewport — scene building`) and the relay equivalent would prove the bundled-geometry path starts at all.
+
+2. **The Apps tab over the relay with the running-app dock.** `AppsUnavailableView.swift:45` now promises "An app already running still shows below, and can be stopped there" — and the `Root — apps need the local network` reference cannot show that, because `PreviewRemoteRobotClient` does not conform to `RobotAppsClient`. The reference captures the new copy over an empty area. Give the preview client the relay's shape (`RobotAppsClient` with `offersAppStore == false`) and the promise becomes verifiable.
+
+3. **Settings over the relay with an editable name field** — see gap (6).
+
+---
+
+## What is well covered
+
+- **PEP 440 parsing** (`Tests/ReachyKitTests/DaemonCompatibilityTests.swift:35–72`): pre-releases, dev builds, local versions, `v` prefixes, the below-minimum RC, the malformed set, and `isKnownOlder` in both directions including nil. Nothing to add.
+- **`RobotIMUReading.tiltDegrees`** (`RobotIMUReadingTests.swift`): upright, yaw-drops-out, both side axes, upside-down, the `acos` domain clamp, and three malformed quaternions. Model-quality work.
+- **`RobotFaceTarget.decoded`** (`RobotFaceTargetTests.swift`): the Int-vs-Double JSON trap, missing `roll`, missing point, and three flavours of undetected.
+- **`RemotePoseStream`** (`RemotePoseStreamTests.swift`): out-of-order drop asserted on the actual delivered sequence, garbage frames counted and stepped over, two subscribers sharing one reader, and DoA-only snapshots.
+- **`WiFiJoinModel`**: the vanished-selection promotion in both directions, trimming, the send payload, password clearing, and a failed scan keeping the list.
+- **The moves-cache fallback** (`MovesCacheTests.swift:105–137`): both halves — `unsupportedURL` falls back silently, a genuine daemon refusal still reports, and nothing kept still fails.
+- **`SystemUpdateModel.settleJob`** (`SystemUpdateModelTests.swift:210–232`): the follow-the-job path with a call count, and the failed-register path.
+- **`RobotSession.unlinkRobot`** (`RobotSessionHFAuthTests.swift:155+`): the narrow-protocol client, the mute client, and the asymmetry between link and unlink.</result>
+<usage><subagent_tokens>237186</subagent_tokens><tool_uses>52</tool_uses><duration_ms>424728</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a82e46c15f8ea79b8</task-id>
+<tool-use-id>toolu_01SfKyL5qkGaBu4haHqp4SfZ</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/a82e46c15f8ea79b8.output</output-file>
+<status>completed</status>
+<summary>Agent "General code review" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>## Reviewed
+
+`git diff main...HEAD` — 16 commits, ~3100 lines across `Sources/ReachyKit`, `ReachyMedia`, `ReachySimulator`, `ReachyUI`, `ReachyWidgetUI`, the test targets, `mise.toml`, `Scripts/swiftpm-env.sh`, `Scripts/sim-requirements.txt`, `AGENTS.md`. Snapshots and `Localizable.xcstrings` skipped as instructed.
+
+Rules 2, 4, 5, 9, 11 and the `ReachyWidgetUI` dependency ban are clean: no new `JSONDecoder()`/`JSONEncoder()` under `Sources/`, no interpolated URLs, no bare `Text("…")`, no client-side motion limits, no new identity-by-address, and `ReachyWidgetUI` still depends on `ReachyDesign`/`ReachyJSON`/`ReachyKit` only.
+
+---
+
+## Important (80–89)
+
+### 1. `RemotePoseStream.remove(_:)` cancels a reader a new subscriber is already using — 85
+`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/pr-review-toolkit-87c19d/Sources/ReachyKit/Central/RemotePoseStream.swift:51-65`
+
+```swift
+let idle: Bool = lock.withLock { subscribers.removeValue(forKey: id); return subscribers.isEmpty }
+guard idle else { return }
+let stopped = lock.withLock { () -&gt; Task&lt;Void, Never&gt;? in
+    defer { reader = nil }
+    return reader
+}
+stopped?.cancel()
+```
+
+Check-then-act across two separate lock acquisitions. `onTermination` fires on an arbitrary thread, so a `updates(_:)` call can land between them: `startReadingLocked()` sees `reader != nil` and returns early, then the second block cancels and nils that reader anyway. The dying task then runs `finishAll()` (line 100), which finishes the *new* subscriber's continuation too — a scene or hearing indicator that is silently dead, with no error and no way back short of `detach()`.
+
+The window is real in this app: `suspend()` drops both subscribers and `activate()` re-subscribes, which is a tab switch or a scene-phase change. Fix: do the emptiness test and the cancel inside one `lock.withLock`, returning the task to cancel only when `subscribers.isEmpty` still holds.
+
+### 2. `runningMoveUUIDs()` clears a handle it no longer owns — 85
+`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/pr-review-toolkit-87c19d/Sources/ReachyKit/Central/RemoteRobotConnection.swift:210-221`
+
+`playbackHandle` is bound by `guard let` *before* the `await`, then `self.playbackHandle = nil` is written *after* it. This is an actor, so the await is a reentrancy point: `stopMove(uuid:)` (line 227) and `playMove` (line 197) both run during it and both write `playbackHandle`.
+
+Sequence that breaks: move A is playing with a poll in flight; the user taps move B. `RobotSession.playMove` → `clearTheFloor` → `stopMove` (sets `playbackHandle = nil`) → `playMove` (sets it to B). The old poll then resumes, sees `is_move_running == false` for the gap between the two, and wipes B's handle. Every later `runningMoveUUIDs()` hits `guard let playbackHandle else { return [] }`, so `startMonitoring` counts two misses and calls `finish(.playing(B))` — the Stop button and the highlighted row disappear while the robot is still dancing. The returned `[playbackHandle]` is also the stale A, so `running.contains(uuid)` fails for B regardless.
+
+Cancelling `movePollTask` does not prevent this: the in-flight `control.perform` is a `withCheckedThrowingContinuation` and does not observe cancellation.
+
+Fix: capture the handle, and after the await only act if `self.playbackHandle == handle`.
+
+### 3. Three 1.10.0-only relay commands are offered with no version gate — 82
+`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/pr-review-toolkit-87c19d/Sources/ReachyKit/Session/RobotSession+Connect.swift:96`
+
+```swift
+supportsRename = handshake.supportsRename || client is any RobotRenameClient
+```
+
+`RemoteRobotConnection` conforms to `RobotRenameClient` unconditionally (`RobotRenameClient.swift:13`), but `set_robot_name` only exists in daemon 1.10.0, and `DaemonCompatibilityPolicy.minimumVersion` is still `"1.9.0"` — a 1.9.0 robot connects over the relay perfectly well. The rename field is then editable, and saving sits out `RemoteControlChannel`'s 10 s budget before failing with a bare `RemoteControlChannel.Failure` (which per `ReachyKit/AGENTS.md` reaches the screen as `… error 1`, not a sentence).
+
+Same shape, same branch:
+- `canControlRunningApp` = `client is any RobotAppsClient` (`RobotSession+Apps.swift:22-24`) — `apps.*` is JSON-RPC, 1.10.0-only; against 1.9.0 every dock poll costs a full timeout and reports nothing.
+- `RemoteRobotConnection.imuReading()` (line 269) uses `get_imu`, 1.10.0-only; degrades quietly but costs 10 s per pull-to-refresh on the State screen.
+
+This branch already built the answer and used it once — `DaemonCompatibilityPolicy.isKnownOlder(than:reported:)` for `refusesPreReleaseUpdates` (`RobotSession+Readiness.swift`). The remote status carries `version` (`RemoteRobotConnection.swift:145`), so the same gate applies here. `subscribeToPose` is the one that got it right, via `poseChannel.isOpen`.
+
+---
+
+## Suggestions (below 80, but concrete)
+
+**`poseChannel.close()` written twice, twice.** `Sources/ReachyMedia/CameraSession.swift:227-228` and `:233-234`. Copy-paste artifact; harmless if `close()` is idempotent, but it should not survive review.
+
+**`stateFrame()` re-implements the type added to stop it re-implementing.** `Sources/ReachyKit/Central/RemoteRobotConnection.swift:279-291` builds `RobotStateFrame` by hand from `StateReply.State`, while the new `RemoteStateSnapshot` (`RemoteStateSnapshot.swift`) does exactly that and says of itself "This is the translation, in one place rather than two." The duplicate also drops `doa`, which is why the polled fallback has no hearing badge. Decoding `{"state": RemoteStateSnapshot}` here would delete `StateReply.State`'s three pose fields and hand the indicator its data for free.
+
+**Two doc comments now document the wrong declaration.** A new member was inserted directly under an existing comment in both cases:
+- `Sources/ReachyUI/Health/HealthFormat.swift:37-43` — "Seconds on the wire, milliseconds on screen…" now sits on `degrees`; `milliseconds` is undocumented.
+- `Sources/ReachyUI/Health/RobotHealthModel.swift:158-161` — the Keychain/`NavigationLink` rationale now sits on `readIMUCall`; `loadStoredCredentials()` is undocumented.
+
+**Stray unindented `//`.** `Sources/ReachyKit/Central/RemoteRobotConnection+Apps.swift:11` — a bare `//` at column 0 inside the extension body.
+
+**`HealthFormat.degrees` breaks its own type's rule.** `HealthFormat.swift:41-43` hand-builds `"\(…)°"` while the enum's header says "`Measurement` throughout rather than hand-built strings — it puts the number and its unit in the reader's own locale". `UnitAngle.degrees` with `usage: .asProvided` matches `hertz`/`celsius`/`milliseconds` beside it.
+
+**Raw font where a role exists.** `Sources/ReachyUI/Settings/WiFiJoinSheet.swift:74` — `.font(.body.monospaced())` is `Typography.console` verbatim (`ReachyDesign/Typography.swift:18`). Rule 10's second-consumer threshold: either use it or add a role for code-entry fields (`OnboardingPINStep.swift:27` is the other one).
+
+**`PresenceModel.watchFace` can write `seesFace` after tracking is off.** `Sources/ReachyUI/PresenceModel.swift:118-127`. The assignment at line 122 happens before the cancellation check at line 126, so a poll suspended in `trackedFaceCall` resumes after `setFaceTracking(false)` has already set `seesFace = nil` and overwrites it. Invisible today only because `TelepresenceSheet` gates `faceReading` on `presence.isTracking`, but it contradicts the property's own "stays nil while tracking is off". Moving the `guard !Task.isCancelled` above the assignment fixes it.
+
+**Stale doc on `RemoteStateStream`.** `Sources/ReachyKit/Central/RemoteStateStream.swift:9-14` still reads "Polled on purpose, **for now** … Daemon 1.10.0 offers `subscribe_pose` … **Until then**, asking is enough" — `RemotePoseStream` shipped in the same branch. It also says 50 Hz where `RemotePoseStream` and `CameraSession.poseChannel` both say ~30 Hz.
+
+**Rule 7, marginal.** `Tests/ReachyUITests/PresenceModelTests.swift` — `try await Task.sleep(for: .milliseconds(60))` before `#expect(calls.faceReadCount == settled)`. Defensible (you cannot poll for a non-event) but it fails in the safe direction only: on a loaded runner it silently stops proving anything. A bounded `waitUntil` that the count *stays* put, or asserting the task handle is nil, would keep the proof.</result>
+<usage><subagent_tokens>255849</subagent_tokens><tool_uses>41</tool_uses><duration_ms>482003</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a974aa5b7680875c0</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/a974aa5b7680875c0.output</output-file>
+<status>completed</status>
+<summary>Agent "Silent failure hunt" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I've read every file in scope. Here are the findings, prioritised.
+
+---
+
+## CRITICAL
+
+### 1. `RemotePoseStream` — lost-wakeup race leaves the 3D robot permanently frozen
+`/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/pr-review-toolkit-87c19d/Sources/ReachyKit/Central/RemotePoseStream.swift:51-65`
+
+`remove(_:)` takes the lock **twice**:
+
+```swift
+let idle: Bool = lock.withLock { subscribers.removeValue(forKey: id); return subscribers.isEmpty }
+guard idle else { return }
+let stopped = lock.withLock { defer { reader = nil }; return reader }   // second acquisition
+stopped?.cancel()
+```
+
+Concrete interleaving: the hearing indicator's stream terminates (`onTermination` → `remove`), which observes `subscribers.isEmpty == true` and releases the lock. Before it re-acquires, `ViewportModel.startRemoteScene` builds its scene and calls `updates(_:)` (line 38-49), which inserts a subscriber and calls `startReadingLocked()` — which sees `reader != nil` and returns without starting anything. `remove` then resumes, sets `reader = nil` and cancels the old reader. The new subscriber now has **no reader at all**, and nothing ever starts one: `startReadingLocked` is only reached from `updates(_:)`, once per subscriber. The cancelled reader's exit then calls `finishAll()` (line 101), finishing the brand-new subscriber's stream too.
+
+User-visible: the 3D viewport renders the bundled robot at its default pose and never moves again, with no spinner, no error and no way to recover short of tearing the whole source down. `ViewportModel` shares one `poseStream` between the scene and the hearing indicator (`ViewportModel+Remote.swift:62-72`), and tearing one down while starting the other is exactly the tab-switch path.
+
+Fix: one critical section — remove the subscriber, and decide-and-clear the reader, under a single `lock.withLock`.
+
+---
+
+## HIGH
+
+### 2. `subscribeToPose()` failure is discarded; nothing re-subscribes after a peer swap
+`Sources/ReachyKit/Central/RemotePoseStream.swift:74-75`
+
+```swift
+try? await connection.subscribeToPose()
+defer { Task { try? await connection.unsubscribeFromPose() } }
+```
+
+Two failure modes, both ending in silence:
+
+- **Subscribe throws.** `subscribeToPose` is `control.send(...)` → `WebRTCDataChannel.send` → `Failure.refused` (channel full/closing) or `.closed`. The reader then sits on `channel.messages()` forever. The scene draws the neutral pose; the user reads that as the robot's actual pose.
+- **Peer replacement.** `CameraSession.handle(.sessionEnded(reason: nil))` calls `teardownPeer()` → `poseChannel.detachPeer()`, which deliberately keeps the message stream alive (`WebRTCDataChannel.swift:110-116`). The reader survives, so `startReadingLocked` never runs again and `subscribe_pose` is never re-sent. The new peer publishes nothing, and the scene freezes at the last frame received before the drop.
+
+Compounding it: `newest` (line 78) is a monotonic high-water mark local to the reader. If a re-negotiated daemon *does* restart its publisher at `seq: 0`, `guard frame.seq &gt; newest` (line 89) drops every frame for the rest of the session — counted as `unsupportedFrames`, surfaced nowhere.
+
+Also: `finishAll()` (line 101/111-115) ends every subscriber's stream with no reason attached, so a consumer cannot tell "we asked to stop" from "the session died".
+
+Compare `RemoteControlChannel.endReading()` (`RemoteControlChannel.swift:298-306`), which explicitly re-subscribes and fails waiters with `.closed` — the control channel solved this and the pose channel did not.
+
+### 3. A failed IMU read is reported as "this robot has no IMU"
+`Sources/ReachyKit/Transport/RobotConnection.swift:300` and `Sources/ReachyUI/Health/RobotHealthModel.swift:132-135`
+
+```swift
+// RobotConnection.swift:294-300 — the comment claims a narrow guarantee:
+/// so a decoding failure here is that null and nothing else, and it is reported as absence.
+guard let payload = try? await client.getImuApiStateImuGet().ok.body.json else { return nil }
+```
+
+The comment is wrong about what the `try?` covers. It spans the whole expression: the network call, `.ok` (which throws for **404, 500, 503** — any non-200), and `.body.json` (wrong content type), not only the null-decode it names. A Wireless robot whose daemon is mid-restart answers 503 and comes back as `nil`.
+
+That `nil` then meets a second swallow:
+
+```swift
+func refreshIMU() async {
+    guard let reading = try? await readIMUCall() else { return }   // throw AND nil are the same branch
+    imu = reading
+}
+```
+
+`try? await readIMUCall()` flattens `RobotIMUReading??` to `RobotIMUReading?`, so "the call threw" and "the robot has no IMU" are indistinguishable here too. And `RobotHealthScreen.motionSection` (`RobotHealthScreen.swift:139-152`) renders **nothing at all** when `imu == nil`.
+
+End result on the State screen — a diagnostics screen whose entire job is surfacing hardware state: a transient 503 on a Wireless robot renders byte-identically to a Lite unit with no BMI088. The `.refreshable` added at `RobotHealthScreen.swift:43-46` makes it worse — the user pulls down, the spinner completes normally, and nothing changes, forever. Nothing is logged either: neither `try?` goes through `RobotSession.message(for:)`, which `RobotSession+Errors.swift:28` calls the only place daemon failures are logged.
+
+### 4. Wi-Fi join: "we learned nothing" is rendered as "the robot refused the network"
+`Sources/ReachyUI/Settings/WiFiJoinModel.swift:86-90`
+
+```swift
+} catch {
+    phase = .refused(RobotSession.message(for: error) ?? String(
+        localized: .reachy("The robot refused the network.")
+    ))
+}
+```
+
+`RobotSession.message(for:)` returns `nil` for a cancellation, and `RobotSession+Errors.swift:37-38` defines that contract precisely: *"`nil` means leave what is on screen alone. An abandoned call learned nothing, so it may neither report a failure nor clear one still being read."* The `??` overrides exactly that and converts "learned nothing" into a definitive verdict.
+
+This is the failure the flow is most likely to hit. The whole premise of the screen (`WiFiJoinSheet.swift:8-10`, `RobotSession+WiFi.swift:26-31`) is that a successful join takes this link down. Any in-flight `POST /wifi/connect_sealed` that is abandoned when the session tears down under it arrives as `NSURLErrorCancelled` — and the user is shown the red refusal panel under the footer *"A wrong code is the usual reason"* (`WiFiJoinSheet.swift:137-142`), after a join that **succeeded**. They then retype the password and retry against a robot that is no longer at that address.
+
+Even for a non-cancelled transport error (`networkConnectionLost`, `timedOut` — the plain race between the 200 and NetworkManager taking the interface down), the phase is still `.refused`, framed as a credentials problem. Nothing distinguishes the expected disconnect from a genuine refusal, and `lastWiFiError()` / `resetWiFiError()` — the routes that exist for exactly this question (`RobotSession+WiFi.swift:58-66`) — are never called.
+
+Minimum fix: give `Phase` a third outcome for "the link went away before the robot answered", and route `message(for:) == nil` plus non-`BLECommandError` transport failures to it, with copy that says the join may well have worked.
+
+### 5. Every relay failure reaches the user as `RemoteControlChannel.Failure error N`
+`Sources/ReachyKit/Central/RemoteControlChannel.swift:66-74`, surfaced via `Sources/ReachyKit/Session/RobotSession+Errors.swift:22-25`
+
+`RemoteControlChannel.Failure` carries no `LocalizedError` conformance, which `Sources/ReachyKit/AGENTS.md:53-55` already documents: *"A bare `Error` enum reaches the UI as `&lt;Module&gt;.&lt;Type&gt; error &lt;n&gt;` … counting cases is how a screenshot names a root cause."* `describe()` falls through to `root.localizedDescription`, producing `The operation couldn't be completed. (ReachyKit.RemoteControlChannel.Failure error 1.)`.
+
+The gap is pre-existing; what this branch does is route several **new, user-facing, destructive** operations straight into it:
+
+- `HFAccountSection.unlink()` (`Sources/ReachyUI/Settings/HFAccountSection.swift:300-311`) — over the relay this calls `RemoteRobotConnection.deleteHFToken()`, and the section's own footer says the robot "goes offline and comes back only once somebody sets it up again in person". Dropping the token is what ends the relay session, so the reply frequently never arrives; after 10 s the user gets `Failure.timedOut` rendered as the NSError sentence above, with no way to tell whether the irreversible thing happened.
+- `RunningAppModel.run` → `recordFailure` (`Sources/ReachyUI/Apps/RunningAppModel.swift:348-357`) — Stop/Restart on the dock, now enabled over the relay.
+- `SettingsScreen.rename()` (`Sources/ReachyUI/Settings/SettingsScreen.swift:154-160`).
+
+Worse, `RemoteControlChannel+RPC.swift:76-95` carefully composes the daemon's own explanation — `"\(message) (\(reason))"`, with the comment *"`already_running` is what tells a caller the robot is busy rather than broken"* — packs it into `Failure.robot(String)`, and then `describe()` **throws the string away**. Every apps-RPC error message the daemon produces is destroyed at the presentation boundary.
+
+Fix is one extension: `extension RemoteControlChannel.Failure: LocalizedError` returning the robot's text for `.robot`, and real sentences for `.timedOut` / `.closed`. `ReachyMedia.WebRTCDataChannel.Failure` and `BLETransportError`'s neighbours have the same hole.
+
+### 6. Rename is offered on relayed robots that cannot do it
+`Sources/ReachyKit/Session/RobotSession+Connect.swift:96` + `Sources/ReachyKit/Session/RobotRenameClient.swift:13`
+
+```swift
+supportsRename = handshake.supportsRename || client is any RobotRenameClient
+```
+
+`extension RemoteRobotConnection: RobotRenameClient {}` is unconditional, but `set_robot_name` only exists on the data channel from daemon **1.10.0** (`RemoteRobotConnection+Identity.swift:5-9`). `RobotNameField` (`Sources/ReachyUI/Settings/RobotNameField.swift:12-22`) gates purely on that boolean and ignores its own `daemonVersion` parameter when editable.
+
+So: a relayed robot on 1.9.x (still supported — `DaemonCompatibilityPolicy.minimumVersion == "1.9.0"`) shows an editable name field. Save → the command goes out, nothing answers, the user waits **10 seconds**, then gets the opaque `Failure error 1` string from finding 5, and the field silently reverts to the old name.
+
+The branch already knows how to ask this question — `DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported:)` was added in this very diff — and uses it for the pre-release toggle. It is not used here. The same applies to `RobotSession.canControlRunningApp` (`RobotSession+Apps.swift:15-22`) and to the JSON-RPC apps surface: `client is any RobotAppsClient` is unconditional, so on a pre-1.10.0 relay `RunningAppModel.poll` runs a forever-failing loop, one 10-second RPC timeout per tick, logging nothing (`RunningAppModel.swift:216` uses `try?`).
+
+### 7. `settleJob` reports "restarting" when the 20-minute budget runs out mid-install
+`Sources/ReachyUI/Settings/SystemUpdateModel.swift:127-142`
+
+```swift
+while ContinuousClock.now &lt; deadline, !Task.isCancelled {
+    guard let job = try? await session.updateInfo(jobID: jobID) else { return true }
+    switch job.status {
+    ...
+    case .pending, .inProgress: try? await Task.sleep(for: jobPollInterval)
+    ...
+    }
+}
+return true            // ← budget exhausted, job still in_progress
+```
+
+Two ways out of this loop return `true` = "the daemon really did restart":
+
+- **Budget exhaustion.** A `pip install` still reporting `in_progress` after 20 minutes falls out of the `while` and returns `true`. `install` then sets `.restarting` and calls `confirmRestart`, which reconnects to a daemon that never went down and reads back the **old** version → `.failed("The update finished but the robot still reports X. A new enough release may not be published yet.")` (line 156-164). Wrong diagnosis, blaming the release for a job that is still running.
+- **Cancellation.** `try? await Task.sleep` swallows `CancellationError`; the `while` condition catches it next iteration and returns `true`. `reconnectAfterUpdate` then returns `nil` immediately (`RobotSession+Update.swift:51`) → `.failed("The robot did not come back after the update. Power-cycle it and try again.")`.
+
+Telling a user to power-cycle a robot in the middle of a `pip install` is actively harmful advice, and it directly contradicts this file's own rule at line 168-170 (*"A cancelled call leaves the state exactly as it was"*), which `fail(on:)` honours and this path bypasses. Both exits need to be distinguished from "the daemon went away": budget exhaustion deserves its own state ("still installing — check back"), cancellation deserves no state change at all.
+
+---
+
+## MEDIUM
+
+### 8. A relayed robot reads as permanently asleep when `get_state` is slow or refused
+`Sources/ReachyKit/Central/RemoteRobotConnection.swift:84-101`
+
+```swift
+} catch RemoteControlChannel.Failure.timedOut { motorMode = nil }
+  catch RemoteControlChannel.Failure.robot   { motorMode = nil }
+  catch is DecodingError                      { motorMode = nil }
+```
+
+`motorMode == nil` produces `backend_status: null` (line 139-140). The doc comment eight lines above (line 76-79) states what that costs: *"while this returned `nil` a remote robot read as permanently asleep however awake it was, which disabled teleop, moves and the viewport."* This catch reintroduces that exact state, and `Failure.robot` in particular is the robot **explicitly** reporting a problem — swallowed, unlogged, indistinguishable from a healthy idle robot. The status poll runs every three seconds, so this can persist indefinitely with the user tapping a Wake button that appears to do nothing.
+
+### 9. `updates = nil` on failure erases the update badges the user just pulled to refresh
+`Sources/ReachyUI/Apps/AppStoreModel.swift:266-270`
+
+```swift
+let updates = try? await session.appUpdates(force: refresh)
+guard loadID == requestID, !Task.isCancelled else { return }
+...
+self.updates = updates          // nil on failure — assigned, not skipped
+```
+
+The line above it explains the opposite convention for `currentApp()`: *"A failed call therefore leaves the last known app standing rather than blanking the dock."* This one blanks. Newly reachable from `.refreshable { await reload(refresh: true) }` (`AppStoreScreen.swift:114`): the user pulls to force a check past the daemon cache, the call fails (an expired HF token is a documented cause), every update badge disappears, and the screen now positively asserts that everything is up to date. Keep the previous value on failure, as the neighbouring calls do.
+
+### 10. Face-tracking poll fails forever, unlogged and unreported
+`Sources/ReachyUI/PresenceModel.swift:118-129`
+
+```swift
+do { seesFace = try await trackedFaceCall(session) != nil }
+catch { seesFace = nil }
+```
+
+A bare catch swallowing every error type: `ReachyKitError.notConnected`, a decode failure, a 500, a URL error. The loop then sleeps a second and tries again, forever, with no backoff and no cancellation outside the model's lifetime. Nothing goes through `RobotSession.message(for:)`, so nothing reaches the log either — a robot whose camera pipeline has genuinely died reads identically to one that simply sees nobody. `TelepresenceSheet.faceReading` renders `EmptyView` for `nil`, so the indicator just silently vanishes.
+
+Keeping the value `nil` is right; recording nothing anywhere is not. `lastError.recordDaemonFailure(error)` after N consecutive failures, or at minimum letting `message(for:)` log it.
+
+### 11. `try?` on `updateInfo` makes every daemon error mean "it restarted"
+`Sources/ReachyUI/Settings/SystemUpdateModel.swift:130`
+
+The comment justifies this for an unreachable daemon, and for that case it is right. But the `try?` also covers a 500 from a wedged daemon, a decode failure against a changed schema, and a 404 for a job id the register lost — each of which is announced to the user as a successful restart. Narrow it to the transport error the comment actually means.
+
+### 12. Pre-release toggle stays live on a robot known to refuse pre-releases
+`Sources/ReachyUI/Settings/SystemUpdateCard.swift:25-29`, `39-44`
+
+`.disabled(model?.isBusy ?? true)` — the toggle is never disabled for `session.refusesPreReleaseUpdates`. Flipping it on a 1.9.x robot triggers `check(preRelease: true)`, which that daemon answers "up to date" because of its own string-ranking bug (`RobotSession+Readiness.swift:117-122`), and the card shows a green **"Up to date — 1.9.0"** while a newer pre-release exists. Only a footer warns.
+
+And the warning is gated on `refusesPreReleaseUpdates`, which `DaemonCompatibilityPolicy.isKnownOlder` returns `false` for whenever the version is unreported or unparsable (`DaemonCompatibility.swift:37-41`). "Withhold a feature on evidence, never on the absence of it" is a sound default for *withholding*; here it also withholds the **explanation**, so a robot with an unreadable version string gets the wrong answer with no warning at all.
+
+### 13. Relay with no cached move index shows "unsupported URL"
+`Sources/ReachyKit/Session/RobotSession+Moves.swift:36-45`
+
+```swift
+} catch let error as URLError where error.code == .unsupportedURL {
+    guard let cached = moveCache[dataset] else { throw error }
+```
+
+`canPlayMoves` (`RobotSession+Readiness.swift:101-103`) is now true over the relay, so the Moves tab is offered. A user who has never had this robot on their LAN has no disk cache, the protocol default throws `URLError(.unsupportedURL)`, and `MovesModel.load`'s `report(error)` (`Sources/ReachyUI/MovesModel.swift:131-144`) puts the literal string **"unsupported URL"** on screen. This branch introduced `ReachyKitError.movesUnavailable` — *"The robot's moves cannot be played over this connection"* — for exactly this situation; throw that instead.
+
+### 14. Malformed channel frames are dropped silently, costing the caller a full timeout
+`Sources/ReachyKit/Central/RemoteControlChannel.swift:314`
+
+```swift
+guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else { return }
+```
+
+`Envelope.init` uses `try?` on every field (`RemoteControlChannelEnvelope.swift:24-28`), so this only fails for a frame that is not a JSON object at all — but when it does, the frame vanishes with no counter and no log, and the waiting caller sits out its whole 10 s (or 30 s opening) budget and reports `.timedOut`, which reads as "the robot went quiet" rather than "this client could not read what it sent". `RemotePoseStream` at least counts these (`diagnostics.decodeFailures`); the control channel counts nothing.
+
+The new JSON-RPC branch (line 318-329) adds a second drop: `rpcID` is decoded as `Int`, and JSON-RPC permits string ids. An id echoed as a string falls through to `envelope.method` (nil on a response) and the frame is discarded — again as a silent full-budget timeout.
+
+### 15. `Cancel` during `.sending` discards the outcome of a join in flight
+`Sources/ReachyUI/Settings/WiFiSettingsCard.swift:86-94` + `WiFiJoinSheet.swift:91-93`
+
+The toolbar Cancel sets `joining = false` unconditionally, including while `model.phase == .sending`. The send was launched from a button action (`Task { await model.send(session: session) }`), not from `.task`, so it is not cancelled — it completes against a model nobody is watching. The user is left with no idea whether the robot took the network, and the robot may well be switching. Disable Cancel while `.sending`, or keep the sheet up until the phase resolves.
+
+---
+
+## LOW
+
+- **`Sources/ReachyMedia/CameraSession.swift:227-228` and `233-234`** — `poseChannel.close()` is written twice in both branches. Harmless (`close()` is idempotent) but it is a copy-paste slip in new code.
+- **`Sources/ReachyKit/Central/RemoteRobotConnection.swift:156-161`** — `quoted(_:)` returns `"\"\""` when encoding the robot's name fails, silently replacing the name with an empty string in the synthesised status JSON.
+- **`Sources/ReachyKit/Central/RemoteRobotConnection.swift:216`** — `.state.isMoveRunning ?? false`. A daemon that omits the field reports the move as finished the instant it starts, so playback UI collapses immediately. `nil` here means "this daemon cannot say", which is not the same as "not running".
+- **`Sources/ReachyWidgetUI/RobotAppLauncher.swift:99-102`** — `_ = try? await moves?.gotoNeutral(...)`. The optional chain plus `try?` makes "no playback client" and "the park threw" identical and both silent; the robot stays in whatever pose the previous app left it in, from a widget intent with no UI to say so.
+- **`Sources/ReachyUI/Settings/WiFiJoinModel.swift:92`** — `password = ""` runs on the refused path too, so "Try again" presents an empty password field under a footer that says the *code* is the usual culprit.
+- **`Sources/ReachyKit/Central/RemoteControlChannel.swift:118-149`** — `perform` never calls `Task.checkCancellation()`, and `takeTurn`'s `withCheckedContinuation` (line 373-375) has no cancellation handling. A cancelled caller queued behind another command of the same name still sends its command to the robot when its turn comes. Not a hang, but a command the user's screen has already abandoned still executes on hardware.
+
+---
+
+Two things done well and worth keeping as the pattern for the fixes above: `RemoteControlChannel.endReading()` (`RemoteControlChannel.swift:298-306`) fails every pending waiter with `.closed` and finishes every listener rather than leaving them hanging — which is precisely what `RemotePoseStream` should be doing; and `RunningAppModel.refresh` (`Sources/ReachyUI/Apps/RunningAppModel.swift:214-225`) is scrupulous about never concluding anything from a reading that did not arrive, with the reasoning written down.</result>
+<usage><subagent_tokens>238082</subagent_tokens><tool_uses>50</tool_uses><duration_ms>633245</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a761604790b0363cf</task-id>
+<tool-use-id>toolu_015DTudHZcumUG5PxgPCucSq</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/a761604790b0363cf.output</output-file>
+<status>completed</status>
+<summary>Agent "Comment accuracy review" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>I have enough verified findings to report. (A third sweep over the ReachyKit Session/Transport files is still running in the background; everything below I verified myself against the code.)
+
+## Summary
+
+Scope: `git diff main...HEAD`, 16 commits, **834 added comment lines** across 81 files plus 16 lines in `AGENTS.md`. The prose is uniformly "why"-oriented and mostly high quality. The problems are concentrated in three patterns: **absolute claims left standing over code the same PR changed**, **new declarations wedged between an existing doc comment and the symbol it documented**, and **the same fact stated two different ways in two files of the same PR**.
+
+---
+
+## Critical: comment rot the branch introduced
+
+**1. The `canPlayMoves` rationale is factually backwards** — and it deleted the comment that was right.
+- `/Users/aleksei/Developer/reachy-mini-desktop-app-swift/.claude/worktrees/pr-review-toolkit-87c19d/Sources/ReachyKit/Session/RobotSession+Readiness.swift:97-99` — *"was wrong in both directions: a relayed session has no address and plays perfectly well, while **the simulator has an address of sorts** and no library at all."*
+- `.../Sources/ReachyKit/Session/MovePlaybackClient.swift:11-13` — *"answered wrongly in both directions … **the simulator has no library and would have been offered one**."*
+
+`RobotSession.address` (`Sources/ReachyKit/Session/RobotSession.swift:212-218`) returns non-nil **only** for `case .lan`. A simulated session is `.simulated`, so `address` is `nil` and the old `address != nil` returned **false** — correct. The branch deleted the comment on main that said exactly this (`SimulatedRobotClient.swift`: *"`canPlayMoves` is `address != nil`, which stays false, so the screen is already right"*). It was wrong in **one** direction (the relay). Fix both sentences, or say "one direction".
+
+**2. `.../Sources/ReachyKit/Central/RemoteRobotConnection.swift:363-365`** — *"Only the motor mode is read: the rest of that payload is the live pose, which arrives far more cheaply on the `subscribe_pose` broadcast."*
+Untouched, while the same commit added four fields to `StateReply.State` and reads every one: `isMoveRunning` (`:213`), `headPose`/`bodyYaw`/`antennas` (`:286-296`). The second half is doubly wrong — `stateFrame()` exists precisely to read the live pose out of this reply.
+
+**3. `.../Sources/ReachyKit/Central/RemoteRobotConnection.swift:9-11`** (class doc) — *"Moves, URDF, kinematics, the robot's own name and `/wifi`, `/update` are all HTTP-only, and asking for them here fails rather than lies."*
+The actor now declares `MovePlaybackClient` (`:15`) and implements `playMove`/`stopMove`/`preload`/`gotoNeutral`/`runningMoveUUIDs`; `+Identity.swift` implements `setRobotName`. Only URDF, kinematics, `/wifi` and `/update` still hold.
+
+**4. `.../Sources/ReachyKit/Central/RemoteControlChannel.swift:40`** — *"**There is no request id.**"*
+The same file now carries `private var lastRPCID` (`:76`), `nextRPCID()` (`:155`) and `awaitRPCReply(id:…)` (`:162`), and `+RPC.swift` documents *"One JSON-RPC call, answered by its `id`."* The bolded absolute is now the opposite of the truth.
+
+**5. `.../Sources/ReachyKit/Central/RemoteRobotConnection.swift:17-18`** — *"No command answers the robot's name…"*
+The branch's own new file says this is stale: `RemoteRobotConnection+Identity.swift:5-7` — *"The comment on `RemoteRobotConnection.robotName` … was true of daemon 1.9.0 and stopped being true in 1.10.0."* Annotating a stale comment from a second file is the wrong fix; edit line 17.
+
+**6. `.../Sources/ReachyKit/Session/RobotPower.swift:95-97` and `:104-105`** — *"a remote connection reports no running moves at all by construction"* / *"A remote connection still exits at once: it reports no running moves by answering [] successfully, not by throwing."*
+Both untouched. `RemoteRobotConnection.runningMoveUUIDs()` no longer returns `[]` unconditionally — it polls `get_state` and returns `[playbackHandle]` while a move runs. Worse, the branch changed the guard to `guard let moves = client as? any MovePlaybackClient, let running = … else { sleep; continue }` — a non-conforming client now spins to `moveCompletionTimeout` rather than exiting at once. Its twin `RobotSession+Power.swift:209` got `guard … else { return }` and a doc saying *"returns at once"*. **Two comments now claim the same behaviour for code that differs.**
+
+**7. `.../Sources/ReachyKit/Central/RemoteStateStream.swift:9-14`** — *"**Polled on purpose, for now.** … Daemon 1.10.0 offers `subscribe_pose` … the better answer, and a second `RTCDataChannel` to receive it. **Until then**, asking is enough…"*
+This file is **new on this branch** (commit `0494f34d`), and commit `feccc65c` — two commits later, same PR — shipped exactly that: `RemotePoseStream` + `CameraSession.poseChannel`. The PR merges a brand-new file describing its own future as pending.
+
+**8. `.../Sources/ReachyUI/ViewportModel.swift:78-79`** — *"Nil over the relay: no HTTP API means no state stream, the same reason there is no scene there."*
+`ViewportModel.swift:205` now does `case let .remote(camera, connection): startRemoteHearing(connection, camera: camera)`.
+
+**9. `.../Sources/ReachyUI/ViewportModel.swift:121`** — *"Only the relay has none."* Directly above `case .lan, .simulated, .remote: true`.
+
+**10. `.../Sources/ReachyKit/Session/RobotSession+Connect.swift:91-92`** — *"…so it is set for a remote session too — **where the answer is simply always no**."*
+Left in place, with a contradicting sentence appended immediately below it and `supportsRename = handshake.supportsRename || client is any RobotRenameClient` underneath both.
+
+## Critical: docs silently reattached to the wrong symbol
+
+Three places where a new declaration was inserted **between** an existing doc comment and the declaration it described. Nothing errors; the doc now describes something else and the original symbol is undocumented.
+
+- `.../Sources/ReachyUI/Health/HealthFormat.swift:38-41` — *"Seconds on the wire, milliseconds on screen: a loop interval is 0.0184 s…"* now sits on the new `degrees(_:)` (`:42`), fused with the unrelated *"Whole degrees…"* paragraph. `milliseconds(_ seconds: Double)` (`:46`) is left bare.
+- `.../Sources/ReachyUI/Health/RobotHealthModel.swift:73-75` — the `files`-is-optional doc now documents `typealias ReadIMU` (`:76`).
+- `.../Sources/ReachyUI/Health/RobotHealthModel.swift:160-163` — the "reads the Keychain once, not in `init`" doc now documents `private let readIMUCall: ReadIMU` (`:164`), a stored property parked in the middle of the method section, away from every other stored property.
+
+Pre-existing, same class, worth fixing while you are there: `RobotHealthModel.swift:55` — *"The password field."* sits on `var username: String`.
+
+## Contradictions between comments added in the same PR
+
+| | |
+|---|---|
+| `RobotAppsClient.swift:12` says 1.10.0 put *"start, stop, status **and install**"* on the data channel | `RemoteRobotConnection+Apps.swift:14-15` says *"installing … stayed on HTTP"*; `RobotSession+Apps.swift:19-20` names *"`apps.status`, `apps.start` and `apps.stop`"*; the code implements three. **`RobotAppsClient.swift:12` is the outlier.** |
+| `MovePlaybackClient.swift:47-48` — *"`canPlayMoves` asks whether the type conforms, not whether it answers"* | The same file at `:11` and the code at `RobotSession+Readiness.swift:102` — `movesClient?.offersMoveLibrary == true`. `SimulatedRobotClient` conforms and answers `false`, so the extension header is the one false statement. |
+| `RemoteStateStream.swift:10` — `subscribe_pose` pushes *"at 50 Hz"* | `RemotePoseStream.swift:7` and `CameraSession.swift:65` — *"at about 30 Hz"*. Same publisher, one PR, two numbers; nothing in the repo settles it. |
+| `RemoteStateSnapshot.swift:10` — *"This is the translation, **in one place rather than two**."* | `RemoteRobotConnection.StateReply.State` (`:366-388`) does the same `[[Double]]`→flat / `antennas`-naming translation independently, and `RemoteRobotConnection.swift:270-275` repeats the identical rationale word for word. Two places. |
+| `MovePlaybackClient.swift:50` — *"every real robot has a library"* | `MovePlaybackClient.swift:26-28` — *"The relay conforms with no index route and answers true anyway."* |
+
+## Factually wrong technical claims
+
+**`2.0.squareRoot()` parses and typechecks fine.** Verified on the pinned toolchain (`Apple Swift 6.3`, `.swift-version` = 6.3.0): `swiftc -parse` and `-typecheck` both accept `2.0.squareRoot()`, `(2.0).squareRoot()` and `Double(0.5).squareRoot()` with zero diagnostics. The claim appears twice:
+- `.../Tests/ReachyKitTests/RobotIMUReadingTests.swift:36-38` — *"`2.0.squareRoot()` does not parse — the same trap `preferKeyPath` sets for `#expect`"* (and the value is a plain `private static let`, not inside `#expect` at all).
+- `.../AGENTS.md:281-285` — the same claim enshrined as project doctrine, opening *"The same rule holds"* over a different rule (`redundantParens`, not `preferKeyPath`), a different failure mode, and no `#expect`. Its closing sentence restates the preceding paragraph's second half almost verbatim.
+
+Someone will "simplify" this back and get a green build, which is the worst kind of comment.
+
+**`AGENTS.md:322`** — *"`GST_REGISTRY_1_0` names a file under `.venv-sim/.cache` that is never written."* The repo sets `GST_REGISTRY_1_0` nowhere; `mise.toml:575` sets `GST_PLUGIN_SCANNER`, and `GST_REGISTRY_FORK` appears only in a comment at `:568`.
+
+**`AGENTS.md:327`** — *"the tell CLAUDE.md used to name, `No caps found for stream audio_0`"*. `CLAUDE.md` is a symlink to `AGENTS.md`; that string never appeared in either. It lives at `mise.toml:573`, in a shell comment.
+
+**`AGENTS.md:318-321` contradicts two neighbours.** It says every 1.10.0 start takes ~5 min and pins `External plugin loader failed` on in-process scanning, ending *"wait it out"*. `AGENTS.md:313-317` (unchanged, one line above) attributes the same message to a relocated venv and says the worktree venv *"serves in four seconds"*; `mise.toml:566-568` says the same message means *"the daemon then hangs before binding :8000"*. Three readings of one log line, all live.
+
+**`.../Sources/ReachyMedia/CameraSession.swift`** (`adopt` doc) — *"see `RemotePoseStream`, which falls back to asking."* `RemotePoseStream` has no fallback; the choice is in `ViewportModel+Remote.swift:54-56`.
+
+**`.../Sources/ReachyUI/BundledGeometryClient.swift:9-10`** — *"the pose comes from ``RemoteStateStream``"*. That is the pre-1.10.0 fallback. On the tested version (`DaemonCompatibility.testedVersion = "1.10.0"`) it comes from `RemotePoseStream`.
+
+**Two places still say the pose is polled** after `feccc65c` made it pushed: `.../Sources/ReachyUI/ViewportModel.swift:49-50` and `.../Sources/ReachyKit/Session/RobotSession+Readiness.swift:82-83`.
+
+**`.../Scripts/swiftpm-env.sh:19`** — *"Only while a beta Xcode is selected."* The guard is `case "$(xcode-select -p)" in *Beta*)`, case-sensitive. It matches this machine (`/Applications/Xcode-27.0.0-Beta.6.app`, capital B from Xcodes.app) but not Apple's own `Xcode-beta.app`, nor CI's `Xcode_27.0_beta_4.app` that AGENTS.md names. The comment promises more generality than the code has.
+
+## Recommended removals
+
+**Five new "this file exists because of SwiftLint's length limit" justifications** (`RemoteControlChannel+RPC.swift:11`, `RemoteControlChannelEnvelope.swift:5`, `RemoteRobotConnection+Apps.swift:5`, `RemoteRobotConnection+Pose.swift:5`, `ViewportModel+Remote.swift:9`) — all new files. This is pure rationalisation of a mechanical constraint and is now in ~20 files. `RemoteRobotConnection+Pose.swift:5` also names *"`+Apps` and `+Wireless`"* from inside `RemoteRobotConnection`'s own extension family — there is no `RemoteRobotConnection+Wireless.swift`; the file meant is `RobotConnection+Wireless.swift`, a different type.
+
+**`.../Sources/ReachyUI/Settings/SystemUpdateCard.swift:36`** — *"Caught by the recorded reference, which is what it is for."* A verification note, exactly the class your style rules ban. The first sentence ("One view, not two: a bare pair of `Text`s rendered only the first") earns its place; delete the rest.
+
+**~15 lines of changelog-in-comment.** Comments should read as the present-tense truth, not as a diff. Worst offenders: `RemoteControlChannel.swift:214` (*"Until now that discriminator was only ever used to drop them"* — now sitting next to a second temporal layer, *"A `type` no longer means…"*), `RemoteControlChannel.swift:330-332`, `RemoteRobotConnection+Identity.swift:5-9`, `MovePlaybackClient.swift:18` (*"which now says so"*), `RobotSession+Readiness.swift:82,85`, `Previews/MovesScreenPreviews.swift:9` (*"The tab used to be closed…"*), `Tests/ReachyUITests/ViewportModelTests.swift:169`, `Tests/ReachyKitTests/RemoteRobotRenameTests.swift:5`.
+
+**`.../Sources/ReachyKit/Central/RemoteControlChannel+RPC.swift:98-99`** — *"At file scope because a generic type cannot be nested in a generic function."* True of a function, but nothing prevented nesting it in the extension; this is a design note, not a constraint.
+
+## Missing comments (genuinely non-obvious, undocumented)
+
+- **`.../Sources/ReachyKit/Transport/StateStreamClient.swift:9`** — `unsupportedFrames` has no doc and now counts three unrelated things: an unknown WebSocket frame kind (`:125`), an out-of-order pose frame (`RemotePoseStream.swift:91`), and a reply carrying no pose (`RemoteStateStream.swift:42`). Two of the three are new here. Either document the field or split the counter.
+- **`.../Sources/ReachyKit/Central/RemoteRobotConnection.swift:186`** — one `playbackHandle` slot is written by both `playMove` (`:203`) and `gotoNeutral` (`:238`), so a park overwrites a dance's handle and `stopMove(uuid:)` clears it regardless of whose it is. The "MARK: Recorded moves" block explains that handles are local but never mentions the aliasing.
+- The `RobotPower` / `RobotSession` `waitForMoveToFinish` divergence (finding 6) — deliberate or a bug, and nothing says which.
+
+## STE compliance
+
+**103 of 424 added comment sentences exceed 25 words** (~24%). Longest: `AGENTS.md:318` at 58 words, `RobotFaceTarget.swift:3` at 52, `RobotMovePlayer.swift:44` at 47, `RobotSession+Moves.swift:37` at 45, `MovePlaybackClient.swift:3` at 44. The house device — chaining clauses with em dashes and colons — is what pushes them over; each is two or three sentences written as one. `Scripts/swiftpm-env.sh` is 20 lines of prose over 8 lines of shell.
+
+## Positive findings
+
+- `.../Sources/ReachyKit/Model/RobotIMUReading.swift:29-39` — the `tiltDegrees` derivation. Verified: for `[w,x,y,z]` the body up-axis's world z-component really is `1 − 2(x²+y²)`, yaw really does drop out, and the clamp comment at `:44-45` names the exact `acos` domain failure. This is what a "why" comment should look like.
+- `.../Sources/ReachyKit/Transport/StateStreamClient.swift:17-23` (`StateStreamUpdate.hearing`) — explains why one accessor exists for two transports, and the code does exactly that.
+- `.../Sources/ReachyKit/Session/RobotRenameClient.swift:5-10` — justifies an empty marker protocol, which is the one case where a reader genuinely cannot recover the intent. Verified against `RobotSession+Connect.swift:96` and `RemoteRobotConnection.swift:57`.
+- `.../Sources/ReachyKit/Model/DaemonCompatibility.swift:71-76` (`leadingNumber`) — accurate on the PEP 440 case, and `1.10.0rc5` really does parse to 1.10.0.
+
+## Defects noticed in passing (not comments)
+
+- `.../Sources/ReachyKit/Central/RemoteRobotConnection+Apps.swift:11` — a stray `//` at column 0, breaking out of the `// MARK:` block. Copy-paste artifact; neither linter catches it.
+- `.../Sources/ReachyMedia/CameraSession.swift:227-228` and `:233-234` — `poseChannel.close()` is written twice in each branch.
+- `.../Sources/ReachyUI/PresenceModel.swift:47` — DocC link ``commitTrackingWeight`` needs its argument label (``commitTrackingWeight(session:)``) to resolve. Pre-existing; every other link in the changed UI files resolves.</result>
+<usage><subagent_tokens>253206</subagent_tokens><tool_uses>85</tool_uses><duration_ms>761225</duration_ms></usage>
+</task-notification>
+
+---
+
+Исправь ВСЕ
+
+---
+
+<task-notification>
+<task-id>bcnkjqoks</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/bcnkjqoks.output</output-file>
+<status>completed</status>
+<summary>Background command "Run the snapshot comparison" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bmusffo1i</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/bmusffo1i.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-record the one moved reference set" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>ba1j21zr7</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-pr-review-toolkit-87c19d/973ae56c-e826-4f2d-8b4a-4a53445c35f6/tasks/ba1j21zr7.output</output-file>
+<status>failed</status>
+<summary>Background command "Re-run snapshots with the full log captured" failed with exit code 1</summary>
+</task-notification>
+
+---
+
+Какие еще правки остались?
