@@ -12,14 +12,12 @@ import Foundation
 /// **The robot goes offline and stays there.** Its token is what registers it with
 /// central, so dropping it ends this session and every future one until somebody
 /// re-provisions the robot over Bluetooth or through the page it serves itself.
+/// Conforming *is* the capability — `RobotSession.canUnlinkRobot` asks nothing
+/// else — so there is deliberately no default here. One that threw would let every
+/// conformer advertise a button that fails, which is what these narrow protocols
+/// exist to prevent.
 public protocol RobotUnlinkClient: Sendable {
     func deleteHFToken() async throws
-}
-
-public extension RobotUnlinkClient {
-    func deleteHFToken() async throws {
-        throw URLError(.unsupportedURL)
-    }
 }
 
 /// The robot's own Hugging Face account: the token it stores, the relay that

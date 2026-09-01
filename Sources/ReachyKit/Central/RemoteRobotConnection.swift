@@ -6,16 +6,17 @@ import ReachyJSON
 /// Deliberately a `RobotAPIClient` like `RobotConnection`, so `RobotSession` and
 /// the screens above it do not have to know which way the robot was reached. It
 /// is an honest subset, not a facade: everything the data channel does not carry
-/// is left on the protocol's throwing defaults rather than stubbed out. Moves,
-/// URDF, kinematics, the robot's own name and `/wifi`, `/update` are all
-/// HTTP-only, and asking for them here fails rather than lies.
+/// is left on the protocol's throwing defaults rather than stubbed out. URDF,
+/// kinematics and `/wifi`, `/update` are HTTP-only, and asking for them here
+/// fails rather than lies.
 ///
 /// The command names and their fields are `reachy_mini/io/protocol.py`; the reply
 /// shapes are `process_command` in `daemon/backend/abstract.py`.
 public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlaybackClient {
     let control: RemoteControlChannel
-    /// No command answers the robot's name, so it comes from the central listing
-    /// that got us to this robot — the same place the user picked it from.
+    /// From the central listing that got us to this robot — the same place the
+    /// user picked it from. Daemon 1.10.0 also answers `get_robot_name`, but the
+    /// listing is already in hand and costs no round trip.
     private let robotName: String?
     /// Asked once and held: neither changes for the life of a session, and the
     /// status poll runs every three seconds.
@@ -51,9 +52,9 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
                 daemonVersion: status.version
             ),
             status: status,
-            // Renaming is `POST /api/daemon/robot-name` and no command on this
-            // channel carries it, so the field is greyed out rather than left to
-            // fail on save.
+            // The HTTP route this reports on is unreachable here. `set_robot_name`
+            // on the data channel is the other half of the answer, and
+            // `RobotSession` reads it off the `RobotRenameClient` conformance.
             supportsRename: false
         )
     }
@@ -92,7 +93,13 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
             ).state.motorMode
         } catch RemoteControlChannel.Failure.timedOut {
             motorMode = nil
-        } catch RemoteControlChannel.Failure.robot {
+        } catch let error as RemoteControlChannel.Failure {
+            // `.closed` is the poll's proof the relay died and has to escape.
+            guard case .robot = error else { throw error }
+            // `.robot` is the robot saying something is wrong, and it used to vanish
+            // here — an unknown motor mode reads as a robot asleep, which disables
+            // teleop, moves and the viewport with nothing said anywhere.
+            _ = RobotSession.message(for: error)
             motorMode = nil
         } catch is DecodingError {
             motorMode = nil
@@ -156,7 +163,12 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     private static func quoted(_ value: String) -> String {
         guard let encoded = try? JSONCodec.daemon.encode(value),
               let text = String(bytes: encoded, encoding: .utf8)
-        else { return "\"\"" }
+        else {
+            // Only reachable for a string `JSONEncoder` cannot encode, which is not
+            // a thing a name can be. Empty rather than a placeholder: an invented
+            // name would be shown as the robot's own.
+            return "\"\""
+        }
         return text
     }
 
@@ -184,7 +196,17 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     // *whether*, never *which*.
 
     /// The handle for the run this connection dispatched, while it is still going.
+    ///
+    /// One slot, written by both `playMove` and `gotoNeutral`, so parking replaces
+    /// a dance's handle — and `stopMove` clears whichever is there, since the
+    /// command it sends stops whatever is playing anyway.
     private var playbackHandle: String?
+
+    /// No index route on this channel: the library comes off what this app kept
+    /// from the robot's own network. See ``MovePlaybackClient/offersMoveIndex``.
+    public nonisolated var offersMoveIndex: Bool {
+        false
+    }
 
     /// The one place this transport is *ahead* of the HTTP one: a play there
     /// blocks until the dataset is on the robot, while `play_recorded_move` is
@@ -208,16 +230,24 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// running. Empty otherwise — including for a handle from a previous launch,
     /// which nothing here can recognise.
     public func runningMoveUUIDs() async throws -> Set<String> {
-        guard let playbackHandle else { return [] }
+        guard let handle = playbackHandle else { return [] }
         let running = try await control.perform(
             "get_state",
             correlation: .replyKey("state"),
             expecting: StateReply.self
-        ).state.isMoveRunning ?? false
+        ).state.isMoveRunning
+        // The `await` above is a suspension point, and this is an actor: `stopMove`
+        // and `playMove` both run inside it. Answering for a handle that has since
+        // been replaced would clear the new dance's handle and let its monitor
+        // count two misses while the robot is still moving.
+        guard playbackHandle == handle else { return [] }
+        // `nil` is a daemon that cannot say, which is not "not running": treating
+        // the two alike ends playback the instant it starts.
+        guard let running else { return [handle] }
         if !running {
-            self.playbackHandle = nil
+            playbackHandle = nil
         }
-        return running ? [playbackHandle] : []
+        return running ? [handle] : []
     }
 
     /// Stops whatever is playing. The handle is not sent — there is nowhere to send
@@ -246,48 +276,16 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// it, so by the time this is reached the player is already quiet.
     public func stopSound() async throws {}
 
-    /// The robot's inertial reading, over the channel.
-    ///
-    /// `get_imu` is answered with the same `imu_data` frame the robot publishes
-    /// unasked, so the correlation is by type rather than by an echoed command —
-    /// see ``RemoteControlChannel/Correlation/typed(_:)``. A relayed robot is a
-    /// Wireless one by construction, so unlike the HTTP route this has no
-    /// IMU-less case to report.
-    public func imuReading() async throws -> RobotIMUReading? {
-        let reply = try await control.perform(
-            "get_imu",
-            correlation: .typed("imu_data"),
-            expecting: IMUReply.self
-        )
-        return RobotIMUReading(
-            accelerometer: reply.accelerometer,
-            gyroscope: reply.gyroscope,
-            quaternion: reply.quaternion,
-            temperatureCelsius: reply.temperature
-        )
-    }
-
     /// One pose reading, for a viewer that has no socket to open.
     ///
-    /// Built by hand rather than decoded: `StateSnapshot` and the WebSocket frame
-    /// name the same values differently — `antennas` against `antennas_position`,
-    /// a nested 4x4 against a flat sixteen — so this is a translation, and
-    /// ``RobotStateFrame``'s public initialiser exists for producers like this one.
-    ///
     /// Nil where the robot sent no pose at all, which is a robot with its backend
-    /// down rather than an error to report.
+    /// down rather than an error to report — see ``RemoteStateSnapshot/frame``.
     public func stateFrame() async throws -> RobotStateFrame? {
-        let state = try await control.perform(
+        try await control.perform(
             "get_state",
             correlation: .replyKey("state"),
             expecting: StateReply.self
-        ).state
-        guard state.headPose != nil || state.bodyYaw != nil || state.antennas != nil else { return nil }
-        return RobotStateFrame(
-            bodyYaw: state.bodyYaw,
-            antennas: state.antennas,
-            headPose: state.headPose.map { .matrix($0.flatMap(\.self)) }
-        )
+        ).state.snapshot.frame
     }
 
     public func deleteHFToken() async throws {
@@ -350,18 +348,10 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
         let volume: Int
     }
 
-    /// `ImuDataMsg` flat, as the daemon sends it — the `type` is the correlation
-    /// rather than payload, so it is not read here.
-    private struct IMUReply: Decodable {
-        let accelerometer: [Double]
-        let gyroscope: [Double]
-        let quaternion: [Double]
-        let temperature: Double
-    }
-
-    /// `get_state` answers `{"state": {…}}` with no command echoed. Only the motor
-    /// mode is read: the rest of that payload is the live pose, which arrives far
-    /// more cheaply on the `subscribe_pose` broadcast.
+    /// `get_state` answers `{"state": {…}}` with no command echoed. The pose half
+    /// is ``RemoteStateSnapshot``, the same type the pushed frames carry, so the
+    /// polled path cannot drift from the pushed one — it used to, and that is why
+    /// the hearing indicator was missing from it.
     private struct StateReply: Decodable {
         let state: State
 
@@ -371,21 +361,18 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
             /// way to ask which. That is the whole of what this transport can say
             /// about playback, and what `runningMoveUUIDs` is built on.
             let isMoveRunning: Bool?
-            /// Row-major 4x4, as `StateSnapshot` sends it — nested rather than the
-            /// flat sixteen the WebSocket stream carries under `m`.
-            let headPose: [[Double]]?
-            let bodyYaw: Double?
-            /// `(left, right)`, radians. Named `antennas` here and
-            /// `antennas_position` on the socket, which is why neither reply can be
-            /// decoded straight into ``RobotStateFrame``.
-            let antennas: [Double]?
+            let snapshot: RemoteStateSnapshot
 
             enum CodingKeys: String, CodingKey {
                 case motorMode = "motor_mode"
                 case isMoveRunning = "is_move_running"
-                case headPose = "head_pose"
-                case bodyYaw = "body_yaw"
-                case antennas
+            }
+
+            init(from decoder: any Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                motorMode = try container.decode(String.self, forKey: .motorMode)
+                isMoveRunning = try container.decodeIfPresent(Bool.self, forKey: .isMoveRunning)
+                snapshot = try RemoteStateSnapshot(from: decoder)
             }
         }
     }

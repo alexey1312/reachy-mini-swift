@@ -278,11 +278,6 @@ They are wired now; the entries are here because each failure reads as something
   than at the line you wrote. So `mise run format` breaks a test that compiled a minute earlier, and undoing it by hand
   is a loop — the next format run puts it back. Assert on a mapped array instead
   (`map(\.isTappable).contains(false) == false`), which the rule leaves alone.
-  **The same rule holds for parentheses round a float literal**, and that one does not even reach the type checker:
-  `redundantParens` turns `(2.0).squareRoot()` into `2.0.squareRoot()`, which fails to _parse_ — `expected named
-  member of numeric literal`, reported against the macro expansion rather than the line. Bind the value first
-  (`Double(0.5).squareRoot()`) so no literal is left carrying a member. The class is the same both times: `format`
-  breaks a file that compiled a minute earlier, and the fix is to write it in a shape the rule has no opinion about.
   `mise run clean` only clears `.build` — `Apps/DerivedData` (Xcode's, several GB) is not touched.
   **SwiftPM holds one `.build` lock per worktree**, so a second invocation waits instead of failing, printing
   `Another instance of SwiftPM (PID: …) is already running` — a line that never appears when the output is piped
@@ -318,14 +313,14 @@ They are wired now; the entries are here because each failure reads as something
   **On 1.10.0 every start takes about five minutes and the WebRTC leg needs the open internet.** GStreamer's
   external plugin scanner reports "External plugin loader failed" and the registry is scanned in-process instead;
   1.10.0 carries four gstreamer wheels rather than one, so that scan is minutes of `dlopen` and the daemon binds
-  :8000 only at the end of it. Nothing caches it either — `GST_REGISTRY_1_0` names a file under `.venv-sim/.cache`
-  that is never written — so the second start costs the same as the first (measured twice). Wait it out rather than
+  :8000 only at the end of it. Nothing caches it either: the second start costs the same as the first, measured
+  twice. Wait it out rather than
   concluding the daemon is wedged: `sample <pid>` shows `gst_registry_scan_plugin_file`, which is work, not a hang. Separately, `test:sim`'s WebRTC case
   ("negotiates up to the robot's SDP offer") times out at 60 s wherever **`turn.fastrtc.org`** does not resolve:
   1.10.0 fetches short-lived Cloudflare TURN credentials from it before registering a producer, logs
   `Failed to fetch TURN credentials`, and the listener waits for an offer that never comes. The other seven cases
-  pass. That is the daemon reaching the internet, not our client — the tell CLAUDE.md used to name,
-  `No caps found for stream audio_0`, is absent.
+  pass. That is the daemon reaching the internet, not our client — the tell `mise.toml` names beside
+  `GST_PLUGIN_SCANNER`, `No caps found for stream audio_0`, is absent.
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both

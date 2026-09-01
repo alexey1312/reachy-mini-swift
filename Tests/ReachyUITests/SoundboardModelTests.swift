@@ -44,7 +44,7 @@ private class SoundlessUIClient: RobotAPIClient, @unchecked Sendable {
     }
 }
 
-private final class SoundUIClient: SoundlessUIClient, SoundboardClient {
+private final class SoundUIClient: SoundlessUIClient, SoundboardClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var calls: [String] = []
     var onRobot: [String] = []

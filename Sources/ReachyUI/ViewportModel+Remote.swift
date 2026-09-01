@@ -5,9 +5,6 @@ import SwiftUI
 
 /// What the viewport does over the relay: a scene built from the app's own copy of
 /// the robot, and a pose read off the channel the robot pushes on.
-///
-/// A file of its own because `ViewportModel` is at SwiftLint's length limit — the
-/// split `RobotConnection+Wireless` and `+Apps` make.
 @MainActor
 extension ViewportModel {
     /// The scene over the relay: the robot's shape out of this app, its pose off

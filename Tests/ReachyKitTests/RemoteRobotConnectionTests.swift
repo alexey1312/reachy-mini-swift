@@ -292,7 +292,8 @@ struct RemoteRobotConnectionTests {
     func carriesPlaybackWithoutTheIndex() async {
         let (connection, _) = connection()
 
-        #expect(connection is any MovePlaybackClient)
+        #expect(connection.offersMoveLibrary)
+        #expect(!connection.offersMoveIndex)
         await #expect(throws: (any Error).self) {
             _ = try await connection.listMoves(dataset: "pollen-robotics/reachy-mini-dances-library")
         }

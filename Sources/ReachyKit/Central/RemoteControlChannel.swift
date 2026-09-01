@@ -37,15 +37,15 @@ public extension RemoteDataChannel {
 /// is not reachable from outside the robot's network, and the same commands
 /// arrive here as JSON instead.
 ///
-/// **There is no request id.** Most commands are answered by echoing the name
-/// back — `{"status": "ok", "command": "wake_up", "completed": true}`, or
-/// `{"error": "…", "command": "wake_up"}` — but a handful answer with the bare
-/// payload and no name at all: `get_version` sends `{"version": …}`,
-/// `get_hardware_id` sends `{"hardware_id": …}`, `get_state` sends `{"state": …}`
-/// and both motor-mode commands send `{"motor_mode": …}`. A reply can therefore
-/// only be attributed by something the caller supplies, which is what
-/// `Correlation` is. Two commands sharing a token are serialised rather than
-/// guessed at.
+/// **The plain command protocol carries no request id.** Most commands are
+/// answered by echoing the name back — `{"status": "ok", "command": "wake_up",
+/// "completed": true}` — but a handful answer with the bare payload and no name:
+/// `get_version` sends `{"version": …}`, `get_state` sends `{"state": …}` and
+/// both motor-mode commands send `{"motor_mode": …}`. Such a reply can only be
+/// attributed by something the caller supplies, which is what `Correlation` is,
+/// and two commands sharing a token are serialised rather than guessed at. The
+/// JSON-RPC surface daemon 1.10.0 added beside it *does* carry an id — see
+/// ``call(_:params:timeout:)``.
 public actor RemoteControlChannel {
     /// How a command's reply is recognised on a channel that carries no ids.
     public enum Correlation: Sendable, Equatable {
@@ -73,7 +73,8 @@ public actor RemoteControlChannel {
         case closed
     }
 
-    private var lastRPCID = 0
+    /// Not `private`: ``nextRPCID()`` lives beside the calls that spend it.
+    var lastRPCID = 0
     private let channel: any RemoteDataChannel
     private let timeout: Duration
     /// The robot is the one that opens the channel, and only once a negotiation
@@ -128,6 +129,9 @@ public actor RemoteControlChannel {
         }
         await takeTurn(for: token)
         defer { yieldTurn(for: token) }
+        // The turn can be a long wait behind another command of the same name, and a
+        // caller that gave up meanwhile must not still put its command on the wire.
+        try Task.checkCancellation()
 
         let text = try Self.encode(command, payload: payload)
 
@@ -146,16 +150,6 @@ public actor RemoteControlChannel {
         let reply = try await awaitReply(to: token, sending: text)
         try Self.throwIfError(in: reply)
         return reply
-    }
-
-    /// Ids are per channel and monotonic, which is all JSON-RPC asks of them.
-    private var nextID: Int {
-        lastRPCID + 1
-    }
-
-    func nextRPCID() -> Int {
-        lastRPCID = nextID
-        return lastRPCID
     }
 
     /// The waiting half of ``call(_:params:timeout:)``, here because the state it
@@ -210,11 +204,10 @@ public actor RemoteControlChannel {
     /// The unsolicited messages of one `type`.
     ///
     /// The robot broadcasts things nobody asked for — joint positions at 50 Hz,
-    /// journal lines, update progress — and every one of them names a `type`.
-    /// Until now that discriminator was only ever used to *drop* them; this is the
-    /// other half of it. A `type` no longer means "nobody asked", though: see
-    /// ``Correlation/typed(_:)``, which claims a frame a caller is waiting for
-    /// before the rest reach here.
+    /// journal lines, update progress — and every one of them names a `type`, which
+    /// is what subscribes to them here. A `type` does not mean "nobody asked",
+    /// though: see ``Correlation/typed(_:)``, which claims a frame a caller is
+    /// waiting for before the rest reach here.
     ///
     /// The stream ends when the channel does, so a console reading it learns that
     /// the session is over rather than sitting frozen with no explanation.
@@ -306,47 +299,43 @@ public actor RemoteControlChannel {
     }
 
     /// The robot also broadcasts messages nobody asked for — joint positions at
-    /// 50 Hz, move progress, update log lines — so a message has to be routed
-    /// before it can be delivered, and the ones nobody subscribed to are dropped
-    /// here.
+    /// 50 Hz, journal lines, update progress — so a message has to be routed before
+    /// it can be delivered, and the ones nobody subscribed to are dropped here.
     private func deliver(_ text: String) {
         let data = Data(text.utf8)
-        guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else { return }
-        // JSON-RPC first: it names neither a `type` nor a `command`, and its keys
-        // — `jsonrpc`, `result`, `id` — would otherwise fall to the key match below
-        // and answer whichever waiter happened to be tokened `result`.
-        if envelope.isRPC {
-            if let id = envelope.rpcID {
-                resume(Self.rpcToken(id), with: .success(data))
-            } else if let method = envelope.method {
-                // No id: a notification the running app pushed, fanned out by the
-                // daemon to every client. Delivered to subscribers by its method.
-                for continuation in listeners[method]?.values ?? [:].values {
-                    continuation.yield(data)
-                }
-            }
+        guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else {
+            // Dropped silently, the waiting caller sits out its whole budget and
+            // reports the robot as quiet rather than the frame as unread.
+            Self.log.error("unreadable frame on the data channel")
             return
         }
-        // A `type` used to be proof that nobody asked, which is what separates
-        // `{"state": …}`, an answer, from `{"type": "daemon_status", …, "state": …}`,
-        // which is not. Daemon 1.10.0 ended that: `get_imu` is answered with
-        // `ImuDataMsg`, the very frame the robot also publishes on its own. So a
-        // caller waiting on this exact type is answered first, and everything else
-        // fans out to subscribers as before — see `Correlation.typed`.
-        if let type = envelope.type {
+        switch envelope.route {
+        case let .rpcReply(id):
+            resume(Self.rpcToken(id), with: .success(data))
+        case let .rpcNotification(method):
+            yield(data, toListenersOf: method)
+        case .rpcUnattributable:
+            Self.log.error("json-rpc frame carrying neither an id nor a method")
+        case let .typed(type):
+            // Both, and in this order. Daemon 1.10.0 answers `get_imu` with the very
+            // frame the robot also publishes unasked, so claiming it for the caller
+            // alone starved anyone reading the broadcast — see `Correlation.typed`.
+            yield(data, toListenersOf: type)
             if waiting[type] != nil {
                 resume(type, with: .success(data))
-                return
             }
-            for continuation in listeners[type]?.values ?? [:].values {
-                continuation.yield(data)
-            }
-            return
-        }
-        if let command = envelope.command {
+        case let .command(command):
             resume(command, with: .success(data))
-        } else if let token = waiting.keys.first(where: envelope.keys.contains) {
-            resume(token, with: .success(data))
+        case let .keyed(keys):
+            if let token = waiting.keys.first(where: keys.contains) {
+                resume(token, with: .success(data))
+            }
+        }
+    }
+
+    private func yield(_ data: Data, toListenersOf type: String) {
+        for continuation in listeners[type]?.values ?? [:].values {
+            continuation.yield(data)
         }
     }
 

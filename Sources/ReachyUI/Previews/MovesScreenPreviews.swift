@@ -6,10 +6,9 @@ import SwiftUI
     PreviewScene.movesScreen(.preview())
 }
 
-// The tab used to be closed over the relay, because the play route and the dataset
-// index are both HTTP. The data channel carries the play; the list is the one this
-// app kept off the same robot's own network. So the screen is the LAN screen, and
-// the capture is here to say that it is reachable at all.
+// Over the relay the data channel carries the play and the list is the one this app
+// kept off the same robot's own network, so the screen is the LAN screen. The
+// capture is here to say that it is reachable at all.
 #Preview("Moves — over the relay") {
     PreviewScene.movesScreen(.preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()))
 }

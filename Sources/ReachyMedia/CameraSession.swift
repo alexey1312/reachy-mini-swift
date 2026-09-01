@@ -225,12 +225,10 @@ public final class CameraSession {
             }
             dataChannel.close()
             poseChannel.close()
-            poseChannel.close()
             phase = .failed(RemoteSessionEnd(reason: reason).message)
         case let .failed(message):
             teardownPeer()
             dataChannel.close()
-            poseChannel.close()
             poseChannel.close()
             phase = .failed(message)
         }
@@ -341,8 +339,9 @@ public final class CameraSession {
     /// pushes. Anything else belongs to neither and is left alone.
     ///
     /// A daemon before 1.10.0 opens only the first, which is why the pose channel
-    /// is allowed to stay unattached rather than being waited for — see
-    /// `RemotePoseStream`, which falls back to asking.
+    /// is allowed to stay unattached rather than being waited for. `isOpen` is what
+    /// a caller reads to choose between the pushed pose and the polled one — see
+    /// `ViewportModel.remotePose`.
     func adopt(_ channel: RTCDataChannel) {
         switch channel.label {
         case "data": dataChannel.attach(channel)

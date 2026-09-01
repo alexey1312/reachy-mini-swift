@@ -17,7 +17,11 @@ final class WiFiJoinModel {
         case sending
         /// Accepted. The robot is switching networks and this link is going with it.
         case sent(ssid: String)
+        /// The robot answered, and said no.
         case refused(String)
+        /// The link went away before any answer arrived, which is also what a
+        /// success looks like from here. Neither outcome is known.
+        case uncertain(ssid: String)
     }
 
     typealias Scan = @MainActor (RobotSession) async throws -> [String]
@@ -60,6 +64,10 @@ final class WiFiJoinModel {
     }
 
     func scan(session: RobotSession) async {
+        // The screen's `.task` and the "Scan again" button can both reach this. Two
+        // overlapping sweeps let the first one's `defer` clear `isScanning` while
+        // the second is still running, which re-enables a button over a live scan.
+        guard !isScanning else { return }
         isScanning = true
         defer { isScanning = false }
         do {
@@ -83,13 +91,26 @@ final class WiFiJoinModel {
         do {
             try await joinCall(session, ssid, password, code)
             phase = .sent(ssid: ssid)
+            // Held no longer than the call that needed it. Only here: clearing it
+            // on the way to `.refused` empties the field behind "Try again", and
+            // the usual reason for a refusal is the code rather than the password.
+            password = ""
         } catch {
-            phase = .refused(RobotSession.message(for: error) ?? String(
-                localized: .reachy("The robot refused the network.")
-            ))
+            phase = Self.outcome(of: error, ssid: ssid)
         }
-        // Held no longer than the call that needed it.
-        password = ""
+    }
+
+    /// What a failed join means, which is three different things.
+    ///
+    /// `RobotSession.message(for:)` answers nil for an abandoned call, and that
+    /// means *leave the screen alone* — overriding it with `??` turned "we learned
+    /// nothing" into a red refusal panel under a footer blaming the code. A dropped
+    /// link is its own outcome for the same reason: this screen's success takes the
+    /// link down, so a lost connection is as likely to be a join that worked.
+    private static func outcome(of error: any Error, ssid: String) -> Phase {
+        guard let message = RobotSession.message(for: error) else { return .editing }
+        guard !RobotSession.isLinkLoss(error) else { return .uncertain(ssid: ssid) }
+        return .refused(message)
     }
 
     func editAgain() {

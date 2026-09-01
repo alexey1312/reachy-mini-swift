@@ -65,6 +65,23 @@ public extension RobotSession {
         default: false
         }
     }
+
+    /// Whether the link went away before the robot answered.
+    ///
+    /// Not the same as a refusal the daemon made, and the difference is the whole
+    /// story on the Wi-Fi join screen: there, success *is* the link going away, so
+    /// a dropped call may well have been obeyed. Reporting it as a refusal sent
+    /// people back to retype a password that had worked.
+    nonisolated static func isLinkLoss(_ error: Error) -> Bool {
+        guard let urlError = rootCause(of: error) as? URLError else { return false }
+        return switch urlError.code {
+        case .networkConnectionLost, .timedOut, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed, .notConnectedToInternet:
+            true
+        default:
+            false
+        }
+    }
 }
 
 extension RobotSession {

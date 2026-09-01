@@ -164,12 +164,9 @@ struct ViewportModelTests {
         #expect(model.content == .camera)
     }
 
-    /// The URDF and the STL meshes are HTTP-only, so there is no 3D model to switch
-    /// to — and the switcher must not offer one.
-    /// The relay used to have no scene at all, because the description and the
-    /// meshes are HTTP routes it cannot reach. The app carries them for the
-    /// simulator, so it carries them here — the switcher offers both contents and
-    /// lands on the camera, which is what a call is for.
+    /// The URDF and the STL meshes are HTTP routes the relay cannot reach, so the
+    /// app carries them here as it does for the simulator. The switcher offers both
+    /// contents and lands on the camera, which is what a call is for.
     @Test("a remote source offers the scene out of the app's own bundle")
     func remoteOffersTheBundledScene() {
         let model = ViewportModel()

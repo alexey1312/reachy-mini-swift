@@ -183,6 +183,10 @@
             ""
         }
 
+        /// Accepted and does nothing: a preview must draw the control the relay
+        /// really offers, without a robot to take a token from.
+        public func deleteHFToken() async throws {}
+
         public func makeTeleop() throws -> any TeleopChannel {
             PreviewTeleopChannel()
         }

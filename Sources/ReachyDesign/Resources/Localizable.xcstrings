@@ -6381,35 +6381,6 @@
         }
       }
     },
-    "The robot refused the network.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter hat das Netzwerk abgelehnt."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot rechazó la red."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot a refusé le réseau."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот отклонил сеть."
-          }
-        }
-      }
-    },
     "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
       "extractionState": "manual",
       "localizations": {
@@ -18035,6 +18006,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Звонок"
+          }
+        }
+      }
+    },
+    "Lost the robot while sending": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter beim Senden verloren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se perdió el robot al enviar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot perdu pendant l'envoi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот потерян во время отправки"
           }
         }
       }

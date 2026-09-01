@@ -86,11 +86,6 @@ struct WiFiSettingsCard: View {
         .sheet(isPresented: $joining) {
             NavigationStack {
                 WiFiJoinSheet(session: session) { joining = false }
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button(.reachy("Cancel")) { joining = false }
-                        }
-                    }
             }
             .reachySheet()
         }

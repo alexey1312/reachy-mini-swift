@@ -2,11 +2,9 @@ import Foundation
 
 /// Naming the robot over the relay.
 ///
-/// The comment on `RemoteRobotConnection.robotName` — "no command answers the
-/// robot's name" — was true of daemon 1.9.0 and stopped being true in 1.10.0,
-/// which put `get_robot_name` and `set_robot_name` on the data channel. Renaming
-/// is now reachable from wherever the owner happens to be, which is the point of
-/// it: the name is what they picked the robot by.
+/// Daemon 1.10.0 put `get_robot_name` and `set_robot_name` on the data channel,
+/// so renaming is reachable from wherever the owner happens to be — which is the
+/// point of it: the name is what they picked the robot by.
 public extension RemoteRobotConnection {
     /// Renames the robot and answers the name it settled on.
     ///

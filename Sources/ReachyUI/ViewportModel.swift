@@ -46,8 +46,8 @@ final class ViewportModel {
         /// A relay session. The camera is the peer connection that is *already up*
         /// and carrying the robot's commands, so this model borrows it and must
         /// never stop it. The connection rides along because the scene is reachable
-        /// here too now — out of the app's own bundle, with the pose polled off the
-        /// data channel rather than read from a socket that does not exist.
+        /// here too — out of the app's own bundle, with the pose off the data
+        /// channel rather than from a socket that does not exist.
         case remote(CameraSession, connection: RemoteRobotConnection)
         /// A simulator in this very process. It is its own geometry server and its
         /// own state stream, so the scene needs nothing but the object; there is no
@@ -121,7 +121,8 @@ final class ViewportModel {
     }
 
     /// Which sources have a 3D model at all: the switcher is not what decides
-    /// whether to offer one — the source is. Only the relay has none.
+    /// whether to offer one — the source is. Every source has one now, the relay
+    /// included, which draws from the app's own bundled geometry.
     var offersScene: Bool {
         switch source {
         case .lan, .simulated, .remote: true

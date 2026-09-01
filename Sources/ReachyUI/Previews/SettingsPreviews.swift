@@ -128,6 +128,12 @@ import SwiftUI
     PreviewScene.wifiJoin(.preview(phase: .refused("The robot could not read the Wi-Fi password. Check the PIN.")))
 }
 
+// The outcome that is neither: the link went away before the robot answered, which
+// is also what an accepted password does.
+#Preview("Wi-Fi join — uncertain") {
+    PreviewScene.wifiJoin(.preview(phase: .uncertain(ssid: "Pollen HQ")))
+}
+
 // MARK: - System update
 
 #Preview("System update — idle") {

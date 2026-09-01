@@ -336,6 +336,11 @@ struct PresenceModelTests {
         // Unknown again rather than "nobody": the route reports the tracker's last
         // aim, and a stopped tracker has nothing current to say.
         #expect(model.seesFace == nil)
+        // Captured after a pause rather than before one: a read already in flight
+        // when the watch was cancelled still lands, and counting it against a total
+        // taken earlier made a stopped poll look like a running one on a slow runner.
+        // The pause is the assertion here — a non-event cannot be polled for.
+        try await Task.sleep(for: .milliseconds(60))
         let settled = calls.faceReadCount
         try await Task.sleep(for: .milliseconds(60))
         #expect(calls.faceReadCount == settled)

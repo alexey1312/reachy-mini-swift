@@ -24,6 +24,13 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
     private let lock = NSLock()
     private var subscribers: [UUID: AsyncStream<StateStreamUpdate>.Continuation] = [:]
     private var reader: Task<Void, Never>?
+    /// Counts readers so a retiring one can tell whether it is still the current
+    /// one before it unsubscribes. See ``startReadingLocked()``.
+    private var generation = 0
+
+    /// Stale frames in a row that mean a restarted publisher rather than late
+    /// ones. A second of them at the channel's ~30 Hz.
+    private static let restartRun = 30
 
     /// How many unreadable frames in a row before the channel is written off.
     ///
@@ -56,33 +63,50 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
     }
 
     private func remove(_ id: UUID) {
-        let idle: Bool = lock.withLock {
+        // Removing the subscriber and retiring the reader is one critical section,
+        // not two. `onTermination` fires on an arbitrary thread, so a subscriber
+        // arriving between two of them would find `reader` still set, start
+        // nothing, and then have that reader cancelled underneath it — a stream
+        // that yields once and finishes, with nothing to say why.
+        let stopped = lock.withLock { () -> Task<Void, Never>? in
             subscribers.removeValue(forKey: id)
-            return subscribers.isEmpty
+            guard subscribers.isEmpty, let reader else { return nil }
+            self.reader = nil
+            return reader
         }
         // The last one out asks the robot to stop publishing. Nothing depends on
         // it landing — a robot still pushing to a channel nobody reads costs the
         // link, not correctness.
-        guard idle else { return }
-        let stopped = lock.withLock { () -> Task<Void, Never>? in
-            defer { reader = nil }
-            return reader
-        }
         stopped?.cancel()
+    }
+
+    /// Whether the reader that started at `generation` is still the current one.
+    private func isCurrent(_ generation: Int) -> Bool {
+        lock.withLock { self.generation == generation }
     }
 
     /// Called under `lock`.
     private func startReadingLocked() {
         guard reader == nil else { return }
-        reader = Task { [connection, channel] in
-            // Subscribed before the stream is read, not after: the daemon starts
-            // publishing the moment it is asked, and a reader set up afterwards
-            // would drop the first frames on the floor.
-            try? await connection.subscribeToPose()
-            defer { Task { try? await connection.unsubscribeFromPose() } }
+        generation += 1
+        let generation = generation
+        reader = Task { [weak self, connection, channel] in
+            do {
+                // Subscribed before the stream is read, not after: the daemon starts
+                // publishing the moment it is asked, and a reader set up afterwards
+                // would drop the first frames on the floor.
+                try await connection.subscribeToPose()
+            } catch {
+                // Nothing is coming, so end the streams. Left open they would hold
+                // the scene on a neutral pose it can never move off, which reads as
+                // a robot standing still rather than as a subscription that failed.
+                self?.finishAll()
+                return
+            }
 
             var diagnostics = StateStreamDiagnostics()
             var newest = Int.min
+            var staleRun = 0
             for await text in channel.messages() {
                 guard !Task.isCancelled else { break }
                 diagnostics.receivedFrames += 1
@@ -96,24 +120,35 @@ public final class RemotePoseStream: RobotStateStreaming, @unchecked Sendable {
                     // moving, which looks like a still robot rather than a bug.
                     // Give up on it and ask instead — polling is slower and works.
                     if diagnostics.decodedFrames == 0, diagnostics.decodeFailures >= Self.patience {
-                        await self.pollInstead(diagnostics: diagnostics)
+                        await self?.pollInstead(diagnostics: diagnostics)
                         return
                     }
                     continue
                 }
-                guard frame.seq > newest else {
-                    // Out of order, which this channel is allowed to be.
-                    diagnostics.unsupportedFrames += 1
-                    continue
+                if frame.seq <= newest {
+                    // Out of order, which this channel is allowed to be — until it
+                    // stays that way. A re-negotiated publisher numbers from zero
+                    // again, and dropping every frame of it freezes the model for
+                    // the rest of the session.
+                    diagnostics.staleFrames += 1
+                    staleRun += 1
+                    guard staleRun > Self.restartRun else { continue }
                 }
+                staleRun = 0
                 newest = frame.seq
                 diagnostics.decodedFrames += 1
-                self.broadcast(StateStreamUpdate(
+                self?.broadcast(StateStreamUpdate(
                     frame: frame.state.frame,
                     diagnostics: diagnostics
                 ))
             }
-            self.finishAll()
+            self?.finishAll()
+            // Here rather than in a `defer`, and only while this reader is still
+            // the current one: a detached task would be unordered against the next
+            // reader's `subscribe_pose` and could switch the publisher off under it.
+            if self?.isCurrent(generation) ?? true {
+                try? await connection.unsubscribeFromPose()
+            }
         }
     }
 

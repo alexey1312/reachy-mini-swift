@@ -109,7 +109,7 @@ struct MovesCacheTests {
         try await withWarmedSession(client: client) { session in
             _ = try await session.moves(in: dataset)
         } body: { session in
-            client.setDataset(dataset, unsupported: true)
+            client.setIndexRoute(false)
 
             let model = MovesModel(session: session)
             await model.load(session: session, refresh: true)
@@ -124,9 +124,8 @@ struct MovesCacheTests {
     /// And with nothing kept there is nothing to show, so the refusal stands.
     @Test("no route and no kept list is still a failure")
     func reportsWhenNothingWasKept() async {
-        let dataset = MovesModel.libraries[0].dataset
         let client = MovesUIClient(movesByDataset: [:])
-        client.setDataset(dataset, unsupported: true)
+        client.setIndexRoute(false)
         let session = RobotSession.preview(client: client)
 
         let model = MovesModel(session: session)

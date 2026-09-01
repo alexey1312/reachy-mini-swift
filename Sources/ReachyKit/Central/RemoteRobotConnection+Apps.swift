@@ -1,14 +1,9 @@
 import Foundation
 
 /// The app that is running, over the relay.
-///
-/// A file of its own because `RemoteRobotConnection.swift` is at SwiftLint's
-/// length limit — the split `RobotConnection+Apps` makes for the same surface
-/// over HTTP.
 extension RemoteRobotConnection: RobotAppsClient {
     // MARK: The running app
 
-//
     // Daemon 1.10.0 put the apps API behind JSON-RPC on this channel and routes by
     // namespace: it answers `apps.*` itself and relays everything else to the app.
     // Only the three verbs about the app *already running* are here — browsing,

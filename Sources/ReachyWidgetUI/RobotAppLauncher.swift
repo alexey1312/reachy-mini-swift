@@ -99,7 +99,17 @@ public struct RobotAppLauncher: Sendable {
         // Parking is playback work, and a transport without it simply stays where
         // the app left the robot — the same trade `RobotSession.recentre` makes.
         park = { [moves = client as? any MovePlaybackClient] in
-            _ = try? await moves?.gotoNeutral(duration: configuration.recentreDuration)
+            // A transport without playback stays where the app left the robot; a
+            // park that was attempted and refused is worth a line, because an
+            // intent has no screen to put it on and the head is left up either way.
+            guard let moves else { return }
+            do {
+                _ = try await moves.gotoNeutral(duration: configuration.recentreDuration)
+            } catch {
+                // Through the one filter that logs, since an intent has no screen
+                // to put this on and the head stays up either way.
+                _ = RobotSession.message(for: error)
+            }
         }
     }
 

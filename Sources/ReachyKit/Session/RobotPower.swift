@@ -93,19 +93,20 @@ public struct RobotPower: Sendable {
     /// Polls the daemon's own running-move list until the id is gone.
     ///
     /// A timeout returns normally rather than throwing: parking the motors matters
-    /// more than proof the animation ran to the end, and a remote connection
-    /// reports no running moves at all by construction.
+    /// more than proof the animation ran to the end.
+    ///
+    /// A transport that cannot list moves cannot wait for one either and returns at
+    /// once, the same as `RobotSession.waitForMoveToFinish`. Left inside the loop it
+    /// spent the whole budget sleeping, which delays the very parking this protects.
     private func waitForMoveToFinish(_ uuid: String) async {
+        guard let moves = client as? any MovePlaybackClient else { return }
         let deadline = ContinuousClock.now + configuration.moveCompletionTimeout
         while ContinuousClock.now < deadline {
             guard !Task.isCancelled else { return }
             // A failed poll proves nothing about the animation — returning on a
             // dropped packet cut power mid-move, exactly the head-drop this wait
             // exists to prevent (the session-side twin already continues here).
-            // A remote connection still exits at once: it reports no running
-            // moves by answering [] successfully, not by throwing.
-            guard let moves = client as? any MovePlaybackClient,
-                  let running = try? await moves.runningMoveUUIDs()
+            guard let running = try? await moves.runningMoveUUIDs()
             else {
                 try? await Task.sleep(for: configuration.movePollInterval)
                 continue

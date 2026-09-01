@@ -2,8 +2,8 @@ import Foundation
 @testable import ReachyKit
 import Testing
 
-/// Renaming used to be LAN-only, because the only way to do it was an HTTP route.
-/// Daemon 1.10.0 put it on the data channel.
+/// Renaming over the relay: daemon 1.10.0 carries `set_robot_name` on the data
+/// channel, where the HTTP route the LAN path uses cannot be reached.
 @Suite("Renaming over the relay", .timeLimit(.minutes(1)))
 struct RemoteRobotRenameTests {
     @Test("the new name goes out as a channel command")
@@ -34,11 +34,25 @@ struct RemoteRobotRenameTests {
         #expect(try await connection.setRobotName("Attic 2") == "attic-2")
     }
 
-    /// What the session reads to decide whether to offer the control at all — the
-    /// relay's own handshake says no, because no HTTP route answers there.
-    @Test("the transport says it can rename")
-    func declaresTheCapability() {
-        let connection = RemoteRobotConnection(channel: FakeDataChannel(), timeout: .seconds(5))
-        #expect(connection is any RobotRenameClient)
+    /// The handshake alone says no — no HTTP route answers over the relay — so the
+    /// transport conformance is the only thing that opens the field. Asserted
+    /// through the session, because a bare `is` check is a fact the compiler
+    /// already proved and would survive the flag being dropped.
+    @MainActor
+    @Test("the session offers renaming over the relay")
+    func sessionOffersRenaming() async {
+        let session = RobotSession()
+        let connection = RemoteRobotConnection(
+            channel: FakeDataChannel(replies: [
+                "get_version": #"{"version":"1.10.0"}"#,
+                "get_hardware_id": #"{"hardware_id":"hw-relay"}"#,
+                "get_state": #"{"state":{"motor_mode":"enabled"}}"#,
+            ]),
+            timeout: .seconds(5)
+        )
+
+        await session.connect(using: connection)
+
+        #expect(session.supportsRename)
     }
 }

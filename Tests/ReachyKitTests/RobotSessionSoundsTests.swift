@@ -38,7 +38,7 @@ private class SoundlessRobotClient: RobotAPIClient, MovePlaybackClient, @uncheck
     }
 }
 
-private final class SoundRobotClient: SoundlessRobotClient, SoundboardClient {
+private final class SoundRobotClient: SoundlessRobotClient, SoundboardClient, @unchecked Sendable {
     private let lock = NSLock()
     /// Every call in order, which is what the upload-then-play sequence is asserted on.
     private(set) var calls: [String] = []

@@ -6,7 +6,13 @@ public struct StateStreamDiagnostics: Equatable, Sendable {
     public var receivedFrames = 0
     public var decodedFrames = 0
     public var decodeFailures = 0
+    /// A frame this client cannot use: an unknown WebSocket frame kind, or a reply
+    /// that carries no pose because the robot's backend is down. Not a decode
+    /// failure, which is this client failing to read what the robot sent.
     public var unsupportedFrames = 0
+    /// A pose frame older than one already delivered. The pose channel is
+    /// unordered by design, so this counts the design working, not a fault.
+    public var staleFrames = 0
     public var lastFailureDescription: String?
     public var lastFailureAt: Date?
 

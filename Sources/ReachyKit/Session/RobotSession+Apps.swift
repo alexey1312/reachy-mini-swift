@@ -18,9 +18,11 @@ public extension RobotSession {
     ///
     /// A narrower question than the store, and the relay answers yes: daemon 1.10.0
     /// put `apps.status`, `apps.start` and `apps.stop` on the data channel, which
-    /// is the half that matters when the robot is nowhere near you.
+    /// is the half that matters when the robot is nowhere near you. Only from that
+    /// version — an older relayed daemon answers none of the three, and polling it
+    /// costs a full reply budget per tick.
     var canControlRunningApp: Bool {
-        client is any RobotAppsClient
+        client is any RobotAppsClient && !predatesRelayCommands
     }
 
     /// The whole catalogue, installed apps included — the daemon's own

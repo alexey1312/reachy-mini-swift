@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -310,6 +311,63 @@ struct RemoteControlChannelTests {
         fake.emit(#"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"listening"}}"#)
 
         #expect(await turns.next() != nil)
+    }
+
+    /// The guarantee this framing exists for, and the one a single-call test cannot
+    /// see: `apps.install` runs for minutes and a status poll must not queue behind
+    /// it, so the id is what pairs a reply with its call. Make `nextRPCID` return a
+    /// constant and every other RPC test still passes while these two cross.
+    @Test("two calls in flight are answered by id, in either order")
+    func matchesConcurrentRPCCallsByID() async throws {
+        let (control, fake) = channel()
+
+        async let install: Data = control.call("apps.install")
+        await waitUntil("the first call is on the wire") { fake.sent.count == 1 }
+        async let status: Data = control.call("apps.status")
+        await waitUntil("the second call is on the wire") { fake.sent.count == 2 }
+
+        let ids = try fake.sent.map { try Self.sentRPCID(in: $0) }
+        #expect(ids[0] != ids[1])
+
+        // The later call answered first: nothing may serialise behind the install.
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(ids[1]),"result":{"state":"idle"}}"#)
+        #expect(try await Self.replyState(in: status) == "idle")
+
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(ids[0]),"result":{"state":"installed"}}"#)
+        #expect(try await Self.replyState(in: install) == "installed")
+    }
+
+    /// JSON-RPC names neither a `type` nor a `command`, and its own keys —
+    /// `jsonrpc`, `result`, `id` — are exactly what a `.replyKey` waiter matches on.
+    /// Move the RPC branch below the key match in `deliver` and this frame answers
+    /// a command that never asked for it.
+    @Test("a JSON-RPC frame does not satisfy a waiter keyed on result")
+    func rpcFrameDoesNotSatisfyAKeyedWaiter() async throws {
+        let (control, fake) = channel(timeout: .milliseconds(200))
+
+        let pending = Task { try await control.perform("some_command", correlation: .replyKey("result")) }
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
+        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"state":"idle"}}"#)
+
+        await #expect(throws: RemoteControlChannel.Failure.timedOut) { _ = try await pending.value }
+    }
+
+    private static func sentRPCID(in frame: String) throws -> Int {
+        struct Sent: Decodable {
+            let id: Int
+        }
+        return try JSONCodec.daemon.decode(Sent.self, from: Data(frame.utf8)).id
+    }
+
+    private static func replyState(in data: Data) throws -> String {
+        struct Reply: Decodable {
+            struct Result: Decodable {
+                let state: String
+            }
+
+            let result: Result
+        }
+        return try JSONCodec.daemon.decode(Reply.self, from: data).result.state
     }
 }
 

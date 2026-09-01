@@ -35,9 +35,14 @@ public enum DaemonCompatibilityPolicy {
     /// False for a version this client cannot read, and false for none at all: a
     /// feature is withheld on evidence, never on the absence of it.
     public static func isKnownOlder(than floor: String, reported: String?) -> Bool {
-        guard let reported, let current = SemanticVersion(reported), let floor = SemanticVersion(floor)
-        else { return false }
-        return current < floor
+        guard let parsedFloor = SemanticVersion(floor) else {
+            // Every caller passes a literal, so an unreadable floor is a typo — and
+            // one that disables the gate it was written to close, silently.
+            assertionFailure("unreadable version floor: \(floor)")
+            return false
+        }
+        guard let reported, let current = SemanticVersion(reported) else { return false }
+        return current < parsedFloor
     }
 
     public static func evaluate(_ reported: String?) -> DaemonCompatibility {

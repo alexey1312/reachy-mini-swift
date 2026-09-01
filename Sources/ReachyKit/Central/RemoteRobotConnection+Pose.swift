@@ -1,9 +1,6 @@
 import Foundation
 
 /// Subscribing to the robot's pushed pose.
-///
-/// A file of its own for the reason `+Apps` and `+Wireless` are: the connection
-/// itself is at SwiftLint's length limit.
 public extension RemoteRobotConnection {
     /// Asks the robot to start writing its state to the `pose` channel.
     ///

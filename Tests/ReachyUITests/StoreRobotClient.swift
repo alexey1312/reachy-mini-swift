@@ -52,6 +52,8 @@ final class StoreRobotClient: RobotAPIClient, MovePlaybackClient, RobotAppsClien
         []
     }
 
+    func deleteHFToken() async throws {}
+
     func hfAuthStatus() async throws -> HFAuthStatus {
         hfStatus
     }

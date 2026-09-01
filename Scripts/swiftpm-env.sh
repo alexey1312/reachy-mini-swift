@@ -18,8 +18,10 @@
 #
 # Only while a beta Xcode is selected. The override removes itself the day the
 # release arrives, and it does nothing on Linux, where `xcode-select` is absent.
-case "$(xcode-select -p 2>/dev/null)" in
-*Beta*)
+# Case-folded: Apple ships `Xcode-beta.app` and Xcodes.app names the same build
+# `Xcode-27.0.0-Beta.6.app`, so matching one spelling silently misses the other.
+case "$(xcode-select -p 2>/dev/null | tr '[:upper:]' '[:lower:]')" in
+*beta*)
 	if [ -z "${SDKROOT:-}" ] && [ -d /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk ]; then
 		SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 		export SDKROOT

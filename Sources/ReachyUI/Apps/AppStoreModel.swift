@@ -267,7 +267,8 @@ final class AppStoreModel {
         guard loadID == requestID, !Task.isCancelled else { return }
         self.lock = lock
         self.startupApp = startupApp
-        self.updates = updates
+        // Kept on failure: cleared badges would assert that everything is up to date.
+        self.updates = updates ?? self.updates
     }
 
     /// Whether the context menu may offer Start.

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import ReachyJSON
 
 /// JSON-RPC 2.0 over the same data channel, which is how daemon 1.10.0 exposes the
@@ -7,9 +8,19 @@ import ReachyJSON
 /// A second framing rather than a second channel, and the daemon routes by
 /// namespace: `apps.*` it answers itself, anything else it relays to the running
 /// app's own `/rpc` socket and fans that app's notifications back to every client.
-///
-/// A file of its own because `RemoteControlChannel.swift` is at SwiftLint's length
-/// limit — the split `RobotConnection+Wireless` and `+Apps` make.
+extension RemoteControlChannel {
+    nonisolated static let log = Logger(
+        subsystem: "com.alexey1312.ReachyMini",
+        category: "RemoteControlChannel"
+    )
+
+    /// Ids are per channel and monotonic, which is all JSON-RPC asks of them.
+    func nextRPCID() -> Int {
+        lastRPCID += 1
+        return lastRPCID
+    }
+}
+
 public extension RemoteControlChannel {
     /// One JSON-RPC call, answered by its `id`.
     ///
@@ -95,8 +106,24 @@ public extension RemoteControlChannel {
     }
 }
 
-/// The `result` half of a JSON-RPC reply. At file scope because a generic type
-/// cannot be nested in a generic function.
+/// The `result` half of a JSON-RPC reply.
 private struct RPCResult<Value: Decodable>: Decodable {
     let result: Value
+}
+
+/// Without this every relayed failure reaches the screen as
+/// `ReachyKit.RemoteControlChannel.Failure error 1` — and `.robot` already carries
+/// the daemon's own sentence, composed two functions up and otherwise thrown away
+/// at the presentation boundary.
+extension RemoteControlChannel.Failure: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case let .robot(message):
+            message
+        case .timedOut:
+            "The robot did not answer in time"
+        case .closed:
+            "The connection to the robot closed"
+        }
+    }
 }

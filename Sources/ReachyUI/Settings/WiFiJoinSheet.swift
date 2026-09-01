@@ -30,10 +30,24 @@ struct WiFiJoinSheet: View {
                 sent(ssid)
             case let .refused(reason):
                 refused(reason)
+            case let .uncertain(ssid):
+                uncertain(ssid)
             }
         }
         .formStyle(.grouped)
         .navigationTitle(.reachy("Choose a network"))
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                // Owned here rather than by the card that presents this, because the
+                // policy is the sheet's: the send runs from a button action, not from
+                // a `.task`, so dismissing does not cancel it. Left enabled it
+                // finished against a model nobody was watching, while the robot may
+                // already have been switching networks.
+                Button(.reachy("Cancel")) { onFinish() }
+                    .disabled(model.phase == .sending)
+            }
+        }
+        .interactiveDismissDisabled(model.phase == .sending)
         .task {
             guard !previewMode else { return }
             await model.scan(session: session)
@@ -71,7 +85,7 @@ struct WiFiJoinSheet: View {
 
         Section {
             TextField(.reachy("Code"), text: $model.code)
-                .font(.body.monospaced())
+                .font(Typography.console)
                 .autocorrectionDisabled()
             #if os(iOS)
                 .textInputAutocapitalization(.never)
@@ -138,6 +152,29 @@ struct WiFiJoinSheet: View {
                 .reachy(
                     // swiftlint:disable:next line_length
                     "A wrong code is the usual reason. The robot counts them itself and starts making you wait, so there is nothing to do but try again more slowly."
+                )
+            )
+        }
+    }
+
+    /// The link dropped before the robot answered — which is also what an accepted
+    /// password does. So this offers the same way out as success rather than the
+    /// retry a refusal offers: going back to look for the robot settles it, and
+    /// retyping a password that worked does not.
+    private func uncertain(_ ssid: String) -> some View {
+        Section {
+            Label(.reachy("Lost the robot while sending"), systemImage: "wifi.exclamationmark")
+                .foregroundStyle(Tone.warning.style)
+            Button(.reachy("Back to the robot list")) {
+                session.disconnect()
+                onFinish()
+            }
+            Button(.reachy("Try again")) { model.editAgain() }
+        } footer: {
+            Text(
+                .reachy(
+                    // swiftlint:disable:next line_length
+                    "The connection went away before the robot answered, which is also what taking the network does. Look for it on \(ssid) first: if it is there, the join worked."
                 )
             )
         }

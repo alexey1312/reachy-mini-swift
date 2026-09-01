@@ -23,7 +23,7 @@ struct SystemUpdateCard: View {
         Section {
             statusRow
             Toggle(.reachy("Include pre-release versions"), isOn: $preRelease)
-                .disabled(model?.isBusy ?? true)
+                .disabled((model?.isBusy ?? true) || session.refusesPreReleaseUpdates)
                 .onChange(of: preRelease) { _, newValue in
                     Task { await model?.check(preRelease: newValue) }
                 }
@@ -33,7 +33,7 @@ struct SystemUpdateCard: View {
         } footer: {
             // One view, not two: given a bare pair of `Text`s the section footer
             // rendered only the first, and the warning vanished with no error
-            // anywhere. Caught by the recorded reference, which is what it is for.
+            // anywhere.
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(.reachy("The robot downloads updates itself and restarts when one finishes."))
                 if session.refusesPreReleaseUpdates {

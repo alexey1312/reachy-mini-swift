@@ -29,9 +29,9 @@ import ReachyKit
 ///   conforms to `MovePlaybackClient` because parking and the power path need it,
 ///   and answers `offersMoveLibrary` false, which is what keeps the screen right.
 public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
-    /// What the handshake claims. 1.9.0 is this app's supported baseline, so
-    /// `DaemonCompatibilityPolicy` passes it without a warning — a simulator that
-    /// claimed a newer version would put a compatibility banner over itself.
+    /// What the handshake claims. 1.9.0 is this app's minimum and sits below the
+    /// tested baseline, so `DaemonCompatibilityPolicy` passes it without a warning —
+    /// a simulator claiming a version newer than tested would banner itself.
     public static let daemonVersion = "1.9.0"
 
     private let lock = NSLock()

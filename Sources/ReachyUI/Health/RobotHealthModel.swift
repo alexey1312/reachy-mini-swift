@@ -33,6 +33,9 @@ final class RobotHealthModel {
         case failed(String)
     }
 
+    /// Optional so that a relayed session — which has no address to dial —
+    /// constructs a model that is honest about having nothing to offer, rather than
+    /// one holding a file system it can never connect.
     private let files: (any RobotFileSystem)?
     private let credentials: any SSHCredentialStore
     private let robot: String
@@ -52,7 +55,7 @@ final class RobotHealthModel {
     private(set) var memory = MetricSeries()
     private(set) var temperature = MetricSeries()
 
-    /// The password field. Not `private(set)`: the sign-in form binds to it.
+    /// Not `private(set)`: the sign-in form binds to both of these.
     var username: String
     var password = ""
 
@@ -66,13 +69,13 @@ final class RobotHealthModel {
     /// is the same slot, and both fill it through `SSHPasswordForm`.
     private(set) var lastError: String?
 
+    private let readIMUCall: ReadIMU
     private var reader: SystemMetricsReader?
     private var sampling: Task<Void, Never>?
     private var hasLoadedCredentials = false
 
-    /// `files` is optional so that a relayed session — which has no address to dial
-    /// — constructs a model that is honest about having nothing to offer, rather
-    /// than one holding a file system it can never connect.
+    /// Injected rather than reached through the session, so a preview can seed a
+    /// lean without a robot to tilt.
     typealias ReadIMU = @MainActor () async throws -> RobotIMUReading?
 
     init(
@@ -130,8 +133,13 @@ final class RobotHealthModel {
     /// "stale" the same way it spells "here is a reading", so blanking on a refused
     /// call would turn a network blip into a missing sensor.
     func refreshIMU() async {
-        guard let reading = try? await readIMUCall() else { return }
-        imu = reading
+        do {
+            // A read that answered nil is a robot with no IMU, and that clears the
+            // row. Only a read that *failed* leaves the last one standing.
+            imu = try await readIMUCall()
+        } catch {
+            _ = RobotSession.message(for: error)
+        }
     }
 
     // MARK: - The operating system's half
@@ -161,8 +169,6 @@ final class RobotHealthModel {
     /// reason `RobotFilesModel` gives: a `NavigationLink` builds its destination
     /// eagerly, so an initialiser here runs on every render of the parent, and a
     /// synchronous `SecItemCopyMatching` per render is an XPC round trip for nothing.
-    private let readIMUCall: ReadIMU
-
     private func loadStoredCredentials() {
         guard !hasLoadedCredentials else { return }
         hasLoadedCredentials = true

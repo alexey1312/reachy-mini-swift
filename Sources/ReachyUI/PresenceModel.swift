@@ -43,7 +43,7 @@ final class PresenceModel {
     private(set) var lastError: String?
 
     /// Bound to the slider, so it moves under the thumb; **not** `private(set)` for that
-    /// reason, and not what the robot has been told either — ``commitTrackingWeight``
+    /// reason, and not what the robot has been told either — ``commitTrackingWeight(session:)``
     /// is. The split is `AudioSettingsModel`'s: a value the robot only hears about once
     /// the gesture ends.
     var trackingWeight: Double = 1
@@ -118,12 +118,22 @@ final class PresenceModel {
         faceWatch = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, isTracking else { return }
+                let seen: Bool?
                 do {
-                    seesFace = try await trackedFaceCall(session) != nil
+                    seen = try await trackedFaceCall(session) != nil
                 } catch {
-                    seesFace = nil
+                    // Logged, not surfaced: one failed poll is not worth a banner
+                    // over a live view and the next is a second away. Without this
+                    // the log held nothing at all for a camera pipeline that died,
+                    // which reads exactly like a robot that sees nobody.
+                    _ = RobotSession.message(for: error)
+                    seen = nil
                 }
-                guard !Task.isCancelled else { return }
+                // Checked before the assignment, not after: `setFaceTracking(false)`
+                // has already set this to nil, and a poll suspended across it would
+                // otherwise write over that and leave the indicator up.
+                guard !Task.isCancelled, isTracking else { return }
+                seesFace = seen
                 try? await Task.sleep(for: facePollInterval)
             }
         }

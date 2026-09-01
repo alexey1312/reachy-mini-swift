@@ -6,12 +6,11 @@ import Foundation
 /// data channel answers `get_state` with the whole snapshot, so the option set
 /// decides only how often to ask.
 ///
-/// **Polled on purpose, for now.** Daemon 1.10.0 offers `subscribe_pose`, which
-/// pushes the same snapshot at 50 Hz down a dedicated unreliable channel and would
-/// cost this app nothing per frame — the better answer, and a second
-/// `RTCDataChannel` to receive it. Until then, asking is enough because
-/// `RemoteControlChannel` queues per command name: a poll waits only behind
-/// another poll, never in front of a wake-up.
+/// **The fallback, not the first choice.** ``RemotePoseStream`` reads the same
+/// snapshot off the `pose` channel daemon 1.10.0 pushes it on, which costs no
+/// round trip per frame. This is what serves a daemon that opens no such channel,
+/// and it is enough because `RemoteControlChannel` queues per command name: a poll
+/// waits only behind another poll, never in front of a wake-up.
 public struct RemoteStateStream: RobotStateStreaming {
     private let connection: RemoteRobotConnection
     /// The ceiling the viewer's 20 Hz is clamped to. Every frame is a round trip

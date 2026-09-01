@@ -77,14 +77,14 @@ public extension RobotSession {
         isRemote || lastStatus?.cameraSpecsName?.isEmpty == false
     }
 
-    /// The 3D model needs a description, meshes and a pose. Two of those come out
-    /// of the app on every link that cannot fetch them — the simulator has served
-    /// them from its bundle all along, and the relay now does the same — and the
-    /// pose is polled off the data channel where there is no socket to open.
+    /// The 3D model needs a description, meshes and a pose. The first two come out
+    /// of the app on every link that cannot fetch them — the simulator and the relay
+    /// both read them from the bundle — and the pose comes off the data channel
+    /// where there is no socket to open.
     ///
-    /// So this is now every link but none: ADR 0003 gave the scene up over the
-    /// relay because the routes are HTTP, and the shape of a Reachy Mini turned out
-    /// not to be something a client has to be told.
+    /// So this is every link but none. ADR 0003 gave the scene up over the relay
+    /// because the routes are HTTP; the shape of a Reachy Mini turned out not to be
+    /// something a client has to be told.
     var canRenderScene: Bool {
         switch link {
         case .lan, .simulated, .remote: true
@@ -95,11 +95,22 @@ public extension RobotSession {
     /// Whether this robot has dances to offer and a way to play them.
     ///
     /// Asked of the transport rather than of the address, which stood in for it and
-    /// was wrong in both directions: a relayed session has no address and plays
-    /// perfectly well, while the simulator has an address of sorts and no library
-    /// at all. `MovePlaybackClient.offersMoveLibrary` is the question itself.
+    /// hid a relayed robot: a relayed session has no address and plays perfectly
+    /// well. `MovePlaybackClient.offersMoveLibrary` is the question itself.
     var canPlayMoves: Bool {
         movesClient?.offersMoveLibrary == true
+    }
+
+    /// Whether the daemon is known to predate the data channel's 1.10.0 command
+    /// set — `set_robot_name`, `apps.*` and `get_imu`.
+    ///
+    /// The relay carries those commands only from that version, and 1.9.0 is still
+    /// this app's minimum, so a relayed 1.9.0 robot would otherwise be offered a
+    /// name field and an app dock that spend the whole reply budget and then report
+    /// nothing. Withheld on evidence, like every other gate here: a version this
+    /// client cannot read leaves the feature offered.
+    var predatesRelayCommands: Bool {
+        DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
     }
 
     /// The robot's inertial reading, or nil where there is none to read.
@@ -108,6 +119,9 @@ public extension RobotSession {
     /// which is not on any schedule this session keeps.
     func imuReading() async throws -> RobotIMUReading? {
         guard let client else { throw ReachyKitError.notConnected }
+        // `get_imu` is a 1.10.0 command on the relay, and asking an older daemon
+        // for it costs the reply budget on every pull-to-refresh.
+        guard !predatesRelayCommands else { return nil }
         return try await client.imuReading()
     }
 

@@ -73,6 +73,7 @@ struct WiFiJoinModelTests {
     func reportsARefusal() async {
         let model = model(join: { _, _, _, _ in throw BLECommandError.badCredentials })
         model.manualSSID = "Home"
+        model.password = "hunter2"
         model.code = "WRONG"
         await model.send(session: .preview())
         guard case let .refused(reason) = model.phase else {
@@ -80,7 +81,38 @@ struct WiFiJoinModelTests {
             return
         }
         #expect(!reason.isEmpty)
+        // Kept, unlike on the way to `.sent`: "Try again" under a footer blaming the
+        // code should not also empty the password field.
+        #expect(model.password == "hunter2")
         model.editAgain()
+        #expect(model.phase == .editing)
+    }
+
+    /// Success here *is* the link going away, so a dropped connection is as likely to
+    /// be a join that worked. Calling it a refusal sent people back to retype a
+    /// password the robot had already accepted.
+    @Test("a dropped link is neither a refusal nor a success")
+    func separatesALostLinkFromARefusal() async {
+        let model = model(join: { _, _, _, _ in throw URLError(.networkConnectionLost) })
+        model.manualSSID = "Home"
+        model.code = "AB12C"
+
+        await model.send(session: .preview())
+
+        #expect(model.phase == .uncertain(ssid: "Home"))
+    }
+
+    /// `RobotSession.message(for:)` answers nil for an abandoned call, and that means
+    /// leave the screen alone. Overriding it with `??` put a red refusal panel over a
+    /// form nobody had an answer about.
+    @Test("an abandoned call leaves the form as it was")
+    func reportsNothingForACancelledCall() async {
+        let model = model(join: { _, _, _, _ in throw CancellationError() })
+        model.manualSSID = "Home"
+        model.code = "AB12C"
+
+        await model.send(session: .preview())
+
         #expect(model.phase == .editing)
     }
 
