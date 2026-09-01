@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1E9XHP9FSQ2P0GBKE66BXYX",
+  "strategy": "manual-commit",
+  "branch": "claude/mvvm-architecture-review-5934c8",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "Sources/ReachyUI/AGENTS.md",
+    "Sources/ReachyUI/Previews/PreviewSettingsScenes.swift",
+    "Sources/ReachyUI/Settings/HFAccountSection.swift",
+    "Sources/ReachyUI/Settings/RobotHFLinkModel.swift",
+    "Sources/ReachyUI/Settings/WiFiSettingsCard.swift",
+    "Sources/ReachyUI/Settings/WiFiSettingsModel.swift",
+    "Tests/ReachyUITests/RobotHFLinkModelTests.swift",
+    "Tests/ReachyUITests/WiFiSettingsModelTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 146,
+    "cache_creation_tokens": 242586,
+    "cache_read_tokens": 15885614,
+    "output_tokens": 77506,
+    "api_call_count": 73
+  }
+}
