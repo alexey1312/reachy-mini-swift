@@ -28,10 +28,33 @@ extension RobotSession {
         if !refresh, let cached = moveCache[dataset] {
             return cached
         }
-        let moves = try await withMovesClient { try await $0.listMoves(dataset: dataset) }
-        moveCache[dataset] = moves
-        await persistMoveIndex()
-        return moves
+        do {
+            let moves = try await withMovesClient { try await $0.listMoves(dataset: dataset) }
+            moveCache[dataset] = moves
+            await persistMoveIndex()
+            return moves
+        } catch let error as URLError where error.code == .unsupportedURL {
+            // The transport has no index route at all — the relay, whose data
+            // channel plays moves and cannot list them. It still has the list this
+            // app read off the same robot on its own network and kept on disk: up
+            // to a week stale, and a dance the robot no longer holds simply refuses
+            // to play, which beats a screen with nothing on it.
+            //
+            // Only this error, and that is the point: a refresh the *daemon*
+            // refused has to reach the screen, warmed rows or not.
+            guard let cached = moveCache[dataset] else { throw error }
+            // The list came off disk, so the robot may never have been asked for
+            // this dataset in this session. Warming it keeps the first tap from
+            // being a download the user waits through.
+            //
+            // Awaited, and cheap because of what the ack means: the robot answers
+            // as soon as it has started fetching, not when it has finished. A
+            // detached `Task` here would outlive the call that made it and reach
+            // the session from off the main actor — which showed up as a layout
+            // assertion in an unrelated snapshot test, three hundred tests later.
+            try? await withMovesClient { try await $0.preload(dataset: dataset) }
+            return cached
+        }
     }
 
     /// Throws rather than reporting: a move that would not play is the moves

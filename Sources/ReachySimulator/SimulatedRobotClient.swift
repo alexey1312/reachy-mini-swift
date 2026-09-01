@@ -25,8 +25,9 @@ import ReachyKit
 /// - **`PresenceClient`, `HFAuthClient`, `WiFiConfigClient`, `DaemonUpdateClient`,
 ///   `CacheMaintenanceClient`** — a robot's Wi-Fi, its software, its Hugging Face
 ///   account and its caches all belong to a machine that does not exist.
-/// - **Recorded moves** — Hugging Face datasets the daemon fetches. `canPlayMoves`
-///   is `address != nil`, which stays false, so the screen is already right.
+/// - **Recorded moves** — Hugging Face datasets the daemon fetches. This client
+///   conforms to `MovePlaybackClient` because parking and the power path need it,
+///   and answers `offersMoveLibrary` false, which is what keeps the screen right.
 public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
     /// What the handshake claims. 1.9.0 is this app's supported baseline, so
     /// `DaemonCompatibilityPolicy` passes it without a warning — a simulator that
@@ -161,9 +162,14 @@ public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @un
         lock.withLock { _ = moveUUIDs.remove(uuid) }
     }
 
-    /// There is no move library here and no Hugging Face to fetch one from: the
-    /// simulator moves when it is driven, and a recorded dance is an asset the
-    /// daemon downloads. An empty list is the honest answer, not a failure.
+    /// No daemon, so no Hugging Face and no datasets to fetch: the simulator moves
+    /// when it is driven, and a recorded dance is an asset a robot downloads.
+    public var offersMoveLibrary: Bool {
+        false
+    }
+
+    /// Never reached while `offersMoveLibrary` is false, and empty rather than
+    /// throwing if it ever is: there are no moves here, which is not a failure.
     public func listMoves(dataset _: String) async throws -> [String] {
         []
     }

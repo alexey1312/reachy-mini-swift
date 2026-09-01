@@ -98,4 +98,41 @@ struct MovesCacheTests {
             #expect(model.moves == ["joy"])
         }
     }
+
+    /// The relay plays moves and cannot list them: `play_recorded_move` is on the
+    /// data channel and no index route is. The list this app kept off the same
+    /// robot's own network is what it offers instead.
+    @Test("a transport with no index route falls back to what was kept")
+    func fallsBackToTheWarmedIndex() async throws {
+        let dataset = MovesModel.libraries[0].dataset
+        let client = MovesUIClient(movesByDataset: [dataset: ["dance_one"]])
+        try await withWarmedSession(client: client) { session in
+            _ = try await session.moves(in: dataset)
+        } body: { session in
+            client.setDataset(dataset, unsupported: true)
+
+            let model = MovesModel(session: session)
+            await model.load(session: session, refresh: true)
+
+            #expect(model.moves == ["dance_one"])
+            // Silent, unlike a refusal the daemon made: there was nothing to report
+            // — this transport was never going to answer, and it did not fail to.
+            #expect(model.lastError == nil)
+        }
+    }
+
+    /// And with nothing kept there is nothing to show, so the refusal stands.
+    @Test("no route and no kept list is still a failure")
+    func reportsWhenNothingWasKept() async {
+        let dataset = MovesModel.libraries[0].dataset
+        let client = MovesUIClient(movesByDataset: [:])
+        client.setDataset(dataset, unsupported: true)
+        let session = RobotSession.preview(client: client)
+
+        let model = MovesModel(session: session)
+        await model.load(session: session, refresh: true)
+
+        #expect(model.moves.isEmpty)
+        #expect(model.lastError?.isEmpty == false)
+    }
 }

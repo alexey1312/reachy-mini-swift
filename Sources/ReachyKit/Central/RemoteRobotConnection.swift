@@ -12,7 +12,7 @@ import ReachyJSON
 ///
 /// The command names and their fields are `reachy_mini/io/protocol.py`; the reply
 /// shapes are `process_command` in `daemon/backend/abstract.py`.
-public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
+public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlaybackClient {
     let control: RemoteControlChannel
     /// No command answers the robot's name, so it comes from the central listing
     /// that got us to this robot — the same place the user picked it from.
@@ -172,13 +172,79 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
         return ""
     }
 
-    /// Empty, always, and not a guess: this connection never hands out a move id,
-    /// so the set of moves it could be waiting on is empty by construction. That
-    /// is what lets `RobotSession.waitForMoveToFinish` return at once instead of
-    /// sitting out its whole timeout on a move that finished before it was told.
-    public func runningMoveUUIDs() async throws -> Set<String> {
-        []
+    // MARK: Recorded moves
+
+    //
+    // **The handles here are this app's, not the daemon's.** `play_recorded_move`
+    // is fire-and-forget: the ack means "dispatched", and nothing comes back to
+    // name the run. `stop_move` needs no name either — it interrupts whatever is
+    // playing, whoever started it. So a handle is minted here to answer the one
+    // question the session asks with it, "is the thing I started still going", and
+    // it is never sent anywhere. `is_move_running` is what answers it, and it says
+    // *whether*, never *which*.
+
+    /// The handle for the run this connection dispatched, while it is still going.
+    private var playbackHandle: String?
+
+    /// The one place this transport is *ahead* of the HTTP one: a play there
+    /// blocks until the dataset is on the robot, while `play_recorded_move` is
+    /// fire-and-forget and would simply take a long time to start moving. Warming
+    /// first turns that into a wait the user does not sit through.
+    public func preload(dataset: String) async throws {
+        try await control.perform("preload_dataset", payload: ["dataset_name": .string(dataset)])
     }
+
+    public func playMove(dataset: String, move: String) async throws -> String {
+        try await control.perform("play_recorded_move", payload: [
+            "move_name": .string(move),
+            "dataset_name": .string(dataset),
+        ])
+        let handle = UUID().uuidString
+        playbackHandle = handle
+        return handle
+    }
+
+    /// The handle this connection dispatched, while the robot reports a move
+    /// running. Empty otherwise — including for a handle from a previous launch,
+    /// which nothing here can recognise.
+    public func runningMoveUUIDs() async throws -> Set<String> {
+        guard let playbackHandle else { return [] }
+        let running = try await control.perform(
+            "get_state",
+            correlation: .replyKey("state"),
+            expecting: StateReply.self
+        ).state.isMoveRunning ?? false
+        if !running {
+            self.playbackHandle = nil
+        }
+        return running ? [playbackHandle] : []
+    }
+
+    /// Stops whatever is playing. The handle is not sent — there is nowhere to send
+    /// it — so this stops a move somebody else started too, which is what the
+    /// command does and what the session wants of it.
+    public func stopMove(uuid _: String) async throws {
+        try await control.perform("stop_move", correlation: .replyKey("stopped"))
+        playbackHandle = nil
+    }
+
+    /// Walks the head, body and antennas back to the pose `gotoNeutral` sends over
+    /// HTTP — the same numbers, since the neutral is the robot's, not the route's.
+    public func gotoNeutral(duration: TimeInterval) async throws -> String {
+        try await control.perform("goto_target", payload: [
+            "head": .array([.number(0), .number(0), .number(0), .number(0), .number(0), .number(0)]),
+            "antennas": .array([.number(-0.1745), .number(0.1745)]),
+            "body_yaw": .number(0),
+            "duration": .number(duration),
+        ])
+        let handle = UUID().uuidString
+        playbackHandle = handle
+        return handle
+    }
+
+    /// Nothing to send: `stop_move` silences the move's own sound as it interrupts
+    /// it, so by the time this is reached the player is already quiet.
+    public func stopSound() async throws {}
 
     /// The robot's inertial reading, over the channel.
     ///
@@ -301,6 +367,10 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
 
         struct State: Decodable {
             let motorMode: String
+            /// Whether the daemon is running a move task — any move task, with no
+            /// way to ask which. That is the whole of what this transport can say
+            /// about playback, and what `runningMoveUUIDs` is built on.
+            let isMoveRunning: Bool?
             /// Row-major 4x4, as `StateSnapshot` sends it — nested rather than the
             /// flat sixteen the WebSocket stream carries under `m`.
             let headPose: [[Double]]?
@@ -312,6 +382,7 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
 
             enum CodingKeys: String, CodingKey {
                 case motorMode = "motor_mode"
+                case isMoveRunning = "is_move_running"
                 case headPose = "head_pose"
                 case bodyYaw = "body_yaw"
                 case antennas

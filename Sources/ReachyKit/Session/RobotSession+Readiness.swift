@@ -92,16 +92,14 @@ public extension RobotSession {
         }
     }
 
-    /// Recorded moves are `/api/move/play/*` and the dataset index beside them,
-    /// both HTTP-only. The data channel can play an *uploaded* move and nothing
-    /// from the robot's own library.
+    /// Whether this robot has dances to offer and a way to play them.
     ///
-    /// Derived from the link rather than probed with `client is any MovesClient`
-    /// because `listMoves` and friends still live on `RobotAPIClient` behind
-    /// throwing defaults; lifting them onto a sub-protocol touches every test
-    /// double and belongs in its own change.
+    /// Asked of the transport rather than of the address, which stood in for it and
+    /// was wrong in both directions: a relayed session has no address and plays
+    /// perfectly well, while the simulator has an address of sorts and no library
+    /// at all. `MovePlaybackClient.offersMoveLibrary` is the question itself.
     var canPlayMoves: Bool {
-        address != nil
+        movesClient?.offersMoveLibrary == true
     }
 
     /// The robot's inertial reading, or nil where there is none to read.

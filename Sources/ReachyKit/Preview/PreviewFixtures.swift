@@ -150,7 +150,9 @@
         }
     }
 
-    public struct PreviewRemoteRobotClient: RobotAPIClient, TeleopClient, DaemonLogClient, RobotUnlinkClient {
+    public struct PreviewRemoteRobotClient:
+        RobotAPIClient, TeleopClient, DaemonLogClient, RobotUnlinkClient, MovePlaybackClient
+    {
         public var identity: RobotIdentity
         public var status: Components.Schemas.DaemonStatus
         public var logLines: [String]

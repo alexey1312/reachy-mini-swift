@@ -10,7 +10,20 @@ final class MovesUIClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendab
     private(set) var played: [(String, String)] = []
     private let movesByDataset: [String: [String]]
     private var failingDatasets: Set<String> = []
+    /// Datasets this transport has no route for at all, which is the relay's case
+    /// and the one the session answers from its kept index.
+    private var unsupportedDatasets: Set<String> = []
     private var playFailure: (any Error)?
+
+    func setDataset(_ dataset: String, unsupported: Bool) {
+        lock.withLock {
+            if unsupported {
+                unsupportedDatasets.insert(dataset)
+            } else {
+                unsupportedDatasets.remove(dataset)
+            }
+        }
+    }
 
     func setPlayFailure(_ error: (any Error)?) {
         lock.withLock { playFailure = error }
@@ -61,6 +74,11 @@ final class MovesUIClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendab
     func listMoves(dataset: String) async throws -> [String] {
         try lock.withLock {
             listCalls += 1
+            if unsupportedDatasets.contains(dataset) {
+                // What `MovePlaybackClient`'s own default throws, which is what the
+                // session reads as "this transport has no such route".
+                throw URLError(.unsupportedURL)
+            }
             if failingDatasets.contains(dataset) {
                 throw ListFailure()
             }

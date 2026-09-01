@@ -273,17 +273,28 @@ struct RemoteRobotConnectionTests {
         #expect(level.percent == 30)
     }
 
-    /// Nothing on this channel serves `/api/kinematics/*` or the move datasets, so
-    /// the protocol's throwing defaults stand rather than a stub that pretends.
-    @Test("routes the channel does not carry stay unimplemented")
+    /// Nothing on this channel serves `/api/kinematics/*`, so the protocol's
+    /// throwing default stands rather than a stub that pretends. The description
+    /// and its meshes come out of the app instead — see `BundledGeometryClient`.
+    @Test("a route the channel does not carry stays unimplemented")
     func leavesUnreachableRoutesAlone() async {
         let (connection, _) = connection()
 
         await #expect(throws: (any Error).self) {
             _ = try await connection.urdf()
         }
-        // Moves used to throw here; now they are not on this type at all. The
-        // absence is the assertion — `canPlayMoves` asks exactly this question.
-        #expect(!(connection is any MovePlaybackClient))
+    }
+
+    /// The library index is the one part of playback this channel has no command
+    /// for. Everything else it does carry, which is why the conformance is here at
+    /// all — `canPlayMoves` asks exactly this question.
+    @Test("playback is carried; the library index is not")
+    func carriesPlaybackWithoutTheIndex() async {
+        let (connection, _) = connection()
+
+        #expect(connection is any MovePlaybackClient)
+        await #expect(throws: (any Error).self) {
+            _ = try await connection.listMoves(dataset: "pollen-robotics/reachy-mini-dances-library")
+        }
     }
 }
