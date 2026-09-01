@@ -755,3 +755,7 @@ Someone will "simplify" this back and get a green build, which is the worst kind
 ---
 
 Какие еще правки остались?
+
+---
+
+Доделывай пункт 2, пункт 3 отдельным коммитом
