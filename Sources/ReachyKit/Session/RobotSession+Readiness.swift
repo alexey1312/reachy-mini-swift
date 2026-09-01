@@ -102,6 +102,15 @@ public extension RobotSession {
         address != nil
     }
 
+    /// The robot's inertial reading, or nil where there is none to read.
+    ///
+    /// Not cached and not polled here: it changes when somebody moves the robot,
+    /// which is not on any schedule this session keeps.
+    func imuReading() async throws -> RobotIMUReading? {
+        guard let client else { throw ReachyKitError.notConnected }
+        return try await client.imuReading()
+    }
+
     /// Whether the beta channel is closed to this robot.
     ///
     /// Daemons before 1.10.0 rank the PyPI pre-release list as strings, so `1.9.0rc1`

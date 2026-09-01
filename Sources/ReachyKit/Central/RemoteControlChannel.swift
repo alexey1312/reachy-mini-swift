@@ -31,28 +31,6 @@ public extension RemoteDataChannel {
     }
 }
 
-/// A JSON value, for command payloads whose shape the caller decides.
-public enum RemoteValue: Equatable, Sendable, Encodable {
-    case string(String)
-    case number(Double)
-    case bool(Bool)
-    case array([RemoteValue])
-    case object([String: RemoteValue])
-    case null
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case let .string(value): try container.encode(value)
-        case let .number(value): try container.encode(value)
-        case let .bool(value): try container.encode(value)
-        case let .array(values): try container.encode(values)
-        case let .object(values): try container.encode(values)
-        case .null: try container.encodeNil()
-        }
-    }
-}
-
 /// Drives the robot over the reliable `"data"` channel of a WebRTC session.
 ///
 /// This is the whole control surface of a remote session: the daemon's HTTP API
@@ -77,6 +55,12 @@ public actor RemoteControlChannel {
         /// motor-mode commands answer under `motor_mode`, so they serialise
         /// against each other — which is correct, since nothing tells them apart.
         case replyKey(String)
+        /// The reply names a `type`, the way a broadcast does. Daemon 1.10.0
+        /// answers `get_imu` with `ImuDataMsg`, which is also what the robot
+        /// publishes unasked — so the same frame serves both, and the first one to
+        /// arrive answers the question. Only for replies that really are a reading
+        /// rather than an acknowledgement.
+        case typed(String)
     }
 
     public enum Failure: Error, Equatable, Sendable {
@@ -139,6 +123,7 @@ public actor RemoteControlChannel {
         let token = switch correlation {
         case .echoedCommand: command
         case let .replyKey(key): key
+        case let .typed(type): type
         }
         await takeTurn(for: token)
         defer { yieldTurn(for: token) }
@@ -200,9 +185,11 @@ public actor RemoteControlChannel {
     /// The unsolicited messages of one `type`.
     ///
     /// The robot broadcasts things nobody asked for — joint positions at 50 Hz,
-    /// journal lines, update progress — and every one of them names a `type`
-    /// where no reply ever does. Until now that discriminator was only ever used
-    /// to *drop* them; this is the other half of it.
+    /// journal lines, update progress — and every one of them names a `type`.
+    /// Until now that discriminator was only ever used to *drop* them; this is the
+    /// other half of it. A `type` no longer means "nobody asked", though: see
+    /// ``Correlation/typed(_:)``, which claims a frame a caller is waiting for
+    /// before the rest reach here.
     ///
     /// The stream ends when the channel does, so a console reading it learns that
     /// the session is over rather than sitting frozen with no explanation.
@@ -300,10 +287,17 @@ public actor RemoteControlChannel {
     private func deliver(_ text: String) {
         let data = Data(text.utf8)
         guard let envelope = try? JSONCodec.daemon.decode(Envelope.self, from: data) else { return }
-        // Every unsolicited broadcast names a `type` and no reply ever does, which
-        // is the only thing separating `{"state": …}`, an answer, from
-        // `{"type": "daemon_status", …, "state": …}`, which is not.
+        // A `type` used to be proof that nobody asked, which is what separates
+        // `{"state": …}`, an answer, from `{"type": "daemon_status", …, "state": …}`,
+        // which is not. Daemon 1.10.0 ended that: `get_imu` is answered with
+        // `ImuDataMsg`, the very frame the robot also publishes on its own. So a
+        // caller waiting on this exact type is answered first, and everything else
+        // fans out to subscribers as before — see `Correlation.typed`.
         if let type = envelope.type {
+            if waiting[type] != nil {
+                resume(type, with: .success(data))
+                return
+            }
             for continuation in listeners[type]?.values ?? [:].values {
                 continuation.yield(data)
             }

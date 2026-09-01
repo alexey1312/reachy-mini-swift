@@ -180,6 +180,27 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
         []
     }
 
+    /// The robot's inertial reading, over the channel.
+    ///
+    /// `get_imu` is answered with the same `imu_data` frame the robot publishes
+    /// unasked, so the correlation is by type rather than by an echoed command —
+    /// see ``RemoteControlChannel/Correlation/typed(_:)``. A relayed robot is a
+    /// Wireless one by construction, so unlike the HTTP route this has no
+    /// IMU-less case to report.
+    public func imuReading() async throws -> RobotIMUReading? {
+        let reply = try await control.perform(
+            "get_imu",
+            correlation: .typed("imu_data"),
+            expecting: IMUReply.self
+        )
+        return RobotIMUReading(
+            accelerometer: reply.accelerometer,
+            gyroscope: reply.gyroscope,
+            quaternion: reply.quaternion,
+            temperatureCelsius: reply.temperature
+        )
+    }
+
     public func deleteHFToken() async throws {
         try await control.perform("delete_hf_token")
     }
@@ -238,6 +259,15 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient {
 
     private struct VolumeReply: Decodable {
         let volume: Int
+    }
+
+    /// `ImuDataMsg` flat, as the daemon sends it — the `type` is the correlation
+    /// rather than payload, so it is not read here.
+    private struct IMUReply: Decodable {
+        let accelerometer: [Double]
+        let gyroscope: [Double]
+        let quaternion: [Double]
+        let temperature: Double
     }
 
     /// `get_state` answers `{"state": {…}}` with no command echoed. Only the motor

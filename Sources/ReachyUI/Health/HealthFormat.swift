@@ -37,6 +37,12 @@ enum HealthFormat {
 
     /// Seconds on the wire, milliseconds on screen: a loop interval is 0.0184 s,
     /// and a reader counting decimal places is a reader doing the formatter's job.
+    /// Whole degrees: the sensor's own noise is larger than a tenth, so a decimal
+    /// here would be a digit that never settles.
+    static func degrees(_ value: Double) -> String {
+        String(localized: .reachy("\(value.rounded().formatted(.number.precision(.fractionLength(0))))°"))
+    }
+
     static func milliseconds(_ seconds: Double) -> String {
         Measurement(value: seconds * 1000, unit: UnitDuration.milliseconds)
             .formatted(.measurement(

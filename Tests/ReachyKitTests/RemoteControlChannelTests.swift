@@ -235,6 +235,34 @@ struct RemoteControlChannelTests {
         #expect(object?["type"] as? String == "set_volume")
         #expect(object?["volume"] as? Double == 42)
     }
+
+    /// Daemon 1.10.0 answers `get_imu` with the same `imu_data` frame the robot also
+    /// publishes on its own, so a `type` stopped being proof that nobody asked.
+    @Test("a reply that names a type answers the command waiting on it")
+    func matchesByReplyType() async throws {
+        let (control, fake) = channel()
+
+        async let reply: Data = control.perform("get_imu", correlation: .typed("imu_data"))
+        await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
+        // Routing is by `type` alone, so the frame carries nothing else: what the
+        // payload decodes into is `RemoteRobotConnection`'s business, not this one's.
+        fake.emit(#"{"type":"imu_data","temperature":30}"#)
+
+        let payload = try await reply
+        #expect(!payload.isEmpty)
+    }
+
+    /// And everything else keeps going to subscribers: the type-matched path may
+    /// only claim a frame somebody is actually waiting for.
+    @Test("a broadcast nobody waits on still reaches its subscribers")
+    func leavesUnclaimedBroadcastsToListeners() async {
+        let (control, fake) = channel()
+        // The stream buffers, so subscribing before the emit is enough — no second
+        // task, and nothing to race against.
+        var lines = await control.broadcasts(ofType: "log_line").makeAsyncIterator()
+        fake.emit(#"{"type":"log_line","line":"hello"}"#)
+        #expect(await lines.next() != nil)
+    }
 }
 
 /// Nonisolated, unlike `ConnectProgressModelTests`' copy: every condition here

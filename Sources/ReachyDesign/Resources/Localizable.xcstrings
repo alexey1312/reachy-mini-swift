@@ -5772,6 +5772,35 @@
         }
       }
     },
+    "Lean": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neigung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinaison"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наклон"
+          }
+        }
+      }
+    },
     "Lite": {
       "extractionState": "manual",
       "localizations": {
@@ -5917,6 +5946,35 @@
         }
       }
     },
+    "Motion": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewegung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movimiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mouvement"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Движение"
+          }
+        }
+      }
+    },
     "Nothing is serving on this computer. A Lite robot is driven by the daemon on the computer it is plugged into, and the simulator is that same daemon with no robot — start one and it appears here.": {
       "extractionState": "manual",
       "localizations": {
@@ -5971,6 +6029,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "На этом компьютере"
+          }
+        }
+      }
+    },
+    "Sensor": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Датчик"
+          }
+        }
+      }
+    },
+    "Read when this screen opens, and again when you pull it down.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird beim Öffnen dieser Ansicht gelesen und erneut, wenn Sie sie nach unten ziehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se lee al abrir esta pantalla y de nuevo cuando tira de ella hacia abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lu à l'ouverture de cet écran, puis de nouveau lorsque vous le tirez vers le bas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читается при открытии экрана и ещё раз, когда вы тянете его вниз."
           }
         }
       }

@@ -87,6 +87,7 @@ struct RobotScreen: View {
         guard health == nil else { return }
         guard let robot = identity?.deduplicationKey else { return }
         health = RobotHealthModel(
+            readIMU: { [session] in try await session.imuReading() },
             files: session.address.map { _ in SSHFileSystem(robot: robot) },
             robot: robot,
             host: session.address?.host ?? ""

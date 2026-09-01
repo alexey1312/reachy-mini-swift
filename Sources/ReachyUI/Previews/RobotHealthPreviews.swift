@@ -53,3 +53,18 @@ import SwiftUI
 #Preview("State — no control loop") {
     PreviewScene.robotHealth(.preview(loop: nil))
 }
+
+// The IMU half, which only a Wireless robot has: a Lite unit, the simulator and a
+// relayed session all report none, and the section is then absent rather than empty.
+// A few degrees off upright is the reading worth a picture — zero would not show
+// that the row rounds, and a robot on its side is not the ordinary case.
+#Preview("State — leaning") {
+    PreviewScene.robotHealth(.preview(
+        imu: RobotIMUReading(
+            accelerometer: [0.51, 0.04, 9.79],
+            gyroscope: [0.001, 0, 0.002],
+            quaternion: [0.9986, 0.0524, 0, 0],
+            temperatureCelsius: 34.2
+        )
+    ))
+}

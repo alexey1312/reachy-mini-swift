@@ -27,6 +27,8 @@ public protocol RobotAPIClient: Sendable {
     func microphoneVolume() async throws -> AudioLevel
     func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel
     func playTestSound() async throws
+    /// The robot's inertial reading, or nil where there is no IMU to read.
+    func imuReading() async throws -> RobotIMUReading?
 }
 
 /// Defaults keep lightweight session test doubles focused on the behavior they exercise.
@@ -35,6 +37,12 @@ public extension RobotAPIClient {
     /// route every double that doesn't script readiness into `.backendUnavailable`,
     /// turning an unimplemented method into a connection failure.
     func probeBackendReady() async throws {}
+
+    /// Nil rather than a throw: an absent IMU is what a Lite robot, the simulator
+    /// and a stale reading all answer, and none of them is an error to report.
+    func imuReading() async throws -> RobotIMUReading? {
+        nil
+    }
 
     func setRobotName(_: String) async throws -> String {
         throw URLError(.unsupportedURL)

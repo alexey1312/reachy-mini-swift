@@ -278,6 +278,11 @@ They are wired now; the entries are here because each failure reads as something
   than at the line you wrote. So `mise run format` breaks a test that compiled a minute earlier, and undoing it by hand
   is a loop — the next format run puts it back. Assert on a mapped array instead
   (`map(\.isTappable).contains(false) == false`), which the rule leaves alone.
+  **The same rule holds for parentheses round a float literal**, and that one does not even reach the type checker:
+  `redundantParens` turns `(2.0).squareRoot()` into `2.0.squareRoot()`, which fails to _parse_ — `expected named
+  member of numeric literal`, reported against the macro expansion rather than the line. Bind the value first
+  (`Double(0.5).squareRoot()`) so no literal is left carrying a member. The class is the same both times: `format`
+  breaks a file that compiled a minute earlier, and the fix is to write it in a shape the rule has no opinion about.
   `mise run clean` only clears `.build` — `Apps/DerivedData` (Xcode's, several GB) is not touched.
   **SwiftPM holds one `.build` lock per worktree**, so a second invocation waits instead of failing, printing
   `Another instance of SwiftPM (PID: …) is already running` — a line that never appears when the output is piped

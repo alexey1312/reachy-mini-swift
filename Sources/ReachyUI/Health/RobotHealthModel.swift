@@ -43,6 +43,9 @@ final class RobotHealthModel {
     private(set) var phase: Phase
     private(set) var system = LinuxSystemSnapshot()
     private(set) var loop: ControlLoopStats?
+    /// What the robot feels. Nil on a Lite unit, in simulation and over the relay —
+    /// see ``RobotIMUReading`` for why absent is an ordinary answer here.
+    private(set) var imu: RobotIMUReading?
 
     private(set) var frequency = MetricSeries()
     private(set) var cpu = MetricSeries()
@@ -70,7 +73,10 @@ final class RobotHealthModel {
     /// `files` is optional so that a relayed session — which has no address to dial
     /// — constructs a model that is honest about having nothing to offer, rather
     /// than one holding a file system it can never connect.
+    typealias ReadIMU = @MainActor () async throws -> RobotIMUReading?
+
     init(
+        readIMU: @escaping ReadIMU = { nil },
         files: (any RobotFileSystem)? = nil,
         credentials: any SSHCredentialStore = KeychainSSHCredentialStore(),
         robot: String = "",
@@ -78,6 +84,7 @@ final class RobotHealthModel {
         port: Int = SSHCredentials.defaultPort,
         interval: Duration = .seconds(5)
     ) {
+        readIMUCall = readIMU
         self.files = files
         self.credentials = credentials
         self.robot = robot
@@ -115,6 +122,18 @@ final class RobotHealthModel {
         frequency.append(loop?.frequencyHz)
     }
 
+    /// Read when the screen opens and when the reader pulls, rather than on a
+    /// clock. Nothing here changes on a schedule: the robot leans over when
+    /// somebody moves it, and its sensor warms over minutes.
+    ///
+    /// A failed read leaves the last one standing. The daemon spells "no IMU" and
+    /// "stale" the same way it spells "here is a reading", so blanking on a refused
+    /// call would turn a network blip into a missing sensor.
+    func refreshIMU() async {
+        guard let reading = try? await readIMUCall() else { return }
+        imu = reading
+    }
+
     // MARK: - The operating system's half
 
     /// Opens the session if there is a stored password, and starts sampling.
@@ -142,6 +161,8 @@ final class RobotHealthModel {
     /// reason `RobotFilesModel` gives: a `NavigationLink` builds its destination
     /// eagerly, so an initialiser here runs on every render of the parent, and a
     /// synchronous `SecItemCopyMatching` per render is an XPC round trip for nothing.
+    private let readIMUCall: ReadIMU
+
     private func loadStoredCredentials() {
         guard !hasLoadedCredentials else { return }
         hasLoadedCredentials = true
@@ -293,9 +314,14 @@ final class RobotHealthModel {
                 errorCount: 0,
                 motorController: "ControlLoopStats(period=~20.02ms, read_dt=~1.95 ms, write_dt=~0.44 ms)"
             ),
-            history: Bool = true
+            history: Bool = true,
+            imu: RobotIMUReading? = nil
         ) -> RobotHealthModel {
-            let model = RobotHealthModel(files: phase == .unavailable ? nil : PreviewFileSystem())
+            let model = RobotHealthModel(
+                readIMU: { imu },
+                files: phase == .unavailable ? nil : PreviewFileSystem()
+            )
+            model.imu = imu
             model.phase = phase
             model.system = system
             model.loop = loop
