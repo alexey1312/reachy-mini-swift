@@ -1,0 +1,31 @@
+Тогда порядок такой — три вещи перед постом, все три сегодня.
+
+**Видео в две точки, где на него посмотрят.** В Discord его надо приложить файлом, а не ссылкой: инлайн-плеер смотрят, ссылку на YouTube — нет. Лимит на бесплатном сервере 10 МБ, на бустнутых до 50–100. Минута экранной записи с iPhone в 1080p туда не влезет, так что 720p, H.264, битрейт около 2 Мбит — либо подрезать до 40 секунд. Если сервер не бустнутый и всё равно не помещается, лучше урезать длину, чем уводить людей на другой домен.
+
+Вторая точка — сайт и README. В README сейчас стоит строка «A one-minute demo video from a live robot is on its way», и она провисит ровно до тех пор, пока по ссылке из Discord кто-то не придёт и не прочитает её. Заменить на само видео: перетащи mp4 в черновик issue, GitHub отдаст ссылку на `user-images`, её и вставляй. На лендинге — над скриншотами, первым экраном.
+
+**`og:image`.** Всё ещё `media/icon.png`, квадрат в контейнере 1200×630. Карточка в Discord развернётся растянутой иконкой рядом с твоим же видео — это единственное место, где пост будет выглядеть небрежно. Кадр из видео плюс подпись, полчаса. Заодно тот же файл в Settings → Social preview репозитория.
+
+**Пост.** Коротко, без питча:
+
+> Native iPhone / iPad / Mac client for Reachy Mini — joystick teleop, the robot's camera and two-way audio, a live 3D twin from the robot's own URDF, the app store, widgets and Siri. Wireless, Lite, or no robot at all: it carries a simulator.
+>
+> [видео]
+>
+> TestFlight · Mac App Store · GitHub (Apache-2.0, nine SPM packages)
+>
+> Unofficial, not affiliated with Pollen Robotics. Bluetooth onboarding is written against 1.9.0's `bluetooth_service.py` but has never met real hardware — if someone with a Wireless unit wants to break it, the checklist is in the repo.
+
+Канал — тот, где показывают проекты. Дальше два-три дня быть в треде и отвечать: скорость ответа сейчас важнее самого поста.
+
+Что смотреть через неделю — Insights → Traffic → Referring sites (сколько реально дал Discord), звёзды, установки в TestFlight, и главное: ответил ли кто-то из Pollen или HF. Отклик владельцев роботов и молчание команды — разные исходы, и решения после них тоже разные.
+Что нужно сделать в репо не понял
+
+---
+
+/Users/aleksei/Downloads/FF53F6D8-05FF-4228-90EE-1B7B289EF7AF.MP4
+Видео подготовил - поможешь?
+
+---
+
+[Image #2]
