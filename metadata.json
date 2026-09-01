@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1E0XTE28HZ07K5M6H98F4N4",
+  "strategy": "manual-commit",
+  "branch": "claude/trusting-bose-e71bef",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "Sources/ReachyKit/Central/RemotePoseStream.swift",
+    "Sources/ReachyKit/Central/RemoteRobotConnection+Pose.swift",
+    "Sources/ReachyKit/Central/RemoteStateSnapshot.swift",
+    "Sources/ReachyMedia/CameraSession.swift",
+    "Sources/ReachyUI/ViewportModel.swift",
+    "Tests/ReachyKitTests/RemotePoseStreamTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1446,
+    "cache_creation_tokens": 2573257,
+    "cache_read_tokens": 405427322,
+    "output_tokens": 461946,
+    "api_call_count": 724
+  }
+}

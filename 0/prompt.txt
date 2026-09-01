@@ -1,0 +1,60 @@
+1. Lots of WebRTC work for app builders, better sound, steadier face tracking. App control over WebRTC One JSON-RPC 2.0 protocol over the data channel and /ws/sdk: any client (TS SDK, browser, phone) can start, stop and talk to on-robot apps. TS SDK: rpcCall() / onNotification(). Cloud backends Hardware-free ReachyCentralConsumer (aiortc): an HF Space or any Python backend can subscribe to camera and mic and drive the robot without daemon or GStreamer. Cloudflare TURN relay for restrictive NATs. pip install "reachy_mini[central-consumer]" Better audio Firmware 2.1.4: +6 dB max volume, mic no longer goes silent after a USB reset. New daemon-side 10-band EQ fixes the "boxy" head-shell resonance, configurable in daemon_config.json. Smoother face tracking Adaptive filter in the daemon-side tracker damps jitter without slowing real movement. Same API. Live pose stream ~30 Hz push on a dedicated lossy pose channel instead of polling get_state. No more stutter on bad Wi-Fi. JS SDK: subscribePose(). Rename your robot live From the app or BLE setup, no restart, survives reboots. getRobotName() / setRobotName(). WebRTC resilience TS SDK auto-reconnects through ICE blips and network changes, and no longer hangs against older daemons. Also: recorded moves over the data channel (playRecordedMove()), ReSpeaker DOA in the robot state, BMI088 IMU via get_imu, signOut() to unlink a robot remotely, face tracking fixed on macOS/Windows/Linux without V4L2, robot_name resolves via mDNS. Update: Wireless: Settings → Reachy Mini Update. Lite: pip install -U reachy-mini or Reachy Mini Control (Settings → Daemon Update). Full notes: https://github.com/pollen-robotics/reachy_mini/releases/tag/v1.10.0 Thanks to FabienDanieau, pierre-rouanet, tfrere, RemiFabre, jrubiosainz, alozowski, andimarafioti and ai-ag2026. Questions in ⁠discussion or ⁠general-chat
+
+
+
+
+Посмотри все новые измнения - поддреживаем ли мы все?
+
+---
+
+Погоди, ты сейчас в форке, раота в том git tree продложиается, верно?
+
+---
+
+Тот worktree работет, что получается нам еще надо сделать что бы быть в париетет с пасториммом?
+
+---
+
+Тот воркт три, уже почти закончил пункт 7
+Тебе необходимо в туже ветку доделать ВСЕ оставшиеся пункты для паритета
+Продолжая работать в этом же ворктири
+
+---
+
+<task-notification>
+<task-id>biq4ndlbl</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/biq4ndlbl.output</output-file>
+<status>completed</status>
+<summary>Background command "Add the pushed pose stream and build" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bauz6srbi</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bauz6srbi.output</output-file>
+<status>completed</status>
+<summary>Background command "Prefer the pushed pose stream" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b905hn2fh</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/b905hn2fh.output</output-file>
+<status>completed</status>
+<summary>Background command "Test the pose stream's ordering" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bif1d1pc8</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift--claude-worktrees-trusting-bose-e71bef/8033cdb9-9fd7-4be0-9812-f4fff463cd4d/tasks/bif1d1pc8.output</output-file>
+<status>completed</status>
+<summary>Background command "Mutate the ordering check" completed (exit code 0)</summary>
+</task-notification>
