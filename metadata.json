@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M1E1TJCMVH1JW0JE4ZBFJZ03",
+  "strategy": "manual-commit",
+  "branch": "claude/trusting-bose-e71bef",
+  "checkpoints_count": 13,
+  "files_touched": [
+    "Sources/ReachyKit/Central/RemotePoseStream.swift",
+    "Sources/ReachyKit/Central/RemoteRobotConnection+Identity.swift",
+    "Sources/ReachyKit/Central/RemoteStateSnapshot.swift",
+    "Sources/ReachyKit/Session/RobotRenameClient.swift",
+    "Sources/ReachyKit/Session/RobotSession+Connect.swift",
+    "Sources/ReachyKit/Transport/RobotStateFrame.swift",
+    "Sources/ReachyKit/Transport/StateStreamClient.swift",
+    "Sources/ReachyUI/DirectionOfArrivalModel.swift",
+    "Sources/ReachyUI/ViewportModel+Remote.swift",
+    "Sources/ReachyUI/ViewportModel.swift",
+    "Tests/ReachyKitTests/RemotePoseStreamTests.swift",
+    "Tests/ReachyKitTests/RemoteRobotRenameTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1594,
+    "cache_creation_tokens": 2626385,
+    "cache_read_tokens": 464887708,
+    "output_tokens": 497085,
+    "api_call_count": 798
+  }
+}
