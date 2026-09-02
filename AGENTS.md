@@ -185,9 +185,17 @@ uselessly on `refs/pull/47/merge`. Anything cached for the Xcode jobs needs a pr
 `ONLY_ACTIVE_ARCH=YES` because Xcode's Release default is `NO`: the macOS build was compiling arm64 _and_ x86_64 in
 sequence, 8.5 minutes against Debug's 3.0, for a second target triple that catches nothing the first does not
 (WebRTC's macOS slice is `macos-x86_64_arm64`, so even the link is covered). Both Release tasks also pass
-`DEBUG_INFORMATION_FORMAT=dwarf` to drop the dsymutil pass. `Scripts/release-macos.sh` / `release-ios.sh` archive
-with the defaults, so what ships is still universal and still carries dSYMs — check there, not here, before
-concluding a slice is missing.
+`DEBUG_INFORMATION_FORMAT=dwarf` to drop the dsymutil pass. `release-ios.sh` archives with the defaults, so what
+ships there still carries dSYMs — check the release scripts, not the mise tasks, before concluding something is
+missing from a shipped artifact.
+**What ships on macOS is arm64 alone, and that is a shipping decision rather than a build-time saving.** Apple opened
+it on 2026-09-01: a Mac App Store app requiring macOS 13 or later may drop its Intel slice, and this app's floor is
+macOS 15. `release-macos.sh` therefore passes `ARCHS=arm64` **on the archive command line** — a project setting would
+not reach the SPM package targets Xcode builds as implicit projects, which is all of ReachyKit, ReachyUI and
+ReachyMedia. The same archive is exported twice, so the notarized Developer ID build loses Intel with the App Store
+one; that half is ours to decide rather than Apple's, and macOS 26 is the last release Intel sees either way. The
+script asserts it with `lipo -archs` on the archived binary, because dropping the flag would put the universal slice
+back with the build still green.
 `REACHY_XCB_EXTRA` is the seam for settings that belong to CI and not to a laptop: every xcodebuild task in
 `mise.toml` interpolates it, and `ci.yml` sets it to `COMPILER_INDEX_STORE_ENABLE=NO`. Index-while-building stays on
 locally because Xcode.app reads that index out of the same `Apps/DerivedData` these tasks write to.
