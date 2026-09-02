@@ -217,7 +217,9 @@ Ordered by how close each sits to something the app already does.
   (`isDynamicIslandLimitedInWidth`); StandBy.
 - **App Intents**: `LongRunningIntent`, `CancellableIntent`, `ExecutionTargets`, `EntityCollection`,
   `SyncableEntity`, `RelevantEntities`, `@UnionValue`, and **`AppIntentsTesting`**, which drives intents through the
-  real system paths. Nine controls plus Siri, Spotlight and Handoff are covered only indirectly today.
+  real system paths. Nine controls plus Siri, Spotlight and Handoff are covered only indirectly today. **Schemas are
+  the part of this worth having, and they are §3.1 below** — most of the rest of this list turns out to be
+  unreachable from here.
 - **Foundation Models**: the `LanguageModel` / `LanguageModelExecutor` protocols make one session work against the
   on-device model, Private Cloud Compute, MLX and third-party providers, which turns the on-device-or-cloud question
   in #72 and #73 from an architectural choice into configuration. Evaluations and the token-count API are new.
@@ -226,6 +228,79 @@ Ordered by how close each sits to something the app already does.
 - `@Environment(\.appearsActive)` for the inactive Mac window; a sidebar on iPhone for the five-tab shell
   (`.sidebarAdaptable` is already set, `Sources/ReachyUI/Shell/ReachyTabShell.swift:120`); the Now Playing framework
   for the soundboard.
+
+### §3.1 App Intents schemas, and which domains a robot client honestly fits (#74)
+
+Every intent this app ships is its own type: the system knows nothing about `WakeRobotIntent` or `PlayMoveIntent`
+beyond the ten phrases `ReachyShortcuts` spells out. A **schema** binds an intent to a system-defined domain the
+assistant already understands, which buys natural language with no memorised phrase and no per-language work.
+
+Measured against Xcode 27.0 Beta 6 rather than read: **`AppIntentSchemas.sqlite`**, in
+`Toolchains/XcodeDefault.xctoolchain/usr/lib/AppIntentSchemas.framework/Versions/A/Resources/`, is the database the
+metadata processor validates a conformance against. It carries every schema's parameters, its `openApp` flag, its
+authentication policy and its per-OS availability — which is where every figure below comes from. Copy it out and
+query it; it is the answer to "what does this schema actually require", and it does not agree with every tutorial.
+
+**The names moved in 27.** `AssistantSchemas` → `AppSchema`, `@AssistantIntent(schema:)` → `@AppIntent(schema:)`,
+`@AssistantEntity` → `@AppEntity(schema:)`. The old spellings are present and deprecated.
+
+**One domain fits, and the refusals are the useful half of this entry:**
+
+| Domain       | What the schema actually requires                                                                                                                                                                                          | Verdict                                                                                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phone`      | `StartCallIntent.destination` is a union of `PhonePerson` / `[PhonePerson]` / `CallGroup`, and `PhonePerson` carries a **contact**. The system's own dialog reads "Ready to call ${destination} using ${applicationName}?" | **No.** #78 frames the WebRTC session as a system call and that framing is honest — but a robot is not a person, and this schema can only be adopted by claiming it is one. |
+| `audio`      | `PlayAudioIntent.audioEntity` is a union of song, album, artist, playlist, podcast, audiobook, `AmbientSoundEntity`, news                                                                                                  | **No.** A soundboard clip played on the robot's speaker is none of those.                                                                                                   |
+| `camera`     | `StartCameraCaptureIntent`, `StopCaptureIntent`, `FlipCameraIntent`                                                                                                                                                        | **No.** This app watches the robot's camera and captures nothing; the schema promises a recording that would never exist.                                                   |
+| `files`      | `OpenFileIntent.target: FileEntity`, plus create / delete / move / rename                                                                                                                                                  | **No.** The SFTP browser is the _robot's_ filesystem, LAN-only and password-gated — not a document store an assistant should be handed mutating verbs over.                 |
+| `assistant`  | `ActivateAssistantIntent`, availability `{"clients":16,"iOS":26.2}`                                                                                                                                                        | **Not adoptable** — restricted client set.                                                                                                                                  |
+| **`system`** | `.system.search` / `.system.searchInApp` take `criteria: StringSearchCriteria`; `.system.open` takes an unconstrained `target: entity`                                                                                     | **Yes**, and only these.                                                                                                                                                    |
+
+**The Swift protocol is older than the schema in both cases, which is what makes #74 affordable:**
+
+|        | Protocol                                               | Schema binding                                                                                 |
+| ------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Search | `ShowInAppSearchResultsIntent` — iOS 17.2 / macOS 14.2 | `.system.search` — **iOS 18 / macOS 15**, at this app's floor. `.system.searchInApp` — iOS 27. |
+| Open   | `OpenIntent` — **iOS 16 / macOS 13**                   | `.system.open` — iOS 27 only.                                                                  |
+
+So the behaviour ships at the current deployment target and iOS 27 adds an annotation on top of working code.
+
+**Both protocols supply `openAppWhenRun = true` from a framework protocol extension**, which the author never
+writes and cannot decline. A conformance declared inside `ReachyWidgetUI` would therefore stamp `openApp` into the
+**extension's** `Metadata.appintents` — the runtime failure `CallRobotIntent`'s header describes. Schema intents
+belong in the app target beside it, and none may carry `#if os(iOS)`: `check-appintents-metadata.sh` reads the
+macOS bundle too.
+
+**`.system.open` costs almost nothing, and this is the reason:**
+
+```swift
+@available(macOS 15.0, iOS 18.0, *)
+extension URLRepresentableIntent where Self: OpenIntent, Self.Value: URLRepresentableEntity {
+    public func perform() async throws -> Never
+}
+```
+
+Conform an entity to `URLRepresentableEntity` — iOS 18 / macOS 15, one `static var urlRepresentation` — and the
+intent's whole `perform()` arrives for free: the system opens the entity's URL, which lands on the existing
+`onOpenURL` → `ReachyDeepLink` → `RootLifecycle.follow` path. A `@UnionValue` target forfeits exactly this, because
+`AppUnionValue` is iOS 27 and satisfies neither conditional extension, putting `perform()` back in our hands for the
+same user-visible result.
+
+**Three items in the §3 bullet above are out of reach from here, and each for a reason worth writing down:**
+
+- **`ExecutionTargets`, `LongRunningIntent` and `CancellableIntent` are blocked by CI rather than by design.** All
+  are `@available(anyAppleOS 27.0)`, and the intents they would go on live in `Sources/ReachyWidgetUI`. `lint-test`
+  is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is `swift build` over every
+  SwiftPM target — and an iOS-27 symbol is simply **absent** from the 26.2 SDK, so `@available` does not save it and
+  the module fails to compile. Nothing in `Sources/` may name an iOS-27 symbol until that job moves.
+- **`supportedModes` buys nothing at this floor.** `openAppWhenRun` is `@available(iOS, deprecated: 26.0)`, and a
+  deprecation only fires once the _deployment target_ reaches the deprecating version. At iOS 18 nothing warns, so
+  the swap removes no diagnostic and changes no behaviour. It is a deployment-floor task.
+- **`AppIntentsTesting` cannot catch what it was wanted for.** All 36 of its declarations are
+  `@available(macOS 27.0, iOS 27.0, …)`; it ships only under `<Platform>/Developer/Library/Frameworks`, so
+  `swift test` cannot reach it; and its surface — `IntentDefinitions.intents / entities / enums / valueQueries` —
+  exposes no parameter metadata and no `IntentCollectionSize`. The `@Parameter(size:)` trap recorded in
+  `ReachyWidgetUI/AGENTS.md` is therefore still invisible to it. An assertion over `typeSpecificMetadata` inside
+  `check-appintents-metadata.sh` would catch it and costs no CI slot at all.
 
 ## §4 Order
 
