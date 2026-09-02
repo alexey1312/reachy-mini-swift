@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyWidgetUI
 import SwiftUI
 
 /// The list at the top of the `Local` segment: everything the sweep and Bonjour
@@ -51,6 +52,7 @@ struct NetworkRobotsSection: View {
                 // The same action where there is no swipe: a pointer on macOS, or
                 // VoiceOver anywhere.
                 .contextMenu { forgetButton(entry) }
+                .reachyEntityIdentifier(RobotEntity.self, id: entry.robot.key)
             }
             ForEach(undiscoveredServices) { service in
                 Button {
