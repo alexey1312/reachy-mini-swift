@@ -11,6 +11,7 @@ struct RemoteFileRow: View {
             Image(systemName: symbol)
                 .foregroundStyle(file.isDirectory ? Tone.brand.style : Tone.quiet.style)
                 .frame(width: Space.xl)
+                .accessibilityLabel(kindLabel)
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(file.name)
                     .font(Typography.rowTitleCompact)
@@ -29,7 +30,21 @@ struct RemoteFileRow: View {
                 Image(systemName: "chevron.forward")
                     .font(Typography.status)
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// What the glyph means, for a reader who cannot see it. The kind was otherwise
+    /// only in the icon, so a listing read aloud was names and sizes with no way to
+    /// tell a folder from a file.
+    private var kindLabel: LocalizedStringResource {
+        switch file.kind {
+        case .directory: .reachy("Folder")
+        case .symlink: .reachy("Symbolic link")
+        case .other: .reachy("Special file")
+        case .file: .reachy("File")
         }
     }
 

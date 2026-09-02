@@ -46,6 +46,12 @@ struct RobotScreen: View {
         }
         .formStyle(.grouped)
         .navigationTitle(identity?.name ?? String(localized: .reachy("Robot")))
+        // Wake and sleep are long enough to look away from: the end of either is a
+        // tick, and a refused one is a different tick.
+        .sensoryFeedback(trigger: session.powerTransition == nil) { wasIdle, isIdle in
+            guard !wasIdle, isIdle else { return nil }
+            return session.robotError == nil ? .success : .error
+        }
         .task { prepareHealth() }
         // Kept warm from here rather than from the screen, and it costs nothing:
         // the status is polled whether or not anyone is looking at the loop. So the

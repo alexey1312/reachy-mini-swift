@@ -41,6 +41,10 @@ struct RunningAppDock: View {
                 expand: { model.isExpanded = true },
                 perform: perform
             )
+            // A crash arrives on a poll rather than on a tap, so nothing else marks it.
+            .sensoryFeedback(.error, trigger: status.state == .error) { wasFailed, isFailed in
+                !wasFailed && isFailed
+            }
         }
     }
 

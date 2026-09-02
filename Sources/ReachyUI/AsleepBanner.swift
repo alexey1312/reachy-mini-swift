@@ -13,6 +13,7 @@ struct AsleepBanner: View {
             HStack(alignment: .firstTextBaseline, spacing: Space.md) {
                 Image(systemName: "moon.zzz")
                     .foregroundStyle(Tone.warning.style)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text(title)
                         .font(Typography.detail.weight(.medium))

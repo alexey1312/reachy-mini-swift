@@ -838,6 +838,15 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   reads as a broken checkout rather than a stale file list.
 - Anything a preview body references must be visible target-wide, because Prefire copies the body into a separate
   generated file. Shared wrappers live in `PreviewScene`; a `private` helper compiles locally and breaks the test.
+- **The iPhone references render at `.medium`, one step below a device's default text size; the iPad ones at
+  `.large`.** `ViewImageConfig`'s iPhone traits set `preferredContentSizeCategory: .medium` and the iPad traits set
+  nothing, so a `@ScaledMetric` comes out at about 94 % of its constant in every iPhone reference and at the constant
+  on iPad — adopting one moves the iPhone pair of every preview it reaches and nothing else, measured at 38 previews
+  for five sites (the joystick knob, the theme tiles, the remote-robot artwork, the reset screen's bullets, the
+  floating switcher). That is the expected shape of adopting one, not a regression: the constant it replaced only
+  stayed put because it did not scale, which is the whole point. And **a labelled `Slider` draws a tick per step on
+  iOS 26** — the `label:` initialiser, not the bare one — so a slider's name goes on as `accessibilityLabel`;
+  `AudioSettingsSection` carries the note.
 - **A preview with no `traits:` is captured at full device size.** Prefire defaults the trait list to `.device`
   (`RawPreviewModel.isScreen`), and that device trait is what carries `horizontalSizeClass` — so it is what makes the
   iPad snapshot exercise the regular-width layout. Components opt out with `traits: .sizeThatFitsLayout`.

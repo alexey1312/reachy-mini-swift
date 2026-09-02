@@ -131,6 +131,9 @@ struct YourReachiesScreen<SignIn: View>: View {
 /// relay there isn't one, and the robot is identified by who owns it.
 struct RemoteRobotRow: View {
     let robot: CentralRobot
+    /// Scaled with the text beside it — the column was the one thing in the row
+    /// that ignored the reader's size setting.
+    @ScaledMetric(relativeTo: .title2) private var artworkWidth: CGFloat = 32
 
     var body: some View {
         HStack(spacing: Space.md) {
@@ -141,7 +144,8 @@ struct RemoteRobotRow: View {
                 // Erased because the two branches are different `ShapeStyle`
                 // types, and a ternary needs one.
                 .foregroundStyle(robot.isBusy ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
-                .frame(width: 32)
+                .frame(width: artworkWidth)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(robot.displayName)
                     .font(Typography.rowTitle)
@@ -159,9 +163,11 @@ struct RemoteRobotRow: View {
                     // swiftlint:disable:next raw_font
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, Space.xs)
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ReachyDesign
 import ReachyKit
 
 /// The robots this app has connected to before, with whether each one is answering now.
@@ -23,6 +24,16 @@ final class KnownRobotsModel {
         var id: String {
             robot.key
         }
+
+        var displayName: String {
+            robot.name ?? robot.address.displayString
+        }
+
+        /// What a dialog is built from while nothing is asking. Never shown.
+        static let placeholder = Entry(
+            robot: KnownRobot(key: "", address: RobotAddress(host: "localhost"), lastConnected: .distantPast),
+            status: .checking
+        )
     }
 
     private(set) var entries: [Entry] = []
@@ -75,6 +86,17 @@ final class KnownRobotsModel {
     func forget(_ key: String) {
         store.forget(key)
         entries.removeAll { $0.robot.key == key }
+    }
+
+    /// A swipe is one gesture and this entry is the only record of the address, so
+    /// it asks. The robot itself is untouched, and the message says so: "forget"
+    /// has been read as "reset" before.
+    static func forgetConfirmation(for entry: Entry) -> Confirmation {
+        Confirmation(
+            title: .reachy("Forget this robot?"),
+            message: .reachy("\(entry.displayName) leaves the list on this device. The robot itself is untouched."),
+            confirm: .reachy("Forget")
+        )
     }
 
     private func reload() {

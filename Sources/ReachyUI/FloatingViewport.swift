@@ -44,6 +44,9 @@ struct FloatingViewport: View {
     let open: () -> Void
 
     @Environment(\.reachyPreviewMode) private var previewMode
+    /// The other viewport controls' size, and the smallest thing a thumb aims at;
+    /// scaled with the reader's text like the rest of the chrome.
+    @ScaledMetric(relativeTo: .caption) private var controlSide = Metrics.viewportControl
 
     var body: some View {
         if model.isWindowed {
@@ -277,7 +280,8 @@ struct FloatingViewport: View {
 
     /// Two icons and no labels: at 160 pt there is room for the state, not for the
     /// word naming it. The Live tab keeps the picker, which is what a reader who
-    /// wants to be told rather than shown is one tap away from.
+    /// wants to be told rather than shown is one tap away from. Each glyph sits on
+    /// a `Metrics.viewportControl` square — it was 24 × 20, which is not a target.
     @ViewBuilder
     private var switcher: some View {
         if options.count > 1 {
@@ -289,9 +293,12 @@ struct FloatingViewport: View {
                         Image(systemName: option.systemImage)
                             .font(Typography.status)
                             .foregroundStyle(option == viewport.content ? Tone.brand.style : Tone.quiet.style)
-                            .frame(width: 24, height: 20)
+                            .frame(width: controlSide, height: controlSide)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(option.title)
+                    .accessibilityAddTraits(option == viewport.content ? .isSelected : [])
                 }
             }
             .padding(Space.xxs)

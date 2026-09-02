@@ -124,6 +124,12 @@ public struct ReachyRootView<Developer: View>: View {
         // deserves a fresh app list — but it means there is no shared geometry for
         // a matched transition to move between.
         .transition(.opacity)
+        // One tick as the gate falls away. The wait can be a minute of spinner, and a
+        // screen changing under a thumb is easy to miss on a phone already halfway
+        // back into a pocket.
+        .sensoryFeedback(.success, trigger: isConnectedEnough) { wasConnected, isConnected in
+            !wasConnected && isConnected
+        }
         .environment(\.reachyDeveloperScreen) { [developer] in AnyView(developer) }
         .environment(runningApp)
         .environment(hfAccount)

@@ -165,16 +165,6 @@ struct MaintenanceCard: View {
         )
     }
 
-    /// A type rather than a tuple, and its three keys deliberately do not echo
-    /// the button labels: the catalogue derives a Swift symbol per key, and two
-    /// keys differing only in punctuation — `Uninstall all apps` against
-    /// `Uninstall all apps?` — collide as a hard `xcstringstool` build error.
-    private struct Confirmation {
-        let title: LocalizedStringResource
-        let message: LocalizedStringResource
-        let confirm: LocalizedStringResource
-    }
-
     private var confirmation: Confirmation {
         switch model.confirming {
         // Named one by one when the list is in hand. Nothing on the robot reports

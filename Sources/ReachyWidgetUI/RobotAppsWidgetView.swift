@@ -132,13 +132,15 @@ struct RobotAppTileView: View {
         switch tile.state {
         // A scrim rather than a tone: it darkens the artwork under it so the glyph
         // reads, which is not something any of the five roles means.
-        case .running: badgeSymbol("stop.fill", background: AnyShapeStyle(.black.opacity(0.45)))
-        case .failed: badgeSymbol("exclamationmark", background: Tone.danger.style)
+        case .running:
+            badgeSymbol("stop.fill", background: AnyShapeStyle(.black.opacity(0.45)), label: .reachy("Running"))
+        case .failed:
+            badgeSymbol("exclamationmark", background: Tone.danger.style, label: .reachy("Failed"))
         default: EmptyView()
         }
     }
 
-    private func badgeSymbol(_ name: String, background: AnyShapeStyle) -> some View {
+    private func badgeSymbol(_ name: String, background: AnyShapeStyle, label: LocalizedStringResource) -> some View {
         Image(systemName: name)
             // Optical: the glyph is what sizes the badge disc drawn around it.
             // swiftlint:disable:next raw_font
@@ -148,6 +150,7 @@ struct RobotAppTileView: View {
             .foregroundStyle(.white)
             .padding(Space.xs)
             .background(background, in: Circle())
+            .accessibilityLabel(label)
     }
 
     private var caption: String? {

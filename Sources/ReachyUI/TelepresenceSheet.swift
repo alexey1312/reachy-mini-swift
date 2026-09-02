@@ -71,6 +71,7 @@ struct TelepresenceSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 Slider(value: $viewport.callMicVolume, in: ViewportModel.micVolumeRange, step: 0.05)
+                    .accessibilityLabel(Text(.reachy("Your voice")))
                 Text(.reachy("How loud you are when the robot plays your voice. It takes effect at once."))
                     .font(Typography.statusCompact)
                     .foregroundStyle(.tertiary)
@@ -142,10 +143,12 @@ struct TelepresenceSheet: View {
                     .font(Typography.consoleLine)
                     .foregroundStyle(.secondary)
             }
+            // `accessibilityLabel` rather than `label:` — `AudioSettingsSection` says why.
             Slider(value: $presence.trackingWeight, in: PresenceModel.weightRange, step: 0.05) { editing in
                 guard !editing else { return }
                 Task { await presence.commitTrackingWeight(session: session) }
             }
+            .accessibilityLabel(Text(.reachy("Follow strength")))
             Text(.reachy("Lower means the head follows less of the way. The switch above is what stops it."))
                 .font(Typography.statusCompact)
                 .foregroundStyle(.tertiary)

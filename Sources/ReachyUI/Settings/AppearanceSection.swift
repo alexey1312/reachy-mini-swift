@@ -20,6 +20,9 @@ struct AppearanceSection: View {
     /// defaults suite is: a preview cannot reach a refusal, and an uncovered failure
     /// caption is one nobody looks at until a reader reports it.
     @State private var iconChangeFailed: Bool
+    /// Scaled with the caption under it, and the ring's radius follows the side so
+    /// the corners stay concentric at every size.
+    @ScaledMetric(relativeTo: .body) private var tileSide = Metrics.themeTile
 
     init(defaults: UserDefaults = KnownRobots.defaults, iconChangeFailed: Bool = false) {
         _rawTheme = AppStorage(
@@ -78,14 +81,14 @@ struct AppearanceSection: View {
             Task { iconChangeFailed = await AppIconSwitcher.apply(theme) == false }
         } label: {
             VStack(spacing: Space.sm) {
-                Radius.rect(Self.tileRadius)
+                Radius.rect(tileRadius)
                     .fill(theme.iconSwatch)
-                    .frame(width: Metrics.themeTile, height: Metrics.themeTile)
+                    .frame(width: tileSide, height: tileSide)
                     .overlay {
                         // Concentric: a ring pushed out by `Space.xs` needs its radius
                         // grown by the same amount, or the gap it leaves is narrower at
                         // the corners than along the sides and the corner reads pinched.
-                        Radius.rect(Self.tileRadius + Space.xs)
+                        Radius.rect(tileRadius + Space.xs)
                             .strokeBorder(theme.accent, lineWidth: theme == selection ? 3 : 0)
                             .padding(-Space.xs)
                     }
@@ -104,7 +107,9 @@ struct AppearanceSection: View {
     /// than a layout radius — the same `Radius.tile` the store and dock artwork use, so
     /// all three read as one object at three sizes. `Radius.lg` was 16 pt on a 56 pt
     /// tile, which is 29 % where an iOS icon's squircle is 22 %.
-    private static let tileRadius = Radius.tile(side: Metrics.themeTile)
+    private var tileRadius: CGFloat {
+        Radius.tile(side: tileSide)
+    }
 }
 
 #if DEBUG

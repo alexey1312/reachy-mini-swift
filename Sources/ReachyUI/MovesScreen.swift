@@ -13,6 +13,7 @@ struct MovesScreen: View {
     @State private var model: MovesModel
     @State private var recorder: MoveRecorderModel
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         session: RobotSession,
@@ -49,24 +50,11 @@ struct MovesScreen: View {
             if !model.isContentLoading {
                 Section {
                     if model.moves.isEmpty {
-                        Text(.reachy("No moves")).foregroundStyle(.secondary)
+                        ContentUnavailableView(.reachy("No moves"), systemImage: "figure.dance")
+                            .listRowBackground(Color.clear)
                     } else {
                         ForEach(model.moves, id: \.self) { move in
-                            Button {
-                                Task { await model.play(move, session: session) }
-                            } label: {
-                                HStack {
-                                    Text(MovesModel.displayName(move))
-                                    Spacer()
-                                    if session.currentMove?.move == move {
-                                        Image(systemName: "waveform")
-                                            .symbolEffect(.variableColor.iterative)
-                                    } else {
-                                        Image(systemName: "play.circle")
-                                    }
-                                }
-                            }
-                            .disabled(!model.rowsAreEnabled(session))
+                            moveRow(move)
                         }
                     }
                 }
@@ -104,6 +92,30 @@ struct MovesScreen: View {
             guard !previewMode else { return }
             await model.load(session: session)
         }
+    }
+
+    /// The glyph is decorative and says so: the row's *value* is what reads
+    /// "Playing", where a glyph read out as "waveform" says nothing.
+    private func moveRow(_ move: String) -> some View {
+        let isPlaying = session.currentMove?.move == move
+        return Button {
+            Task { await model.play(move, session: session) }
+        } label: {
+            HStack {
+                Text(MovesModel.displayName(move))
+                Spacer()
+                if isPlaying {
+                    Image(systemName: "waveform")
+                        .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "play.circle")
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .disabled(!model.rowsAreEnabled(session))
+        .accessibilityValue(isPlaying ? String(localized: .reachy("Playing")) : "")
     }
 
     /// Takes this phone made, above the robot's own libraries.

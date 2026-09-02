@@ -54,6 +54,27 @@ struct ConnectRail: View {
         }
         .animation(Motion.stateChange, value: phase)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    /// Where each stage stands, for a reader who cannot see the nodes. The captions
+    /// are already combined into the element; this is each node's colour, in words.
+    private var accessibilityValue: String {
+        stages
+            .map { stage in
+                "\(String(localized: caption(for: stage))): \(String(localized: outcomeCaption(for: stage)))"
+            }
+            .joined(separator: ", ")
+    }
+
+    private func outcomeCaption(for stage: RobotSession.ConnectionStage) -> LocalizedStringResource {
+        switch outcome(for: stage) {
+        case .pending: .reachy("Pending")
+        case .active: .reachy("In progress")
+        case .done: .reachy("Done")
+        case .attention: .reachy("Needs attention")
+        case .failed: .reachy("Failed")
+        }
     }
 
     private func column(at index: Int, stage: RobotSession.ConnectionStage) -> some View {

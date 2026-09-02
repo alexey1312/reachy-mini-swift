@@ -112,6 +112,15 @@ struct AppStoreScreen: View {
         .navigationTitle(.reachy("Apps"))
         .searchable(text: $model.searchText, prompt: String(localized: .reachy("Search apps")))
         .refreshable { await reload(refresh: true) }
+        // An install is a minute of progress the reader may have put down; the end
+        // of it is worth a tick either way.
+        .sensoryFeedback(trigger: install.state) { _, state in
+            switch state {
+            case .succeeded, .daemonRestarted: .success
+            case .failed: .error
+            case .idle, .running: nil
+            }
+        }
         // No running-app inset here any more: the dock is mounted on the root
         // `TabView`, below the tab bar, and is on screen for every tab. A second
         // copy on this one would be the same control twice.

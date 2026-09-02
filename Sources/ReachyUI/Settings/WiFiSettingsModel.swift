@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ReachyDesign
 import ReachyKit
 
 /// What the robot is on, what it remembers, and the two ways to take a network away.
@@ -13,6 +14,16 @@ import ReachyKit
 final class WiFiSettingsModel {
     typealias Status = @MainActor (RobotSession) async throws -> WiFiStatus
     typealias LastError = @MainActor (RobotSession) async throws -> String?
+    /// Forgetting is one tap with no undo — the password goes with it — so it asks,
+    /// and the message names the network so a mis-tap on the wrong row is caught.
+    static func forgetConfirmation(for network: String) -> Confirmation {
+        Confirmation(
+            title: .reachy("Forget this network?"),
+            message: .reachy("The robot drops \(network) at its next restart, password included."),
+            confirm: .reachy("Forget")
+        )
+    }
+
     typealias Forget = @MainActor (RobotSession, String) async throws -> Void
     typealias ForgetAll = @MainActor (RobotSession) async throws -> Void
     typealias ResetError = @MainActor (RobotSession) async throws -> Void

@@ -23,6 +23,9 @@ struct NetworkRobotsSection: View {
     /// Which service is having its endpoint resolved, if any. Resolution is the
     /// screen's business — this section only reports it.
     var resolving: String?
+    /// Which row is asking. The dialog is this section's business: nothing outside
+    /// reads it and no reference can capture it.
+    @State private var confirmingForget: KnownRobotsModel.Entry?
 
     var body: some View {
         Section {
@@ -38,15 +41,14 @@ struct NetworkRobotsSection: View {
                 Button {
                     connect(entry.robot.address)
                 } label: {
-                    LabeledContent(entry.robot.name ?? entry.robot.address.displayString) {
+                    LabeledContent(entry.displayName) {
                         KnownRobotStatusLabel(status: entry.status)
                     }
                 }
-                .swipeActions {
-                    Button(.reachy("Forget"), role: .destructive) {
-                        forget(entry.id)
-                    }
-                }
+                .swipeActions { forgetButton(entry) }
+                // The same action where there is no swipe: a pointer on macOS, or
+                // VoiceOver anywhere.
+                .contextMenu { forgetButton(entry) }
             }
             ForEach(undiscoveredServices) { service in
                 Button {
@@ -78,6 +80,32 @@ struct NetworkRobotsSection: View {
                 }
             }
         }
+        .confirmationDialog(
+            forgetConfirmation.title,
+            isPresented: Binding(get: { confirmingForget != nil }, set: {
+                if !$0 {
+                    confirmingForget = nil
+                }
+            }),
+            titleVisibility: .visible
+        ) {
+            if let entry = confirmingForget {
+                Button(forgetConfirmation.confirm, role: .destructive) { forget(entry.id) }
+            }
+        } message: {
+            Text(forgetConfirmation.message)
+        }
+    }
+
+    private func forgetButton(_ entry: KnownRobotsModel.Entry) -> some View {
+        Button(.reachy("Forget"), role: .destructive) {
+            confirmingForget = entry
+        }
+    }
+
+    /// Built off whichever row asked; with none asking the dialog is not on screen.
+    private var forgetConfirmation: Confirmation {
+        KnownRobotsModel.forgetConfirmation(for: confirmingForget ?? entries.first ?? .placeholder)
     }
 
     /// Nothing found yet, from either source. The state this screen spends most of

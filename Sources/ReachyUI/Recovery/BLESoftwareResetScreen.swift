@@ -195,12 +195,15 @@ struct BLESoftwareResetScreen: View {
 }
 
 private struct BulletLabelStyle: LabelStyle {
+    /// Optical: a bullet dot rather than text — 5 pt is the dot's diameter at the
+    /// default size, and it grows with the footnote beside it.
+    @ScaledMetric(relativeTo: .footnote) private var dot: CGFloat = 5
+
     func makeBody(configuration: Configuration) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
             configuration.icon
-                // Optical: a bullet dot rather than text — 5 pt is the dot's diameter.
                 // swiftlint:disable:next raw_font
-                .font(.system(size: 5))
+                .font(.system(size: dot))
                 .foregroundStyle(.secondary)
             configuration.title
         }

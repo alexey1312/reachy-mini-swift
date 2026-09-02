@@ -19,6 +19,7 @@ struct HFAccountSection: View {
     /// and the dialog are the card's own business.
     @State private var showsTokenField = false
     @State private var confirmingUnlink = false
+    @State private var confirmingSignOut = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
     /// `@MainActor` because `RobotHFLinkModel` is: a defaulted argument whose value
@@ -47,6 +48,15 @@ struct HFAccountSection: View {
             Text(.reachy("Hugging Face"))
         } footer: {
             Text(footerText)
+        }
+        .confirmationDialog(
+            HFSignInModel.signOutConfirmation.title,
+            isPresented: $confirmingSignOut,
+            titleVisibility: .visible
+        ) {
+            Button(HFSignInModel.signOutConfirmation.confirm, role: .destructive) { model.signOut() }
+        } message: {
+            Text(HFSignInModel.signOutConfirmation.message)
         }
 
         if session.canLinkHuggingFace {
@@ -118,7 +128,7 @@ struct HFAccountSection: View {
             Label(.reachy("Not signed in"), systemImage: "person.crop.circle")
         case let .signedIn(username):
             LabeledContent {
-                Button(.reachy("Sign out"), role: .destructive) { model.signOut() }
+                Button(.reachy("Sign out"), role: .destructive) { confirmingSignOut = true }
                     .buttonStyle(.borderless)
             } label: {
                 accountLabel(username: username, caption: String(localized: .reachy("Signed in")))

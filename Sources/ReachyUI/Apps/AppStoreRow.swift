@@ -5,6 +5,8 @@ import SwiftUI
 
 /// One app in the store list.
 struct AppStoreRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let app: RobotApp
     var isInstalled = false
     var isRunning = false
@@ -90,7 +92,7 @@ struct AppStoreRow: View {
             Label(.reachy("Running"), systemImage: "waveform")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.tint)
-                .symbolEffect(.variableColor.iterative)
+                .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
                 .accessibilityLabel(.reachy("Running"))
         } else if hasUpdate {
             ReachyBadge(.reachy("Update"))

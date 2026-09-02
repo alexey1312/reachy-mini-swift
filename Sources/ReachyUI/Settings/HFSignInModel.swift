@@ -1,6 +1,7 @@
 import Foundation
 import HuggingFaceAuth
 import Observation
+import ReachyDesign
 
 /// Opens the sign-in page and hands the callback back.
 ///
@@ -27,6 +28,14 @@ final class HFSignInModel {
     var pastedToken = ""
     private(set) var isBusy = false
     private(set) var errorText: String?
+
+    /// Signing out is one tap and signing back in is a browser round trip, so it
+    /// asks. Unlinking is a separate decision, and this dialog does not offer it.
+    static let signOutConfirmation = Confirmation(
+        title: .reachy("Sign out of Hugging Face?"),
+        message: .reachy("Your Reachies and private Spaces stay out of reach until you sign in again."),
+        confirm: .reachy("Sign out")
+    )
 
     let account: HFAccount
     private let browser: any HFWebAuthenticating

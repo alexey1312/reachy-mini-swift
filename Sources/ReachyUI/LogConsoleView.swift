@@ -20,6 +20,7 @@ struct LogConsoleView: View {
 
     @State private var atBottom = true
     @State private var jumpToken = 0
+    @State private var confirmingClear = false
     @AppStorage("logConsole.capacity") private var capacity = 5000
 
     private enum Anchor: Hashable {
@@ -49,6 +50,15 @@ struct LogConsoleView: View {
         .safeAreaInset(edge: .bottom) { statusBar }
         .searchable(text: $model.query, prompt: String(localized: .reachy("Filter log")))
         .toolbar { toolbarContent }
+        .confirmationDialog(
+            model.clearConfirmation.title,
+            isPresented: $confirmingClear,
+            titleVisibility: .visible
+        ) {
+            Button(model.clearConfirmation.confirm, role: .destructive) { model.clear() }
+        } message: {
+            Text(model.clearConfirmation.message)
+        }
         .onAppear { model.capacity = capacity }
         .onChange(of: capacity) { model.capacity = capacity }
     }
@@ -178,7 +188,7 @@ struct LogConsoleView: View {
                 Divider()
                 Button(.reachy("Copy all"), systemImage: "doc.on.doc") { Clipboard.copy(model.copyText) }
                     .disabled(model.visible.isEmpty)
-                Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { model.clear() }
+                Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { confirmingClear = true }
             } label: {
                 Label(.reachy("More"), systemImage: "ellipsis.circle")
             }

@@ -255,6 +255,7 @@ private struct SoundRow: View {
                 Text(row.sound.displayName)
                     .font(Typography.rowTitleCompact)
                     .lineLimit(1)
+                    .truncationMode(.middle)
                 if let caption {
                     Text(caption)
                         .font(Typography.status)
@@ -267,7 +268,10 @@ private struct SoundRow: View {
             // reference image move for no reason belonging to the change.
             Image(systemName: isBusy ? "arrow.up.circle" : "play.circle")
                 .foregroundStyle(isBusy ? Tone.quiet.style : Tone.brand.style)
+                .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(isBusy ? String(localized: .reachy("Sending…")) : "")
     }
 
     /// **Nothing here claims a sound is playing**, and `unknown` says nothing about the

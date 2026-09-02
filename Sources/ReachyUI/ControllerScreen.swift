@@ -113,6 +113,11 @@ struct ControllerScreen: View {
         .formStyle(.grouped)
         .navigationTitle(.reachy("Controller"))
         .onAppear { start() }
+        // A take starts and ends under a thumb that is on the pad rather than on the
+        // button, so the moment is felt rather than watched.
+        .sensoryFeedback(trigger: recorder.isRecording) { _, isRecording in
+            isRecording ? .start : .stop
+        }
         .onChange(of: session.isAwake) { _, awake in
             // Targets accumulated while asleep would be replayed as one jump.
             if awake {
@@ -199,6 +204,7 @@ struct ControllerScreen: View {
                     .foregroundStyle(.secondary)
             }
             Slider(value: value, in: range)
+                .accessibilityLabel(Text(title))
         }
     }
 
