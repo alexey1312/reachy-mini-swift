@@ -99,7 +99,7 @@ struct EntityIndexingTests {
 
         let attributes = entity.attributeSet
 
-        #expect(attributes.title == "happy dance")
+        #expect(attributes.title == "Happy dance")
         #expect(attributes.keywords?.contains("happy_dance") == true)
     }
 

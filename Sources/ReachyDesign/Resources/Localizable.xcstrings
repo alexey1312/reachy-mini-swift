@@ -3017,6 +3017,35 @@
         }
       }
     },
+    "Crashed — open for details": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgestürzt — öffnen für Details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cerró con un error: ábrelo para ver los detalles"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plantage — ouvrir pour les détails"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аварийно завершилось — откройте подробности"
+          }
+        }
+      }
+    },
     "Create": {
       "extractionState": "manual",
       "localizations": {

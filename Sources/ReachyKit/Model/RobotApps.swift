@@ -84,9 +84,18 @@ public struct RobotApp: Sendable, Equatable, Identifiable, Codable {
     }
 
     /// Cards carry a display title; installed apps that lost their metadata have
-    /// only the entry point name.
+    /// only the entry point name, which is a slug and is read as one.
     public var title: String {
-        card.title.flatMap { $0.isEmpty ? nil : $0 } ?? name
+        card.title.flatMap { $0.isEmpty ? nil : $0 } ?? Self.humanised(name)
+    }
+
+    /// `reachy_mini_dance` → `Reachy Mini Dance`. Every surface that names an app
+    /// reads `title`, so this is the one place a slug is turned into words; the
+    /// widget, the dock and the store rows all follow.
+    static func humanised(_ name: String) -> String {
+        name.split { $0 == "_" || $0 == "-" }
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
     }
 
     public var summary: String? {

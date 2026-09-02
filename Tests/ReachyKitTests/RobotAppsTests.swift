@@ -4,6 +4,18 @@ import Testing
 
 @Suite("Robot apps")
 struct RobotAppsTests {
+    @Test("an app with no card is titled from its slug, in words")
+    func slugBecomesWords() {
+        #expect(RobotApp.preview(name: "reachy_mini_dance", installed: true).title == "Reachy Mini Dance")
+        #expect(RobotApp.preview(name: "face-tracking", installed: true).title == "Face Tracking")
+        #expect(RobotApp.humanised("chess") == "Chess")
+    }
+
+    @Test("a card's own title wins over the slug")
+    func cardTitleWins() {
+        #expect(RobotApp.preview(name: "reachy_mini_dance", title: "Dance Party").title == "Dance Party")
+    }
+
     /// One entry as `GET /api/apps/list-available` serves it: `extra` is the raw
     /// Hugging Face Spaces payload, verbatim (`hf_space._build_app_info`).
     private static let catalogueEntry = #"""
@@ -96,7 +108,7 @@ struct RobotAppsTests {
         let app = try decode(#"""
         {"name": "reachy-mini-dance", "source_kind": "hf_space", "extra": {"id": "someone/reachy-mini-dance"}}
         """#)
-        #expect(app.title == "reachy-mini-dance")
+        #expect(app.title == "Reachy Mini Dance")
         #expect(app.emoji == nil)
         #expect(app.gradient == nil)
     }
@@ -110,7 +122,7 @@ struct RobotAppsTests {
         """#)
         #expect(app.name == "odd")
         #expect(app.spaceID == nil)
-        #expect(app.title == "odd")
+        #expect(app.title == "Odd")
     }
 
     // MARK: Installed apps
@@ -140,7 +152,7 @@ struct RobotAppsTests {
         {"name": "dance_party", "source_kind": "installed", "extra": {"venv_path": "/venvs/apps_venv"}}
         """#)
         #expect(app.spaceID == nil)
-        #expect(app.title == "dance_party")
+        #expect(app.title == "Dance Party")
     }
 
     // MARK: Identity

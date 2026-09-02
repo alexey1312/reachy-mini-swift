@@ -38,7 +38,6 @@ struct MovesScreen: View {
                 }
             }
             recordingsSection
-            soundboardLink
             Section {
                 Picker(.reachy("Library"), selection: $model.selection) {
                     ForEach(MovesModel.libraries.indices, id: \.self) { index in
@@ -46,6 +45,11 @@ struct MovesScreen: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                // The Apps tab's spelling: a segmented control drawn on the page
+                // rather than inside a grouped row, which framed it in a card of
+                // its own above the list it filters.
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowBackground(Color.clear)
             }
             if !model.isContentLoading {
                 Section {
@@ -80,6 +84,7 @@ struct MovesScreen: View {
                 }
             }
         }
+        .toolbar { soundboardLink }
         .refreshable { await model.load(session: session, refresh: true) }
         .reachyRefreshToolbar(isDisabled: model.loading || model.isContentLoading) {
             await model.load(session: session, refresh: true)
@@ -146,22 +151,24 @@ struct MovesScreen: View {
         }
     }
 
-    /// The soundboard, as a sibling of the dances rather than a sixth tab.
+    /// The soundboard, as a sibling of the dances rather than a sixth tab — and in
+    /// the bar rather than as the first row, where it read as the first move.
     ///
     /// Gated on the capability rather than left to fail: a relayed session carries no
-    /// `/api/media/*` at all, so the screen behind this row could only report that it
-    /// cannot ask. The model is built inside the destination closure, which is safe for
-    /// the reason `filesLink` is — a pushed screen adopts it into `@State`, and
-    /// `State(initialValue:)` keeps the first one when the closure re-runs.
-    @ViewBuilder
-    private var soundboardLink: some View {
+    /// `/api/media/*` at all, so the screen behind this item could only report that
+    /// it cannot ask. The model is built inside the destination closure, which is
+    /// safe for the reason `filesLink` is — a pushed screen adopts it into `@State`,
+    /// and `State(initialValue:)` keeps the first one when the closure re-runs.
+    @ToolbarContentBuilder
+    private var soundboardLink: some ToolbarContent {
         if session.canManageSounds {
-            Section {
+            ToolbarItem {
                 NavigationLink {
                     SoundboardScreen(session: session, presence: presence)
                 } label: {
                     Label(.reachy("Sounds"), systemImage: "music.note.list")
                 }
+                .help(Text(.reachy("Sounds")))
             }
         }
     }

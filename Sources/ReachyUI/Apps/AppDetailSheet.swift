@@ -83,7 +83,7 @@ struct AppDetailSheet: View {
     var body: some View {
         Form {
             Section {
-                AppIdentityHeader(app: app)
+                AppIdentityHeader(app: app, primary: primaryAction)
             }
 
             if let status = runningStatus {
@@ -261,47 +261,54 @@ struct AppDetailSheet: View {
         }
     }
 
+    /// Install for an app the robot does not have, Start for one it does and is
+    /// not already running (`isBusy`, not "has a status": a crashed app keeps one
+    /// so its output stays readable); nothing while a job is on screen. Starting
+    /// evicts whatever holds the robot, which the daemon refuses with a 400, and
+    /// a remote session is not ours to take; the power conditions have their
+    /// reason attached in the banner above and the footer below.
+    private var primaryAction: AppIdentityHeader.Primary? {
+        guard jobForThisApp == nil else { return nil }
+        if installedApp != nil {
+            guard runningStatus?.isBusy != true else { return nil }
+            return AppIdentityHeader.Primary(
+                title: .reachy("Start"),
+                systemImage: "play.fill",
+                isEnabled: !(
+                    model.busy || model.isHeldRemotely || model.runningApp?.isBusy == true
+                        || !session.isBackendRunning || session.powerTransition != nil
+                )
+            ) {
+                Task { await model.start(app, session: session) }
+            }
+        }
+        return AppIdentityHeader.Primary(
+            title: .reachy("Install"),
+            systemImage: "arrow.down.circle.fill",
+            isEnabled: !(app.isPrivate && !canInstallPrivately)
+        ) {
+            perform(.install(app))
+        }
+    }
+
+    /// What is not the one action: the transition in progress, Update, the wake-up
+    /// switch and Remove — and, in the footer, why the header's button is greyed.
     private var actions: some View {
         Section {
             if let installed = installedApp {
-                // `isBusy`, not "has a status": a crashed app keeps one so its
-                // output stays readable, and starting it again is the whole reason
-                // somebody is on this page.
-                if runningStatus?.isBusy != true {
-                    Button(.reachy("Start"), systemImage: "play.fill") {
-                        Task { await model.start(app, session: session) }
-                    }
-                    // Starting evicts whatever holds the robot; the daemon refuses
-                    // with a 400 rather than taking it, and a remote session is not
-                    // ours to take at all. Both power conditions have their reason
-                    // attached elsewhere: the banner above, and the row below.
-                    .disabled(
-                        model.busy || model.isHeldRemotely || model.runningApp?.isBusy == true
-                            || !session.isBackendRunning || session.powerTransition != nil
-                    )
-                }
-
                 if let transition = session.powerTransition {
                     PowerTransitionRow(transition: transition)
                 }
-
                 if model.hasUpdate(app) {
                     Button(.reachy("Update"), systemImage: "arrow.down.circle") {
                         perform(.update(installed))
                     }
                 }
-
                 Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
                     .disabled(model.busy)
-
                 Button(.reachy("Remove"), systemImage: "trash", role: .destructive) {
                     confirmingRemoval = true
                 }
-            } else {
-                Button(.reachy("Install"), systemImage: "arrow.down.circle.fill") {
-                    perform(.install(app))
-                }
-                .disabled(app.isPrivate && !canInstallPrivately)
             }
         } footer: {
             if app.isPrivate, !canInstallPrivately {
@@ -349,52 +356,6 @@ struct AppDetailSheet: View {
         Task {
             await install.perform(operation)
             await model.reloadInstalled(session: session)
-        }
-    }
-}
-
-/// What the job is doing, in one row.
-struct JobProgressRow: View {
-    let state: AppInstallModel.State
-
-    var body: some View {
-        switch state {
-        case .idle:
-            EmptyView()
-        case let .running(operation):
-            Label {
-                Text(operation.progressCaption)
-            } icon: {
-                ProgressView()
-                    .controlSize(.small)
-            }
-        case .succeeded:
-            Label(.reachy("Done"), systemImage: "checkmark.circle.fill")
-                .foregroundStyle(Tone.success.style)
-        case let .failed(_, reason):
-            Label {
-                VStack(alignment: .leading, spacing: Space.xxs) {
-                    Text(.reachy("Failed"))
-                    Text(reason)
-                        .font(Typography.status)
-                        .foregroundStyle(.secondary)
-                }
-            } icon: {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Tone.danger.style)
-            }
-        case .daemonRestarted:
-            Label {
-                VStack(alignment: .leading, spacing: Space.xxs) {
-                    Text(.reachy("The robot restarted"))
-                    Text(.reachy("It may have finished — check the installed list."))
-                        .font(Typography.status)
-                        .foregroundStyle(.secondary)
-                }
-            } icon: {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(Tone.warning.style)
-            }
         }
     }
 }

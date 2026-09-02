@@ -9,13 +9,22 @@ import SwiftUI
 /// else (one is about installing, the other about what is happening right now),
 /// but a user who opens both must see the same app, described the same way.
 struct AppIdentityHeader: View {
+    /// The one thing to do with this app, where a store puts it: beside the name.
+    /// Install for an app the robot does not have, Start for one it does. What is
+    /// not the one thing — Update, the wake-up switch, Remove — stays in the rows.
+    struct Primary {
+        let title: LocalizedStringResource
+        let systemImage: String
+        var isEnabled = true
+        let action: () -> Void
+    }
+
     let app: RobotApp
     var artworkSize: CGFloat = 64
+    var primary: Primary?
 
     var body: some View {
-        // Optical: artwork-to-text gap of the identity header, between Space.md and Space.lg.
-        // swiftlint:disable:next raw_spacing
-        HStack(spacing: 14) {
+        HStack(spacing: Space.lg) {
             AppArtworkTile(app: app, size: artworkSize)
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(app.title)
@@ -27,9 +36,7 @@ struct AppIdentityHeader: View {
                         .font(Typography.subtitle)
                         .foregroundStyle(.secondary)
                 }
-                // Optical: badge row spacing sized against the glyphs, not the text.
-                // swiftlint:disable:next raw_spacing
-                HStack(spacing: 10) {
+                HStack(spacing: Space.sm) {
                     if app.isOfficial {
                         Label(.reachy("Official"), systemImage: "checkmark.seal.fill")
                     }
@@ -44,6 +51,13 @@ struct AppIdentityHeader: View {
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+            if let primary {
+                ReachyActionButton(action: primary.action) {
+                    Label(primary.title, systemImage: primary.systemImage)
+                }
+                .buttonBorderShape(.capsule)
+                .disabled(!primary.isEnabled)
+            }
         }
         .padding(.vertical, Space.xs)
     }

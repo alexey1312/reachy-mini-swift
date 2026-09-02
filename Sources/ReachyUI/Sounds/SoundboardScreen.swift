@@ -139,8 +139,11 @@ struct SoundboardScreen: View {
                 Button {
                     Task { await model.stop(session: session) }
                 } label: {
-                    Label(.reachy("Stop the sound"), systemImage: "stop.circle")
+                    Label(.reachy("Stop the sound"), systemImage: "stop.fill")
                 }
+                // The one control on the screen that ends something, drawn as one:
+                // a blue row between the play rows read as a fourteenth sound.
+                .tint(Tone.danger.style)
                 .disabled(!session.isBackendRunning)
             }
         }

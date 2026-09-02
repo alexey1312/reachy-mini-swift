@@ -39,27 +39,18 @@ struct AppearanceSection: View {
 
     var body: some View {
         Section {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Space.md) {
-                        ForEach(ReachyTheme.allCases) { theme in
-                            tile(theme)
-                        }
-                    }
-                    .padding(.vertical, Space.sm)
-                    // The selection ring bleeds Space.xs outside its tile (see the
-                    // overlay below); without this the trailing tile's ring is
-                    // sliced flat against the scroll view's edge.
-                    .padding(.horizontal, Space.xs)
-                }
-                // Only five of six tiles fit at rest, so the row must bring the chosen
-                // one on screen itself — otherwise picking a theme off the fold and
-                // coming back reads as if the choice reverted.
-                .onAppear { proxy.scrollTo(selection.id) }
-                .onChange(of: selection) { _, newSelection in
-                    withAnimation { proxy.scrollTo(newSelection.id) }
-                }
+            // A row where the six fit and a three-column grid where they do not,
+            // instead of a horizontal scroll that hid the sixth theme off the fold
+            // and had to scroll the chosen one back into view on every appearance.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Space.md) { tiles }
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: Space.md) { tiles }
             }
+            .padding(.vertical, Space.sm)
+            // The selection ring bleeds Space.xs outside its tile (see the overlay
+            // below); without this an outer tile's ring is sliced flat against the
+            // row's edge.
+            .padding(.horizontal, Space.xs)
         } header: {
             Text(.reachy("Appearance"))
         } footer: {
@@ -67,6 +58,12 @@ struct AppearanceSection: View {
                 Text(.reachy("The app icon didn't change."))
                     .foregroundStyle(Tone.danger.style)
             }
+        }
+    }
+
+    private var tiles: some View {
+        ForEach(ReachyTheme.allCases) { theme in
+            tile(theme)
         }
     }
 

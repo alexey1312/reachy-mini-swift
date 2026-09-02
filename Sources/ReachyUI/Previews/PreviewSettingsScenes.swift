@@ -24,7 +24,7 @@ extension PreviewScene {
     ///
     /// Captured here rather than through `SettingsScreen`, where it sits below the
     /// fold on both snapshot devices and so appears in no reference at all.
-    static func advancedSection(_ session: RobotSession, developerTools: Bool = true) -> some View {
+    static func advancedScreen(_ session: RobotSession, developerTools: Bool = true) -> some View {
         // An `if`, not a ternary: unifying a `@MainActor` closure with `nil` sends
         // the type checker into "failed to produce diagnostic for expression", which
         // names this function and says nothing about why. And `swift build` cannot
@@ -34,10 +34,9 @@ extension PreviewScene {
         if developerTools {
             developer = { AnyView(Text(verbatim: "Developer tools")) }
         }
-        return Form {
-            AdvancedSettingsSection(session: session, isExpanded: true)
+        return NavigationHost {
+            AdvancedScreen(session: session)
         }
-        .formStyle(.grouped)
         .environment(\.reachyDeveloperScreen, developer)
         .preview()
     }

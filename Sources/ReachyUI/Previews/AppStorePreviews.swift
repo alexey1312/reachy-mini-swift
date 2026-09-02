@@ -93,11 +93,21 @@ import SwiftUI
     PreviewScene.appDetail(.preview(), app: RobotApp.previewCatalogue[0])
 }
 
+// Seeds its own installed list: `previewInstalled[0]` carries a different Space
+// id from `previewCatalogue[0]`, so `matches(installed:)` never joined them and
+// this reference was a picture of the *not* installed state for as long as it
+// used the shared fixture. Start, Update, the wake-up switch and Remove are what
+// it is for.
 #Preview("App detail — installed") {
     PreviewScene.appDetail(
         .preview(),
         app: RobotApp.previewCatalogue[0],
-        model: .preview(section: .installed, startupApp: "reachy_mini_dance", hasUpdate: true)
+        model: .preview(
+            section: .installed,
+            installed: [.preview(name: "reachy-mini-dance", installed: true)],
+            startupApp: "reachy-mini-dance",
+            hasUpdate: true
+        )
     )
 }
 
