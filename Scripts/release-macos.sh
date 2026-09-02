@@ -81,12 +81,37 @@ xcodebuild archive \
   -archivePath "$ARCHIVE" -derivedDataPath Apps/DerivedData \
   DEVELOPMENT_TEAM="$REACHY_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  ARCHS=arm64 \
   COMPILATION_CACHE_ENABLE_CACHING=NO \
   -allowProvisioningUpdates \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
 
 Scripts/check-appintents-metadata.sh "$ARCHIVE"
+
+# Apple Silicon only, and asserted rather than assumed.
+#
+# Apple opened this on 2026-09-01: a Mac App Store app requiring macOS 13 or later
+# may drop its Intel slice. This app's floor is macOS 15, so it qualifies — and the
+# same archive is exported twice, so the Developer ID build loses Intel with it.
+# That half is our decision rather than Apple's, and it is deliberate: macOS 26 is
+# the last release for Intel, so the slice is bounded either way.
+#
+# `ARCHS` goes on the command line rather than into `Apps/Project.swift` because a
+# project's build settings do not reach the SPM package targets Xcode builds as
+# implicit projects — which is all of ReachyKit, ReachyUI and ReachyMedia. A
+# command-line setting reaches every one of them, which is the same reason
+# `ONLY_ACTIVE_ARCH` lives on the mise task rather than in the manifest.
+#
+# The check reads the artifact, because that is the only thing that can say what
+# was actually built: drop the flag and the archive goes back to universal with the
+# build still green.
+ARCHIVED_APP="$ARCHIVE/Products/Applications/ReachyMini.app"
+SLICES=$(lipo -archs "$ARCHIVED_APP/Contents/MacOS/ReachyMini")
+if [ "$SLICES" != "arm64" ]; then
+  echo "release-macos: expected an arm64-only binary, got '$SLICES'" >&2
+  exit 1
+fi
 
 if [ "$wants_developer_id" = true ]; then
   /bin/rm -rf "$EXPORT_DIR/DeveloperID"
