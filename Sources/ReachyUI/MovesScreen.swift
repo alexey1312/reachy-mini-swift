@@ -72,6 +72,7 @@ struct MovesScreen: View {
             }
         }
         .formStyle(.grouped)
+        .readablePage()
         .contentLoading(
             isPresented: model.isContentLoading,
             title: model.selectedLibrary.loadingTitle

@@ -179,6 +179,16 @@ struct ReachyTabShell: View {
     /// overlay on the `TabView`: an overlay does not inset a tab's content, and the
     /// last row of every list would sit under the strip forever.
     private func docked(@ViewBuilder _ content: () -> some View) -> some View {
-        content().reachyTabAccessoryFallback(isPresented: dockIsUp) { dock }
+        content()
+            .reachyTabAccessoryFallback(isPresented: dockIsUp) { dock }
+            // A window resting in a bottom corner covers the last rows of whatever
+            // list it floats over, and a form cannot scroll a row out from under
+            // an overlay it knows nothing about. So the tab is told: the window's
+            // height plus its margins, only while it is down there.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if floating.placement.restsAtBottomCorner {
+                    Color.clear.frame(height: Metrics.floatingViewport.height + Space.lg * 2)
+                }
+            }
     }
 }

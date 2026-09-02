@@ -42,6 +42,7 @@ struct SettingsScreen: View {
             AdvancedSettingsSection(session: session)
         }
         .formStyle(.grouped)
+        .readablePage()
         .navigationTitle(.reachy("Settings"))
         .onAppear { nameDraft = identity?.name ?? "" }
     }

@@ -108,6 +108,7 @@ struct AppStoreScreen: View {
                 emptyState
             }
         }
+        .readablePage()
         .contentLoading(isPresented: model.isContentLoading, title: .reachy("Browsing the robot app aisle…"))
         .navigationTitle(.reachy("Apps"))
         .searchable(text: $model.searchText, prompt: String(localized: .reachy("Search apps")))

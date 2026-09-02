@@ -47,6 +47,7 @@ struct RobotScreen: View {
             }
         }
         .formStyle(.grouped)
+        .readablePage()
         .navigationTitle(identity?.name ?? String(localized: .reachy("Robot")))
         // Wake and sleep are long enough to look away from: the end of either is a
         // tick, and a refused one is a different tick.
