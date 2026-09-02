@@ -96,6 +96,7 @@ enum DesignGallery {
         case .prominent: "prominent"
         case .standard: "standard"
         case .quiet: "quiet"
+        case .destructive: "destructive"
         }
     }
 

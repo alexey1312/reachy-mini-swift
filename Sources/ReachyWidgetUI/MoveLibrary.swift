@@ -55,6 +55,7 @@ public struct MoveLibrary: Sendable, Equatable, Identifiable {
     /// The only title a move has. The daemon answers with file stems —
     /// `happy_dance`, `sad2` — and there is no metadata behind them anywhere.
     public static func displayName(_ move: String) -> String {
-        move.replacingOccurrences(of: "_", with: " ")
+        let words = move.replacingOccurrences(of: "_", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 }

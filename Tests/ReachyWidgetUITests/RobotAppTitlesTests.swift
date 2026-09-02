@@ -30,7 +30,7 @@ struct RobotAppTitlesTests {
     func aRunningStatusCarriesNoTitle() {
         let status = StubAppsClient.status(name: "dance_party")
 
-        #expect(status.app.title == "dance_party")
+        #expect(status.app.title == "Dance Party")
     }
 
     @Test("an entry point the robot has installed resolves to its store title")

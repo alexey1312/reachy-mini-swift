@@ -22,13 +22,14 @@ enum RunningAppCaption {
     ///
     /// Not a matter of taste, and not a default worth having: the dock is one row
     /// with a single caption line under the app's name, so a crash there has to
-    /// say what it was. The sheet prints the same output in full two rows below,
-    /// and a caption repeating it renders the *first two lines* of a stderr tail
-    /// under a heading that promised a state — which is how "State" came to read
-    /// `Process exited with code 1 / INFO: connection rejected (403 For…` on a
-    /// screen already showing those very lines.
+    /// say that it happened and where the output is. It used to substitute the
+    /// output itself, which put the first two lines of a stderr tail — a
+    /// `Process exited with code 1` and half a traceback — in a strip nobody can
+    /// read them in. The sheet prints the same output in full two rows below its
+    /// state, and a caption repeating it there renders those two lines under a
+    /// heading that promised a state.
     enum Failure {
-        /// Substitute the output for the state phrase.
+        /// Say it crashed, and that the page has the output.
         case inline
         /// Keep the state phrase; the surface shows the output somewhere of its own.
         case shownSeparately
@@ -149,13 +150,8 @@ enum RunningAppCaption {
     }
 
     /// The same, with the failure inlined — `Failure.inline`, and only that.
-    /// The dock has one caption line and no room for a second row, so a crash has
-    /// to say what it was right there.
-    ///
-    /// What the daemon hands over is a stderr *tail*, not a single line, so what
-    /// this yields is the first two lines of one. That is the price of the dock
-    /// having nowhere else to put it, and the reason no surface with a row for
-    /// the output calls this.
+    /// The dock has one caption line and no room for a second row, so a crash says
+    /// so in one phrase and sends the reader to the page, where the output is.
     /// `actionFailure` is the daemon's answer to a Stop or Restart the user just
     /// tapped, and it belongs here for the same reason the crash tail does: the dock
     /// has one caption line, so a refusal shown nowhere is a refusal shown nowhere.
@@ -173,8 +169,8 @@ enum RunningAppCaption {
         actionFailure: String? = nil
     ) -> String {
         guard isReachable else { return title(of: status, isReachable: false) }
-        if status.state == .error, let error = status.error {
-            return error
+        if status.state == .error, status.error != nil {
+            return String(localized: .reachy("Crashed — open for details"))
         }
         if !wedged, let actionFailure {
             return actionFailure

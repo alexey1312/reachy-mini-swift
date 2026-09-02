@@ -54,6 +54,27 @@ struct ConnectRail: View {
         }
         .animation(Motion.stateChange, value: phase)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    /// Where each stage stands, for a reader who cannot see the nodes. The captions
+    /// are already combined into the element; this is each node's colour, in words.
+    private var accessibilityValue: String {
+        stages
+            .map { stage in
+                "\(String(localized: caption(for: stage))): \(String(localized: outcomeCaption(for: stage)))"
+            }
+            .joined(separator: ", ")
+    }
+
+    private func outcomeCaption(for stage: RobotSession.ConnectionStage) -> LocalizedStringResource {
+        switch outcome(for: stage) {
+        case .pending: .reachy("Pending")
+        case .active: .reachy("In progress")
+        case .done: .reachy("Done")
+        case .attention: .reachy("Needs attention")
+        case .failed: .reachy("Failed")
+        }
     }
 
     private func column(at index: Int, stage: RobotSession.ConnectionStage) -> some View {
@@ -100,9 +121,9 @@ struct ConnectRail: View {
     /// iPhone is about 110 pt, and "Connect to daemon" wraps to three lines there.
     private func caption(for stage: RobotSession.ConnectionStage) -> LocalizedStringResource {
         switch stage {
-        case .connect: .reachy("Daemon")
+        case .connect: .reachy("Software")
         case .compatibility: .reachy("Version")
-        case .backend: .reachy("Backend")
+        case .backend: .reachy("Motors")
         }
     }
 
@@ -189,6 +210,7 @@ private struct ConnectRailNode: View {
             Circle().fill(tone.style)
             Image(systemName: symbol)
                 // Optical: the glyph is sized against the disc it sits in.
+                // swiftlint:disable:next raw_font
                 .font(.caption2.bold())
                 // The one pinned foreground here, and it is pinned against a fill
                 // this view owns rather than against an adaptive backdrop: all

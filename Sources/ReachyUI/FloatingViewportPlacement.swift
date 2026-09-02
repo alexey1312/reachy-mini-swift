@@ -36,6 +36,16 @@ extension FloatingViewportModel {
         /// The overlay draws a tab at the edge and the stream is stopped. `y` is
         /// the tab's centre, kept from wherever the window was let go of.
         case docked(HorizontalEdge, y: CGFloat)
+
+        /// Whether the window sits where a list's last rows scroll to. The shell
+        /// reads it to reserve that much of every tab's bottom, so a Disconnect at
+        /// the foot of a form is never left under the picture.
+        var restsAtBottomCorner: Bool {
+            switch self {
+            case .floating(.bottomLeading), .floating(.bottomTrailing): true
+            case .floating, .docked, .inline, .column: false
+            }
+        }
     }
 
     /// How far past `bounds` the docked tab may reach at each horizontal edge, so it

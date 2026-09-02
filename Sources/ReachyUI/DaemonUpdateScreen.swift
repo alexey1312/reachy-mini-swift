@@ -135,7 +135,9 @@ struct DaemonUpdateScreen: View {
             }
 
         if case .available = state {
-            Button(.reachy("Update now")) {
+            // The one thing this screen exists for, drawn as the answer to the
+            // question above it rather than as one more blue row.
+            ReachyActionButton(.reachy("Update now"), fullWidth: true) {
                 Task { await model?.install(preRelease: preRelease) }
             }
         } else if case .finished = state {

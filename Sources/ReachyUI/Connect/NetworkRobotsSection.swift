@@ -23,6 +23,9 @@ struct NetworkRobotsSection: View {
     /// Which service is having its endpoint resolved, if any. Resolution is the
     /// screen's business — this section only reports it.
     var resolving: String?
+    /// Which row is asking. The dialog is this section's business: nothing outside
+    /// reads it and no reference can capture it.
+    @State private var confirmingForget: KnownRobotsModel.Entry?
 
     var body: some View {
         Section {
@@ -38,26 +41,33 @@ struct NetworkRobotsSection: View {
                 Button {
                     connect(entry.robot.address)
                 } label: {
-                    LabeledContent(entry.robot.name ?? entry.robot.address.displayString) {
+                    LabeledContent {
                         KnownRobotStatusLabel(status: entry.status)
+                    } label: {
+                        Label(entry.displayName, systemImage: "figure.wave")
                     }
                 }
-                .swipeActions {
-                    Button(.reachy("Forget"), role: .destructive) {
-                        forget(entry.id)
-                    }
-                }
+                .swipeActions { forgetButton(entry) }
+                // The same action where there is no swipe: a pointer on macOS, or
+                // VoiceOver anywhere.
+                .contextMenu { forgetButton(entry) }
             }
             ForEach(undiscoveredServices) { service in
                 Button {
                     connectToService(service)
                 } label: {
-                    LabeledContent(service.name) {
+                    // A chevron rather than the Bonjour type: `_reachy-mini._tcp`
+                    // told a reader nothing, and the row is a way in.
+                    LabeledContent {
                         if resolving == service.id {
                             ProgressView()
                         } else {
-                            Text(service.type).font(Typography.consoleLine)
+                            Image(systemName: "chevron.forward")
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
                         }
+                    } label: {
+                        Label(service.name, systemImage: "figure.wave")
                     }
                 }
             }
@@ -66,18 +76,38 @@ struct NetworkRobotsSection: View {
             // on the screen. It only ever described this one — a robot reached
             // through Hugging Face is not on this Wi-Fi, and a typed address is not
             // waiting to appear — so it belongs under this list and nowhere else.
-            VStack(alignment: .leading, spacing: Space.sm) {
-                Text(.reachy("Your Reachy Mini appears below once it is powered on and joined to this Wi-Fi network."))
-                if isSearching {
-                    Text(
-                        .reachy(
-                            // swiftlint:disable:next line_length
-                            "Known addresses are retried every 10 s. A robot whose daemon isn't running answers nothing on the network — power it on, or enter its address below."
-                        )
-                    )
-                }
-            }
+            // One sentence, whether or not the list is empty: the second paragraph
+            // about a 10 s retry named a period the reader cannot see and a daemon
+            // the reader has never met. Power it on, or type its address — the
+            // field is the next thing on the screen.
+            Text(.reachy("Your Reachy Mini appears below once it is powered on and joined to this Wi-Fi network."))
         }
+        .confirmationDialog(
+            forgetConfirmation.title,
+            isPresented: Binding(get: { confirmingForget != nil }, set: {
+                if !$0 {
+                    confirmingForget = nil
+                }
+            }),
+            titleVisibility: .visible
+        ) {
+            if let entry = confirmingForget {
+                Button(forgetConfirmation.confirm, role: .destructive) { forget(entry.id) }
+            }
+        } message: {
+            Text(forgetConfirmation.message)
+        }
+    }
+
+    private func forgetButton(_ entry: KnownRobotsModel.Entry) -> some View {
+        Button(.reachy("Forget"), role: .destructive) {
+            confirmingForget = entry
+        }
+    }
+
+    /// Built off whichever row asked; with none asking the dialog is not on screen.
+    private var forgetConfirmation: Confirmation {
+        KnownRobotsModel.forgetConfirmation(for: confirmingForget ?? entries.first ?? .placeholder)
     }
 
     /// Nothing found yet, from either source. The state this screen spends most of

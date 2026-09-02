@@ -315,8 +315,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     sheet's own sentence, reused rather than reworded.
   - **Refresh is `.refreshable`, not a toolbar item.** The button it replaced could not show its own work: after the
     first listing `isContentLoading` is false by definition, and a LAN round trip takes tens of milliseconds, so a tap
-    drew no frame at all. The system's pull gesture at least has a spinner. macOS has no such gesture and the `.task`
-    covers it there, as it does on the files and remote-robots screens.
+    drew no frame at all. The system's pull gesture at least has a spinner. macOS has no such gesture, so
+    `reachyRefreshToolbar` puts a ⌘R item there and nowhere else — every catalogue screen has exactly one way to ask
+    again on each platform, and the two Refresh buttons the Apps and Moves screens carried on iOS went the same way.
   - **Three things here are deliberately uncovered by any reference**, each for a reason already written up elsewhere in
     this file: the `fileImporter` sheet and the delete `confirmationDialog` both capture as nothing, and the two
     `ControlWidget`s are WidgetKit, which the snapshot suite never exercises. The confirmation _copy_ is model-adjacent
@@ -838,6 +839,19 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   reads as a broken checkout rather than a stale file list.
 - Anything a preview body references must be visible target-wide, because Prefire copies the body into a separate
   generated file. Shared wrappers live in `PreviewScene`; a `private` helper compiles locally and breaks the test.
+- **The iPhone references render at `.medium`, one step below a device's default text size; the iPad ones at
+  `.large`.** `ViewImageConfig`'s iPhone traits set `preferredContentSizeCategory: .medium` and the iPad traits set
+  nothing, so a `@ScaledMetric` comes out at about 94 % of its constant in every iPhone reference and at the constant
+  on iPad — adopting one moves the iPhone pair of every preview it reaches and nothing else, measured at 38 previews
+  for five sites (the joystick knob, the theme tiles, the remote-robot artwork, the reset screen's bullets, the
+  floating switcher). That is the expected shape of adopting one, not a regression: the constant it replaced only
+  stayed put because it did not scale, which is the whole point. And **a labelled `Slider` draws a tick per step on
+  iOS 26** — the `label:` initialiser, not the bare one — so a slider's name goes on as `accessibilityLabel`;
+  `AudioSettingsSection` carries the note.
+- **Every capture runs in `reachyPreviewMode`, set by the stencil and not by the preview.** `.preview()` still sets
+  it for the screens that need their `.task` inert, but the glass gate in `reachyButton` cannot be left to that:
+  the ReachyDesign gallery and the asleep banner never called it, met `.glassProminent`, and came back as blank
+  references — which pass any change. `PreviewTests.stencil` wraps every body in `.reachyPreviewMode(true)`.
 - **A preview with no `traits:` is captured at full device size.** Prefire defaults the trait list to `.device`
   (`RawPreviewModel.isScreen`), and that device trait is what carries `horizontalSizeClass` — so it is what makes the
   iPad snapshot exercise the regular-width layout. Components opt out with `traits: .sizeThatFitsLayout`.

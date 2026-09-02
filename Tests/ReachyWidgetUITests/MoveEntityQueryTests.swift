@@ -52,7 +52,7 @@ struct MoveEntityQueryTests {
         let resolved = try await query([:]).entities(for: ["\(dances)#happy_dance"])
 
         #expect(resolved.map(\.id) == ["\(dances)#happy_dance"])
-        #expect(resolved.first?.title == "happy dance")
+        #expect(resolved.first?.title == "Happy dance")
     }
 
     // MARK: - Filling the picker
@@ -120,7 +120,7 @@ struct MoveEntityQueryTests {
         let library = try #require(MoveLibrary.named(dances))
 
         #expect(library.title == .reachy("Dances"))
-        #expect(MoveEntity(dataset: dances, move: "happy").title == "happy")
+        #expect(MoveEntity(dataset: dances, move: "happy").title == "Happy")
         #expect(MoveLibrary.named("someone/experimental") == nil)
     }
 }

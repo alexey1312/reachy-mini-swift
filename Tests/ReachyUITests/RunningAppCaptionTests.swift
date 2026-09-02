@@ -42,11 +42,10 @@ struct RunningAppCaptionTests {
         ) == "Robot unreachable")
     }
 
-    /// The daemon's `error` is a stderr tail, so a surface that prints it in full
-    /// must not also substitute it for the state phrase: the reader gets the same
-    /// text twice, and the copy on top is cut off after two lines of traceback.
-    /// Only the dock, which has nowhere else to put it, inlines the crash.
-    @Test("a crash is inlined in the caption and never in the state phrase")
+    /// The daemon's `error` is a stderr tail. The state phrase never carries it,
+    /// and the dock's caption says only that the app crashed and where to read
+    /// the output — two lines of traceback in a strip were not readable there.
+    @Test("a crash is named in the caption and never in the state phrase")
     func crashStaysOutOfTheStatePhrase() {
         let tail = """
         Process exited with code 1
@@ -56,7 +55,8 @@ struct RunningAppCaptionTests {
         let crashed = status(.error, error: tail)
 
         #expect(RunningAppCaption.title(of: crashed) == "Stopped with an error")
-        #expect(RunningAppCaption.description(of: crashed) == tail)
+        #expect(RunningAppCaption.description(of: crashed) == String(localized: .reachy("Crashed — open for details")))
+        #expect(!RunningAppCaption.description(of: crashed).contains(tail))
     }
 
     /// **"Stopping…" for a slot the robot will never release is the lie the
@@ -86,7 +86,8 @@ struct RunningAppCaptionTests {
     func crashAndUnreachableOutrankTheWedge() {
         let crashed = status(.error, error: "Process exited with code 1")
 
-        #expect(RunningAppCaption.description(of: crashed, wedged: true) == "Process exited with code 1")
+        #expect(RunningAppCaption
+            .description(of: crashed, wedged: true) == String(localized: .reachy("Crashed — open for details")))
         #expect(RunningAppCaption.title(of: status(.stopping), isReachable: false, wedged: true) == "Robot unreachable")
     }
 

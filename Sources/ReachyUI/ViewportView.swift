@@ -118,6 +118,7 @@ struct ViewportView: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Close")))
         }
     }
 
@@ -154,6 +155,7 @@ struct ViewportView: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Presence")))
         }
     }
 
@@ -216,6 +218,7 @@ struct ViewportView: View {
                 //
                 // 3 pt is optical, not rhythm: it is what stops the segmented track from
                 // touching the backing around it.
+                // swiftlint:disable:next raw_spacing
                 .padding(3)
             // **On macOS the backing is concentric with the control, not a capsule.**
             // A capsule was the third instance of the same mistake the round controls
@@ -261,6 +264,7 @@ enum ViewportStatus {
         }
         // Optical: the card sits over video, and 20 pt is what keeps its text clear
         // of the rounded corner. Not a rhythm value.
+        // swiftlint:disable:next raw_spacing
         .padding(20)
         // `Radius.rect` is `.continuous`; this shape used to default to `.circular`,
         // so the reference image moves here. That is the correction, not a
@@ -356,6 +360,7 @@ private struct ViewportControlStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             // Optical: the glyph is sized against the disc, not against a text scale.
+            // swiftlint:disable:next raw_font
             .font(.title3)
             .frame(width: side, height: side)
             .reachySurface(.chrome, in: .circle)

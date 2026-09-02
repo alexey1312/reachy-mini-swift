@@ -1,8 +1,13 @@
 import ReachyDesign
 import SwiftUI
 
-/// The three ways a robot can be reached, as the segmented control that splits
-/// this screen up.
+/// The two ways a robot can be reached, as the segmented control that splits this
+/// screen up.
+///
+/// **The simulator was a third segment and is a disclosure under the segments
+/// now.** It is the answer for a reader who has no robot, and that reader is not
+/// the one this screen is for; everyone else met a segment offering to start
+/// something that is not a robot, on the app's first screen.
 ///
 /// **A typed address is not a fourth way, and it used to be a segment of its own.**
 /// It answers the same question `local` does — how to reach a robot on this
@@ -21,16 +26,14 @@ import SwiftUI
 ///
 /// **The titles are as short as they can be said**, because four segments of prose
 /// truncated on an iPhone and a segment nobody can read is a segment nobody opens.
-/// "HF" is the one piece of jargon, and it is the reader's own account's jargon.
+/// "Nearby" and "Remote" say where the robot is, which is the question the reader
+/// is answering; "Local" and "HF" said how the app would look, in its own words.
 enum ConnectRoute: String, CaseIterable, Identifiable {
     /// The candidate sweep, Bonjour, and a typed address: robots reachable from
     /// this Wi-Fi, however they are found.
     case local
     /// Robots linked to the reader's Hugging Face account, wherever they are.
     case account
-    /// A robot that is not there at all. Last, because it is the answer for a
-    /// reader who has no robot rather than one who cannot find theirs.
-    case simulator
 
     var id: String {
         rawValue
@@ -38,9 +41,8 @@ enum ConnectRoute: String, CaseIterable, Identifiable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .local: .reachy("Local")
-        case .account: .reachy("HF")
-        case .simulator: .reachy("Simulator")
+        case .local: .reachy("Nearby")
+        case .account: .reachy("Remote")
         }
     }
 }

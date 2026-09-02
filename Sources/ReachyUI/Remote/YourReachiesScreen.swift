@@ -71,6 +71,7 @@ struct YourReachiesScreen<SignIn: View>: View {
         .contentLoading(isPresented: model.isContentLoading, title: .reachy("Calling your Reachies home…"))
         .navigationTitle(.reachy("Your Reachies"))
         .refreshable { await model.refresh() }
+        .reachyRefreshToolbar { await model.refresh() }
         .task(id: model.accountGeneration) {
             guard !previewMode else { return }
             await model.load()
@@ -131,16 +132,21 @@ struct YourReachiesScreen<SignIn: View>: View {
 /// relay there isn't one, and the robot is identified by who owns it.
 struct RemoteRobotRow: View {
     let robot: CentralRobot
+    /// Scaled with the text beside it — the column was the one thing in the row
+    /// that ignored the reader's size setting.
+    @ScaledMetric(relativeTo: .title2) private var artworkWidth: CGFloat = 32
 
     var body: some View {
         HStack(spacing: Space.md) {
             Image(systemName: "app.connected.to.app.below.fill")
                 // Optical: row artwork, sized against the column it sits in.
+                // swiftlint:disable:next raw_font
                 .font(.title2)
                 // Erased because the two branches are different `ShapeStyle`
                 // types, and a ternary needs one.
                 .foregroundStyle(robot.isBusy ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
-                .frame(width: 32)
+                .frame(width: artworkWidth)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Space.xxs) {
                 Text(robot.displayName)
                     .font(Typography.rowTitle)
@@ -155,11 +161,14 @@ struct RemoteRobotRow: View {
             if !robot.isBusy {
                 Image(systemName: "chevron.forward")
                     // Optical: a disclosure chevron, weighted to match the system's own.
+                    // swiftlint:disable:next raw_font
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, Space.xs)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -173,7 +182,7 @@ private extension RemoteRobotRow {
         }
         return switch robot.transport {
         case .usb: String(localized: .reachy("Online · wired"))
-        case .wifi, .unknown, .none: "Online"
+        case .wifi, .unknown, .none: String(localized: .reachy("Online"))
         }
     }
 }

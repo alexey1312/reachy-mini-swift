@@ -59,7 +59,7 @@ struct ConnectHeader: View {
                     // The daemon state walks stopped → starting → running on its own
                     // as `waitForDaemonRunning` refreshes it: real progress, not a timer.
                     if let state = session.lastStatus?.state {
-                        Text(.reachy("Daemon state: \(String(localized: DaemonStateCaption.text(for: state)))"))
+                        Text(.reachy("Software: \(String(localized: DaemonStateCaption.text(for: state)))"))
                             .font(Typography.status)
                     }
                 }
@@ -67,7 +67,7 @@ struct ConnectHeader: View {
                 Spacer()
             }
         } else if isBackendUnavailable {
-            decision(.reachy("Start robot backend")) {
+            decision(.reachy("Start the motors and camera")) {
                 Task { await session.startBackend() }
             } alternatives: {
                 Button(.reachy("Continue anyway")) {
@@ -102,17 +102,16 @@ struct ConnectHeader: View {
     /// on the label**. `frame(maxWidth: .infinity)` applied outside `buttonStyle`
     /// stretches the container and leaves the capsule hugging its text in the middle
     /// of it — which the third recorded attempt showed as a centred capsule under a
-    /// leading-aligned caption and leading-aligned alternatives.
+    /// leading-aligned caption and leading-aligned alternatives. `ReachyActionButton`
+    /// is that spelling with a name, and it is what every full-width action uses now;
+    /// eight onboarding steps carried the wrong one until it existed.
     private func decision(
         _ title: LocalizedStringResource,
         action: @escaping () -> Void,
         @ViewBuilder alternatives: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Button(action: action) {
-                Text(title).frame(maxWidth: .infinity)
-            }
-            .reachyButton(.prominent)
+            ReachyActionButton(title, fullWidth: true, action: action)
             HStack(spacing: Space.lg) {
                 alternatives()
                 Spacer()
@@ -163,10 +162,10 @@ struct ConnectHeader: View {
         case let .failed(_, message):
             return message
         case let .backendUnavailable(_, daemonMessage):
-            return daemonMessage ?? String(localized: .reachy("The robot backend is not running"))
+            return daemonMessage ?? String(localized: .reachy("The motors and camera are not running"))
         case .checkingBackend:
             guard let state = session.lastStatus?.state else { return nil }
-            return String(localized: .reachy("Daemon state: \(String(localized: DaemonStateCaption.text(for: state)))"))
+            return String(localized: .reachy("Software: \(String(localized: DaemonStateCaption.text(for: state)))"))
         case .handshaking, .needsDaemonUpdate:
             return nil
         }

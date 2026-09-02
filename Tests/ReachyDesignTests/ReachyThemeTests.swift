@@ -1,5 +1,6 @@
 import Foundation
 @testable import ReachyDesign
+import SwiftUI
 import Testing
 
 /// WCAG relative luminance and contrast, and hue in degrees — the three numbers
@@ -163,6 +164,29 @@ struct ReachyThemeTests {
         } else {
             #expect(Colorimetry.contrastRatio(theme.palette.dark, white) >= 1.8)
         }
+    }
+
+    /// A fourth limb, and the one the first three could not see: the label a
+    /// `.borderedProminent` button paints *on* the accent. White holds on every light
+    /// accent, and on the dark ones — picked light so they read on a black page — it
+    /// falls to 2.05 (graphite) and 1.75 (teal). `ButtonEmphasis.prominentLabelHex`
+    /// is the pairing `ReachyActionButton` paints with, read here rather than
+    /// restated, so the test and the button cannot disagree. 3:1 is WCAG's floor for
+    /// large text, which a 17 pt semibold capsule label is.
+    @Test("a prominent label reads on every accent in both appearances", arguments: ReachyTheme.allCases)
+    func prominentLabelContrast(theme: ReachyTheme) {
+        let light = ButtonEmphasis.prominentLabelHex(for: .light)
+        let dark = ButtonEmphasis.prominentLabelHex(for: .dark)
+        #expect(Colorimetry.contrastRatio(theme.palette.light, light) >= 3.0)
+        #expect(Colorimetry.contrastRatio(theme.palette.dark, dark) >= 3.0)
+    }
+
+    /// Why the dark label is black and not white: the number that decided it, kept
+    /// so a future "simplify to white" has to argue with a measurement.
+    @Test("white would not have held on the dark accents")
+    func whiteFailsOnDarkAccents() {
+        #expect(Colorimetry.contrastRatio(ReachyTheme.teal.palette.dark, white) < 3.0)
+        #expect(Colorimetry.contrastRatio(ReachyTheme.graphite.palette.dark, white) < 3.0)
     }
 
     /// The catalogue is generated, so this asserts the generator was actually run:

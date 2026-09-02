@@ -21,7 +21,37 @@ public extension RobotSession {
     /// main actor and still has to render the same sentence.
     nonisolated static func describe(_ error: Error) -> String {
         let root = rootCause(of: error)
+        if let urlError = root as? URLError, let sentence = sentence(for: urlError) {
+            return sentence
+        }
         return (root as? LocalizedError)?.errorDescription ?? root.localizedDescription
+    }
+
+    /// The transport's own sentences name a server; these name the robot, and the
+    /// host, which is the one thing in them a reader can check against a screen.
+    /// English only, like `ReachyKitError`: this module has no catalogue.
+    ///
+    /// `nil` for every other code — the system's sentence is better than a wrong
+    /// guess, and `describe` falls back to it.
+    nonisolated static func sentence(for error: URLError) -> String? {
+        let host = error.failingURL?.host
+        switch error.code {
+        case .cannotConnectToHost:
+            let refused = host.map { "Nothing answered at \($0)." } ?? "Nothing answered."
+            return refused + " Check that the robot is on and on this network."
+        case .cannotFindHost, .dnsLookupFailed:
+            return host.map { "\($0) could not be found on this network." }
+                ?? "The robot could not be found on this network."
+        case .timedOut:
+            let slow = host.map { "\($0) took too long to answer." } ?? "The robot took too long to answer."
+            return slow + " It may still be starting up."
+        case .networkConnectionLost:
+            return host.map { "The connection to \($0) dropped." } ?? "The connection to the robot dropped."
+        case .notConnectedToInternet:
+            return "This device is not on a network."
+        default:
+            return nil
+        }
     }
 
     /// The sentence to show for a failed daemon call, or `nil` when there is

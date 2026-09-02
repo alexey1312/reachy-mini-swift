@@ -25,17 +25,7 @@ struct ConnectGate: View {
                 showRemoteRobots: { router.showsRemoteRobots = true },
                 showPermissions: { router.showsPermissions = true }
             )
-            // A `Form` left to itself fills a 1024 pt iPad, and rows a metre
-            // wide with three words in them read as a broken layout. Nothing
-            // constrained this before because the tab bar's column did.
-            .frame(maxWidth: Metrics.readableForm)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Constraining the form leaves its grouped backdrop as a column
-            // with the window's own background either side of it. This is the
-            // same semantic style the form paints, so the two cannot disagree
-            // about the appearance — the trap `AGENTS.md` records is a *pinned*
-            // colour, and there is none here.
-            .groupedPageBackground()
+            .readablePage()
             .navigationTitle(.reachy("Connect"))
             .hfAccountToolbar(isPresented: $router.showsAccount)
         }
@@ -43,6 +33,23 @@ struct ConnectGate: View {
 }
 
 extension View {
+    /// A grouped page held to a readable width, centred, with the page's own
+    /// backdrop either side.
+    ///
+    /// A `Form` left to itself fills a 1024 pt iPad, and rows a metre wide with
+    /// three words in them read as a broken layout — the gate learned that first,
+    /// and the four tab forms had the same rows at the same width. Constraining
+    /// the form leaves its grouped backdrop as a column with the window's own
+    /// background either side; `groupedPageBackground` is the same semantic style
+    /// the form paints, so the two cannot disagree — the trap `AGENTS.md` records
+    /// is a *pinned* colour, and there is none here. Nothing changes on a phone,
+    /// which is narrower than the limit.
+    func readablePage() -> some View {
+        frame(maxWidth: Metrics.readableForm)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .groupedPageBackground()
+    }
+
     /// The backdrop a grouped `Form` paints for itself, behind a whole page.
     ///
     /// Only iOS has one to name: `.formStyle(.grouped)` on macOS lays out against

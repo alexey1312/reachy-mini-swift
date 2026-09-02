@@ -33,9 +33,7 @@ struct ReachyMiniApp: App {
                 onDidApplyExternalChange: {
                     // The widget reads the same suite in its own process; a theme or robot
                     // that arrived from another device needs the same nudge the picker gives.
-                    #if !os(macOS)
-                        WidgetCenter.shared.reloadAllTimelines()
-                    #endif
+                    WidgetCenter.shared.reloadAllTimelines()
                 }
             )
             mirror.start()
@@ -62,6 +60,9 @@ struct ReachyMiniApp: App {
         #if os(macOS)
         .defaultSize(Metrics.window)
         #endif
+        .commands {
+            RobotCommands()
+        }
 
         // The robot in the menu bar. A second scene rather than anything inside the
         // window, because the point of it is to still be there once the window is
@@ -69,6 +70,12 @@ struct ReachyMiniApp: App {
         // session, whose lifetime is the window's.
         #if os(macOS)
             ReachyMenuBarScene()
+            // ⌘, — the two panes that are about this app rather than a robot. The
+            // item sat greyed out for as long as the app has run without this.
+            Settings {
+                ReachyAppSettingsView()
+                    .reachyThemeFromSettings()
+            }
         #endif
     }
 }

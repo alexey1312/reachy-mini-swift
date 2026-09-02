@@ -383,8 +383,9 @@ struct RobotSessionConnectionTests {
             return
         }
         // The generated client wraps transport errors in a `ClientError` whose
-        // description is ~20 lines of operation context and NSError internals.
-        #expect(message == URLError(.cannotConnectToHost).localizedDescription)
+        // description is ~20 lines of operation context and NSError internals —
+        // and the cause itself is reported in this app's sentence, not URLSession's.
+        #expect(message == "Nothing answered. Check that the robot is on and on this network.")
         #expect(!message.contains("_kCFStreamError"))
         #expect(message.count < 200)
     }

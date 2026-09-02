@@ -52,7 +52,7 @@ struct RunningAppMetadataTests {
 
         _ = try await session.currentApp()
 
-        #expect(session.runningApp?.app.title == "someone_elses_app")
+        #expect(session.runningApp?.app.title == "Someone Elses App")
         #expect(session.runningApp?.app.customAppPort == nil)
     }
 

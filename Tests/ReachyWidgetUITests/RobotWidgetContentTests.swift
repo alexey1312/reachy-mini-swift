@@ -107,6 +107,44 @@ struct RobotWidgetContentTests {
         #expect(content.detail.localizedCaseInsensitiveContains("awake"))
     }
 
+    // MARK: - The tile
+
+    @Test("a running app the cache knows is handed to the wide layout as a tile")
+    func handsTheRunningAppToTheWideLayout() {
+        let cache = RobotAppsCache(
+            robotID: "abc",
+            installed: [RobotAppSummary(
+                id: "pollen-robotics/hand-tracker",
+                name: "hand_tracker",
+                title: "Hand Tracker"
+            )],
+            takenAt: now
+        )
+
+        let content = RobotWidgetContent(state: .fresh(snapshot(runningApp: "Hand Tracker")), apps: cache, at: now)
+
+        #expect(content.runningApp?.title == "Hand Tracker")
+    }
+
+    @Test("without a cache, or off a stale reading, there is no tile")
+    func noTileWithoutACache() {
+        let cache = RobotAppsCache(
+            robotID: "abc",
+            installed: [RobotAppSummary(id: "x", name: "hand_tracker", title: "Hand Tracker")],
+            takenAt: now
+        )
+
+        let fresh = RobotWidgetContent(state: .fresh(snapshot(runningApp: "Hand Tracker")), at: now)
+        let stale = RobotWidgetContent(
+            state: .stale(snapshot(runningApp: "Hand Tracker", ageInMinutes: 90)),
+            apps: cache,
+            at: now
+        )
+
+        #expect(fresh.runningApp == nil)
+        #expect(stale.runningApp == nil)
+    }
+
     // MARK: - The button
 
     /// The asymmetry the whole design turns on: `.sleep` only off the half of the

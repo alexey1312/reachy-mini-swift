@@ -8,7 +8,7 @@ struct LiveUnavailableView: View {
         ContentUnavailableView(
             .reachy("No live view"),
             systemImage: "cube.transparent",
-            description: Text(.reachy("Start the robot backend to see the model and the camera."))
+            description: Text(.reachy("Start the motors and camera to see the live view."))
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

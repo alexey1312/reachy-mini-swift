@@ -4,7 +4,7 @@ private struct ReachyPreviewModeKey: EnvironmentKey {
     static let defaultValue = false
 }
 
-extension EnvironmentValues {
+public extension EnvironmentValues {
     /// Suppresses the live work a screen starts on appear — Bonjour browsing, log and teleop
     /// WebSockets, viewport attachment.
     ///
@@ -15,6 +15,10 @@ extension EnvironmentValues {
     ///
     /// Spelled out rather than written with `@Entry`: that macro ships in Xcode's SDKs and not in
     /// the pinned swift.org toolchain, so it would break `swift build` — see `.swiftformat`.
+    ///
+    /// It lives in `ReachyDesign` rather than `ReachyUI` because the design system reads it too:
+    /// a headless capture is where `.buttonStyle(.glassProminent)` blanks the whole image, so
+    /// `reachyButton` draws the bordered style under it and glass everywhere else.
     var reachyPreviewMode: Bool {
         get { self[ReachyPreviewModeKey.self] }
         set { self[ReachyPreviewModeKey.self] = newValue }

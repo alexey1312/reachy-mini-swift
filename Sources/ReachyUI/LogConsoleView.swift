@@ -20,6 +20,7 @@ struct LogConsoleView: View {
 
     @State private var atBottom = true
     @State private var jumpToken = 0
+    @State private var confirmingClear = false
     @AppStorage("logConsole.capacity") private var capacity = 5000
 
     private enum Anchor: Hashable {
@@ -49,6 +50,15 @@ struct LogConsoleView: View {
         .safeAreaInset(edge: .bottom) { statusBar }
         .searchable(text: $model.query, prompt: String(localized: .reachy("Filter log")))
         .toolbar { toolbarContent }
+        .confirmationDialog(
+            model.clearConfirmation.title,
+            isPresented: $confirmingClear,
+            titleVisibility: .visible
+        ) {
+            Button(model.clearConfirmation.confirm, role: .destructive) { model.clear() }
+        } message: {
+            Text(model.clearConfirmation.message)
+        }
         .onAppear { model.capacity = capacity }
         .onChange(of: capacity) { model.capacity = capacity }
     }
@@ -89,6 +99,7 @@ struct LogConsoleView: View {
             Spacer()
             if !atBottom {
                 Button(.reachy("Jump to latest"), systemImage: "arrow.down.to.line") { jumpToken += 1 }
+                    .help(Text(.reachy("Jump to latest")))
                     .buttonStyle(.borderless)
             }
         }
@@ -96,6 +107,7 @@ struct LogConsoleView: View {
         .foregroundStyle(Tone.quiet.style)
         .padding(.horizontal, Space.md)
         // Optical: a one-line strip, tightened past the grid so it reads as chrome.
+        // swiftlint:disable:next raw_spacing
         .padding(.vertical, 6)
         .reachyScrim(ignoringSafeArea: .bottom)
     }
@@ -110,19 +122,22 @@ struct LogConsoleView: View {
         if model.paused {
             parts
                 .append(model.pending
-                    .isEmpty ? "paused" : String(localized: .reachy("paused · +\(model.pending.count) new")))
+                    .isEmpty ? String(localized: .reachy("paused")) :
+                    String(localized: .reachy("paused · +\(model.pending.count) new")))
         }
         return parts.joined(separator: " · ")
     }
 
     private func row(_ entry: LogEntry) -> some View {
+        // Optical: log rows are dense on purpose; 6 pt keeps a tail readable without doubling its height.
+        // swiftlint:disable:next raw_spacing
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             if let timestamp = entry.timestamp {
                 Text(timestamp)
                     .foregroundStyle(.tertiary)
             }
             Text(entry.message)
-                .foregroundStyle(Self.color(for: entry.level))
+                .foregroundStyle(Self.style(for: entry.level))
         }
         .font(Typography.consoleLineCompact)
         .textSelection(.enabled)
@@ -140,7 +155,8 @@ struct LogConsoleView: View {
     ///
     /// This is the only toolbar in the app with enough in it to divide. The plan
     /// named `RobotScreen`, `AppStoreScreen` and `MovesScreen`; the first lost its
-    /// toolbar with the gear in PR 2, and the other two carry a single Refresh.
+    /// toolbar with the gear in PR 2, and the other two moved their Refresh into the
+    /// macOS-only item `reachyRefreshToolbar` adds, leaving iOS the pull gesture.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem {
@@ -150,6 +166,7 @@ struct LogConsoleView: View {
             ) {
                 model.paused.toggle()
             }
+            .help(Text(model.paused ? .reachy("Resume") : .reachy("Pause")))
         }
         if #available(iOS 26.0, macOS 26.0, *) {
             ToolbarSpacer(.fixed)
@@ -174,19 +191,22 @@ struct LogConsoleView: View {
                 Divider()
                 Button(.reachy("Copy all"), systemImage: "doc.on.doc") { Clipboard.copy(model.copyText) }
                     .disabled(model.visible.isEmpty)
-                Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { model.clear() }
+                Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { confirmingClear = true }
             } label: {
                 Label(.reachy("More"), systemImage: "ellipsis.circle")
             }
+            .help(Text(.reachy("More")))
         }
     }
 
-    private static func color(for level: LogLevel) -> Color {
+    /// The two loud levels borrow the design system's tones rather than naming the
+    /// colours themselves, so a console line and a status caption agree by construction.
+    private static func style(for level: LogLevel) -> AnyShapeStyle {
         switch level {
-        case .debug: .secondary
-        case .info: .primary
-        case .warning: .orange
-        case .error: .red
+        case .debug: AnyShapeStyle(.secondary)
+        case .info: AnyShapeStyle(.primary)
+        case .warning: Tone.warning.style
+        case .error: Tone.danger.style
         }
     }
 }

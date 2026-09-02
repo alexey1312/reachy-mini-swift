@@ -41,6 +41,10 @@ struct RunningAppDock: View {
                 expand: { model.isExpanded = true },
                 perform: perform
             )
+            // A crash arrives on a poll rather than on a tap, so nothing else marks it.
+            .sensoryFeedback(.error, trigger: status.state == .error) { wasFailed, isFailed in
+                !wasFailed && isFailed
+            }
         }
     }
 
@@ -323,19 +327,19 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Restart")))
         .disabled(!canAct)
     }
 
     private var stopButton: some View {
-        Button {
+        ReachyActionButton(.destructive) {
             perform(.stop)
         } label: {
             Label(.reachy("Stop"), systemImage: "stop.fill")
                 .labelStyle(.iconOnly)
         }
-        .reachyButton(.prominent)
         .buttonBorderShape(.circle)
-        .tint(Tone.danger.style)
+        .help(Text(.reachy("Stop")))
         .disabled(!canAct)
     }
 
@@ -352,6 +356,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(isMicrophoneMuted ? .reachy("Unmute the robot") : .reachy("Mute the robot")))
         .disabled(!canAct)
     }
 
@@ -364,6 +369,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Stop talking")))
         .disabled(!canAct)
     }
 
@@ -376,5 +382,6 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Dismiss")))
     }
 }

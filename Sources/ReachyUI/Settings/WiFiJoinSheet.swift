@@ -57,25 +57,15 @@ struct WiFiJoinSheet: View {
     @ViewBuilder
     private var editor: some View {
         Section {
-            picker
-            if model.selected == nil {
-                TextField(.reachy("Network name"), text: $model.manualSSID)
-                    .autocorrectionDisabled()
-                #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                #endif
-            }
-            SecureField(.reachy("Wi-Fi password"), text: $model.password)
-            Button {
+            NetworkCredentialsFields(
+                networks: model.networks,
+                selected: $model.selected,
+                manualSSID: $model.manualSSID,
+                password: $model.password,
+                isScanning: model.isScanning,
+                scanFailure: model.scanFailure
+            ) {
                 Task { await model.scan(session: session) }
-            } label: {
-                Label(.reachy("Scan again"), systemImage: "arrow.clockwise")
-            }
-            .disabled(model.isScanning)
-            if let failure = model.scanFailure {
-                Text(failure)
-                    .font(Typography.status)
-                    .foregroundStyle(Tone.warning.style)
             }
         } header: {
             Text(.reachy("Network"))
@@ -177,15 +167,6 @@ struct WiFiJoinSheet: View {
                     "The connection went away before the robot answered, which is also what taking the network does. Look for it on \(ssid) first: if it is there, the join worked."
                 )
             )
-        }
-    }
-
-    private var picker: some View {
-        Picker(.reachy("Network"), selection: $model.selected) {
-            ForEach(model.networks, id: \.self) { network in
-                Text(network).tag(String?.some(network))
-            }
-            Text(.reachy("Other network…")).tag(String?.none)
         }
     }
 }

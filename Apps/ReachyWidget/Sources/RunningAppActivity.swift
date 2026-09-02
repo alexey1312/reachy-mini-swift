@@ -77,7 +77,7 @@
         /// granted and where the session lives.
         private func stop(_ context: ActivityViewContext<RunningAppActivityAttributes>) -> some View {
             Button(intent: StopRunningAppActivityIntent(robot: context.attributes.app.robotID)) {
-                Label("Stop", systemImage: "stop.fill")
+                Label(.reachy("Stop"), systemImage: "stop.fill")
                     .labelStyle(.iconOnly)
             }
             .tint(Tone.danger.style)

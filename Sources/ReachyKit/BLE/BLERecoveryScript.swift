@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The list comes from the robot, never from here: the characteristic is a listing of a
 /// real directory that a later daemon release can add to. This type only supplies what a
-/// directory listing cannot — what each one does.
+/// directory listing cannot — how much each one costs. The words are `ReachyUI`'s.
 public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
     public enum Severity: Int, Comparable, Sendable {
         /// Interrupts the robot briefly and leaves everything where it was.
@@ -22,7 +22,6 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
 
     public let name: String
     public let severity: Severity
-    public let summary: String
 
     public var id: String {
         name
@@ -46,42 +45,14 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
 
     /// What daemon 1.9.0 ships. Anything else is `.disruptive` deliberately: these are
     /// root shell scripts, and guessing "harmless" about one this build has never heard of
-    /// is the wrong direction to be wrong in.
+    /// is the wrong direction to be wrong in. What each one *does* is said by
+    /// `BLERecoveryScriptCaption` in `ReachyUI`, where it can be translated.
     public static func describing(_ name: String) -> BLERecoveryScript {
         switch name {
-        case "RESTART_DAEMON":
-            BLERecoveryScript(
-                name: name,
-                severity: .routine,
-                summary: "Restarts the robot's software. It drops off the network for a few seconds and comes back."
-            )
-        case "HOTSPOT":
-            BLERecoveryScript(
-                name: name,
-                severity: .disruptive,
-                summary: "Disconnects Wi-Fi and puts the robot's own reachy-mini-ap network back up. "
-                    + "It leaves your network until it is set up again."
-            )
-        case "WIFI_RESET":
-            BLERecoveryScript(
-                name: name,
-                severity: .disruptive,
-                summary: "Deletes every Wi-Fi network the robot has saved, except its own hotspot. "
-                    + "Every password has to be entered again."
-            )
-        case "SOFTWARE_RESET":
-            BLERecoveryScript(
-                name: name,
-                severity: .destructive,
-                summary: "Erases the robot's Python environments and restores the factory copy. "
-                    + "Every installed app and everything it stored is gone."
-            )
-        default:
-            BLERecoveryScript(
-                name: name,
-                severity: .disruptive,
-                summary: "This app does not know what this script does. It runs as root on the robot."
-            )
+        case "RESTART_DAEMON": BLERecoveryScript(name: name, severity: .routine)
+        case "HOTSPOT", "WIFI_RESET": BLERecoveryScript(name: name, severity: .disruptive)
+        case "SOFTWARE_RESET": BLERecoveryScript(name: name, severity: .destructive)
+        default: BLERecoveryScript(name: name, severity: .disruptive)
         }
     }
 }

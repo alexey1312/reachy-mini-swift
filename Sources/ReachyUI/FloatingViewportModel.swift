@@ -81,7 +81,9 @@ final class FloatingViewportModel {
     /// the system's accessory slot is invisible to it for the same reason the tab
     /// bar is, and the fallback's inset sits *inside* a tab, one level further in
     /// than the overlay can see.
-    var hasBottomAccessory = false
+    var hasBottomAccessory = false {
+        didSet { liftAboveAccessory(was: oldValue) }
+    }
 
     /// Set while the window grows to fill the screen, in the instant before the
     /// tab takes the viewport over. There is no matched transition to be had here
@@ -182,6 +184,22 @@ final class FloatingViewportModel {
         // is still the side it should come back to.
         let fallback: Corner = edge == .leading ? .bottomLeading : .bottomTrailing
         settling = .floating(Self.nearestCorner(to: centre, in: bounds) ?? fallback)
+    }
+
+    /// The strip arriving under a window resting in a bottom corner lifts it to the
+    /// top corner on the same side. The strip is 68 pt of chrome the window would
+    /// otherwise sit on — measured off `Root — floating viewport over the dock`,
+    /// where the picture covered the dock's own buttons — and the reader did not
+    /// put it there. Only on arrival, and only at rest: a drag or a morph in flight
+    /// belongs to the finger or the animation, and the strip leaving moves nothing,
+    /// because a window the reader has left at the top is where they left it.
+    private func liftAboveAccessory(was: Bool) {
+        guard !was, hasBottomAccessory, settling == nil, activation == nil else { return }
+        switch rest {
+        case .floating(.bottomLeading): rest = .floating(.topLeading)
+        case .floating(.bottomTrailing): rest = .floating(.topTrailing)
+        case .floating, .docked, .inline, .column: break
+        }
     }
 
     /// The animation reported itself done: adopt where it was heading. A no-op when

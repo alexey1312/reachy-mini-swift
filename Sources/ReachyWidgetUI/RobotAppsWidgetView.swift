@@ -24,6 +24,8 @@ public struct RobotAppsWidgetView: View {
     }
 
     public var body: some View {
+        // Optical: a widget pays for every point; 6 pt is the tile's own rhythm (see RobotWidgetView).
+        // swiftlint:disable:next raw_spacing
         VStack(alignment: .leading, spacing: 6) {
             if content.tiles.isEmpty {
                 emptyState
@@ -52,9 +54,12 @@ public struct RobotAppsWidgetView: View {
     }
 
     private var emptyState: some View {
+        // Optical: a widget pays for every point; 6 pt is the tile's own rhythm (see RobotWidgetView).
+        // swiftlint:disable:next raw_spacing
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "square.grid.2x2")
                 // Optical: empty-state artwork, sized against the tile and not its caption.
+                // swiftlint:disable:next raw_font
                 .font(.title2)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -105,6 +110,7 @@ struct RobotAppTileView: View {
             badge
         }
         // Optical: a widget tile pays for every point; 6 is what fits two rows.
+        // swiftlint:disable:next raw_spacing
         .padding(6)
         // Fills the row the grid gives it, so two tiles on a small widget divide
         // the height between them instead of stacking at the top over a void.
@@ -126,33 +132,37 @@ struct RobotAppTileView: View {
         switch tile.state {
         // A scrim rather than a tone: it darkens the artwork under it so the glyph
         // reads, which is not something any of the five roles means.
-        case .running: badgeSymbol("stop.fill", background: AnyShapeStyle(.black.opacity(0.45)))
-        case .failed: badgeSymbol("exclamationmark", background: Tone.danger.style)
+        case .running:
+            badgeSymbol("stop.fill", background: AnyShapeStyle(.black.opacity(0.45)), label: .reachy("Running"))
+        case .failed:
+            badgeSymbol("exclamationmark", background: Tone.danger.style, label: .reachy("Failed"))
         default: EmptyView()
         }
     }
 
-    private func badgeSymbol(_ name: String, background: AnyShapeStyle) -> some View {
+    private func badgeSymbol(_ name: String, background: AnyShapeStyle, label: LocalizedStringResource) -> some View {
         Image(systemName: name)
             // Optical: the glyph is what sizes the badge disc drawn around it.
+            // swiftlint:disable:next raw_font
             .font(.caption2)
             // Pinned against a fill this view owns, the way `ConnectRail` pins its
             // own: both badge backgrounds carry white in either appearance.
             .foregroundStyle(.white)
             .padding(Space.xs)
             .background(background, in: Circle())
+            .accessibilityLabel(label)
     }
 
     private var caption: String? {
         switch tile.state {
         case .idle, .blocked: nil
-        case .running: "Running"
-        case .starting: "Starting…"
-        case .stopping: "Stopping…"
+        case .running: String(localized: .reachy("Running"))
+        case .starting: String(localized: .reachy("Starting…"))
+        case .stopping: String(localized: .reachy("Stopping…"))
         case .notInstalled: String(localized: .reachy("Not installed"))
         // One word, because that is all the room there is. The notice under the
         // grid carries what the daemon actually said.
-        case .failed: "Failed"
+        case .failed: String(localized: .reachy("Failed"))
         }
     }
 

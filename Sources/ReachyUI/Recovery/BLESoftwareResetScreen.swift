@@ -72,7 +72,7 @@ struct BLESoftwareResetScreen: View {
                 Task { await dispatch() }
             }
         } message: {
-            Text(script.summary)
+            Text(BLERecoveryScriptCaption.summary(for: script))
         }
     }
 
@@ -139,6 +139,8 @@ struct BLESoftwareResetScreen: View {
 
     private var restoring: some View {
         Section(.reachy("Restoring")) {
+            // Optical: the severity glyph sits beside the script's name as one row.
+            // swiftlint:disable:next raw_spacing
             HStack(spacing: 10) {
                 ProgressView()
                 Text(.reachy("This takes about five minutes. Leave the robot powered on."))
@@ -193,11 +195,15 @@ struct BLESoftwareResetScreen: View {
 }
 
 private struct BulletLabelStyle: LabelStyle {
+    /// Optical: a bullet dot rather than text — 5 pt is the dot's diameter at the
+    /// default size, and it grows with the footnote beside it.
+    @ScaledMetric(relativeTo: .footnote) private var dot: CGFloat = 5
+
     func makeBody(configuration: Configuration) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
             configuration.icon
-                // Optical: a bullet dot rather than text — 5 pt is the dot's diameter.
-                .font(.system(size: 5))
+                // swiftlint:disable:next raw_font
+                .font(.system(size: dot))
                 .foregroundStyle(.secondary)
             configuration.title
         }

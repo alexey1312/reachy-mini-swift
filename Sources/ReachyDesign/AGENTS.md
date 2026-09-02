@@ -22,7 +22,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
 | `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
-| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                                                 |
+| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
+| `ReachyActionButton.swift` | The action button that puts width and colour _inside_ the label — full-width capsules, a dark-appearance label                       |
+| `ReachyErrorRow.swift`     | One failure in a form row, with the way out beside it                                                                                |
 | `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
 | `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
 | `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
@@ -67,6 +69,13 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
      reuses that same 1.8 for a different question — is a tint legible beside body text — with no standard behind
      it. It was not reverse-engineered to admit graphite and exclude teal (it predates both measurements), but a
      seventh theme landing near it deserves a look at the number rather than deference to it.
+  4. **≥ 3:1 for the prominent label against the accent, in each appearance** — `prominentLabelContrast`. The
+     label is white in light and **black in dark** (`ButtonEmphasis.prominentLabelHex`), and the test reads that
+     pairing rather than restating it. Found by the design review: `.borderedProminent` paints white, and on the
+     dark accents — chosen light so they read on a black page — white measured 2.05 on graphite and 1.75 on teal,
+     so the two buttons that gate setup and recovery were the least legible controls in the app. Repainting the
+     dark accents would have cost every tinted row its 3:1 against the page (limb 1); painting the label is what
+     `ReachyActionButton` does, and only inside the label — a style's own foreground beats anything set around it.
 - **Bronze's dark accent is `#A86D16`, deliberately darker than a dark-appearance accent usually is.** It shipped as
   `#E3A24A`, chosen against the light-appearance system tones only, before the separation rule above checked
   `palette.dark` against the dark ones. Measured against dark `warning` (`#FF9F0A`), `#E3A24A` scored 2.0° of hue and
@@ -263,6 +272,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   — and at the default text size the multiplier is 1, so adopting one moves no reference image.
 - **Optical adjustments stay literals.** `Space` governs the rhythm of a layout; a 1 pt gap inside the dock or a 3 pt
   inset on the joystick's arc is not rhythm. A grid that swallowed the optics would be worse than no grid.
+- **Loading captions are the one place for humour.** `contentLoading` titles may play ("Browsing the robot app
+  aisle…"); every other sentence — errors, permissions, confirmations, empty states — says what happened and what to
+  do. Decided at the design review rather than left to each new caption.
 - Nothing in this module renders a domain type. `ReachyStatusLabel` takes a `String`.
 - **A `Tone` colours a foreground, not a fill.** `ReachyBadge` puts the tone on its text and takes the `.badge`
   surface underneath, which is what let the app's one pinned `.foregroundStyle(.white)` go: white read only against a
@@ -274,12 +286,17 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## Not here yet, and why
 
-- **A glass tier on `reachyButton`.** Not deferred for taste — it blanks the capture (see the rules above). Revisit
-  only with evidence that a screen carrying one snapshots whole. `ButtonEmphasis` did gain a third case,
-  `quiet` (`.borderless`), and that one is not a glass question: it exists because three bordered capsules in a row
-  broke their labels across two lines on an iPhone, and stacking them gave a ragged column of three different widths.
-  Both were recorded as references before being read. `.borderless` rather than `.plain` — plain drops the tint, and a
-  tintless label beside a tinted one reads as disabled.
+- **The prominent tiers are glass now, and the references do not show it — on purpose.** `.buttonStyle(.glass)`
+  blanks a headless capture outright (see the rules above), so `reachyButton` reads `reachyPreviewMode` — the key
+  moved down into this module for it — and draws `.borderedProminent` under a capture and `.glassProminent` on
+  iOS 26 and macOS 26 everywhere else. What that costs is stated plainly: every reference certifies the _bordered_
+  layout, and the glass rendering is a booted-simulator check. Measured on an iPhone 17 Pro / iOS 27.0 through
+  `simctl io booted screenshot`, on the onboarding welcome step: light draws the graphite capsule with a white
+  label, dark draws the light graphite capsule with a **black** label — `ReachyActionButton`'s inside-the-label
+  colour survives the glass style, which is the one thing that could have sent this back. The capsule sits a few
+  points taller than the bordered one, so a layout that is tight against a bordered reference has that much less
+  room on a device. `quiet` stays `.borderless`: three glass capsules in a row would break their labels across two
+  lines on an iPhone exactly as three bordered ones did, and that is why the tier exists.
 - **`glassEffectID` morphing between screens.** Worth having only once a layout is built around it, and there is no
   equivalent below the floor.
 - **A gesture-carrying spring beyond `absorb(velocity:)`.** It is the module's only `Animation` that is a function

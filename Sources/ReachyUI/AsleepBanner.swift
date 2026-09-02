@@ -13,6 +13,7 @@ struct AsleepBanner: View {
             HStack(alignment: .firstTextBaseline, spacing: Space.md) {
                 Image(systemName: "moon.zzz")
                     .foregroundStyle(Tone.warning.style)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text(title)
                         .font(Typography.detail.weight(.medium))
@@ -25,10 +26,9 @@ struct AsleepBanner: View {
             if session.powerTransition != nil {
                 ProgressView()
             } else {
-                Button(.reachy("Wake up")) {
+                ReachyActionButton(.reachy("Wake up")) {
                     Task { await session.wake() }
                 }
-                .reachyButton(.prominent)
             }
         }
     }
@@ -36,12 +36,12 @@ struct AsleepBanner: View {
     private var title: String {
         session
             .isBackendRunning ? String(localized: .reachy("Robot is asleep")) :
-            String(localized: .reachy("Robot backend is stopped"))
+            String(localized: .reachy("Motors and camera are off"))
     }
 
     private var detail: String {
         session.isBackendRunning
             ? String(localized: .reachy("The motors are off, so the robot accepts commands without moving."))
-            : String(localized: .reachy("Motion, teleop and the state stream stay unavailable until it starts."))
+            : String(localized: .reachy("The live view and the controls come back once they start."))
     }
 }

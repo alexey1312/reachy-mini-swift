@@ -50,6 +50,10 @@ public struct RobotWidgetContent: Equatable, Sendable {
     /// read the same on screen and mean opposite things to anything reasoning about
     /// the widget.
     public let isPending: Bool
+    /// The running app as the apps cache knows it — artwork and title — for the
+    /// wide layout to draw as a tile. Nil off a stale reading, during a transition,
+    /// with no app running, or when the cache does not hold the one that is.
+    public private(set) var runningApp: RobotAppSummary?
 
     public init(
         title: String,
@@ -72,6 +76,7 @@ public struct RobotWidgetContent: Equatable, Sendable {
     public init(
         state: RobotSnapshotState,
         power: RobotPowerTransitionState? = nil,
+        apps: RobotAppsCache? = nil,
         at date: Date = Date()
     ) {
         switch state {
@@ -111,6 +116,20 @@ public struct RobotWidgetContent: Equatable, Sendable {
                 at: date
             )
         }
+        runningApp = isPending ? nil : Self.runningApp(in: state, apps: apps, at: date)
+    }
+
+    /// Only off a fresh reading, which is the one kind the wide layout says
+    /// "Running" for; a memory of an app is not one. Matched by entry point first
+    /// and by title second, because a legacy snapshot carries only the title.
+    private static func runningApp(
+        in state: RobotSnapshotState,
+        apps: RobotAppsCache?,
+        at date: Date
+    ) -> RobotAppSummary? {
+        guard case let .fresh(snapshot) = state, let apps else { return nil }
+        guard let name = snapshot.runningAppName(at: date) ?? snapshot.runningAppTitle(at: date) else { return nil }
+        return apps.installed.first { $0.name == name || $0.title == name }
     }
 
     /// The fork every reading with a robot behind it takes: a transition in flight
@@ -216,7 +235,7 @@ public struct RobotWidgetContent: Equatable, Sendable {
     /// is not linkable from an extension. Same catalogue keys, so this adds none.
     private static func caption(for transition: RobotSession.PowerTransition) -> String {
         switch transition {
-        case .startingBackend: String(localized: .reachy("Starting the robot backend… this can take a minute"))
+        case .startingBackend: String(localized: .reachy("Starting the motors and camera… this can take a minute"))
         case .stoppingBackend: String(localized: .reachy("Powering off… going to sleep first"))
         case .wakingUp: String(localized: .reachy("Waking up…"))
         case .goingToSleep: String(localized: .reachy("Going to sleep…"))

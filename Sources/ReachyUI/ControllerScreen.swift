@@ -53,8 +53,17 @@ struct ControllerScreen: View {
                     AsleepBanner(session: session)
                 }
             }
+            // Above the pad, not under the sliders: a failed setup leaves every control
+            // below inert, and the one line saying why used to sit past the fold — the
+            // `Controller — setup failed` reference showed a healthy screen for as long
+            // as the row was at the bottom.
+            if let setupError {
+                Section {
+                    ReachyErrorRow(setupError, retry: start)
+                }
+            }
             Group {
-                Section(.reachy("Head — drag: yaw / pitch, hold sideways: turn the body")) {
+                Section {
                     JoystickPad(mapping: driver.mapping) { deflection in
                         driver.apply(deflection)
                         standDown?()
@@ -62,20 +71,26 @@ struct ControllerScreen: View {
                     .frame(maxWidth: 280)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Space.sm)
+                } header: {
+                    Text(.reachy("Head"))
+                } footer: {
+                    // A sentence where a header carried "yaw / pitch": the words
+                    // are the robot's, and the reader's are "look" and "turn".
+                    Text(.reachy("Drag to look around. Hold at the side to turn the body."))
                 }
                 recordingSection
-                Section(.reachy("Head")) {
+                Section(.reachy("Roll and height")) {
                     slider(
-                        "Roll",
+                        .reachy("Roll"),
                         value: $driver.roll,
                         range: -driver.mapping.headAngle ... driver.mapping.headAngle,
                         format: .degrees
                     )
-                    slider("Height", value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
+                    slider(.reachy("Height"), value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
                 }
                 Section(.reachy("Body")) {
                     slider(
-                        String(localized: .reachy("Body yaw")),
+                        .reachy("Body yaw"),
                         value: $driver.bodyYaw,
                         range: -TeleopDriver.bodyYawLimit ... TeleopDriver.bodyYawLimit,
                         format: .degrees
@@ -83,13 +98,13 @@ struct ControllerScreen: View {
                 }
                 Section(.reachy("Antennas")) {
                     slider(
-                        "Left",
+                        .reachy("Left"),
                         value: $driver.antennaLeft,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
                     )
                     slider(
-                        "Right",
+                        .reachy("Right"),
                         value: $driver.antennaRight,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
@@ -100,17 +115,15 @@ struct ControllerScreen: View {
                 }
             }
             .disabled(!session.isAwake)
-            if let setupError {
-                Section {
-                    Text(setupError)
-                        .font(Typography.consoleLine)
-                        .foregroundStyle(Tone.danger.style)
-                }
-            }
         }
         .formStyle(.grouped)
         .navigationTitle(.reachy("Controller"))
         .onAppear { start() }
+        // A take starts and ends under a thumb that is on the pad rather than on the
+        // button, so the moment is felt rather than watched.
+        .sensoryFeedback(trigger: recorder.isRecording) { _, isRecording in
+            isRecording ? .start : .stop
+        }
         .onChange(of: session.isAwake) { _, awake in
             // Targets accumulated while asleep would be replayed as one jump.
             if awake {
@@ -183,7 +196,7 @@ struct ControllerScreen: View {
     private enum SliderFormat { case degrees, millimeters }
 
     private func slider(
-        _ title: String,
+        _ title: LocalizedStringResource,
         value: Binding<Double>,
         range: ClosedRange<Double>,
         format: SliderFormat
@@ -197,6 +210,7 @@ struct ControllerScreen: View {
                     .foregroundStyle(.secondary)
             }
             Slider(value: value, in: range)
+                .accessibilityLabel(Text(title))
         }
     }
 

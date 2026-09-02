@@ -20,6 +20,9 @@ struct AppearanceSection: View {
     /// defaults suite is: a preview cannot reach a refusal, and an uncovered failure
     /// caption is one nobody looks at until a reader reports it.
     @State private var iconChangeFailed: Bool
+    /// Scaled with the caption under it, and the ring's radius follows the side so
+    /// the corners stay concentric at every size.
+    @ScaledMetric(relativeTo: .body) private var tileSide = Metrics.themeTile
 
     init(defaults: UserDefaults = KnownRobots.defaults, iconChangeFailed: Bool = false) {
         _rawTheme = AppStorage(
@@ -36,27 +39,18 @@ struct AppearanceSection: View {
 
     var body: some View {
         Section {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Space.md) {
-                        ForEach(ReachyTheme.allCases) { theme in
-                            tile(theme)
-                        }
-                    }
-                    .padding(.vertical, Space.sm)
-                    // The selection ring bleeds Space.xs outside its tile (see the
-                    // overlay below); without this the trailing tile's ring is
-                    // sliced flat against the scroll view's edge.
-                    .padding(.horizontal, Space.xs)
-                }
-                // Only five of six tiles fit at rest, so the row must bring the chosen
-                // one on screen itself — otherwise picking a theme off the fold and
-                // coming back reads as if the choice reverted.
-                .onAppear { proxy.scrollTo(selection.id) }
-                .onChange(of: selection) { _, newSelection in
-                    withAnimation { proxy.scrollTo(newSelection.id) }
-                }
+            // A row where the six fit and a three-column grid where they do not,
+            // instead of a horizontal scroll that hid the sixth theme off the fold
+            // and had to scroll the chosen one back into view on every appearance.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Space.md) { tiles }
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: Space.md) { tiles }
             }
+            .padding(.vertical, Space.sm)
+            // The selection ring bleeds Space.xs outside its tile (see the overlay
+            // below); without this an outer tile's ring is sliced flat against the
+            // row's edge.
+            .padding(.horizontal, Space.xs)
         } header: {
             Text(.reachy("Appearance"))
         } footer: {
@@ -67,25 +61,29 @@ struct AppearanceSection: View {
         }
     }
 
+    private var tiles: some View {
+        ForEach(ReachyTheme.allCases) { theme in
+            tile(theme)
+        }
+    }
+
     private func tile(_ theme: ReachyTheme) -> some View {
         Button {
             rawTheme = theme.rawValue
-            #if !os(macOS)
-                WidgetCenter.shared.reloadAllTimelines()
-            #endif
+            WidgetCenter.shared.reloadAllTimelines()
             // The theme is already saved; the icon is best effort. Awaiting it here
             // would block the tile's highlight behind iOS's own alert.
             Task { iconChangeFailed = await AppIconSwitcher.apply(theme) == false }
         } label: {
             VStack(spacing: Space.sm) {
-                Radius.rect(Self.tileRadius)
+                Radius.rect(tileRadius)
                     .fill(theme.iconSwatch)
-                    .frame(width: Metrics.themeTile, height: Metrics.themeTile)
+                    .frame(width: tileSide, height: tileSide)
                     .overlay {
                         // Concentric: a ring pushed out by `Space.xs` needs its radius
                         // grown by the same amount, or the gap it leaves is narrower at
                         // the corners than along the sides and the corner reads pinched.
-                        Radius.rect(Self.tileRadius + Space.xs)
+                        Radius.rect(tileRadius + Space.xs)
                             .strokeBorder(theme.accent, lineWidth: theme == selection ? 3 : 0)
                             .padding(-Space.xs)
                     }
@@ -104,7 +102,9 @@ struct AppearanceSection: View {
     /// than a layout radius — the same `Radius.tile` the store and dock artwork use, so
     /// all three read as one object at three sizes. `Radius.lg` was 16 pt on a 56 pt
     /// tile, which is 29 % where an iOS icon's squircle is 22 %.
-    private static let tileRadius = Radius.tile(side: Metrics.themeTile)
+    private var tileRadius: CGFloat {
+        Radius.tile(side: tileSide)
+    }
 }
 
 #if DEBUG

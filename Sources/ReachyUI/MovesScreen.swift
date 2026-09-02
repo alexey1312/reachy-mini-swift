@@ -13,6 +13,7 @@ struct MovesScreen: View {
     @State private var model: MovesModel
     @State private var recorder: MoveRecorderModel
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         session: RobotSession,
@@ -37,7 +38,6 @@ struct MovesScreen: View {
                 }
             }
             recordingsSection
-            soundboardLink
             Section {
                 Picker(.reachy("Library"), selection: $model.selection) {
                     ForEach(MovesModel.libraries.indices, id: \.self) { index in
@@ -45,41 +45,34 @@ struct MovesScreen: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                // The Apps tab's spelling: a segmented control drawn on the page
+                // rather than inside a grouped row, which framed it in a card of
+                // its own above the list it filters.
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowBackground(Color.clear)
             }
             if !model.isContentLoading {
                 Section {
                     if model.moves.isEmpty {
-                        Text(.reachy("No moves")).foregroundStyle(.secondary)
+                        ContentUnavailableView(.reachy("No moves"), systemImage: "figure.dance")
+                            .listRowBackground(Color.clear)
                     } else {
                         ForEach(model.moves, id: \.self) { move in
-                            Button {
-                                Task { await model.play(move, session: session) }
-                            } label: {
-                                HStack {
-                                    Text(MovesModel.displayName(move))
-                                    Spacer()
-                                    if session.currentMove?.move == move {
-                                        Image(systemName: "waveform")
-                                            .symbolEffect(.variableColor.iterative)
-                                    } else {
-                                        Image(systemName: "play.circle")
-                                    }
-                                }
-                            }
-                            .disabled(!model.rowsAreEnabled(session))
+                            moveRow(move)
                         }
                     }
                 }
             }
             if let lastError = model.lastError, !model.isContentLoading {
                 Section {
-                    Text(lastError)
-                        .font(Typography.consoleLine)
-                        .foregroundStyle(Tone.danger.style)
+                    ReachyErrorRow(lastError) {
+                        Task { await model.load(session: session, refresh: true) }
+                    }
                 }
             }
         }
         .formStyle(.grouped)
+        .readablePage()
         .contentLoading(
             isPresented: model.isContentLoading,
             title: model.selectedLibrary.loadingTitle
@@ -92,18 +85,39 @@ struct MovesScreen: View {
                 }
             }
         }
-        .toolbar {
-            Button {
-                Task { await model.load(session: session, refresh: true) }
-            } label: {
-                Label(.reachy("Refresh"), systemImage: "arrow.clockwise")
-            }
-            .disabled(model.loading || model.isContentLoading)
+        .toolbar { soundboardLink }
+        .refreshable { await model.load(session: session, refresh: true) }
+        .reachyRefreshToolbar(isDisabled: model.loading || model.isContentLoading) {
+            await model.load(session: session, refresh: true)
         }
         .task(id: model.selection) {
             guard !previewMode else { return }
             await model.load(session: session)
         }
+    }
+
+    /// The glyph is decorative and says so: the row's *value* is what reads
+    /// "Playing", where a glyph read out as "waveform" says nothing.
+    private func moveRow(_ move: String) -> some View {
+        let isPlaying = session.currentMove?.move == move
+        return Button {
+            Task { await model.play(move, session: session) }
+        } label: {
+            HStack {
+                Text(MovesModel.displayName(move))
+                Spacer()
+                if isPlaying {
+                    Image(systemName: "waveform")
+                        .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "play.circle")
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .disabled(!model.rowsAreEnabled(session))
+        .accessibilityValue(isPlaying ? String(localized: .reachy("Playing")) : "")
     }
 
     /// Takes this phone made, above the robot's own libraries.
@@ -138,22 +152,24 @@ struct MovesScreen: View {
         }
     }
 
-    /// The soundboard, as a sibling of the dances rather than a sixth tab.
+    /// The soundboard, as a sibling of the dances rather than a sixth tab — and in
+    /// the bar rather than as the first row, where it read as the first move.
     ///
     /// Gated on the capability rather than left to fail: a relayed session carries no
-    /// `/api/media/*` at all, so the screen behind this row could only report that it
-    /// cannot ask. The model is built inside the destination closure, which is safe for
-    /// the reason `filesLink` is — a pushed screen adopts it into `@State`, and
-    /// `State(initialValue:)` keeps the first one when the closure re-runs.
-    @ViewBuilder
-    private var soundboardLink: some View {
+    /// `/api/media/*` at all, so the screen behind this item could only report that
+    /// it cannot ask. The model is built inside the destination closure, which is
+    /// safe for the reason `filesLink` is — a pushed screen adopts it into `@State`,
+    /// and `State(initialValue:)` keeps the first one when the closure re-runs.
+    @ToolbarContentBuilder
+    private var soundboardLink: some ToolbarContent {
         if session.canManageSounds {
-            Section {
+            ToolbarItem {
                 NavigationLink {
                     SoundboardScreen(session: session, presence: presence)
                 } label: {
                     Label(.reachy("Sounds"), systemImage: "music.note.list")
                 }
+                .help(Text(.reachy("Sounds")))
             }
         }
     }

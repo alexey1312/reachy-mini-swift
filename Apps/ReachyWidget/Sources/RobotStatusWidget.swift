@@ -78,6 +78,9 @@ struct RobotStatusProvider: TimelineProvider {
             content: RobotWidgetContent(
                 state: RobotSnapshotStore().state(at: date),
                 power: RobotPowerTransitionStore().current,
+                // The same store the apps widget reads, so the two agree on what is
+                // installed; absent until the app has listed the robot's apps once.
+                apps: RobotIntentTarget.knownRobot.flatMap { RobotAppsCacheStore().current(for: $0.key) },
                 at: date
             ),
             layout: layout

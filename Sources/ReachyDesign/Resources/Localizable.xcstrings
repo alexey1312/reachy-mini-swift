@@ -30,60 +30,60 @@
         }
       }
     },
-    "A Lite robot or a simulator is reached at the address of the computer running its daemon — and only if that daemon was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone.": {
+    "A Lite robot or a simulator is reached at the address of the computer running its software — and only if that software was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein Lite-Roboter oder ein Simulator wird unter der Adresse des Computers erreicht, auf dem sein Daemon läuft — und nur, wenn dieser Daemon mit --fastapi-host 0.0.0.0 gestartet wurde. Standardmäßig nimmt er Verbindungen nur von diesem Computer an."
+            "value": "Ein Lite-Roboter oder ein Simulator wird über die Adresse des Computers erreicht, auf dem seine Software läuft — und nur, wenn diese Software mit --fastapi-host 0.0.0.0 gestartet wurde. Standardmäßig nimmt sie nur Verbindungen von diesem Computer an."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A un robot Lite o a un simulador se llega por la dirección del ordenador que ejecuta su daemon, y solo si ese daemon se inició con --fastapi-host 0.0.0.0. De forma predeterminada solo acepta conexiones desde ese mismo ordenador."
+            "value": "A un robot Lite o a un simulador se llega por la dirección del ordenador que ejecuta su software, y solo si ese software se inició con --fastapi-host 0.0.0.0. Por defecto solo acepta conexiones desde ese mismo ordenador."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un robot Lite ou un simulateur s’atteint à l’adresse de l’ordinateur qui fait tourner son daemon — et seulement si ce daemon a été lancé avec --fastapi-host 0.0.0.0. Par défaut, il n’accepte les connexions que depuis cet ordinateur."
+            "value": "Un robot Lite ou un simulateur est joint à l'adresse de l'ordinateur qui exécute son logiciel — et seulement si ce logiciel a été lancé avec --fastapi-host 0.0.0.0. Par défaut, il n'accepte que les connexions de cet ordinateur."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "К роботу Lite или симулятору обращаются по адресу компьютера, на котором работает их демон, — и только если демон запущен с --fastapi-host 0.0.0.0. По умолчанию он принимает подключения лишь с этого компьютера."
+            "value": "К роботу Lite или симулятору подключаются по адресу компьютера, на котором запущено их ПО, и только если оно запущено с --fastapi-host 0.0.0.0. По умолчанию оно принимает подключения только с этого компьютера."
           }
         }
       }
     },
-    "A daemon is running here. This is how a Lite robot and the simulator are reached.": {
+    "A Reachy Mini Wireless ships with user pollen and password root. Change it on the robot — anyone on this network can reach it.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hier läuft ein Daemon. So werden ein Lite-Roboter und der Simulator erreicht."
+            "value": "Ein Reachy Mini Wireless wird mit dem Benutzer pollen und dem Passwort root ausgeliefert. Ändere das auf dem Roboter — jeder in diesem Netzwerk kann ihn erreichen."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aquí se está ejecutando un daemon. Así se llega a un robot Lite y al simulador."
+            "value": "Un Reachy Mini Wireless viene con el usuario pollen y la contraseña root. Cámbialo en el robot — cualquiera en esta red puede alcanzarlo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un daemon tourne ici. C’est ainsi qu’on atteint un robot Lite et le simulateur."
+            "value": "Un Reachy Mini Wireless est livré avec l'utilisateur pollen et le mot de passe root. Changez-les sur le robot — n'importe qui sur ce réseau peut l'atteindre."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Здесь запущен демон. Именно так подключаются робот Lite и симулятор."
+            "value": "Reachy Mini Wireless поставляется с пользователем pollen и паролем root. Измените их на роботе — до него может добраться любой в этой сети."
           }
         }
       }
@@ -171,35 +171,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приватный Space можно установить только после привязки этого робота к вашей учётной записи Hugging Face."
-          }
-        }
-      }
-    },
-    "A Reachy Mini Wireless ships with user pollen and password root. Change it on the robot — anyone on this network can reach it.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ein Reachy Mini Wireless wird mit dem Benutzer pollen und dem Passwort root ausgeliefert. Ändere das auf dem Roboter — jeder in diesem Netzwerk kann ihn erreichen."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un Reachy Mini Wireless viene con el usuario pollen y la contraseña root. Cámbialo en el robot — cualquiera en esta red puede alcanzarlo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un Reachy Mini Wireless est livré avec l'utilisateur pollen et le mot de passe root. Changez-les sur le robot — n'importe qui sur ce réseau peut l'atteindre."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reachy Mini Wireless поставляется с пользователем pollen и паролем root. Измените их на роботе — до него может добраться любой в этой сети."
           }
         }
       }
@@ -1190,64 +1161,6 @@
         }
       }
     },
-    "Backend": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд"
-          }
-        }
-      }
-    },
-    "Backend stopped": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend gestoppt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend detenido"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend arrêté"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд остановлен"
-          }
-        }
-      }
-    },
     "Before you start": {
       "extractionState": "manual",
       "localizations": {
@@ -1712,6 +1625,35 @@
         }
       }
     },
+    "Call": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anruf"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llamada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звонок"
+          }
+        }
+      }
+    },
     "Calling your Reachies home…": {
       "extractionState": "manual",
       "localizations": {
@@ -2089,6 +2031,35 @@
         }
       }
     },
+    "Clear Hugging Face cache": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face-Cache leeren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar la caché de Hugging Face"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vider le cache Hugging Face"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить кэш Hugging Face"
+          }
+        }
+      }
+    },
     "Clear cache": {
       "extractionState": "manual",
       "localizations": {
@@ -2147,31 +2118,31 @@
         }
       }
     },
-    "Clear Hugging Face cache": {
+    "Clear the log?": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hugging Face-Cache leeren"
+            "value": "Protokoll leeren?"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Borrar la caché de Hugging Face"
+            "value": "¿Vaciar el registro?"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vider le cache Hugging Face"
+            "value": "Effacer le journal ?"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Очистить кэш Hugging Face"
+            "value": "Очистить журнал?"
           }
         }
       }
@@ -3046,6 +3017,35 @@
         }
       }
     },
+    "Crashed — open for details": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgestürzt — öffnen für Details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cerró con un error: ábrelo para ver los detalles"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plantage — ouvrir pour les détails"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аварийно завершилось — откройте подробности"
+          }
+        }
+      }
+    },
     "Create": {
       "extractionState": "manual",
       "localizations": {
@@ -3075,31 +3075,31 @@
         }
       }
     },
-    "Daemon": {
+    "Custom": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Daemon"
+            "value": "Eigene"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Daemon"
+            "value": "Personalizado"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Daemon"
+            "value": "Personnalisé"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Демон"
+            "value": "Вручную"
           }
         }
       }
@@ -3191,35 +3191,6 @@
         }
       }
     },
-    "Daemon state": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daemon-Status"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estado del daemon"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "État du daemon"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Состояние демона"
-          }
-        }
-      }
-    },
     "Dances": {
       "extractionState": "manual",
       "localizations": {
@@ -3278,6 +3249,35 @@
         }
       }
     },
+    "Delete from the robot?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vom Roboter löschen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar del robot?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer du robot ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить с робота?"
+          }
+        }
+      }
+    },
     "Delete the robot's copy": {
       "extractionState": "manual",
       "localizations": {
@@ -3307,31 +3307,31 @@
         }
       }
     },
-    "Delete from the robot?": {
+    "Deletes every Wi-Fi network the robot has saved, except its own hotspot. Every password has to be entered again.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vom Roboter löschen?"
+            "value": "Löscht jedes gespeicherte WLAN-Netzwerk des Roboters außer seinem eigenen Hotspot. Jedes Passwort muss neu eingegeben werden."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Eliminar del robot?"
+            "value": "Borra todas las redes Wi-Fi que el robot tiene guardadas, salvo su propio punto de acceso. Habrá que volver a introducir todas las contraseñas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Supprimer du robot ?"
+            "value": "Supprime tous les réseaux Wi-Fi enregistrés par le robot, sauf son propre point d'accès. Chaque mot de passe devra être ressaisi."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Удалить с робота?"
+            "value": "Удаляет все сохранённые роботом сети Wi-Fi, кроме его собственной точки доступа. Все пароли придётся ввести заново."
           }
         }
       }
@@ -3390,6 +3390,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрушающее восстановление"
+          }
+        }
+      }
+    },
+    "Developer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entwickler"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desarrollador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Développeur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разработчик"
           }
         }
       }
@@ -3477,6 +3506,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отключить"
+          }
+        }
+      }
+    },
+    "Disconnects Wi-Fi and puts the robot's own reachy-mini-ap network back up. It leaves your network until it is set up again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trennt das WLAN und stellt das eigene Netzwerk reachy-mini-ap des Roboters wieder her. Er verlässt dein Netzwerk, bis er erneut eingerichtet wird."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconecta la Wi-Fi y vuelve a levantar la red propia del robot, reachy-mini-ap. Sale de tu red hasta que se configure de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coupe le Wi-Fi et remet en place le réseau reachy-mini-ap du robot. Il quitte votre réseau jusqu'à une nouvelle configuration."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключает Wi-Fi и снова поднимает собственную сеть робота reachy-mini-ap. Он покидает вашу сеть, пока его не настроят заново."
           }
         }
       }
@@ -3651,6 +3709,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Загруженные веса моделей будут удалены. Робот скачает их снова, когда они понадобятся приложению."
+          }
+        }
+      }
+    },
+    "Drag to look around. Hold at the side to turn the body.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehen, um dich umzusehen. Am Rand halten, um den Körper zu drehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastra para mirar alrededor. Mantén en el borde para girar el cuerpo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites glisser pour regarder autour. Maintenez sur le côté pour tourner le corps."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тяните, чтобы осмотреться. Удерживайте у края, чтобы повернуть корпус."
           }
         }
       }
@@ -3858,6 +3945,35 @@
         }
       }
     },
+    "Erases the robot's Python environments and restores the factory copy. Every installed app and everything it stored is gone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löscht die Python-Umgebungen des Roboters und stellt die Werkskopie wieder her. Jede installierte App und alles, was sie gespeichert hat, ist weg."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borra los entornos de Python del robot y restaura la copia de fábrica. Todas las apps instaladas y todo lo que guardaron desaparecen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efface les environnements Python du robot et restaure la copie d'usine. Toutes les apps installées et tout ce qu'elles ont stocké disparaissent."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стирает Python-окружения робота и восстанавливает заводскую копию. Все установленные приложения и всё, что они сохранили, исчезают."
+          }
+        }
+      }
+    },
     "Error": {
       "extractionState": "manual",
       "localizations": {
@@ -4057,6 +4173,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось"
+          }
+        }
+      }
+    },
+    "File": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datei"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fichier"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл"
           }
         }
       }
@@ -4351,6 +4496,35 @@
         }
       }
     },
+    "Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordner"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка"
+          }
+        }
+      }
+    },
     "Follow faces": {
       "extractionState": "manual",
       "localizations": {
@@ -4380,35 +4554,6 @@
         }
       }
     },
-    "Following someone": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folgt jemandem"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Siguiendo a alguien"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suit quelqu'un"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Следит за человеком"
-          }
-        }
-      }
-    },
     "Follow strength": {
       "extractionState": "manual",
       "localizations": {
@@ -4434,6 +4579,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сила слежения"
+          }
+        }
+      }
+    },
+    "Following someone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgt jemandem"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiendo a alguien"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suit quelqu'un"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следит за человеком"
           }
         }
       }
@@ -4496,6 +4670,35 @@
         }
       }
     },
+    "Forget every saved Wi-Fi network": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle gespeicherten WLAN-Netzwerke vergessen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvidar todas las redes Wi-Fi guardadas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oublier tous les réseaux Wi-Fi enregistrés"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забыть все сохранённые сети Wi-Fi"
+          }
+        }
+      }
+    },
     "Forget every saved network?": {
       "extractionState": "manual",
       "localizations": {
@@ -4521,6 +4724,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Забыть все сохранённые сети?"
+          }
+        }
+      }
+    },
+    "Forget this network?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Netzwerk vergessen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Olvidar esta red?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oublier ce réseau ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забыть эту сеть?"
+          }
+        }
+      }
+    },
+    "Forget this robot?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Roboter vergessen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Olvidar este robot?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oublier ce robot ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забыть этого робота?"
           }
         }
       }
@@ -4728,31 +4989,31 @@
         }
       }
     },
-    "HF": {
+    "Gravity compensation": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "HF"
+            "value": "Schwerkraftausgleich"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "HF"
+            "value": "Compensación de gravedad"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "HF"
+            "value": "Compensation de gravité"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "HF"
+            "value": "Компенсация гравитации"
           }
         }
       }
@@ -4811,6 +5072,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Голова"
+          }
+        }
+      }
+    },
+    "Head joystick": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopf-Joystick"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joystick de la cabeza"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joystick de la tête"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Джойстик головы"
+          }
+        }
+      }
+    },
+    "Head pitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopfneigung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinación de la cabeza"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tangage de la tête"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наклон головы"
+          }
+        }
+      }
+    },
+    "Head yaw": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopfdrehung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giro de la cabeza"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lacet de la tête"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поворот головы"
           }
         }
       }
@@ -4902,6 +5250,93 @@
         }
       }
     },
+    "Hearing": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehör"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audition"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слух"
+          }
+        }
+      }
+    },
+    "Hears a quiet voice, and a voice from across the room.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hört eine leise Stimme und eine Stimme vom anderen Ende des Raums."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oye una voz baja y una voz desde el otro lado de la sala."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entend une voix basse et une voix à l'autre bout de la pièce."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слышит тихий голос и голос с другого конца комнаты."
+          }
+        }
+      }
+    },
+    "Height": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höhe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altura"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Высота"
+          }
+        }
+      }
+    },
     "Hide at the leading edge": {
       "extractionState": "manual",
       "localizations": {
@@ -4960,31 +5395,31 @@
         }
       }
     },
-    "Head — drag: yaw / pitch, hold sideways: turn the body": {
+    "Holds back background noise, at the cost of some range.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kopf — ziehen: Gieren / Nicken, seitlich halten: Körper drehen"
+            "value": "Hält Hintergrundgeräusche zurück, auf Kosten der Reichweite."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cabeza — arrastrar: guiñada / cabeceo, mantener de lado: girar el cuerpo"
+            "value": "Contiene el ruido de fondo, a costa de algo de alcance."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tête — glisser : lacet / tangage, maintenir sur le côté : tourner le corps"
+            "value": "Retient le bruit de fond, au prix d'une portée réduite."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Голова — потяните: рыскание / наклон, удержание в сторону: поворот корпуса"
+            "value": "Подавляет фоновый шум ценой дальности."
           }
         }
       }
@@ -5043,6 +5478,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хост (IP или name.local)"
+          }
+        }
+      }
+    },
+    "How loud you are when the robot plays your voice. It takes effect at once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie laut Sie sind, wenn der Roboter Ihre Stimme wiedergibt. Es wirkt sofort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué volumen tienes cuando el robot reproduce tu voz. Se aplica de inmediato."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre volume lorsque le robot diffuse votre voix. L'effet est immédiat."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Насколько громко вас слышно, когда робот воспроизводит ваш голос. Действует сразу."
           }
         }
       }
@@ -5304,6 +5768,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Если этот телефон подключён к сети робота reachy-mini-ap, вернитесь сейчас к своей домашней сети Wi-Fi."
+          }
+        }
+      }
+    },
+    "In progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En curso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполняется"
           }
         }
       }
@@ -5772,847 +6265,6 @@
         }
       }
     },
-    "Last checked": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zuletzt geprüft"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Última comprobación"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dernière vérification"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Проверено"
-          }
-        }
-      }
-    },
-    "Lean": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Neigung"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inclinación"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inclinaison"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Наклон"
-          }
-        }
-      }
-    },
-    "Lite": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lite"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lite"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lite"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lite"
-          }
-        }
-      }
-    },
-    "Lite robot or simulator": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lite-Roboter oder Simulator"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Robot Lite o simulador"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Robot Lite ou simulateur"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот Lite или симулятор"
-          }
-        }
-      }
-    },
-    "Local": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lokal"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локально"
-          }
-        }
-      }
-    },
-    "Looking for a daemon on this computer…": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suche nach einem Daemon auf diesem Computer…"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buscando un daemon en este ordenador…"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recherche d’un daemon sur cet ordinateur…"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ищем демона на этом компьютере…"
-          }
-        }
-      }
-    },
-    "Model": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modell"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modelo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modèle"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Модель"
-          }
-        }
-      }
-    },
-    "Motion": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bewegung"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Movimiento"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mouvement"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Движение"
-          }
-        }
-      }
-    },
-    "Nothing is serving on this computer. A Lite robot is driven by the daemon on the computer it is plugged into, and the simulator is that same daemon with no robot — start one and it appears here.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auf diesem Computer antwortet nichts. Ein Lite-Roboter wird vom Daemon auf dem Computer gesteuert, an dem er angeschlossen ist, und der Simulator ist derselbe Daemon ohne Roboter — starte einen, und er erscheint hier."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nada responde en este ordenador. Un robot Lite lo gobierna el daemon del ordenador al que está conectado, y el simulador es ese mismo daemon sin robot: inicia uno y aparecerá aquí."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rien ne répond sur cet ordinateur. Un robot Lite est piloté par le daemon de l’ordinateur auquel il est branché, et le simulateur est ce même daemon sans robot — lancez-en un et il apparaîtra ici."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "На этом компьютере ничего не отвечает. Роботом Lite управляет демон на компьютере, к которому он подключён, а симулятор — тот же демон без робота: запустите его, и он появится здесь."
-          }
-        }
-      }
-    },
-    "On this computer": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auf diesem Computer"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En este ordenador"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sur cet ordinateur"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "На этом компьютере"
-          }
-        }
-      }
-    },
-    "Sensor": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sensor"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sensor"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capteur"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Датчик"
-          }
-        }
-      }
-    },
-    "Read when this screen opens, and again when you pull it down.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird beim Öffnen dieser Ansicht gelesen und erneut, wenn Sie sie nach unten ziehen."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se lee al abrir esta pantalla y de nuevo cuando tira de ella hacia abajo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lu à l'ouverture de cet écran, puis de nouveau lorsque vous le tirez vers le bas."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Читается при открытии экрана и ещё раз, когда вы тянете его вниз."
-          }
-        }
-      }
-    },
-    "Sign in to browse apps": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anmelden, um Apps zu durchsuchen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inicia sesión para explorar apps"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connectez-vous pour parcourir les apps"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Войдите, чтобы смотреть приложения"
-          }
-        }
-      }
-    },
-    "Simulation": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulation"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulación"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulation"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Симуляция"
-          }
-        }
-      }
-    },
-    "Simulation (no physics)": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulation (ohne Physik)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulación (sin física)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulation (sans physique)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Симуляция (без физики)"
-          }
-        }
-      }
-    },
-    "Simulator": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulator"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulador"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulateur"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Симулятор"
-          }
-        }
-      }
-    },
-    "Start the simulator": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Simulator starten"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar el simulador"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démarrer le simulateur"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустить симулятор"
-          }
-        }
-      }
-    },
-    "Take the robot off the relay?": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Roboter vom Relay trennen?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Quitar el robot del relé?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retirer le robot du relais ?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отключить робота от ретранслятора?"
-          }
-        }
-      }
-    },
-    "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Daemon dieses Roboters läuft auf dem Computer, an dem er angeschlossen ist — WLAN, Software-Updates und Wartung gehören daher zu diesem Computer und nicht hierher."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El daemon de este robot se ejecuta en el ordenador al que está conectado, así que su Wi-Fi, sus actualizaciones de software y su mantenimiento corresponden a ese ordenador y no a esta pantalla."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le daemon de ce robot tourne sur l’ordinateur auquel il est branché : son Wi-Fi, ses mises à jour logicielles et sa maintenance relèvent donc de cet ordinateur, pas d’ici."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демон этого робота работает на компьютере, к которому робот подключён, поэтому его Wi-Fi, обновления и обслуживание относятся к тому компьютеру, а не к этому экрану."
-          }
-        }
-      }
-    },
-    "The password is encrypted for this robot before it is sent. Sending it takes this link down: the robot switches networks and the app finds it again afterwards.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Passwort wird für diesen Roboter verschlüsselt, bevor es gesendet wird. Das Senden trennt diese Verbindung: Der Roboter wechselt das Netzwerk, und die App findet ihn danach wieder."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La contraseña se cifra para este robot antes de enviarse. Al enviarla se pierde esta conexión: el robot cambia de red y la aplicación vuelve a encontrarlo después."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le mot de passe est chiffré pour ce robot avant l'envoi. L'envoi coupe cette liaison : le robot change de réseau et l'application le retrouve ensuite."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пароль шифруется для этого робота перед отправкой. Отправка разрывает эту связь: робот переходит в другую сеть, и приложение находит его снова."
-          }
-        }
-      }
-    },
-    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter verwirft sein Token und verlässt das Relay. Von hier aus ist er erst wieder erreichbar, wenn ihn jemand vor Ort einrichtet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot descarta su token y sale del relé. Desde aquí no se le puede volver a alcanzar hasta que alguien lo configure en persona."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot supprime son jeton et quitte le relais. Plus rien ici ne peut l'atteindre tant que quelqu'un ne le configure pas sur place."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот сбрасывает токен и уходит с ретранслятора. Отсюда до него будет не достучаться, пока его не настроят на месте."
-          }
-        }
-      }
-    },
-    "The robot joins this network and then talks to this app over it.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter tritt diesem Netzwerk bei und spricht danach darüber mit dieser App."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot se une a esta red y después habla con esta aplicación a través de ella."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot rejoint ce réseau et communique ensuite avec cette application par ce biais."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот подключается к этой сети и дальше общается с приложением через неё."
-          }
-        }
-      }
-    },
-    "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter durchsucht Hugging Face mit Ihrem Konto, und seine Sitzung ist abgelaufen. Installierte Apps funktionieren weiter."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot busca en Hugging Face con tu cuenta, y su sesión ha terminado. Las apps instaladas siguen funcionando."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot cherche sur Hugging Face avec votre compte, et sa session a expiré. Les apps installées continuent de fonctionner."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот ищет на Hugging Face под вашей учётной записью, и его сессия завершилась. Установленные приложения продолжают работать."
-          }
-        }
-      }
-    },
-    "The robot took the network and is moving to it now. A password it cannot use puts it back on the one it was on, so nothing here is lost either way.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter hat das Netzwerk angenommen und wechselt jetzt dorthin. Mit einem Passwort, das nicht funktioniert, kehrt er in das vorherige Netzwerk zurück — verloren geht dabei nichts."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot aceptó la red y está cambiando a ella. Si la contraseña no le sirve, vuelve a la red anterior, así que no se pierde nada."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot a accepté le réseau et y bascule maintenant. Si le mot de passe ne fonctionne pas, il revient au réseau précédent : rien n'est perdu."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот принял сеть и переходит в неё. Если пароль не подойдёт, он вернётся в прежнюю сеть — так что ничего не теряется."
-          }
-        }
-      }
-    },
-    "The simulator's robot description could not be read.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Roboterbeschreibung des Simulators konnte nicht gelesen werden."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo leer la descripción del robot del simulador."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La description du robot du simulateur n'a pas pu être lue."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не удалось прочитать описание робота для симулятора."
-          }
-        }
-      }
-    },
-    "There is no camera, no app store and no Wi-Fi — those belong to a machine that is not there.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Es gibt keine Kamera, keinen App-Store und kein WLAN — die gehören zu einer Maschine, die nicht da ist."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay cámara, ni tienda de aplicaciones, ni Wi-Fi: pertenecen a una máquina que no está ahí."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il n'y a ni caméra, ni magasin d'applications, ni Wi-Fi — tout cela appartient à une machine qui n'est pas là."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет ни камеры, ни магазина приложений, ни Wi-Fi — всё это принадлежит машине, которой нет."
-          }
-        }
-      }
-    },
-    "Unlinking takes the robot off the relay: it goes offline and comes back only once somebody sets it up again in person.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Trennen nimmt den Roboter vom Relay: Er geht offline und kommt erst zurück, wenn ihn jemand vor Ort neu einrichtet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desvincularlo lo quita del relé: se desconecta y no vuelve hasta que alguien lo configure de nuevo en persona."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La dissociation retire le robot du relais : il passe hors ligne et ne revient que lorsque quelqu'un le reconfigure sur place."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отвязка убирает робота с ретранслятора: он уходит в офлайн и вернётся, только когда его настроят заново на месте."
-          }
-        }
-      }
-    },
-    "Wireless": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wireless"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wireless"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wireless"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wireless"
-          }
-        }
-      }
-    },
-    "its own reachy-mini-ap network and configure it over Wi-Fi instead.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "seinem eigenen reachy-mini-ap-Netzwerk und konfiguriere ihn stattdessen über Wi-Fi."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "su propia red reachy-mini-ap y configúralo por Wi-Fi."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "son propre réseau reachy-mini-ap et configurez-le via Wi-Fi."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "его собственной сети reachy-mini-ap и настройте его по Wi-Fi."
-          }
-        }
-      }
-    },
     "Joining the network": {
       "extractionState": "manual",
       "localizations": {
@@ -6729,31 +6381,31 @@
         }
       }
     },
-    "Known addresses are retried every 10 s. A robot whose daemon isn't running answers nothing on the network — power it on, or enter its address below.": {
+    "Last checked": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bekannte Adressen werden alle 10 s erneut versucht. Ein Roboter, dessen Daemon nicht läuft, antwortet im Netzwerk nicht — schalte ihn ein oder gib seine Adresse unten ein."
+            "value": "Zuletzt geprüft"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las direcciones conocidas se reintentan cada 10 s. Un robot cuyo daemon no está en marcha no responde nada en la red — enciéndelo o introduce su dirección abajo."
+            "value": "Última comprobación"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les adresses connues sont réessayées toutes les 10 s. Un robot dont le daemon ne tourne pas ne répond rien sur le réseau — allumez-le, ou saisissez son adresse ci-dessous."
+            "value": "Dernière vérification"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Известные адреса опрашиваются каждые 10 с. Робот, на котором не запущен демон, ничего не отвечает в сети — включите его или введите адрес ниже."
+            "value": "Проверено"
           }
         }
       }
@@ -6812,6 +6464,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Воспроизведён последним"
+          }
+        }
+      }
+    },
+    "Lean": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neigung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinaison"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наклон"
+          }
+        }
+      }
+    },
+    "Left": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gauche"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левая"
+          }
+        }
+      }
+    },
+    "Lets you talk to people near the robot through its speaker during a call.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lässt dich während eines Anrufs über den Lautsprecher des Roboters mit Menschen in seiner Nähe sprechen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te permite hablar con las personas cerca del robot a través de su altavoz durante una llamada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous permet de parler aux personnes près du robot par son haut-parleur pendant un appel."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позволяет говорить с людьми рядом с роботом через его динамик во время звонка."
           }
         }
       }
@@ -7019,6 +6758,64 @@
         }
       }
     },
+    "Lite": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite"
+          }
+        }
+      }
+    },
+    "Lite robot or simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lite-Roboter oder Simulator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot Lite o simulador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot Lite ou simulateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот Lite или симулятор"
+          }
+        }
+      }
+    },
     "Live": {
       "extractionState": "manual",
       "localizations": {
@@ -7193,35 +6990,6 @@
         }
       }
     },
-    "Local network": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lokales Netzwerk"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Red local"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réseau local"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локальная сеть"
-          }
-        }
-      }
-    },
     "Local Network permission denied": {
       "extractionState": "manual",
       "localizations": {
@@ -7247,6 +7015,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доступ к локальной сети запрещён"
+          }
+        }
+      }
+    },
+    "Local network": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokales Netzwerk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red local"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réseau local"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Локальная сеть"
           }
         }
       }
@@ -7338,6 +7135,35 @@
         }
       }
     },
+    "Looking for robot software on this computer…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche nach Roboter-Software auf diesem Computer…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando el software del robot en este ordenador…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche du logiciel du robot sur cet ordinateur…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ищем ПО робота на этом компьютере…"
+          }
+        }
+      }
+    },
     "Lost the connection to the robot.": {
       "extractionState": "manual",
       "localizations": {
@@ -7363,6 +7189,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключение к роботу потеряно."
+          }
+        }
+      }
+    },
+    "Lost the robot while sending": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter beim Senden verloren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se perdió el robot al enviar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Robot perdu pendant l'envoi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот потерян во время отправки"
           }
         }
       }
@@ -7425,31 +7280,31 @@
         }
       }
     },
-    "Measured by the daemon once a second. The rate is what the robot's motors are actually driven at.": {
+    "Measured by the robot's software once a second. The rate is what the motors are actually driven at.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wird vom Daemon einmal pro Sekunde gemessen. Die Rate ist die, mit der die Motoren des Roboters tatsächlich angesteuert werden."
+            "value": "Von der Software des Roboters einmal pro Sekunde gemessen. Die Rate ist die, mit der die Motoren tatsächlich angesteuert werden."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lo mide el daemon una vez por segundo. La tasa es la frecuencia real con la que se accionan los motores del robot."
+            "value": "Medido por el software del robot una vez por segundo. La frecuencia es a la que realmente se mueven los motores."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mesuré par le daemon une fois par seconde. Le taux correspond à la fréquence réelle de commande des moteurs du robot."
+            "value": "Mesuré par le logiciel du robot une fois par seconde. La cadence est celle à laquelle les moteurs sont réellement pilotés."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Измеряется демоном раз в секунду. Частота — это реальная частота управления моторами робота."
+            "value": "Измеряется ПО робота раз в секунду. Это частота, с которой на самом деле управляются моторы."
           }
         }
       }
@@ -7628,6 +7483,35 @@
         }
       }
     },
+    "Model": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modell"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modèle"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Модель"
+          }
+        }
+      }
+    },
     "Model weights the robot has downloaded. An app fetches what it needs again.": {
       "extractionState": "manual",
       "localizations": {
@@ -7686,6 +7570,35 @@
         }
       }
     },
+    "More sensitive": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfindlicher"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más sensible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus sensible"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повышенная чувствительность"
+          }
+        }
+      }
+    },
     "Most liked": {
       "extractionState": "manual",
       "localizations": {
@@ -7715,31 +7628,31 @@
         }
       }
     },
-    "Motion, teleop and the state stream stay unavailable until it starts.": {
+    "Motion": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bewegung, Teleoperation und der Zustandsstream bleiben nicht verfügbar, bis er startet."
+            "value": "Bewegung"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El movimiento, la teleoperación y el flujo de estado siguen sin estar disponibles hasta que arranque."
+            "value": "Movimiento"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le mouvement, la téléopération et le flux d'état restent indisponibles jusqu'à son démarrage."
+            "value": "Mouvement"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Движение, телеуправление и поток состояния недоступны, пока он не запустится."
+            "value": "Движение"
           }
         }
       }
@@ -7802,6 +7715,64 @@
         }
       }
     },
+    "Motors and camera are off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera sind aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los motores y la cámara están apagados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les moteurs et la caméra sont éteints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера выключены"
+          }
+        }
+      }
+    },
+    "Motors and camera off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motores y cámara apagados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moteurs et caméra éteints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера выключены"
+          }
+        }
+      }
+    },
     "Move while speaking": {
       "extractionState": "manual",
       "localizations": {
@@ -7827,35 +7798,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Двигаться при разговоре"
-          }
-        }
-      }
-    },
-    "move, dance, animation, Reachy Mini": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bewegung, Tanz, Animation, Reachy Mini"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "movimiento, baile, animación, Reachy Mini"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "mouvement, danse, animation, Reachy Mini"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "движение, танец, анимация, Reachy Mini"
           }
         }
       }
@@ -8034,6 +7976,64 @@
         }
       }
     },
+    "Nearby": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In der Nähe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À proximité"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядом"
+          }
+        }
+      }
+    },
+    "Needs attention": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Braucht Aufmerksamkeit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere atención"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nécessite une attention"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Требует внимания"
+          }
+        }
+      }
+    },
     "Neither can be undone from here.": {
       "extractionState": "manual",
       "localizations": {
@@ -8208,93 +8208,6 @@
         }
       }
     },
-    "No app in this section is filed under that heading.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine App in diesem Bereich ist unter dieser Rubrik eingeordnet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ninguna app de esta sección está clasificada bajo ese encabezado."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune app de cette section n'est classée sous cette rubrique."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В этом разделе нет приложений с такой категорией."
-          }
-        }
-      }
-    },
-    "No controls": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Steuerung"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin controles"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun contrôle"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет элементов управления"
-          }
-        }
-      }
-    },
-    "No move was playing.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Es lief keine Bewegung."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se estaba reproduciendo ningún movimiento."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun mouvement n'était en cours."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Никакое движение не воспроизводилось."
-          }
-        }
-      }
-    },
     "No Reachy online": {
       "extractionState": "manual",
       "localizations": {
@@ -8320,6 +8233,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет Reachy в сети"
+          }
+        }
+      }
+    },
+    "No app in this section is filed under that heading.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine App in diesem Bereich ist unter dieser Rubrik eingeordnet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna app de esta sección está clasificada bajo ese encabezado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune app de cette section n'est classée sous cette rubrique."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом разделе нет приложений с такой категорией."
           }
         }
       }
@@ -8411,31 +8353,31 @@
         }
       }
     },
-    "No one in view": {
+    "No controls": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Niemand im Bild"
+            "value": "Keine Steuerung"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay nadie a la vista"
+            "value": "Sin controles"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Personne en vue"
+            "value": "Aucun contrôle"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В кадре никого"
+            "value": "Нет элементов управления"
           }
         }
       }
@@ -8469,6 +8411,35 @@
         }
       }
     },
+    "No move was playing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es lief keine Bewegung."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se estaba reproduciendo ningún movimiento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mouvement n'était en cours."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Никакое движение не воспроизводилось."
+          }
+        }
+      }
+    },
     "No moves": {
       "extractionState": "manual",
       "localizations": {
@@ -8494,6 +8465,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет движений"
+          }
+        }
+      }
+    },
+    "No one in view": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niemand im Bild"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay nadie a la vista"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personne en vue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В кадре никого"
           }
         }
       }
@@ -8639,6 +8639,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Нет звуков"
+          }
+        }
+      }
+    },
+    "Noisy room": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lauter Raum"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sala ruidosa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pièce bruyante"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шумное помещение"
           }
         }
       }
@@ -9049,6 +9078,35 @@
         }
       }
     },
+    "Nothing is serving on this computer. A Lite robot is driven by the software on the computer it is plugged into, and the simulator is that same software with no robot — start it and it appears here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Computer läuft nichts. Ein Lite-Roboter wird von der Software auf dem Computer gesteuert, an dem er hängt, und der Simulator ist dieselbe Software ohne Roboter — starte sie, und sie erscheint hier."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada se está ejecutando en este ordenador. Un robot Lite lo controla el software del ordenador al que está conectado, y el simulador es ese mismo software sin robot: arráncalo y aparecerá aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ne tourne sur cet ordinateur. Un robot Lite est piloté par le logiciel de l'ordinateur auquel il est branché, et le simulateur est ce même logiciel sans robot — lancez-le et il apparaîtra ici."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом компьютере ничего не запущено. Роботом Lite управляет ПО на компьютере, к которому он подключён, а симулятор — то же ПО без робота: запустите его, и он появится здесь."
+          }
+        }
+      }
+    },
     "Nothing matches this filter": {
       "extractionState": "manual",
       "localizations": {
@@ -9165,6 +9223,35 @@
         }
       }
     },
+    "On": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encendidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activés"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включены"
+          }
+        }
+      }
+    },
     "On a network": {
       "extractionState": "manual",
       "localizations": {
@@ -9248,6 +9335,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Только на роботе — здесь не сохранён"
+          }
+        }
+      }
+    },
+    "On this computer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Computer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este ordenador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur cet ordinateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом компьютере"
           }
         }
       }
@@ -9339,35 +9455,6 @@
         }
       }
     },
-    "Open full screen": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Im Vollbild öffnen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abrir a pantalla completa"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir en plein écran"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Открыть на весь экран"
-          }
-        }
-      }
-    },
     "Open Reachy Mini": {
       "extractionState": "manual",
       "localizations": {
@@ -9422,6 +9509,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Открыть Настройки"
+          }
+        }
+      }
+    },
+    "Open full screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Vollbild öffnen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir a pantalla completa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir en plein écran"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть на весь экран"
           }
         }
       }
@@ -9629,6 +9745,35 @@
         }
       }
     },
+    "Pending": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehend"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendiente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидание"
+          }
+        }
+      }
+    },
     "Pin": {
       "extractionState": "manual",
       "localizations": {
@@ -9803,6 +9948,35 @@
         }
       }
     },
+    "Playing": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird abgespielt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduciendo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En lecture"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизводится"
+          }
+        }
+      }
+    },
     "Power off": {
       "extractionState": "manual",
       "localizations": {
@@ -9828,6 +10002,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выключить"
+          }
+        }
+      }
+    },
+    "Power off the robot?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter ausschalten?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Apagar el robot?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éteindre le robot ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключить робота?"
           }
         }
       }
@@ -10412,6 +10615,35 @@
         }
       }
     },
+    "Read when this screen opens, and again when you pull it down.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird beim Öffnen dieser Ansicht gelesen und erneut, wenn Sie sie nach unten ziehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se lee al abrir esta pantalla y de nuevo cuando tira de ella hacia abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lu à l'ouverture de cet écran, puis de nouveau lorsque vous le tirez vers le bas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читается при открытии экрана и ещё раз, когда вы тянете его вниз."
+          }
+        }
+      }
+    },
     "Reading the folder…": {
       "extractionState": "manual",
       "localizations": {
@@ -10698,6 +10930,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновить"
+          }
+        }
+      }
+    },
+    "Remote": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À distance"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалённо"
           }
         }
       }
@@ -10992,6 +11253,35 @@
         }
       }
     },
+    "Restart the robot's software": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software des Roboters neu starten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reiniciar el software del robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redémarrer le logiciel du robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустить ПО робота"
+          }
+        }
+      }
+    },
     "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth, then RESTART_DAEMON.": {
       "extractionState": "manual",
       "localizations": {
@@ -11017,6 +11307,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перезапуск программного обеспечения робота освободит её: Настройки › Дополнительно › Восстановление по Bluetooth, затем RESTART_DAEMON."
+          }
+        }
+      }
+    },
+    "Restarts the robot's software. It drops off the network for a few seconds and comes back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startet die Software des Roboters neu. Er verschwindet für ein paar Sekunden aus dem Netzwerk und kommt zurück."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinicia el software del robot. Desaparece de la red unos segundos y vuelve."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redémarre le logiciel du robot. Il quitte le réseau quelques secondes puis revient."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапускает ПО робота. Он на несколько секунд пропадает из сети и возвращается."
           }
         }
       }
@@ -11108,6 +11427,35 @@
         }
       }
     },
+    "Right": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Droite"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правая"
+          }
+        }
+      }
+    },
     "Robot": {
       "extractionState": "manual",
       "localizations": {
@@ -11195,35 +11543,6 @@
         }
       }
     },
-    "robot app, app, Reachy Mini": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Roboter-App, App, Reachy Mini"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "app del robot, app, Reachy Mini"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "app du robot, app, Reachy Mini"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "приложение робота, приложение, Reachy Mini"
-          }
-        }
-      }
-    },
     "Robot apps": {
       "extractionState": "manual",
       "localizations": {
@@ -11249,35 +11568,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложения робота"
-          }
-        }
-      }
-    },
-    "Robot backend is stopped": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Backend des Roboters ist gestoppt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El backend del robot está detenido"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le backend du robot est arrêté"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд робота остановлен"
           }
         }
       }
@@ -11394,6 +11684,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "На роботе работает"
+          }
+        }
+      }
+    },
+    "Robot software is running here. This is how a Lite robot and the simulator are reached.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier läuft Roboter-Software. So werden ein Lite-Roboter und der Simulator erreicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí se ejecuta el software del robot. Así se llega a un robot Lite y al simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel du robot tourne ici. C'est ainsi qu'on atteint un robot Lite et le simulateur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь запущено ПО робота. Так подключаются к роботу Lite и симулятору."
           }
         }
       }
@@ -11568,6 +11887,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Роботы, привязанные к вашей учётной записи Hugging Face, где бы они ни были."
+          }
+        }
+      }
+    },
+    "Roll": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanceo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roulis"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крен"
+          }
+        }
+      }
+    },
+    "Roll and height": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollen und Höhe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanceo y altura"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roulis et hauteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крен и высота"
           }
         }
       }
@@ -11887,6 +12264,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить роботу"
+          }
+        }
+      }
+    },
+    "Sending…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gesendet…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправка…"
+          }
+        }
+      }
+    },
+    "Sensor": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Датчик"
           }
         }
       }
@@ -12471,6 +12906,35 @@
         }
       }
     },
+    "Sign in to browse apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmelden, um Apps zu durchsuchen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión para explorar apps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous pour parcourir les apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите, чтобы смотреть приложения"
+          }
+        }
+      }
+    },
     "Sign in to the robot": {
       "extractionState": "manual",
       "localizations": {
@@ -12583,6 +13047,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выйти"
+          }
+        }
+      }
+    },
+    "Sign out of Hugging Face?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Hugging Face abmelden?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cerrar sesión en Hugging Face?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se déconnecter de Hugging Face ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выйти из Hugging Face?"
           }
         }
       }
@@ -12703,6 +13196,93 @@
         }
       }
     },
+    "Simulation": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Симуляция"
+          }
+        }
+      }
+    },
+    "Simulation (no physics)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation (ohne Physik)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulación (sin física)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulation (sans physique)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Симуляция (без физики)"
+          }
+        }
+      }
+    },
+    "Simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Симулятор"
+          }
+        }
+      }
+    },
     "Sleep": {
       "extractionState": "manual",
       "localizations": {
@@ -12728,6 +13308,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Усыпить"
+          }
+        }
+      }
+    },
+    "Software": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logiciel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО"
+          }
+        }
+      }
+    },
+    "Software reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software zurücksetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer el software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialisation logicielle"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сброс ПО"
+          }
+        }
+      }
+    },
+    "Software version": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Softwareversion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión del software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version du logiciel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Версия ПО"
           }
         }
       }
@@ -12848,35 +13515,6 @@
         }
       }
     },
-    "sound, audio, soundboard, Reachy Mini": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sound, Audio, Klang, Soundboard, Reachy Mini"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "sonido, audio, panel de sonidos, Reachy Mini"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "son, audio, sons, Reachy Mini"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "звук, аудио, звуки, саундборд, Reachy Mini"
-          }
-        }
-      }
-    },
     "Sounds": {
       "extractionState": "manual",
       "localizations": {
@@ -12935,31 +13573,60 @@
         }
       }
     },
-    "Speaks to people near the robot through its speaker.": {
+    "Special file": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spricht über den Lautsprecher mit Menschen in der Nähe des Roboters."
+            "value": "Spezialdatei"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Habla con las personas cerca del robot a través de su altavoz."
+            "value": "Archivo especial"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parle aux personnes près du robot via son haut-parleur."
+            "value": "Fichier spécial"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Говорит с людьми рядом с роботом через его динамик."
+            "value": "Специальный файл"
+          }
+        }
+      }
+    },
+    "Standard": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estándar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стандартный"
           }
         }
       }
@@ -13109,35 +13776,6 @@
         }
       }
     },
-    "Start robot backend": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend des Roboters starten"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar el backend del robot"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démarrer le backend du robot"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустить бэкенд робота"
-          }
-        }
-      }
-    },
     "Start stream": {
       "extractionState": "manual",
       "localizations": {
@@ -13167,60 +13805,118 @@
         }
       }
     },
-    "Start the robot backend to see the model and the camera.": {
+    "Start the motors and camera": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starte das Backend des Roboters, um Modell und Kamera zu sehen."
+            "value": "Motoren und Kamera starten"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia el backend del robot para ver el modelo y la cámara."
+            "value": "Encender los motores y la cámara"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrez le backend du robot pour voir le modèle et la caméra."
+            "value": "Démarrer les moteurs et la caméra"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запустите бэкенд робота, чтобы увидеть модель и камеру."
+            "value": "Запустить моторы и камеру"
           }
         }
       }
     },
-    "Starting the robot backend… this can take a minute": {
+    "Start the motors and camera to see the live view.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Backend des Roboters wird gestartet… das kann eine Minute dauern"
+            "value": "Starte Motoren und Kamera, um die Live-Ansicht zu sehen."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciando el backend del robot… esto puede tardar un minuto"
+            "value": "Enciende los motores y la cámara para ver la vista en directo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrage du backend du robot… cela peut prendre une minute"
+            "value": "Démarrez les moteurs et la caméra pour voir la vue en direct."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запускаем бэкенд робота… это может занять минуту"
+            "value": "Запустите моторы и камеру, чтобы увидеть живой вид."
+          }
+        }
+      }
+    },
+    "Start the simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulator starten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar el simulador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le simulateur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить симулятор"
+          }
+        }
+      }
+    },
+    "Starting the motors and camera… this can take a minute": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera starten… das kann eine Minute dauern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encendiendo los motores y la cámara… puede tardar un minuto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrage des moteurs et de la caméra… cela peut prendre une minute"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускаем моторы и камеру… это может занять минуту"
           }
         }
       }
@@ -13573,35 +14269,6 @@
         }
       }
     },
-    "Stop the robot backend?": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend des Roboters stoppen?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Detener el backend del robot?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrêter le backend du robot ?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Остановить бэкенд робота?"
-          }
-        }
-      }
-    },
     "Stop the sound": {
       "extractionState": "manual",
       "localizations": {
@@ -13892,6 +14559,64 @@
         }
       }
     },
+    "Switch to the robot's own hotspot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum eigenen Hotspot des Roboters wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar al punto de acceso propio del robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer au point d'accès du robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейти на собственную точку доступа робота"
+          }
+        }
+      }
+    },
+    "Symbolic link": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbolischer Link"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enlace simbólico"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lien symbolique"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Символическая ссылка"
+          }
+        }
+      }
+    },
     "System": {
       "extractionState": "manual",
       "localizations": {
@@ -13946,6 +14671,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновление системы"
+          }
+        }
+      }
+    },
+    "Take the robot off the relay?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter vom Relay trennen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar el robot del relé?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer le robot du relais ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить робота от ретранслятора?"
           }
         }
       }
@@ -14153,6 +14907,35 @@
         }
       }
     },
+    "The Bluetooth service is a separate unit and stays up throughout, so this only says the robot is still there. Progress shows up in the journal when the daemon comes back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Bluetooth-Dienst ist eine eigene Unit und bleibt durchgehend aktiv, das sagt also nur, dass der Roboter noch da ist. Der Fortschritt erscheint im Journal, sobald der Daemon zurück ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servicio de Bluetooth es una unidad aparte y permanece activo todo el tiempo, así que esto solo indica que el robot sigue ahí. El progreso aparece en el journal cuando el daemon vuelve."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le service Bluetooth est une unité distincte et reste actif tout du long : cela indique seulement que le robot est encore là. La progression apparaît dans le journal au retour du daemon."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Служба Bluetooth — отдельный юнит и работает всё это время, поэтому это лишь говорит, что робот ещё на месте. Прогресс появится в журнале, когда демон вернётся."
+          }
+        }
+      }
+    },
     "The app and its Python environment are deleted from the robot.": {
       "extractionState": "manual",
       "localizations": {
@@ -14178,6 +14961,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложение и его окружение Python будут удалены с робота."
+          }
+        }
+      }
+    },
+    "The app icon didn't change.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das App-Symbol hat sich nicht geändert."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El icono de la app no cambió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'icône de l'app n'a pas changé."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значок приложения не изменился."
           }
         }
       }
@@ -14269,60 +15081,60 @@
         }
       }
     },
-    "The app icon didn't change.": {
+    "The connection is plain HTTP without a password, so use a trusted private network.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das App-Symbol hat sich nicht geändert."
+            "value": "Die Verbindung ist reines HTTP ohne Passwort, also nur in einem vertrauenswürdigen privaten Netzwerk."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El icono de la app no cambió."
+            "value": "La conexión es HTTP sin cifrar y sin contraseña, así que usa una red privada de confianza."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'icône de l'app n'a pas changé."
+            "value": "La connexion est en HTTP simple, sans mot de passe : utilisez un réseau privé de confiance."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Значок приложения не изменился."
+            "value": "Соединение идёт по обычному HTTP без пароля, поэтому используйте доверенную частную сеть."
           }
         }
       }
     },
-    "The Bluetooth service is a separate unit and stays up throughout, so this only says the robot is still there. Progress shows up in the journal when the daemon comes back.": {
+    "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Bluetooth-Dienst ist eine eigene Unit und bleibt durchgehend aktiv, das sagt also nur, dass der Roboter noch da ist. Der Fortschritt erscheint im Journal, sobald der Daemon zurück ist."
+            "value": "Der Daemon dieses Roboters läuft auf dem Computer, an dem er angeschlossen ist — WLAN, Software-Updates und Wartung gehören daher zu diesem Computer und nicht hierher."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El servicio de Bluetooth es una unidad aparte y permanece activo todo el tiempo, así que esto solo indica que el robot sigue ahí. El progreso aparece en el journal cuando el daemon vuelve."
+            "value": "El daemon de este robot se ejecuta en el ordenador al que está conectado, así que su Wi-Fi, sus actualizaciones de software y su mantenimiento corresponden a ese ordenador y no a esta pantalla."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le service Bluetooth est une unité distincte et reste actif tout du long : cela indique seulement que le robot est encore là. La progression apparaît dans le journal au retour du daemon."
+            "value": "Le daemon de ce robot tourne sur l’ordinateur auquel il est branché : son Wi-Fi, ses mises à jour logicielles et sa maintenance relèvent donc de cet ordinateur, pas d’ici."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Служба Bluetooth — отдельный юнит и работает всё это время, поэтому это лишь говорит, что робот ещё на месте. Прогресс появится в журнале, когда демон вернётся."
+            "value": "Демон этого робота работает на компьютере, к которому робот подключён, поэтому его Wi-Fi, обновления и обслуживание относятся к тому компьютеру, а не к этому экрану."
           }
         }
       }
@@ -14352,35 +15164,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демон ничего из этого не сообщает. Это читается напрямую из системы робота по SSH."
-          }
-        }
-      }
-    },
-    "The daemon uses unencrypted HTTP without authentication. Connect only on a trusted private network.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Daemon verwendet unverschlüsseltes HTTP ohne Authentifizierung. Verbinde dich nur in einem vertrauenswürdigen privaten Netzwerk."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El daemon usa HTTP sin cifrar y sin autenticación. Conéctate solo en una red privada de confianza."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le daemon utilise HTTP en clair, sans authentification. Ne vous connectez que sur un réseau privé de confiance."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демон использует HTTP без шифрования и без аутентификации. Подключайтесь только в доверенной частной сети."
           }
         }
       }
@@ -14530,6 +15313,64 @@
         }
       }
     },
+    "The live view and the controls come back once they start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Live-Ansicht und die Steuerung kommen zurück, sobald sie starten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vista en directo y los controles vuelven cuando arranquen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vue en direct et les commandes reviennent dès qu'ils démarrent."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Живой вид и управление вернутся, как только они запустятся."
+          }
+        }
+      }
+    },
+    "The motors and camera are not running": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera laufen nicht"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los motores y la cámara no están en marcha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les moteurs et la caméra ne tournent pas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера не запущены"
+          }
+        }
+      }
+    },
     "The motors are off, so the robot accepts commands without moving.": {
       "extractionState": "manual",
       "localizations": {
@@ -14617,6 +15458,35 @@
         }
       }
     },
+    "The password is encrypted for this robot before it is sent. Sending it takes this link down: the robot switches networks and the app finds it again afterwards.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Passwort wird für diesen Roboter verschlüsselt, bevor es gesendet wird. Das Senden trennt diese Verbindung: Der Roboter wechselt das Netzwerk, und die App findet ihn danach wieder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La contraseña se cifra para este robot antes de enviarse. Al enviarla se pierde esta conexión: el robot cambia de red y la aplicación vuelve a encontrarlo después."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mot de passe est chiffré pour ce robot avant l'envoi. L'envoi coupe cette liaison : le robot change de réseau et l'application le retrouve ensuite."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль шифруется для этого робота перед отправкой. Отправка разрывает эту связь: робот переходит в другую сеть, и приложение находит его снова."
+          }
+        }
+      }
+    },
     "The password went across encrypted. The robot is trying it now.": {
       "extractionState": "manual",
       "localizations": {
@@ -14675,64 +15545,6 @@
         }
       }
     },
-    "the robot": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "dem Roboter"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "el robot"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "le robot"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "роботу"
-          }
-        }
-      }
-    },
-    "The robot backend is not running": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Backend des Roboters läuft nicht"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El backend del robot no está en marcha"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le backend du robot ne tourne pas"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд робота не запущен"
-          }
-        }
-      }
-    },
     "The robot could not join": {
       "extractionState": "manual",
       "localizations": {
@@ -14762,31 +15574,31 @@
         }
       }
     },
-    "The robot could not reach Hugging Face. Pull to refresh once it is back online.": {
+    "The robot could not reach Hugging Face. Refresh once it is back online.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Roboter konnte Hugging Face nicht erreichen. Zum Aktualisieren nach unten ziehen, sobald er wieder online ist."
+            "value": "Der Roboter konnte Hugging Face nicht erreichen. Aktualisiere, sobald er wieder online ist."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El robot no pudo contactar con Hugging Face. Desliza para actualizar cuando vuelva a estar en línea."
+            "value": "El robot no pudo conectar con Hugging Face. Actualiza cuando vuelva a estar en línea."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le robot n'a pas pu joindre Hugging Face. Tirez pour actualiser dès qu'il est de nouveau en ligne."
+            "value": "Le robot n'a pas pu joindre Hugging Face. Actualisez quand il sera de nouveau en ligne."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Робот не смог связаться с Hugging Face. Потяните вниз, чтобы обновить, когда он снова будет в сети."
+            "value": "Робот не смог связаться с Hugging Face. Обновите, когда он снова будет в сети."
           }
         }
       }
@@ -14936,6 +15748,35 @@
         }
       }
     },
+    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter verwirft sein Token und verlässt das Relay. Von hier aus ist er erst wieder erreichbar, wenn ihn jemand vor Ort einrichtet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot descarta su token y sale del relé. Desde aquí no se le puede volver a alcanzar hasta que alguien lo configure en persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot supprime son jeton et quitte le relais. Plus rien ici ne peut l'atteindre tant que quelqu'un ne le configure pas sur place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот сбрасывает токен и уходит с ретранслятора. Отсюда до него будет не достучаться, пока его не настроят на месте."
+          }
+        }
+      }
+    },
     "The robot falls back to its own hotspot at the next restart.": {
       "extractionState": "manual",
       "localizations": {
@@ -15023,31 +15864,31 @@
         }
       }
     },
-    "The robot goes to sleep first, then its backend shuts down.": {
+    "The robot goes to sleep first, then its motors and camera shut down.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Roboter schläft zuerst ein, dann fährt sein Backend herunter."
+            "value": "Der Roboter schläft zuerst ein, dann schalten sich Motoren und Kamera ab."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El robot se duerme primero y luego se apaga su backend."
+            "value": "El robot se duerme primero y luego se apagan los motores y la cámara."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le robot se met d'abord en veille, puis son backend s'arrête."
+            "value": "Le robot s'endort d'abord, puis ses moteurs et sa caméra s'éteignent."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сначала робот засыпает, затем выключается его бэкенд."
+            "value": "Сначала робот засыпает, затем выключаются его моторы и камера."
           }
         }
       }
@@ -15313,6 +16154,35 @@
         }
       }
     },
+    "The robot joins this network and then talks to this app over it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter tritt diesem Netzwerk bei und spricht danach darüber mit dieser App."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot se une a esta red y después habla con esta aplicación a través de ella."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot rejoint ce réseau et communique ensuite avec cette application par ce biais."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот подключается к этой сети и дальше общается с приложением через неё."
+          }
+        }
+      }
+    },
     "The robot keeps these in temporary storage and forgets them when it restarts.": {
       "extractionState": "manual",
       "localizations": {
@@ -15458,6 +16328,35 @@
         }
       }
     },
+    "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter durchsucht Hugging Face mit Ihrem Konto, und seine Sitzung ist abgelaufen. Installierte Apps funktionieren weiter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot busca en Hugging Face con tu cuenta, y su sesión ha terminado. Las apps instaladas siguen funcionando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot cherche sur Hugging Face avec votre compte, et sa session a expiré. Les apps installées continuent de fonctionner."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот ищет на Hugging Face под вашей учётной записью, и его сессия завершилась. Установленные приложения продолжают работать."
+          }
+        }
+      }
+    },
     "The robot stopped answering. The app may still be running — these controls cannot reach it.": {
       "extractionState": "manual",
       "localizations": {
@@ -15512,6 +16411,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот перестал отправлять свой журнал."
+          }
+        }
+      }
+    },
+    "The robot took the network and is moving to it now. A password it cannot use puts it back on the one it was on, so nothing here is lost either way.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hat das Netzwerk angenommen und wechselt jetzt dorthin. Mit einem Passwort, das nicht funktioniert, kehrt er in das vorherige Netzwerk zurück — verloren geht dabei nichts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot aceptó la red y está cambiando a ella. Si la contraseña no le sirve, vuelve a la red anterior, así que no se pierde nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot a accepté le réseau et y bascule maintenant. Si le mot de passe ne fonctionne pas, il revient au réseau précédent : rien n'est perdu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот принял сеть и переходит в неё. Если пароль не подойдёт, он вернётся в прежнюю сеть — так что ничего не теряется."
           }
         }
       }
@@ -15661,6 +16589,93 @@
         }
       }
     },
+    "The settings the robot comes with.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Einstellungen, mit denen der Roboter geliefert wird."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los ajustes con los que viene el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réglages fournis avec le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки, с которыми робот поставляется."
+          }
+        }
+      }
+    },
+    "The simulator's robot description could not be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Roboterbeschreibung des Simulators konnte nicht gelesen werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer la descripción del robot del simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La description du robot du simulateur n'a pas pu être lue."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать описание робота для симулятора."
+          }
+        }
+      }
+    },
+    "There is no camera, no app store and no Wi-Fi — those belong to a machine that is not there.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es gibt keine Kamera, keinen App-Store und kein WLAN — die gehören zu einer Maschine, die nicht da ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay cámara, ni tienda de aplicaciones, ni Wi-Fi: pertenecen a una máquina que no está ahí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n'y a ni caméra, ni magasin d'applications, ni Wi-Fi — tout cela appartient à une machine qui n'est pas là."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет ни камеры, ни магазина приложений, ни Wi-Fi — всё это принадлежит машине, которой нет."
+          }
+        }
+      }
+    },
     "Thinking…": {
       "extractionState": "manual",
       "localizations": {
@@ -15715,6 +16730,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это приложение не может использовать Bluetooth"
+          }
+        }
+      }
+    },
+    "This app does not know what this script does. It runs as root on the robot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App weiß nicht, was dieses Skript tut. Es läuft als root auf dem Roboter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no sabe qué hace este script. Se ejecuta como root en el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app ne sait pas ce que fait ce script. Il s'exécute en root sur le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение не знает, что делает этот скрипт. Он выполняется на роботе от имени root."
           }
         }
       }
@@ -16125,6 +17169,35 @@
         }
       }
     },
+    "This robot's audio board holds values no profile matches.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Audiokarte dieses Roboters hält Werte, die zu keinem Profil passen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tarjeta de audio de este robot tiene valores que no coinciden con ningún perfil."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carte audio de ce robot contient des valeurs qui ne correspondent à aucun profil."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудиоплата этого робота содержит значения, не совпадающие ни с одним профилем."
+          }
+        }
+      }
+    },
     "This robot's backend reports no control loop.": {
       "extractionState": "manual",
       "localizations": {
@@ -16473,6 +17546,35 @@
         }
       }
     },
+    "Unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconocido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inconnu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неизвестно"
+          }
+        }
+      }
+    },
     "Unlink this robot": {
       "extractionState": "manual",
       "localizations": {
@@ -16498,6 +17600,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отвязать этого робота"
+          }
+        }
+      }
+    },
+    "Unlinking takes the robot off the relay: it goes offline and comes back only once somebody sets it up again in person.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Trennen nimmt den Roboter vom Relay: Er geht offline und kommt erst zurück, wenn ihn jemand vor Ort neu einrichtet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desvincularlo lo quita del relé: se desconecta y no vuelve hasta que alguien lo configure de nuevo en persona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dissociation retire le robot du relais : il passe hors ligne et ne revient que lorsque quelqu'un le reconfigure sur place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отвязка убирает робота с ретранслятора: он уходит в офлайн и вернётся, только когда его настроят заново на месте."
           }
         }
       }
@@ -17314,6 +18445,35 @@
         }
       }
     },
+    "Wireless": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless"
+          }
+        }
+      }
+    },
     "Without it this app cannot find the robot or reach it at a typed address.": {
       "extractionState": "manual",
       "localizations": {
@@ -17339,6 +18499,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Без него приложение не сможет ни найти робота, ни связаться с ним по введённому адресу."
+          }
+        }
+      }
+    },
+    "Working…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beschäftigt…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocupado…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Occupé…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Занят…"
           }
         }
       }
@@ -17401,6 +18590,35 @@
         }
       }
     },
+    "Your Reachies and private Spaces stay out of reach until you sign in again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Reachies und privaten Spaces bleiben unerreichbar, bis du dich wieder anmeldest."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus Reachies y Spaces privados quedan fuera de alcance hasta que vuelvas a iniciar sesión."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos Reachies et vos Spaces privés restent hors de portée jusqu'à votre prochaine connexion."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши Reachies и приватные Spaces будут недоступны, пока вы не войдёте снова."
+          }
+        }
+      }
+    },
     "Your Reachy Mini appears below once it is powered on and joined to this Wi-Fi network.": {
       "extractionState": "manual",
       "localizations": {
@@ -17426,35 +18644,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ваш Reachy Mini появится ниже, как только будет включён и подключён к этой сети Wi-Fi."
-          }
-        }
-      }
-    },
-    "Your recordings": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Aufnahmen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tus grabaciones"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vos enregistrements"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваши записи"
           }
         }
       }
@@ -17513,6 +18702,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ваша учётная запись"
+          }
+        }
+      }
+    },
+    "Your recordings": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Aufnahmen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus grabaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos enregistrements"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши записи"
+          }
+        }
+      }
+    },
+    "Your voice": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Stimme"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre voix"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш голос"
           }
         }
       }
@@ -17604,6 +18851,64 @@
         }
       }
     },
+    "its own reachy-mini-ap network and configure it over Wi-Fi instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seinem eigenen reachy-mini-ap-Netzwerk und konfiguriere ihn stattdessen über Wi-Fi."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "su propia red reachy-mini-ap y configúralo por Wi-Fi."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "son propre réseau reachy-mini-ap et configurez-le via Wi-Fi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "его собственной сети reachy-mini-ap и настройте его по Wi-Fi."
+          }
+        }
+      }
+    },
+    "move, dance, animation, Reachy Mini": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewegung, Tanz, Animation, Reachy Mini"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "movimiento, baile, animación, Reachy Mini"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mouvement, danse, animation, Reachy Mini"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "движение, танец, анимация, Reachy Mini"
+          }
+        }
+      }
+    },
     "no answer": {
       "extractionState": "manual",
       "localizations": {
@@ -17629,6 +18934,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "нет ответа"
+          }
+        }
+      }
+    },
+    "paused": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pausiert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en pausa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en pause"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "на паузе"
+          }
+        }
+      }
+    },
+    "robot app, app, Reachy Mini": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter-App, App, Reachy Mini"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app del robot, app, Reachy Mini"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "app du robot, app, Reachy Mini"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "приложение робота, приложение, Reachy Mini"
           }
         }
       }
@@ -17662,6 +19025,64 @@
         }
       }
     },
+    "sound, audio, soundboard, Reachy Mini": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound, Audio, Klang, Soundboard, Reachy Mini"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sonido, audio, panel de sonidos, Reachy Mini"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "son, audio, sons, Reachy Mini"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "звук, аудио, звуки, саундборд, Reachy Mini"
+          }
+        }
+      }
+    },
+    "the robot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dem Roboter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "le robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "роботу"
+          }
+        }
+      }
+    },
     "this robot runs an older one": {
       "extractionState": "manual",
       "localizations": {
@@ -17687,383 +19108,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "на этом роботе установлена более старая"
-          }
-        }
-      }
-    },
-    "Standard": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standard"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estándar"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standard"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Стандартный"
-          }
-        }
-      }
-    },
-    "More sensitive": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Empfindlicher"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Más sensible"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plus sensible"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Повышенная чувствительность"
-          }
-        }
-      }
-    },
-    "Noisy room": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lauter Raum"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sala ruidosa"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pièce bruyante"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Шумное помещение"
-          }
-        }
-      }
-    },
-    "The settings the robot comes with.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Einstellungen, mit denen der Roboter geliefert wird."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los ajustes con los que viene el robot."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les réglages fournis avec le robot."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Настройки, с которыми робот поставляется."
-          }
-        }
-      }
-    },
-    "Hears a quiet voice, and a voice from across the room.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hört eine leise Stimme und eine Stimme vom anderen Ende des Raums."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Oye una voz baja y una voz desde el otro lado de la sala."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entend une voix basse et une voix à l'autre bout de la pièce."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Слышит тихий голос и голос с другого конца комнаты."
-          }
-        }
-      }
-    },
-    "Holds back background noise, at the cost of some range.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hält Hintergrundgeräusche zurück, auf Kosten der Reichweite."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Contiene el ruido de fondo, a costa de algo de alcance."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retient le bruit de fond, au prix d'une portée réduite."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подавляет фоновый шум ценой дальности."
-          }
-        }
-      }
-    },
-    "Custom": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eigene"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personalizado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personnalisé"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вручную"
-          }
-        }
-      }
-    },
-    "This robot's audio board holds values no profile matches.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Audiokarte dieses Roboters hält Werte, die zu keinem Profil passen."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La tarjeta de audio de este robot tiene valores que no coinciden con ningún perfil."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La carte audio de ce robot contient des valeurs qui ne correspondent à aucun profil."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Аудиоплата этого робота содержит значения, не совпадающие ни с одним профилем."
-          }
-        }
-      }
-    },
-    "Hearing": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gehör"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audición"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audition"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Слух"
-          }
-        }
-      }
-    },
-    "Your voice": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ihre Stimme"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu voz"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre voix"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваш голос"
-          }
-        }
-      }
-    },
-    "How loud you are when the robot plays your voice. It takes effect at once.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wie laut Sie sind, wenn der Roboter Ihre Stimme wiedergibt. Es wirkt sofort."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qué volumen tienes cuando el robot reproduce tu voz. Se aplica de inmediato."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre volume lorsque le robot diffuse votre voix. L'effet est immédiat."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Насколько громко вас слышно, когда робот воспроизводит ваш голос. Действует сразу."
-          }
-        }
-      }
-    },
-    "Call": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anruf"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Llamada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Appel"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Звонок"
-          }
-        }
-      }
-    },
-    "Lost the robot while sending": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Roboter beim Senden verloren"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se perdió el robot al enviar"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Robot perdu pendant l'envoi"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот потерян во время отправки"
           }
         }
       }

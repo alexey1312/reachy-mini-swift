@@ -35,6 +35,7 @@ struct HFAccountToolbarButton: View {
                 label(for: account.state)
             }
             .accessibilityLabel(accessibilityLabel(for: account.state))
+            .help(accessibilityLabel(for: account.state))
         }
     }
 
@@ -54,6 +55,7 @@ struct HFAccountToolbarButton: View {
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "exclamationmark.circle.fill")
                         // Optical: sized against the avatar it is pinned to, not against the text.
+                        // swiftlint:disable:next raw_font
                         .font(.caption2)
                         .foregroundStyle(Tone.warning.style)
                         .background(.background, in: .circle)

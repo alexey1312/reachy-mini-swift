@@ -119,13 +119,25 @@ import SwiftUI
         ForEach(ButtonEmphasis.allCases, id: \.self) { emphasis in
             TokenRow(name: DesignGallery.name(of: emphasis), value: "") {
                 HStack(spacing: Space.sm) {
-                    Button("Start robot backend") {}
-                        .reachyButton(emphasis)
-                    Button("Cancel") {}
-                        .reachyButton(emphasis)
+                    ReachyActionButton("Start robot backend", emphasis: emphasis) {}
+                    ReachyActionButton("Cancel", emphasis: emphasis) {}
                 }
             }
         }
+        // The width goes on the label, which is the whole of what the helper adds
+        // over `reachyButton`: the capsule fills the row instead of hugging its text.
+        TokenRow(name: "prominent, fullWidth", value: "") {
+            ReachyActionButton("Start robot backend", fullWidth: true) {}
+        }
+    }
+}
+
+// One failure row, with and without a way out. The text is `Typography.status`
+// on purpose — the console role stays with tracebacks.
+#Preview("Design — error row", traits: .sizeThatFitsLayout) {
+    TokenGallery(title: "ReachyErrorRow") {
+        ReachyErrorRow("Could not connect to the server.") {}
+        ReachyErrorRow("The robot did not say why.")
     }
 }
 

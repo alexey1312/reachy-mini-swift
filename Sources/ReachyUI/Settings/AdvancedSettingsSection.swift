@@ -3,23 +3,37 @@ import ReachyKit
 import ReachySSH
 import SwiftUI
 
-/// The collapsed group at the foot of Settings.
+/// The row at the foot of Settings, and the screen behind it.
 ///
 /// Everything behind it is either irreversible, diagnostic, or a way around the
 /// daemon — none of it belongs within reach of someone who opened Settings to turn
-/// the volume down. The network and maintenance cards used to sit at the top level;
-/// they are rows here now, which is why each has a screen of its own
-/// (`AdvancedCardScreens`): a `Section` cannot nest inside a `DisclosureGroup`.
-///
-/// Its own view rather than a `private var` on `SettingsScreen`, and that is forced
-/// rather than tidy: the group is closed on a real screen, sits below the fold on
-/// both snapshot devices, and cannot be scrolled to by a capture — so a reference
-/// taken through `SettingsScreen` shows none of these rows and certifies nothing.
-/// Captured standalone it shows all of them, the same way `MaintenanceCard` is.
+/// the volume down. It was a `DisclosureGroup`, which put six rows of it under a
+/// chevron nobody opens and could not be captured through `SettingsScreen` at all:
+/// closed on a real screen and below the fold on both snapshot devices. A pushed
+/// screen is what a reader expects behind a word like Advanced, and it is captured
+/// standalone the way `MaintenanceCard` is.
 struct AdvancedSettingsSection: View {
     let session: RobotSession
 
-    @State private var isExpanded: Bool
+    var body: some View {
+        Section {
+            NavigationLink {
+                AdvancedScreen(session: session)
+            } label: {
+                Label(.reachy("Advanced"), systemImage: "gearshape.2")
+            }
+        } footer: {
+            Text(.reachy("Diagnostics, irreversible actions, and the robot's own file system over SSH."))
+        }
+    }
+}
+
+/// The rows themselves. The network and maintenance cards used to sit at the top
+/// level of Settings; each has a screen of its own (`AdvancedCardScreens`) so that
+/// a card built as a `Section` needs no reshaping to be pushed from here.
+struct AdvancedScreen: View {
+    let session: RobotSession
+
     /// The app target's own screen, if it has one. Read from the environment rather
     /// than passed in: an optional `@MainActor` closure as an initialiser argument
     /// defeats the type checker outright — a ternary between a closure literal and
@@ -27,14 +41,9 @@ struct AdvancedSettingsSection: View {
     /// enclosing function and nothing useful. A preview writes the environment value.
     @Environment(\.reachyDeveloperScreen) private var developerScreen
 
-    init(session: RobotSession, isExpanded: Bool = false) {
-        self.session = session
-        _isExpanded = State(initialValue: isExpanded)
-    }
-
     var body: some View {
-        Section {
-            DisclosureGroup(.reachy("Advanced"), isExpanded: $isExpanded) {
+        Form {
+            Section {
                 if session.canConfigureWiFi {
                     NavigationLink {
                         WiFiSettingsScreen(session: session)
@@ -70,9 +79,9 @@ struct AdvancedSettingsSection: View {
                     }
                 }
             }
-        } footer: {
-            Text(.reachy("Diagnostics, irreversible actions, and the robot's own file system over SSH."))
         }
+        .formStyle(.grouped)
+        .navigationTitle(.reachy("Advanced"))
     }
 
     /// SFTP needs a TCP route to port 22, which a relay session does not have — the

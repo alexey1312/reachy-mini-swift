@@ -43,6 +43,12 @@ import SnapshotTesting
 
     // MARK: - PreviewProvider
 
+    // Every capture below is wrapped in `.reachyTheme(.fallback)` and
+    // `.reachyPreviewMode(true)`. The second is not optional: `reachyButton` draws
+    // glass outside preview mode, and `.buttonStyle(.glass)` blanks a headless
+    // capture outright — `Design — buttons` and the asleep banner came back as
+    // white rectangles the one time a preview without `.preview()` met it. Set
+    // here, no preview can forget it.
     // Not wrapped in `.reachyTheme`, unlike the Macros section below — deliberately:
     // this repo has no `PreviewProvider`-conforming type, so the loop below generates
     // zero tests. Wrap it the same way if one is ever added here.
@@ -73,6 +79,7 @@ import SnapshotTesting
                         {{ macroModel.body|indent:24 }}
                     }
                     .reachyTheme(.fallback)
+                    .reachyPreviewMode(true)
                 },
                 name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
                 isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
@@ -92,6 +99,7 @@ import SnapshotTesting
                     {{ macroModel.body|indent:16 }}
                 }
                 .reachyTheme(.fallback)
+                .reachyPreviewMode(true)
             }
         }
         {% endif %}
@@ -104,6 +112,7 @@ import SnapshotTesting
                     {{ macroModel.body|indent:16 }}
                 }
                 .reachyTheme(.fallback)
+                .reachyPreviewMode(true)
                 {% endif %}
             },
             name: "{{ macroModel.displayName }}",

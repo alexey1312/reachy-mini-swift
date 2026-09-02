@@ -74,6 +74,7 @@ public struct MenuBarContentView: View {
                 .foregroundStyle(content.status.isStale ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
             // 1 pt is optical, not rhythm: the detail belongs to the title above it,
             // exactly as in `AppRowLabel`.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 1) {
                 Text(content.status.title)
                     .font(Typography.rowTitle)

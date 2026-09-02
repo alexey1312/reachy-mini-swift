@@ -12,10 +12,10 @@ final class SmokeTests: XCTestCase {
     }
 
     /// Tier 1, CI: launched frozen (`--reachy-smoke`, no Bonjour and no sockets)
-    /// the connect gate stands, all three route segments answer, and the
-    /// Bluetooth way out is offered.
+    /// the connect gate stands, both route segments answer, the Bluetooth way out
+    /// is offered, and the simulator is where the Developer disclosure puts it.
     ///
-    /// The address field is asserted on the `Local` segment rather than behind one
+    /// The address field is asserted on the `Nearby` segment rather than behind one
     /// of its own — it moved under the robot list when the segments were shortened,
     /// which is the sort of change only this test and a reference image can see.
     func testColdLaunchShowsConnectGate() {
@@ -23,14 +23,28 @@ final class SmokeTests: XCTestCase {
         app.launchArguments += ["--reachy-smoke"]
         app.launch()
 
-        let local = app.buttons["Local"]
-        XCTAssertTrue(local.waitForExistence(timeout: 30), "connect gate did not appear")
+        let nearby = app.buttons["Nearby"]
+        XCTAssertTrue(nearby.waitForExistence(timeout: 30), "connect gate did not appear")
         XCTAssertTrue(app.textFields["host, host:port, or IP"].waitForExistence(timeout: 5))
-
-        app.buttons["HF"].tap()
-        app.buttons["Simulator"].tap()
-        local.tap()
         XCTAssertTrue(app.buttons["Set up a new robot over Bluetooth"].waitForExistence(timeout: 5))
+
+        app.buttons["Remote"].tap()
+        nearby.tap()
+        // Below the fold on a phone: a row that exists but is not on screen takes
+        // a tap nowhere, so it is scrolled into view first.
+        let developer = app.staticTexts["Developer"]
+        XCTAssertTrue(developer.waitForExistence(timeout: 5), "Developer disclosure did not appear")
+        var swipes = 0
+        while !developer.isHittable, swipes < 5 {
+            app.swipeUp()
+            swipes += 1
+        }
+        developer.tap()
+        let simulator = app.buttons["Start the simulator"]
+        if !simulator.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(simulator.waitForExistence(timeout: 5), "simulator row did not open")
         XCTAssertEqual(app.state, .runningForeground)
     }
 
@@ -52,7 +66,7 @@ final class SmokeTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.buttons["Local"].waitForExistence(timeout: 30), "connect gate did not appear")
+        XCTAssertTrue(app.buttons["Nearby"].waitForExistence(timeout: 30), "connect gate did not appear")
 
         let field = app.textFields["host, host:port, or IP"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))

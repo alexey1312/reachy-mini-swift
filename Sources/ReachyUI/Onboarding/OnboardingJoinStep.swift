@@ -12,45 +12,44 @@ struct OnboardingJoinStep: View {
 
     var body: some View {
         OnboardingStepScaffold(title: title, message: message) {
-            switch model.joinState {
-            case .working:
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text(.reachy("This takes up to a minute."))
-                        .foregroundStyle(.secondary)
+            Section {
+                switch model.joinState {
+                case .working:
+                    HStack(spacing: Space.sm) {
+                        ProgressView()
+                        Text(.reachy("This takes up to a minute."))
+                            .foregroundStyle(.secondary)
+                    }
+                case .joined:
+                    Label(.reachy("Connected"), systemImage: "checkmark.circle")
+                        .foregroundStyle(Tone.success.style)
+                case .gaveUp:
+                    Label(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "The robot has put its own reachy-mini-ap network back up, so nothing is lost — it is waiting to be told again."
+                        ),
+                        systemImage: "arrow.uturn.backward"
+                    )
+                    .fixedSize(horizontal: false, vertical: true)
+                case let .refused(reason):
+                    ReachyErrorRow(reason)
                 }
-            case .joined:
-                Label(.reachy("Connected"), systemImage: "checkmark.circle")
-                    .foregroundStyle(Tone.success.style)
-            case .gaveUp:
-                Label(
-                    .reachy(
-                        // swiftlint:disable:next line_length
-                        "The robot has put its own reachy-mini-ap network back up, so nothing is lost — it is waiting to be told again."
-                    ),
-                    systemImage: "arrow.uturn.backward"
-                )
-                .fixedSize(horizontal: false, vertical: true)
-            case let .refused(reason):
-                OnboardingErrorText(message: reason)
+            } footer: {
+                linkBudget
             }
-            linkBudget
         } actions: {
             switch model.joinState {
             case .working:
                 EmptyView()
             case .joined:
-                Button(.reachy("Continue")) {
+                ReachyActionButton(.reachy("Continue"), fullWidth: true) {
                     model.continueAfterJoin()
                 }
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
             case .gaveUp, .refused:
-                Button(.reachy("Try again")) {
+                ReachyActionButton(.reachy("Try again"), fullWidth: true) {
                     model.editNetwork()
                 }
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
             }
         }
     }
@@ -95,7 +94,6 @@ struct OnboardingJoinStep: View {
                 )
             )
             .font(Typography.consoleLine)
-            .foregroundStyle(.secondary)
         }
     }
 }

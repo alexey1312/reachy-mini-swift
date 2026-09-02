@@ -1,4 +1,5 @@
 import HuggingFaceAuth
+import ReachyDesign
 import ReachyKit
 import ReachyMedia
 @testable import ReachyUI
@@ -127,7 +128,9 @@ enum PreviewScene {
 
     static func simulatorSection(isConnecting: Bool = false) -> some View {
         Form {
-            SimulatorSection(isConnecting: isConnecting, connect: {})
+            Section {
+                SimulatorSection(isConnecting: isConnecting, connect: {})
+            }
         }
         .formStyle(.grouped)
         .preview()
@@ -271,7 +274,8 @@ enum PreviewScene {
         route: ConnectRoute = .local,
         browser: RobotBrowser? = nil,
         manualInput: String = "",
-        knownRobots: KnownRobotsModel? = nil
+        knownRobots: KnownRobotsModel? = nil,
+        showsDeveloper: Bool = false
     ) -> some View {
         ConnectionScreen(
             session: session,
@@ -280,6 +284,7 @@ enum PreviewScene {
             manualInput: manualInput,
             knownRobots: knownRobots ?? .preview([]),
             route: route,
+            showsDeveloper: showsDeveloper,
             showPermissions: {}
         )
         .preview()

@@ -29,6 +29,7 @@ struct ManualAddressSection: View {
                 guard let address else { return }
                 connect(address)
             }
+            .reachyButton(.standard)
             .disabled(address == nil)
         } footer: {
             VStack(alignment: .leading, spacing: Space.sm) {
@@ -42,17 +43,13 @@ struct ManualAddressSection: View {
                 Text(
                     .reachy(
                         // swiftlint:disable:next line_length
-                        "A Lite robot or a simulator is reached at the address of the computer running its daemon — and only if that daemon was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone."
+                        "A Lite robot or a simulator is reached at the address of the computer running its software — and only if that software was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone."
                     )
                 )
-                Label(
-                    .reachy(
-                        // swiftlint:disable:next line_length
-                        "The daemon uses unencrypted HTTP without authentication. Connect only on a trusted private network."
-                    ),
-                    systemImage: "lock.open.trianglebadge.exclamationmark"
-                )
-                .foregroundStyle(Tone.warning.style)
+                // A footer sentence, not an orange warning: it is true of every
+                // connection this app makes and it is the reader's network, not a
+                // fault to fix. An alarm that is always on is one nobody reads.
+                Text(.reachy("The connection is plain HTTP without a password, so use a trusted private network."))
             }
         }
     }

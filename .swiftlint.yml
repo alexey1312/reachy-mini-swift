@@ -42,6 +42,32 @@ identifier_name:
     warning: 1
 
 custom_rules:
+  raw_font:
+    name: "Raw font outside Typography"
+    regex: '\.font\(\.(largeTitle|title|title2|title3|headline|subheadline|body|callout|footnote|caption|caption2|system)\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    included: ".*/(Sources|Apps)/.*\\.swift"
+    excluded:
+      - ".*/Previews/.*"
+      - ".*/Tests/.*"
+    message: "Name a Typography role, or `// swiftlint:disable:next raw_font` with the optical reason — see Sources/ReachyDesign/AGENTS.md"
+    severity: error
+  raw_spacing:
+    name: "Spacing literal outside Space"
+    regex: '\.padding\((\.[a-z]+, )?[0-9]+(\.[0-9]+)?\)|spacing: (?!0\b)[0-9]+'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    included: ".*/(Sources|Apps)/.*\\.swift"
+    excluded:
+      - ".*/Previews/.*"
+      - ".*/Tests/.*"
+    message: "Use a Space token, or `// swiftlint:disable:next raw_spacing` with the optical reason — see Sources/ReachyDesign/Space.swift"
+    severity: warning
   json_codec_only:
     name: "JSON coder outside ReachyJSON"
     regex: '\bJSON(Decoder|Encoder)\('

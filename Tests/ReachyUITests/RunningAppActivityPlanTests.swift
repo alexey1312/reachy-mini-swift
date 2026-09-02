@@ -1,4 +1,5 @@
 import Foundation
+import ReachyDesign
 import ReachyKit
 @testable import ReachyUI
 import ReachyWidgetUI
@@ -126,8 +127,10 @@ struct RunningAppActivityPlanTests {
     }
 
     /// The one transition the phone is obliged to announce, and the alert rides an
-    /// update because `end` takes no alert configuration.
-    @Test("a crash is reported once, with the summary line, and the card is left to be read")
+    /// update because `end` takes no alert configuration. The body is the dock's
+    /// one-line crash caption, not the stderr tail: a banner has no room for a
+    /// traceback and the page has the whole of it.
+    @Test("a crash is reported once, in one phrase, and the card is left to be read")
     func aCrashAlertsAndThenLingers() {
         var plan = plan()
         _ = plan.handle(.read(reading(.running)))
@@ -144,7 +147,7 @@ struct RunningAppActivityPlanTests {
             }
         }
         #expect(alerts.count == 1)
-        #expect(alerts.first?.body == "Process exited with code 1")
+        #expect(alerts.first?.body == String(localized: .reachy("Crashed — open for details")))
         #expect(alerts.first?.title.contains("Reachy") == true)
         let ends = effects.compactMap { effect -> RunningAppActivityPlan.Dismissal? in
             if case let .end(_, _, dismissal) = effect {

@@ -5,6 +5,8 @@ import SwiftUI
 
 /// One app in the store list.
 struct AppStoreRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let app: RobotApp
     var isInstalled = false
     var isRunning = false
@@ -15,7 +17,11 @@ struct AppStoreRow: View {
     var body: some View {
         HStack(spacing: Space.md) {
             AppArtworkTile(app: app)
+            // Optical: title, subtitle and footnote read as one block; 3 pt is tighter than any token.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 3) {
+                // Optical: badges hug the title; 5 pt is the glyph's own breathing room.
+                // swiftlint:disable:next raw_spacing
                 HStack(spacing: 5) {
                     // Beside the title rather than in `trailing`, whose four cases are
                     // mutually exclusive and are all about the app's state on the robot.
@@ -86,7 +92,7 @@ struct AppStoreRow: View {
             Label(.reachy("Running"), systemImage: "waveform")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.tint)
-                .symbolEffect(.variableColor.iterative)
+                .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
                 .accessibilityLabel(.reachy("Running"))
         } else if hasUpdate {
             ReachyBadge(.reachy("Update"))

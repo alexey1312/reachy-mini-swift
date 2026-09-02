@@ -26,7 +26,7 @@ struct BLERecoveryCommandsSheet: View {
         .formStyle(.grouped)
         .navigationTitle(.reachy("Commands"))
         .confirmationDialog(
-            confirming?.name ?? "",
+            confirming.map(BLERecoveryScriptCaption.title(for:)) ?? "",
             isPresented: Binding(get: { confirming != nil }, set: {
                 if !$0 {
                     confirming = nil
@@ -38,7 +38,7 @@ struct BLERecoveryCommandsSheet: View {
                 Task { await model.run(script) }
             }
         } message: { script in
-            Text(script.summary)
+            Text(BLERecoveryScriptCaption.summary(for: script))
         }
     }
 
@@ -59,9 +59,7 @@ struct BLERecoveryCommandsSheet: View {
                 .textInputAutocapitalization(.never)
             #endif
                 .onSubmit(submit)
-            Button(.reachy("Unlock the robot"), action: submit)
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
+            ReachyActionButton(.reachy("Unlock the robot"), fullWidth: true, action: submit)
                 .disabled(!model.canSubmitPIN)
             if let error = model.errorMessage {
                 Text(error).font(Typography.detail).foregroundStyle(Tone.danger.style)
@@ -135,9 +133,14 @@ struct BLERecoveryScriptRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: Space.xxs) {
+                Text(BLERecoveryScriptCaption.title(for: script))
+                    .font(Typography.rowTitleCompact)
+                // The file name stays, small: it is what the robot's own notes and
+                // the confirmation's Run button call it.
                 Text(script.name)
-                    .font(Typography.console)
-                Text(script.summary)
+                    .font(Typography.consoleLineCompact)
+                    .foregroundStyle(.secondary)
+                Text(BLERecoveryScriptCaption.summary(for: script))
                     .font(Typography.footer)
                     .foregroundStyle(.secondary)
             }

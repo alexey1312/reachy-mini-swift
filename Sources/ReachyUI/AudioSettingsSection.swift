@@ -45,6 +45,7 @@ struct AudioSettingsSection: View {
                 Button(.reachy("Test sound")) {
                     Task { await model.playTestSound(session: session) }
                 }
+                .reachyButton(.standard)
                 .disabled(model.isBusy || !model.isReady)
             }
             if let errorMessage = model.errorMessage {
@@ -115,10 +116,14 @@ struct AudioSettingsSection: View {
             }
             // The daemon reaches the robot's audio through one named sink or
             // source; a robot with several gives no other hint which one moved.
+            // The name goes on as an accessibility label rather than through `label:`:
+            // on iOS 26 the labelled initialiser draws a tick per step, and a hundred
+            // ticks under a volume track is not a slider anybody asked for.
             Slider(value: value, in: 0 ... 100, step: 1) { editing in
                 guard !editing else { return }
                 Task { await commit() }
             }
+            .accessibilityLabel(Text(title))
             // Only the LAN routes name the device; a remote session reports the
             // level alone, and a line reading " · " would be worse than none.
             if let name = device?.device, let platform = device?.platform {

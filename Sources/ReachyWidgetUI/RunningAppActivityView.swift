@@ -103,6 +103,9 @@ public struct RunningAppActivityView<Stop: View>: View {
     private var lockScreen: some View {
         HStack(spacing: Space.md) {
             AppArtworkTile(artwork: artwork, size: Metrics.artworkCompact)
+            // 1 pt is optical, not rhythm: the caption belongs to the title above it,
+            // the way `AppRowLabel` sets the same pair.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 1) {
                 Text(app.appTitle)
                     .font(Typography.rowTitleCompact)
@@ -161,6 +164,8 @@ public struct RunningAppActivityView<Stop: View>: View {
     /// than state, so it is the one thing here that stays true while frozen.
     private var expandedBottom: some View {
         HStack {
+            // The same 1 pt pair as the lock screen's title and caption.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 1) {
                 Text(app.displayName)
                     .font(Typography.detail)

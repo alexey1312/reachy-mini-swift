@@ -16,6 +16,9 @@ struct JoystickPad: View {
     var onChange: (JoystickDeflection) -> Void
 
     @State private var deflection: JoystickDeflection
+    /// Scaled with the reader's text: a knob that stays 56 pt under a larger caption
+    /// is the one thing on the screen that did not grow.
+    @ScaledMetric(relativeTo: .body) private var knob = Metrics.joystickKnob
 
     init(
         mapping: JoystickMapping = JoystickMapping(),
@@ -31,27 +34,38 @@ struct JoystickPad: View {
         mapping.rotationSide(deflection)
     }
 
+    private static let arrowKeys: Set<KeyEquivalent> = [.leftArrow, .rightArrow, .upArrow, .downArrow]
+
     var body: some View {
         GeometryReader { geometry in
             let radius = min(geometry.size.width, geometry.size.height) / 2
-            ZStack {
-                Circle()
-                    .fill(.quaternary.opacity(0.3))
-                Circle()
-                    .strokeBorder(.tertiary, lineWidth: 1)
-                rotationZone(.left)
-                rotationZone(.right)
-                Circle()
-                    .fill(.tint)
-                    .frame(width: Metrics.joystickKnob, height: Metrics.joystickKnob)
-                    .offset(x: CGFloat(deflection.x) * radius, y: CGFloat(deflection.y) * radius)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Circle())
-            .gesture(drag(radius: radius))
+            pad(radius: radius)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Circle())
+                .gesture(drag(radius: radius))
         }
         .aspectRatio(1, contentMode: .fit)
         .sensoryFeedback(.impact, trigger: rotationSide)
+        .overlay { accessibilityProxies }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(.reachy("Head joystick"))
+        .focusable()
+        .onKeyPress(keys: Self.arrowKeys, phases: [.down, .up], action: handle)
+    }
+
+    private func pad(radius: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .fill(.quaternary.opacity(0.3))
+            Circle()
+                .strokeBorder(.tertiary, lineWidth: 1)
+            rotationZone(.left)
+            rotationZone(.right)
+            Circle()
+                .fill(.tint)
+                .frame(width: knob, height: knob)
+                .offset(x: CGFloat(deflection.x) * radius, y: CGFloat(deflection.y) * radius)
+        }
     }
 
     private func drag(radius: CGFloat) -> some Gesture {
@@ -63,10 +77,90 @@ struct JoystickPad: View {
                 )
                 onChange(deflection)
             }
-            .onEnded { _ in
-                withAnimation(.snappy) { deflection = .zero }
-                onChange(.zero)
+            .onEnded { _ in recentre() }
+    }
+
+    // MARK: - Keyboard and VoiceOver
+
+    /// An arrow key holds the pad at full deflection on its axis for as long as it
+    /// is down — the keyboard's version of a thumb against the rim — and lets go on
+    /// key-up, which is the same snap-back a finger gets. Repeats are not listened
+    /// for: a held key is already at the rim.
+    private func handle(_ press: KeyPress) -> KeyPress.Result {
+        let down = press.phase == .down
+        var next = deflection
+        switch press.key {
+        case .leftArrow: next.x = down ? -1 : 0
+        case .rightArrow: next.x = down ? 1 : 0
+        case .upArrow: next.y = down ? -1 : 0
+        case .downArrow: next.y = down ? 1 : 0
+        default: return .ignored
+        }
+        move(to: next)
+        return .handled
+    }
+
+    /// VoiceOver gets one adjustable element per axis. The pad itself is a container,
+    /// so the two are found by swiping rather than by aiming at the knob, and each
+    /// step is a tenth of the travel — coarse enough to hear, fine enough to aim.
+    private var accessibilityProxies: some View {
+        HStack(spacing: 0) {
+            axisProxy(.horizontal, label: .reachy("Head yaw"), value: yawValue)
+            axisProxy(.vertical, label: .reachy("Head pitch"), value: pitchValue)
+        }
+    }
+
+    private func axisProxy(_ axis: Axis, label: LocalizedStringResource, value: String) -> some View {
+        Color.clear
+            .accessibilityElement()
+            .accessibilityLabel(label)
+            .accessibilityValue(value)
+            .accessibilityAdjustableAction { direction in
+                nudge(axis, by: direction == .increment ? 0.1 : -0.1)
             }
+            .accessibilityAction(named: Text(.reachy("Reset to neutral"))) { recentre() }
+    }
+
+    /// The yaw the head is sent, and — past the threshold — that the body is
+    /// turning, which the pad otherwise says only with a shaded slice.
+    private var yawValue: String {
+        let degrees = Self.degrees(mapping.headYaw(deflection))
+        return switch rotationSide {
+        case .left: String(localized: .reachy("\(degrees), turning left"))
+        case .right: String(localized: .reachy("\(degrees), turning right"))
+        case nil: degrees
+        }
+    }
+
+    private var pitchValue: String {
+        Self.degrees(mapping.headPitch(deflection))
+    }
+
+    private static func degrees(_ radians: Double) -> String {
+        String(format: "%.0f°", radians * 180 / .pi)
+    }
+
+    private func nudge(_ axis: Axis, by delta: Double) {
+        var next = deflection
+        switch axis {
+        case .horizontal: next.x = (next.x + delta).clamped(to: -1 ... 1)
+        case .vertical: next.y = (next.y + delta).clamped(to: -1 ... 1)
+        }
+        move(to: next)
+    }
+
+    private func move(to next: JoystickDeflection) {
+        if next == .zero {
+            recentre()
+        } else {
+            deflection = next
+            onChange(next)
+        }
+    }
+
+    private func recentre() {
+        withAnimation(.snappy) { deflection = .zero }
+        onChange(.zero)
     }
 
     /// Where the body turns. Shaded at rest so its extent is legible before a finger
@@ -79,8 +173,11 @@ struct JoystickPad: View {
             zone
                 .fill(isActive ? Tone.brand.style : AnyShapeStyle(.quaternary))
                 .opacity(isActive ? 0.3 : 0.45)
+            // The brand colour at rest too, faintly: a grey chord read as a
+            // rendering seam rather than as the edge of a zone.
             zone
-                .strokeBorder(isActive ? Tone.brand.style : AnyShapeStyle(.tertiary), lineWidth: 1)
+                .strokeBorder(Tone.brand.style, lineWidth: 1)
+                .opacity(isActive ? 1 : 0.35)
         }
     }
 }

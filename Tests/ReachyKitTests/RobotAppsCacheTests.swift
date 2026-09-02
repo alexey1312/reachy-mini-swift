@@ -51,7 +51,7 @@ struct RobotAppsCacheTests {
 
         let summary = RobotAppSummary(app)
 
-        #expect(summary.title == "face_tracking")
+        #expect(summary.title == "Face Tracking")
         #expect(summary.emoji == nil)
         #expect(summary.gradient == nil)
     }

@@ -14,12 +14,13 @@ struct RobotNameFieldTests {
         #expect(field.footer == "The name identifies this robot on the network. The hardware ID never changes.")
     }
 
-    @Test("a daemon that cannot rename names the version standing in the way")
+    @Test("software that cannot rename names the version standing in the way")
     func explainsWhichDaemonCannotRename() {
         let field = RobotNameField(supportsRename: false, daemonVersion: "1.9.0")
 
         #expect(!field.isEditable)
-        #expect(field.footer.contains("daemon 1.9.0"))
+        #expect(field.footer.contains("version 1.9.0"))
+        #expect(!field.footer.contains("daemon"))
         #expect(field.footer.contains("The hardware ID never changes."))
     }
 

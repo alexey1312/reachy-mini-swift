@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ReachyDesign
 
 @MainActor
 @Observable
@@ -68,6 +69,16 @@ final class LogConsoleModel {
         trim()
         visible.append(contentsOf: appended.filter(matches))
         trimVisible()
+    }
+
+    /// Clearing empties a buffer nothing refills: the journal stays on the robot,
+    /// but the lines this console has already scrolled past do not come back.
+    var clearConfirmation: Confirmation {
+        Confirmation(
+            title: .reachy("Clear the log?"),
+            message: .reachy("\(entries.count) lines go. The robot keeps its own journal."),
+            confirm: .reachy("Clear")
+        )
     }
 
     func clear() {

@@ -15,6 +15,7 @@ struct WiFiSettingsCard: View {
     /// The dialog and the sheet are the card's own business: nothing outside the view
     /// reads them and no test can reach them, so they stay here.
     @State private var confirmingForgetAll = false
+    @State private var confirmingForget: String?
     @State private var joining = false
     @Environment(\.reachyPreviewMode) private var previewMode
 
@@ -34,6 +35,8 @@ struct WiFiSettingsCard: View {
                 LabeledContent(.reachy("Network"), value: connected)
             }
             if let joinError = model.joinError {
+                // Optical: the two lines of the status row read as one.
+                // swiftlint:disable:next raw_spacing
                 VStack(alignment: .leading, spacing: 6) {
                     Text(joinError)
                         .font(Typography.detail)
@@ -49,7 +52,7 @@ struct WiFiSettingsCard: View {
             ForEach(model.status?.known ?? [], id: \.self) { network in
                 LabeledContent(network) {
                     Button(.reachy("Forget"), role: .destructive) {
-                        Task { await model.forget(network, session: session) }
+                        confirmingForget = network
                     }
                     .buttonStyle(.borderless)
                     .disabled(model.busy)
@@ -98,5 +101,28 @@ struct WiFiSettingsCard: View {
         } message: {
             Text(.reachy("The robot falls back to its own hotspot at the next restart."))
         }
+        .confirmationDialog(
+            forgetConfirmation.title,
+            isPresented: Binding(get: { confirmingForget != nil }, set: {
+                if !$0 {
+                    confirmingForget = nil
+                }
+            }),
+            titleVisibility: .visible
+        ) {
+            if let network = confirmingForget {
+                Button(forgetConfirmation.confirm, role: .destructive) {
+                    Task { await model.forget(network, session: session) }
+                }
+            }
+        } message: {
+            Text(forgetConfirmation.message)
+        }
+    }
+
+    /// Built off whichever row asked. With none asking the dialog is not on screen,
+    /// and the placeholder is never read.
+    private var forgetConfirmation: Confirmation {
+        WiFiSettingsModel.forgetConfirmation(for: confirmingForget ?? "")
     }
 }
