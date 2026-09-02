@@ -3655,6 +3655,35 @@
         }
       }
     },
+    "Drag to look around. Hold at the side to turn the body.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehen, um dich umzusehen. Am Rand halten, um den Körper zu drehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastra para mirar alrededor. Mantén en el borde para girar el cuerpo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites glisser pour regarder autour. Maintenez sur le côté pour tourner le corps."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тяните, чтобы осмотреться. Удерживайте у края, чтобы повернуть корпус."
+          }
+        }
+      }
+    },
     "Emotions": {
       "extractionState": "manual",
       "localizations": {
@@ -5014,35 +5043,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Поворот головы"
-          }
-        }
-      }
-    },
-    "Head — drag: yaw / pitch, hold sideways: turn the body": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kopf — ziehen: Gieren / Nicken, seitlich halten: Körper drehen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cabeza — arrastrar: guiñada / cabeceo, mantener de lado: girar el cuerpo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tête — glisser : lacet / tangage, maintenir sur le côté : tourner le corps"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Голова — потяните: рыскание / наклон, удержание в сторону: поворот корпуса"
           }
         }
       }
@@ -11713,6 +11713,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Крен"
+          }
+        }
+      }
+    },
+    "Roll and height": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollen und Höhe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanceo y altura"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roulis et hauteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крен и высота"
           }
         }
       }

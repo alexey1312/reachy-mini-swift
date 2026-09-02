@@ -22,6 +22,9 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
 
     public let name: String
     public let severity: Severity
+    /// What the script does, as a person would name it. The file name is still
+    /// shown, smaller: it is what the robot's own documentation calls it.
+    public let title: String
     public let summary: String
 
     public var id: String {
@@ -53,12 +56,14 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
             BLERecoveryScript(
                 name: name,
                 severity: .routine,
+                title: "Restart the robot's software",
                 summary: "Restarts the robot's software. It drops off the network for a few seconds and comes back."
             )
         case "HOTSPOT":
             BLERecoveryScript(
                 name: name,
                 severity: .disruptive,
+                title: "Switch to the robot's own hotspot",
                 summary: "Disconnects Wi-Fi and puts the robot's own reachy-mini-ap network back up. "
                     + "It leaves your network until it is set up again."
             )
@@ -66,6 +71,7 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
             BLERecoveryScript(
                 name: name,
                 severity: .disruptive,
+                title: "Forget every saved Wi-Fi network",
                 summary: "Deletes every Wi-Fi network the robot has saved, except its own hotspot. "
                     + "Every password has to be entered again."
             )
@@ -73,13 +79,17 @@ public struct BLERecoveryScript: Identifiable, Equatable, Sendable {
             BLERecoveryScript(
                 name: name,
                 severity: .destructive,
+                title: "Software reset",
                 summary: "Erases the robot's Python environments and restores the factory copy. "
                     + "Every installed app and everything it stored is gone."
             )
         default:
+            // The file name is the only title there is for a script this build has
+            // never met, and inventing one would be the wrong kind of helpful.
             BLERecoveryScript(
                 name: name,
                 severity: .disruptive,
+                title: name,
                 summary: "This app does not know what this script does. It runs as root on the robot."
             )
         }

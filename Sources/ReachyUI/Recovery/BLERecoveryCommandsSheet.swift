@@ -26,7 +26,7 @@ struct BLERecoveryCommandsSheet: View {
         .formStyle(.grouped)
         .navigationTitle(.reachy("Commands"))
         .confirmationDialog(
-            confirming?.name ?? "",
+            confirming?.title ?? "",
             isPresented: Binding(get: { confirming != nil }, set: {
                 if !$0 {
                     confirming = nil
@@ -133,8 +133,13 @@ struct BLERecoveryScriptRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: Space.xxs) {
+                Text(script.title)
+                    .font(Typography.rowTitleCompact)
+                // The file name stays, small: it is what the robot's own notes and
+                // the confirmation's Run button call it.
                 Text(script.name)
-                    .font(Typography.console)
+                    .font(Typography.consoleLineCompact)
+                    .foregroundStyle(.secondary)
                 Text(script.summary)
                     .font(Typography.footer)
                     .foregroundStyle(.secondary)

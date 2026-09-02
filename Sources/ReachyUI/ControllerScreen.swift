@@ -63,7 +63,7 @@ struct ControllerScreen: View {
                 }
             }
             Group {
-                Section(.reachy("Head — drag: yaw / pitch, hold sideways: turn the body")) {
+                Section {
                     JoystickPad(mapping: driver.mapping) { deflection in
                         driver.apply(deflection)
                         standDown?()
@@ -71,9 +71,15 @@ struct ControllerScreen: View {
                     .frame(maxWidth: 280)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Space.sm)
+                } header: {
+                    Text(.reachy("Head"))
+                } footer: {
+                    // A sentence where a header carried "yaw / pitch": the words
+                    // are the robot's, and the reader's are "look" and "turn".
+                    Text(.reachy("Drag to look around. Hold at the side to turn the body."))
                 }
                 recordingSection
-                Section(.reachy("Head")) {
+                Section(.reachy("Roll and height")) {
                     slider(
                         .reachy("Roll"),
                         value: $driver.roll,

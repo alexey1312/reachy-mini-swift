@@ -108,6 +108,11 @@ struct TeleopPadCluster: View {
                         standDown?()
                     }
                     .frame(width: 140, height: 140)
+                    // On the same chrome as the buttons beside it: over a camera
+                    // frame the pad's own quaternary fill was invisible, and a knob
+                    // floating over the picture read as a stray dot.
+                    .padding(Space.sm)
+                    .reachySurface(.chrome, in: .circle)
                 }
                 .padding()
                 .animation(Motion.stateChange, value: driver.isBodyTurned)

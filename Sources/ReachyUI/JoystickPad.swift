@@ -173,8 +173,11 @@ struct JoystickPad: View {
             zone
                 .fill(isActive ? Tone.brand.style : AnyShapeStyle(.quaternary))
                 .opacity(isActive ? 0.3 : 0.45)
+            // The brand colour at rest too, faintly: a grey chord read as a
+            // rendering seam rather than as the edge of a zone.
             zone
-                .strokeBorder(isActive ? Tone.brand.style : AnyShapeStyle(.tertiary), lineWidth: 1)
+                .strokeBorder(Tone.brand.style, lineWidth: 1)
+                .opacity(isActive ? 1 : 0.35)
         }
     }
 }
