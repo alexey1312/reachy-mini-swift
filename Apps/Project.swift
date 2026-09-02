@@ -115,6 +115,11 @@ let project = Project(
                 // is still never called. macOS ignores the UIKit key, the way
                 // it ignores `UILaunchScreen` above.
                 "UIBackgroundModes": .array([.string("audio"), .string("voip")]),
+                // The app owns the Live Activity; the extension only draws it, so
+                // this key belongs here alone. No
+                // `NSSupportsLiveActivitiesFrequentUpdates` — that one is about push
+                // cadence, and this app declares no push entitlement at all.
+                "NSSupportsLiveActivities": .boolean(true),
                 // The UIScene lifecycle is a launch requirement under the iOS 27
                 // SDK, and SwiftUI's `App` being scene-based is not the same as
                 // this app *declaring* it — Tuist's `.extendingDefault` does not

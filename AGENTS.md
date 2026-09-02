@@ -240,7 +240,13 @@ reads as "the app never crashed", which is how a reported sign-in crash was thre
 `lldb`, makes TCC read the _parent's_ Info.plist, so a correct bundle is killed anyway. For a real backtrace, sign a
 copy with `com.apple.security.get-task-allow` added and run `lldb --batch -k "bt all" -k "quit" -o run -- <binary>`.
 Addresses in that log are hex — `IPv4#0a184ea1` is 10.24.78.161.
-Everything pipes through xcsift, which on long runs can truncate and report `status: incomplete` while hiding the real
+Everything pipes through xcsift, which **buffers** — a run's output appears when it ends, so a wedged `xcodebuild`
+and a working one look identical for as long as you are willing to wait, and the log sits at the same handful of
+lines. One `xcodebuild test` sat an hour that way with no simulator test host running at all: `sample <pid>` showed
+it parked on a `DTXChannel serializer queue` with nothing on the other end, and `testmanagerd` had outlived a
+previous run. `xcrun simctl shutdown all` plus `pkill -x testmanagerd` clears it; running `xcodebuild` directly,
+without the pipe, is what makes progress visible while it happens. It also, on long runs, truncates and reports
+`status: incomplete` while hiding the real
 result — verify the artifact, or rerun the tool directly
 (`./bin/mise x -- swiftlint lint --strict` with the explicit path list the lint task in `mise.toml` names,
 `Apps/ReachyWidget` included). Always pass those explicit paths — a bare
@@ -435,7 +441,16 @@ additions (eight previews, then one, then six — one of them carrying a spinner
 sweep as something to explain rather than to expect: it is not flakiness and not the environment — the same suite on a
 clean HEAD passes, and re-recording settles it. Diff one to confirm nothing but the spinner moved before accepting it.
 Reference images are
-**Git LFS**; `bootstrap.sh` enables the filter, and without it they check out as text stubs. LFS uploads objects from
+**Git LFS**; `bootstrap.sh` enables the filter, and without it they check out as text stubs.
+**What a tree full of those stubs looks like is not "missing images", and that is the entry.** Every snapshot test
+crashes at `SnapshotTesting/UIImage.swift:31` — `UIImage(data:)!`, a force-unwrap of the _reference_ file, which is
+nil because the file is `version https://git-lfs.github.com/spec/v1` rather than a PNG. The run reports 0 passed
+against however many started, restarts, and crashes again, so it reads as a fatal bug in whatever preview happens to
+sort first. `file <any reference>` answering `ASCII text` settles it in one command; the fix is
+`./bin/mise x -- git lfs checkout`, which materialises them from `.git/lfs` with no download when the objects are
+already there. **`git status` itself is the tell**: run bare it fails with `git-lfs filter-process: git-lfs: command
+not found` and reports zero changes, because git-lfs is pinned in `mise.toml` and not on a bare PATH — which is also
+how the stubs got there. LFS uploads objects from
 a `pre-push` hook, and `core.hooksPath` makes git ignore `.git/hooks` — so its four hooks are tracked in `.githooks/`
 alongside the hand-written ones. Drop them and `git push` sends pointers with no data behind them — which is what
 their own generated message invites you to do, and it is the wrong reading of the failure: git-lfs is pinned in

@@ -51,6 +51,18 @@ struct AppLifecycleState: Equatable, Sendable {
 /// observed on hardware, and the crash path has none at all: `monitor_process`
 /// releases the robot-app lock in its `finally` and does nothing else.
 extension RobotSession {
+    /// Whether `restart-current-app` is between its two halves.
+    ///
+    /// Public because a surface that ends on "the app let go" has to tell a real
+    /// release from this gap: the daemon stops the app and starts it again behind
+    /// one request, so a poll landing in between reads an idle robot. The in-app
+    /// dock never noticed because it draws what the session holds, but the Live
+    /// Activity ends a card on that edge, and ending here is a false "stopped"
+    /// followed by a new card 1.5 s later.
+    public var isRestartingApp: Bool {
+        appLifecycle.isRestarting
+    }
+
     /// Takes the robot on behalf of an app that is about to start, and reports
     /// whether that meant waking it.
     ///
