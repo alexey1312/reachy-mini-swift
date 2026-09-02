@@ -1,5 +1,6 @@
 import CoreSpotlight
 import HuggingFaceAuth
+import ReachyDesign
 import ReachyKit
 import ReachyMedia
 import ReachySimulator

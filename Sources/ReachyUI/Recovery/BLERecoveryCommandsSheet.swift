@@ -26,7 +26,7 @@ struct BLERecoveryCommandsSheet: View {
         .formStyle(.grouped)
         .navigationTitle(.reachy("Commands"))
         .confirmationDialog(
-            confirming?.title ?? "",
+            confirming.map(BLERecoveryScriptCaption.title(for:)) ?? "",
             isPresented: Binding(get: { confirming != nil }, set: {
                 if !$0 {
                     confirming = nil
@@ -38,7 +38,7 @@ struct BLERecoveryCommandsSheet: View {
                 Task { await model.run(script) }
             }
         } message: { script in
-            Text(script.summary)
+            Text(BLERecoveryScriptCaption.summary(for: script))
         }
     }
 
@@ -133,14 +133,14 @@ struct BLERecoveryScriptRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: Space.xxs) {
-                Text(script.title)
+                Text(BLERecoveryScriptCaption.title(for: script))
                     .font(Typography.rowTitleCompact)
                 // The file name stays, small: it is what the robot's own notes and
                 // the confirmation's Run button call it.
                 Text(script.name)
                     .font(Typography.consoleLineCompact)
                     .foregroundStyle(.secondary)
-                Text(script.summary)
+                Text(BLERecoveryScriptCaption.summary(for: script))
                     .font(Typography.footer)
                     .foregroundStyle(.secondary)
             }

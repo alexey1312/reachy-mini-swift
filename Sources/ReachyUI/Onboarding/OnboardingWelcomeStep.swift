@@ -16,9 +16,7 @@ struct OnboardingWelcomeStep: View {
                 )
             )
         ) {
-            // Optical: the requirement rows read as one list; 14 pt sits between Space.md and Space.lg on purpose.
-            // swiftlint:disable:next raw_spacing
-            VStack(alignment: .leading, spacing: 14) {
+            Section {
                 requirement(
                     String(localized: .reachy("The robot, powered on")),
                     detail: String(
@@ -40,12 +38,11 @@ struct OnboardingWelcomeStep: View {
                     detail: String(localized: .reachy("It is encrypted for the robot before it leaves this device.")),
                     icon: "wifi"
                 )
+            } footer: {
                 Label(
                     .reachy("The next screen turns on Bluetooth scanning, so iOS will ask for permission."),
                     systemImage: "info.circle"
                 )
-                .font(Typography.footer)
-                .foregroundStyle(.secondary)
             }
         } actions: {
             ReachyActionButton(.reachy("Start"), fullWidth: true) {

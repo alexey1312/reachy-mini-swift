@@ -48,18 +48,17 @@ public extension View {
     /// label, and a prominent label painted for the appearance — use
     /// `ReachyActionButton`, which applies them inside the label and ends here.
     ///
-    /// **There is no glass tier here, and that is a measurement rather than a
-    /// preference.** `.buttonStyle(.glass)` does not merely fail to render in a
-    /// headless snapshot the way a material does — it takes the whole capture with
-    /// it. A screen carrying one comes out blank apart from its toolbar, which is
-    /// rendered in a separate pass. Measured by recording the onboarding suite
-    /// twice on the iOS 26 simulator: with the glass tier every reference was
-    /// empty, with it removed every one was complete, nothing else changed.
-    ///
-    /// A blank reference is worse than a missing one — it reads as coverage and
-    /// passes any change (`ReachyUI/AGENTS.md`) — and roughly sixty of them sit
-    /// behind these fourteen call sites. So the styles stay bordered, which iOS 26
-    /// draws in its own updated way regardless.
+    /// **The prominent tiers are glass on iOS 26 and macOS 26 — everywhere but a
+    /// headless capture.** `.buttonStyle(.glass)` does not merely fail to render in
+    /// a snapshot the way a material does: it takes the whole capture with it,
+    /// blank apart from the toolbar, which is rendered in a separate pass. Measured
+    /// by recording the onboarding suite twice on the iOS 26 simulator, and a blank
+    /// reference is worse than a missing one — it reads as coverage and passes any
+    /// change. So the style reads `reachyPreviewMode`, which every preview sets,
+    /// and draws `.borderedProminent` under it. The references therefore certify the
+    /// bordered layout, and the glass rendering is a device check — the same trade
+    /// `reachySurface` makes, whose glass is invisible headless. What the two share
+    /// is the label: `ReachyActionButton` paints it inside, and glass keeps it.
     ///
     /// Glass as a *background* is unaffected and is what `reachySurface` uses: the
     /// viewport's chrome renders correctly through the same simulator. The
@@ -72,15 +71,28 @@ public extension View {
 
 private struct ReachyButtonStyle: ViewModifier {
     let emphasis: ButtonEmphasis
+    @Environment(\.reachyPreviewMode) private var previewMode
 
     func body(content: Content) -> some View {
         switch emphasis {
-        case .prominent: content.buttonStyle(.borderedProminent)
+        case .prominent: prominent(content)
         case .standard: content.buttonStyle(.bordered)
         // `.borderless` rather than `.plain`: plain drops the tint too, and a
         // tintless label beside a blue one reads as disabled.
         case .quiet: content.buttonStyle(.borderless)
-        case .destructive: content.buttonStyle(.borderedProminent).tint(Tone.danger.style)
+        case .destructive: prominent(content).tint(Tone.danger.style)
+        }
+    }
+
+    /// Glass on iOS 26 and macOS 26, bordered under a headless capture and below
+    /// the floor. The capture is the only place the two differ on purpose: glass
+    /// blanks it, and a blank reference is worse than a missing one.
+    @ViewBuilder
+    private func prominent(_ content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *), !previewMode {
+            content.buttonStyle(.glassProminent)
+        } else {
+            content.buttonStyle(.borderedProminent)
         }
     }
 }

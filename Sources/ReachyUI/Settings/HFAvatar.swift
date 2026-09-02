@@ -1,3 +1,4 @@
+import ReachyDesign
 import SwiftUI
 
 /// The Hub's avatar for one account, with a monogram behind it.

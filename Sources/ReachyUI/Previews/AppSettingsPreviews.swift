@@ -1,3 +1,4 @@
+import ReachyDesign
 @testable import ReachyUI
 import SwiftUI
 

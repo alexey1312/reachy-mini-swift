@@ -72,7 +72,7 @@ struct BLESoftwareResetScreen: View {
                 Task { await dispatch() }
             }
         } message: {
-            Text(script.summary)
+            Text(BLERecoveryScriptCaption.summary(for: script))
         }
     }
 

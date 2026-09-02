@@ -63,13 +63,6 @@ struct BLERecoveryScriptTests {
         #expect(unknown.name == "FACTORY_WIPE")
     }
 
-    @Test("each known script is titled in words, and an unknown one by its file name")
-    func scriptsHaveTitles() {
-        #expect(BLERecoveryScript.describing("RESTART_DAEMON").title == "Restart the robot's software")
-        #expect(BLERecoveryScript.describing("SOFTWARE_RESET").title == "Software reset")
-        #expect(BLERecoveryScript.describing("FACTORY_WIPE").title == "FACTORY_WIPE")
-    }
-
     @Test("the destructive one is classified as such, and the restart as routine")
     func classifiesTheKnownScripts() {
         #expect(BLERecoveryScript.describing("SOFTWARE_RESET").severity == .destructive)

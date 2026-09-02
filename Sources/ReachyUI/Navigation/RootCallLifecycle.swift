@@ -1,3 +1,4 @@
+import ReachyDesign
 import ReachyKit
 import ReachyMedia
 import SwiftUI

@@ -4,9 +4,9 @@ import SwiftUI
 
 /// Chooses the network and takes the password.
 ///
-/// "Other network…" is a permanent row, not an escape hatch: the robot answers a scan in
-/// one 180-byte message with no pagination and no flag saying anything was dropped, so a
-/// missing network is the ordinary case rather than the broken one.
+/// The rows are `NetworkCredentialsFields`, shared with the Wi-Fi sheet; what is this
+/// step's own is the footer, which says why a network can be missing from a list the
+/// robot squeezed into one Bluetooth message.
 struct OnboardingNetworkStep: View {
     let model: OnboardingModel
 
@@ -21,86 +21,53 @@ struct OnboardingNetworkStep: View {
             )
         ) {
             if model.isAlreadyOnNetwork {
-                alreadyConnected
+                Section {
+                    Label(.reachy("This robot is already on a network."), systemImage: "checkmark.circle")
+                        .foregroundStyle(Tone.success.style)
+                    Button(.reachy("Keep it there and finish")) {
+                        model.skipNetwork()
+                    }
+                }
             }
-            picker
-            if model.selectedSSID == nil {
-                TextField(
-                    .reachy("Network name"),
-                    text: Binding(get: { model.manualSSID }, set: { model.manualSSID = $0 })
-                )
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                #endif
+            Section {
+                NetworkCredentialsFields(
+                    networks: model.networks,
+                    selected: Binding(get: { model.selectedSSID }, set: { model.selectedSSID = $0 }),
+                    manualSSID: Binding(get: { model.manualSSID }, set: { model.manualSSID = $0 }),
+                    password: Binding(get: { model.password }, set: { model.password = $0 }),
+                    isScanning: model.isBusy
+                ) {
+                    Task { await model.loadNetworks() }
+                }
+            } footer: {
+                VStack(alignment: .leading, spacing: Space.sm) {
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "The robot fits only a handful of names into one Bluetooth message and cannot say how many it left out, so a network missing from the list is normal — type it in under \"Other network…\"."
+                        )
+                    )
+                    Label(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "The password is encrypted for this robot before it is sent, but someone within Bluetooth range could still interfere with the exchange. Set the robot up somewhere you trust."
+                        ),
+                        systemImage: "lock.trianglebadge.exclamationmark"
+                    )
+                    .foregroundStyle(Tone.warning.style)
+                }
             }
-            SecureField(.reachy("Wi-Fi password"), text: Binding(get: { model.password }, set: { model.password = $0 }))
-                .textFieldStyle(.roundedBorder)
-            Text(
-                .reachy(
-                    // swiftlint:disable:next line_length
-                    "The robot fits only a handful of names into one Bluetooth message and cannot say how many it left out, so a network missing from the list is normal — type it in under \"Other network…\"."
-                )
-            )
-            .font(Typography.footer)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            Label(
-                .reachy(
-                    // swiftlint:disable:next line_length
-                    "The password is encrypted for this robot before it is sent, but someone within Bluetooth range could still interfere with the exchange. Set the robot up somewhere you trust."
-                ),
-                systemImage: "lock.trianglebadge.exclamationmark"
-            )
-            .font(Typography.footer)
-            .foregroundStyle(Tone.warning.style)
-            .fixedSize(horizontal: false, vertical: true)
-            OnboardingErrorText(message: model.errorMessage)
+            if let message = model.errorMessage {
+                Section {
+                    ReachyErrorRow(message)
+                }
+            }
         } actions: {
             ReachyActionButton(.reachy("Send to the robot"), fullWidth: true) {
                 Task { await model.join() }
             }
             .disabled(!model.canJoin)
             OnboardingBackButton(model: model)
-        }
-    }
-
-    private var picker: some View {
-        HStack {
-            Picker(
-                .reachy("Network"),
-                selection: Binding(get: { model.selectedSSID }, set: { model.selectedSSID = $0 })
-            ) {
-                ForEach(model.networks, id: \.self) { network in
-                    Text(network).tag(String?.some(network))
-                }
-                Text(.reachy("Other network…")).tag(String?.none)
-            }
-            .pickerStyle(.menu)
-            Spacer()
-            Button {
-                Task { await model.loadNetworks() }
-            } label: {
-                if model.isBusy {
-                    ProgressView()
-                } else {
-                    Label(.reachy("Scan again"), systemImage: "arrow.clockwise")
-                        .labelStyle(.iconOnly)
-                }
-            }
-            .disabled(model.isBusy)
-            .help(Text(.reachy("Scan again")))
-        }
-    }
-
-    private var alreadyConnected: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Label(.reachy("This robot is already on a network."), systemImage: "checkmark.circle")
-                .foregroundStyle(Tone.success.style)
-            Button(.reachy("Keep it there and finish")) {
-                model.skipNetwork()
-            }
         }
     }
 }

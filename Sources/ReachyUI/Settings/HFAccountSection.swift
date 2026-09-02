@@ -58,6 +58,24 @@ struct HFAccountSection: View {
         } message: {
             Text(HFSignInModel.signOutConfirmation.message)
         }
+        // On the card's first section rather than on either robot section, so it is
+        // in the hierarchy whichever of the two is shown.
+        .confirmationDialog(
+            .reachy("Take the robot off the relay?"),
+            isPresented: $confirmingUnlink,
+            titleVisibility: .visible
+        ) {
+            Button(.reachy("Unlink this robot"), role: .destructive) {
+                Task { await robotLink.unlink(session: session) }
+            }
+        } message: {
+            Text(
+                .reachy(
+                    // swiftlint:disable:next line_length
+                    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person."
+                )
+            )
+        }
 
         if session.canLinkHuggingFace {
             robotSection
@@ -76,9 +94,10 @@ struct HFAccountSection: View {
     /// token. Everything else on the full card needs routes the data channel does
     /// not carry, so none of it is shown rather than shown broken.
     ///
-    /// Confirmed, unlike the same button on the local card. There the robot is on
-    /// the network in front of you and linking it again is the row above; here the
-    /// robot leaves the relay and only somebody standing next to it can undo that.
+    /// Confirmed, and so is the same button on the local card now. The argument
+    /// against asking there — the robot is in front of you and linking it again is
+    /// the row above — held for the robot and not for the relay: one tap took a
+    /// robot off every other device's list, and those readers were not in the room.
     private var relayRobotSection: some View {
         Section {
             LabeledContent(.reachy("This robot"), value: String(localized: .reachy("Linked")))
@@ -98,22 +117,6 @@ struct HFAccountSection: View {
                 .reachy(
                     // swiftlint:disable:next line_length
                     "Unlinking takes the robot off the relay: it goes offline and comes back only once somebody sets it up again in person."
-                )
-            )
-        }
-        .confirmationDialog(
-            .reachy("Take the robot off the relay?"),
-            isPresented: $confirmingUnlink,
-            titleVisibility: .visible
-        ) {
-            Button(.reachy("Unlink this robot"), role: .destructive) {
-                Task { await robotLink.unlink(session: session) }
-            }
-        } message: {
-            Text(
-                .reachy(
-                    // swiftlint:disable:next line_length
-                    "The robot drops its token and leaves the relay. Nothing here can reach it again until it is set up in person."
                 )
             )
         }
@@ -224,7 +227,7 @@ struct HFAccountSection: View {
             }
             if robotLink.isLinked {
                 Button(.reachy("Unlink this robot"), role: .destructive) {
-                    Task { await robotLink.unlink(session: session) }
+                    confirmingUnlink = true
                 }
                 .disabled(robotLink.isLinking)
             } else if case .signedIn = model.account.state {

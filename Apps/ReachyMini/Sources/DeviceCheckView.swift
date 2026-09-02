@@ -11,8 +11,8 @@ import SwiftUI
 struct DeviceCheckView: View {
     @State private var model: DeviceCheckModel
     @State private var discovery: RobotBrowser
-    /// ReachyUI's `\.reachyPreviewMode` is internal to that module, so this screen carries its own
-    /// switch: a preview hands in a seeded browser and must not also start Bonjour.
+    /// Its own switch beside `\.reachyPreviewMode`: a preview hands in a seeded browser and
+    /// must not also start Bonjour, and this screen predates the shared key.
     private let browsesLiveNetwork: Bool
 
     /// `nil` defaults rather than `DeviceCheckModel()`: a default argument is evaluated in a nonisolated

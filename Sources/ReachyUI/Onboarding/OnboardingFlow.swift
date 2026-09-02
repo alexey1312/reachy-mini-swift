@@ -59,7 +59,13 @@ struct OnboardingFlow: View {
 }
 
 /// The shape every step shares: one heading, one explanation, whatever the step needs in
-/// the middle, and its actions pinned to the bottom where a thumb is.
+/// the middle as form sections, and its actions pinned to the bottom where a thumb is.
+///
+/// A grouped `Form` rather than a `ScrollView` of loose views, which is what this was:
+/// every other screen in the app is one, and the steps that take input — a code, a
+/// network, a password — drew bordered text fields on a flat page that matched nothing
+/// else the reader had seen. The heading section is drawn on the page rather than in a
+/// row, the way the store's section picker is.
 struct OnboardingStepScaffold<Content: View, Actions: View>: View {
     let title: String
     let message: String
@@ -67,18 +73,24 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
     @ViewBuilder var actions: () -> Actions
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                Text(title)
-                    .font(Typography.screenTitle.bold())
-                Text(message)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                content()
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: Space.sm) {
+                    Text(title)
+                        .font(Typography.screenTitle.bold())
+                    Text(message)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .listRowBackground(Color.clear)
+                // Not `EdgeInsets()`: flush with the cell's edge, the bold heading's
+                // first glyph was clipped by its own overhang — measured on the
+                // booted simulator, where "Before you start" lost the top of its B.
+                .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+            content()
         }
+        .formStyle(.grouped)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Space.sm) {
                 actions()
@@ -95,6 +107,7 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             // says nothing on the ones that do not.
             .reachySurface(.page, ignoringSafeArea: .bottom)
         }
+        .groupedPageBackground()
     }
 }
 
@@ -108,21 +121,6 @@ struct OnboardingBackButton: View {
             Button(.reachy("Back")) { model.back() }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-        }
-    }
-}
-
-/// The error the current step ran into, if any. Steps that can also fail structurally
-/// (a refused join, a lockout) say so in their own words instead.
-struct OnboardingErrorText: View {
-    let message: String?
-
-    var body: some View {
-        if let message {
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(Typography.detail)
-                .foregroundStyle(Tone.danger.style)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

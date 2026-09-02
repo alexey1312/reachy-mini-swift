@@ -848,6 +848,10 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   stayed put because it did not scale, which is the whole point. And **a labelled `Slider` draws a tick per step on
   iOS 26** — the `label:` initialiser, not the bare one — so a slider's name goes on as `accessibilityLabel`;
   `AudioSettingsSection` carries the note.
+- **Every capture runs in `reachyPreviewMode`, set by the stencil and not by the preview.** `.preview()` still sets
+  it for the screens that need their `.task` inert, but the glass gate in `reachyButton` cannot be left to that:
+  the ReachyDesign gallery and the asleep banner never called it, met `.glassProminent`, and came back as blank
+  references — which pass any change. `PreviewTests.stencil` wraps every body in `.reachyPreviewMode(true)`.
 - **A preview with no `traits:` is captured at full device size.** Prefire defaults the trait list to `.device`
   (`RawPreviewModel.isScreen`), and that device trait is what carries `horizontalSizeClass` — so it is what makes the
   iPad snapshot exercise the regular-width layout. Components opt out with `traits: .sizeThatFitsLayout`.

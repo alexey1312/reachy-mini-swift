@@ -29,7 +29,9 @@ struct OnboardingScanStep: View {
                     String(localized: .reachy("This app can't use Bluetooth")),
                     detail: String(localized: .reachy("Allow Bluetooth for this app in Settings, then come back."))
                 )
-                PrivacySettingsButton(pane: .bluetooth)
+                Section {
+                    PrivacySettingsButton(pane: .bluetooth)
+                }
             case .unsupported:
                 unavailable(
                     String(localized: .reachy("This device has no Bluetooth")),
@@ -49,8 +51,10 @@ struct OnboardingScanStep: View {
             // Only where the panel above has not already said it. An unusable radio makes
             // the scan fail with the same sentence, and printing it again underneath in
             // red reads as a second, worse problem.
-            if radioIsUsable {
-                OnboardingErrorText(message: model.errorMessage)
+            if radioIsUsable, let message = model.errorMessage {
+                Section {
+                    ReachyErrorRow(message)
+                }
             }
         } actions: {
             if let only = model.discovered.first, model.discovered.count == 1 {
@@ -81,38 +85,43 @@ struct OnboardingScanStep: View {
         }
     }
 
-    @ViewBuilder
     private var results: some View {
-        if model.discovered.isEmpty {
-            // Optical: the signal glyph sits beside the robot's name as one row.
-            // swiftlint:disable:next raw_spacing
-            HStack(spacing: 10) {
-                ProgressView()
-                Text(.reachy("Searching…"))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        ForEach(model.discovered) { robot in
-            Button {
-                Task { await model.connect(to: robot.id) }
-            } label: {
-                LabeledContent {
-                    if model.isBusy {
-                        ProgressView()
-                    } else {
-                        Text(.reachy("\(robot.rssi) dBm"))
-                            .font(Typography.consoleLine)
-                    }
-                } label: {
-                    Label(robot.name, systemImage: "dot.radiowaves.left.and.right")
+        Section {
+            if model.discovered.isEmpty {
+                HStack(spacing: Space.sm) {
+                    ProgressView()
+                    Text(.reachy("Searching…"))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .reachyButton()
-            .disabled(model.isBusy)
+            ForEach(model.discovered) { robot in
+                Button {
+                    Task { await model.connect(to: robot.id) }
+                } label: {
+                    LabeledContent {
+                        if model.isBusy {
+                            ProgressView()
+                        } else {
+                            Text(.reachy("\(robot.rssi) dBm"))
+                                .font(Typography.consoleLine)
+                        }
+                    } label: {
+                        Label(robot.name, systemImage: "dot.radiowaves.left.and.right")
+                    }
+                }
+                .disabled(model.isBusy)
+            }
         }
     }
 
     private func unavailable(_ title: String, detail: String) -> some View {
-        ContentUnavailableView(title, systemImage: "antenna.radiowaves.left.and.right.slash", description: Text(detail))
+        Section {
+            ContentUnavailableView(
+                title,
+                systemImage: "antenna.radiowaves.left.and.right.slash",
+                description: Text(detail)
+            )
+            .listRowBackground(Color.clear)
+        }
     }
 }

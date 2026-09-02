@@ -1,4 +1,5 @@
 import HuggingFaceAuth
+import ReachyDesign
 import ReachyKit
 import ReachyMedia
 @testable import ReachyUI

@@ -18,34 +18,34 @@ struct OnboardingHandoffStep: View {
                 localized: .reachy("Bluetooth's job is done. The app will pick the robot up on the network from here.")
             )
         ) {
-            if let hardwareID = model.session?.hardwareID {
-                LabeledContent(.reachy("Hardware ID")) {
-                    Text(hardwareID)
-                        .font(Typography.consoleLine)
+            Section {
+                if let hardwareID = model.session?.hardwareID {
+                    LabeledContent(.reachy("Hardware ID")) {
+                        Text(hardwareID)
+                            .font(Typography.consoleLine)
+                    }
+                }
+                if let address = model.session?.robotAddress {
+                    LabeledContent(.reachy("Address")) {
+                        Text(address)
+                            .font(Typography.consoleLine)
+                    }
+                }
+            } footer: {
+                VStack(alignment: .leading, spacing: Space.sm) {
+                    Label(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "If this phone is on the robot's own reachy-mini-ap network, switch it back to your home Wi-Fi now."
+                        ),
+                        systemImage: "wifi.router"
+                    )
+                    Label(
+                        .reachy("You can give the robot a name in Settings once it is connected."),
+                        systemImage: "tag"
+                    )
                 }
             }
-            if let address = model.session?.robotAddress {
-                LabeledContent(.reachy("Address")) {
-                    Text(address)
-                        .font(Typography.consoleLine)
-                }
-            }
-            Label(
-                .reachy(
-                    "If this phone is on the robot's own reachy-mini-ap network, switch it back to your home Wi-Fi now."
-                ),
-                systemImage: "wifi.router"
-            )
-            .font(Typography.footer)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            Label(
-                .reachy("You can give the robot a name in Settings once it is connected."),
-                systemImage: "tag"
-            )
-            .font(Typography.footer)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
         } actions: {
             ReachyActionButton(.reachy("Done"), fullWidth: true) {
                 onFinish(model.finish())

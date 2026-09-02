@@ -3307,6 +3307,35 @@
         }
       }
     },
+    "Deletes every Wi-Fi network the robot has saved, except its own hotspot. Every password has to be entered again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löscht jedes gespeicherte WLAN-Netzwerk des Roboters außer seinem eigenen Hotspot. Jedes Passwort muss neu eingegeben werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borra todas las redes Wi-Fi que el robot tiene guardadas, salvo su propio punto de acceso. Habrá que volver a introducir todas las contraseñas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprime tous les réseaux Wi-Fi enregistrés par le robot, sauf son propre point d'accès. Chaque mot de passe devra être ressaisi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаляет все сохранённые роботом сети Wi-Fi, кроме его собственной точки доступа. Все пароли придётся ввести заново."
+          }
+        }
+      }
+    },
     "Deletes the robot's Python environments outright.": {
       "extractionState": "manual",
       "localizations": {
@@ -3477,6 +3506,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отключить"
+          }
+        }
+      }
+    },
+    "Disconnects Wi-Fi and puts the robot's own reachy-mini-ap network back up. It leaves your network until it is set up again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trennt das WLAN und stellt das eigene Netzwerk reachy-mini-ap des Roboters wieder her. Er verlässt dein Netzwerk, bis er erneut eingerichtet wird."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconecta la Wi-Fi y vuelve a levantar la red propia del robot, reachy-mini-ap. Sale de tu red hasta que se configure de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coupe le Wi-Fi et remet en place le réseau reachy-mini-ap du robot. Il quitte votre réseau jusqu'à une nouvelle configuration."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключает Wi-Fi и снова поднимает собственную сеть робота reachy-mini-ap. Он покидает вашу сеть, пока его не настроят заново."
           }
         }
       }
@@ -3883,6 +3941,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Стереть программное обеспечение робота?"
+          }
+        }
+      }
+    },
+    "Erases the robot's Python environments and restores the factory copy. Every installed app and everything it stored is gone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löscht die Python-Umgebungen des Roboters und stellt die Werkskopie wieder her. Jede installierte App und alles, was sie gespeichert hat, ist weg."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borra los entornos de Python del robot y restaura la copia de fábrica. Todas las apps instaladas y todo lo que guardaron desaparecen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efface les environnements Python du robot et restaure la copie d'usine. Toutes les apps installées et tout ce qu'elles ont stocké disparaissent."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стирает Python-окружения робота и восстанавливает заводскую копию. Все установленные приложения и всё, что они сохранили, исчезают."
           }
         }
       }
@@ -4579,6 +4666,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Забыть все"
+          }
+        }
+      }
+    },
+    "Forget every saved Wi-Fi network": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle gespeicherten WLAN-Netzwerke vergessen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvidar todas las redes Wi-Fi guardadas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oublier tous les réseaux Wi-Fi enregistrés"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забыть все сохранённые сети Wi-Fi"
           }
         }
       }
@@ -11137,6 +11253,35 @@
         }
       }
     },
+    "Restart the robot's software": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software des Roboters neu starten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reiniciar el software del robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redémarrer le logiciel du robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустить ПО робота"
+          }
+        }
+      }
+    },
     "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth, then RESTART_DAEMON.": {
       "extractionState": "manual",
       "localizations": {
@@ -11162,6 +11307,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Перезапуск программного обеспечения робота освободит её: Настройки › Дополнительно › Восстановление по Bluetooth, затем RESTART_DAEMON."
+          }
+        }
+      }
+    },
+    "Restarts the robot's software. It drops off the network for a few seconds and comes back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startet die Software des Roboters neu. Er verschwindet für ein paar Sekunden aus dem Netzwerk und kommt zurück."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinicia el software del robot. Desaparece de la red unos segundos y vuelve."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redémarre le logiciel du robot. Il quitte le réseau quelques secondes puis revient."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапускает ПО робота. Он на несколько секунд пропадает из сети и возвращается."
           }
         }
       }
@@ -13167,6 +13341,35 @@
         }
       }
     },
+    "Software reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software zurücksetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer el software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialisation logicielle"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сброс ПО"
+          }
+        }
+      }
+    },
     "Software version": {
       "extractionState": "manual",
       "localizations": {
@@ -14352,6 +14555,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Зависло при остановке"
+          }
+        }
+      }
+    },
+    "Switch to the robot's own hotspot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum eigenen Hotspot des Roboters wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar al punto de acceso propio del robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer au point d'accès du robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейти на собственную точку доступа робота"
           }
         }
       }
@@ -16498,6 +16730,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это приложение не может использовать Bluetooth"
+          }
+        }
+      }
+    },
+    "This app does not know what this script does. It runs as root on the robot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App weiß nicht, was dieses Skript tut. Es läuft als root auf dem Roboter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no sabe qué hace este script. Se ejecuta como root en el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app ne sait pas ce que fait ce script. Il s'exécute en root sur le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение не знает, что делает этот скрипт. Он выполняется на роботе от имени root."
           }
         }
       }
