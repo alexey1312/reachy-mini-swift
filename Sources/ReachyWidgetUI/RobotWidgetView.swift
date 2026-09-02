@@ -57,7 +57,22 @@ public struct RobotWidgetView: View {
                 // extra width is the whole argument for putting it beside.
                 HStack(alignment: .bottom, spacing: Space.md) {
                     textColumn
-                    if let action = content.action {
+                    if let app = content.runningApp {
+                        // The app as a tile beside the words, the way the apps
+                        // widget draws it: at medium there is room to show what is
+                        // running rather than only to name it.
+                        VStack(alignment: .trailing, spacing: Space.sm) {
+                            AppRowLabel(
+                                artwork: AppArtwork(app),
+                                title: app.title,
+                                layout: .tile,
+                                status: ReachyStatusLabel(text: String(localized: .reachy("Running")), tone: .active)
+                            )
+                            if let action = content.action {
+                                actionButton(action)
+                            }
+                        }
+                    } else if let action = content.action {
                         actionButton(action)
                     }
                 }
@@ -173,14 +188,14 @@ public struct RobotWidgetView: View {
             Text(content.title)
                 .font(Typography.rowTitle)
                 .lineLimit(1)
-            Text(content.detail)
+            Text(detailLine)
                 .font(Typography.status)
                 .foregroundStyle(.secondary)
                 // Two lines because a relative date in a wordier language runs
                 // past one at the small size, and a truncated "last seen" is the
                 // one part of a stale reading that has to survive.
                 .lineLimit(2)
-            if layout == .wide, let secondary = content.secondaryDetail {
+            if layout == .wide, content.runningApp == nil, let secondary = content.secondaryDetail {
                 Text(secondary)
                     .font(Typography.status)
                     .foregroundStyle(.tertiary)
@@ -188,6 +203,13 @@ public struct RobotWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// When the tile beside the words names the app, the words say the state the
+    /// app displaced instead of naming it a second time.
+    private var detailLine: String {
+        guard layout == .wide, content.runningApp != nil else { return content.detail }
+        return content.secondaryDetail ?? content.detail
     }
 
     /// The words and glyphs of `RobotScreen.controlSection`, deliberately not the
