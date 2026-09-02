@@ -373,3 +373,51 @@ the intents that take it. Searching for a dance offers to play it. A destination
   on `_` and `-`, which is what puts `dance` in as a term of its own; a search index sees `dance_party` as one token.
 - The app-side half is `ReachyEntityIndex` in `ReachyUI`, which is where the delete-vs-`deleteAllSearchableItems`
   trap is written up.
+
+## The running-app Live Activity
+
+`RunningAppActivityContent.swift`, `RunningAppActivityView.swift`, `RunningAppActivityAttributes.swift` and
+`RunningAppActivityIntents.swift` here; the decisions live in `ReachyUI` (`RunningAppActivityPlan`), and the
+`ActivityConfiguration` in `Apps/ReachyWidget/Sources/RunningAppActivity.swift`. Issue #61.
+
+- **A Live Activity is not a widget, and the one difference decides the whole design: it has no network and no
+  timeline.** It runs in its own sandbox over whatever the app last handed it, inside a **4 KB** ceiling for
+  attributes plus state together. A widget can correct itself on a schedule; this cannot correct itself at all. With
+  no push entitlement in this project, the content freezes the moment the app stops getting processor time — one
+  poll cadence after the phone goes in a pocket.
+- **So `staleDate` is the only scheduled state change a card ever gets**, and it is spent on the one moment that
+  matters for the state being written: `RobotSnapshotStore.freshness` for a running app, `startingDeadline` and
+  `stoppingDeadline` for the two transitions, `actionFailureWindow` for a refusal. Each is **named**, never restated
+  as a number — the running one has to equal the widget's boundary or the same Lock Screen carries two claims about
+  one robot, which is what `MenuBarContent` exists to prevent.
+- **`isStale` means one thing: no reading has arrived since T. Never a verdict.** The flip is a timer, not a
+  reading, so a frozen card may not say "stuck", "failed" or "unreachable" — `RunningAppModel.refresh` already
+  refuses to time a transition off a read that did not arrive, and this is the same rule on a surface nobody is
+  watching. What it may say is the app it last saw, the robot's name, the **age of the reading**, and Stop.
+- **The age is the one self-updating element, and elapsed run time is deliberately absent.** `Text(_, style:
+  .relative)` measures this device's clock against a date this device stamped, so it goes on being true with no
+  process. A run _duration_ would not: `RobotAppStatus` carries `app`, `state` and `error` and nothing else — the
+  daemon reports no start time — so "running for 4:12" would count from when this phone first looked, which is right
+  only when this phone started the app. No progress bar either: **a bar may only be drawn against a duration the
+  robot promised**, and `startingDeadline` is a timeout while the end of a stop is a SIGKILL.
+- **`ActivityAttributes` are fixed at request time, which is why a different app replaces the card rather than
+  renaming it.** The app's identity — title, artwork — lives there because it is what does not move for the life of
+  one run. The case is a poll race rather than the ordinary path: the daemon runs one app at a time, so A→B with no
+  idle reading in between means the poll missed a 1.5 s gap.
+- **The Stop button is a fourth intent sibling, not a conformance on `StopRobotAppIntent`.** `LiveActivityIntent`
+  relocates execution into the _app's_ process, and that one is a deliberate extension citizen — 15 s budget,
+  `network.client` in the Mac entitlements, four shipped callers. Same argument that keeps `RobotAppTileIntent`,
+  `ToggleRobotAppIntent` and `RobotAppControlConfigurationIntent` three types. `isDiscoverable = false` does not keep
+  it out of `Metadata.appintents`, so it owes `Scripts/check-appintents-metadata.sh` an entry, and it has one.
+- **No Stop button for a robot known only over the relay.** `RobotIntentTarget.connection` dials a LAN address by
+  design, so `canStop` is written by the app at every update and the card draws no button when it is false — falling
+  through to `widgetURL`, the same choice the three accessory families already made.
+- **Everything decidable is in `ReachyUI` and nothing decidable is behind the `#if`.** ActivityKit is iOS-only and
+  `mise run test` is SwiftPM on macOS, so a rule inside the fence is a rule no test can hold. Two files import
+  ActivityKit here and both are adapters. **Only `mise run build:app:ios` compiles any of it**; the check that it
+  really did is `nm …/ReachyWidget.appex/ReachyWidget.debug.dylib | grep RunningAppActivity`, which is silent on a
+  macOS build.
+- **What no reference image can prove**, and it is most of the surface: the Lock Screen's real height against the
+  160 pt truncation point, every Dynamic Island presentation, StandBy, the Watch and CarPlay, whether `staleDate`
+  flips when claimed, and that the system ends a card at eight hours. The previews render `RunningAppActivityView`
+  directly, never through ActivityKit — the same blind spot `supportedFamilies` already has.

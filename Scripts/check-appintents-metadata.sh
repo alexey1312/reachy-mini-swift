@@ -63,6 +63,19 @@ REQUIRED_APP_ACTIONS = [
     # an appex, so it must never move into the library the extension links.
     "CallRobotIntent",
 ]
+
+# Required of an iOS bundle and absent from a macOS one by construction.
+#
+# ActivityKit ships for iOS and Mac Catalyst, and this app's Mac target is native, so
+# `StopRunningAppActivityIntent` is behind `#if os(iOS)` along with the rest of the
+# Live Activity. Listing it unconditionally is what failed the macOS Release build on
+# #118: the check is right that the action is missing, and the action is right to be
+# missing. `isDiscoverable = false` keeps it out of the Shortcuts app but not out of
+# this file — the flag is a field in the metadata, not an absence from it — and
+# extraction failing would leave a card whose only control does nothing, silently.
+REQUIRED_IOS_APP_ACTIONS = [
+    "StopRunningAppActivityIntent",
+]
 REQUIRED_APPEX_ACTIONS = [
     "RobotAppsConfigurationIntent",
     # A control's Edit sheet is built from this metadata exactly as the widget's
@@ -88,7 +101,12 @@ if len(app_files) != 1:
 else:
     data = json.loads(app_files[0].read_text())
     actions = data.get("actions") or {}
-    missing = [name for name in REQUIRED_APP_ACTIONS if name not in actions]
+    # A macOS `.app` keeps its Info.plist under `Contents/`; an iOS one has it at the
+    # root. That is the same distinction `mise run inspect:bundle` draws, and it is
+    # the only one available from the artifact alone.
+    is_macos = (target / "Contents" / "Info.plist").exists()
+    required = REQUIRED_APP_ACTIONS + ([] if is_macos else REQUIRED_IOS_APP_ACTIONS)
+    missing = [name for name in required if name not in actions]
     if missing:
         failures.append(f"app metadata is missing actions: {missing} (has {sorted(actions)})")
     if not data.get("autoShortcuts"):

@@ -972,3 +972,44 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   every capture that predates it; `Viewport — heard a voice` is the one that shows it in the chrome row, and the
   standalone `Direction of arrival —` set covers the badge itself. **None of it can be verified against
   `sim-daemon`** — that sends `doa: null` — so the mapping is a hardware check.
+
+## Driving the Live Activity
+
+`Apps/RunningAppActivityPlan.swift` (+ `Reading`), `RunningAppActivityController.swift` and
+`RunningAppActivityDismissal.swift`. The card itself, and why it is shaped as it is, are in
+`ReachyWidgetUI/AGENTS.md`; this is the half that decides. Issue #61.
+
+- **A pure reducer, the `CallLifecycle` shape, and the reason is the same one written there.** ActivityKit is
+  iOS-only and `mise run test` is SwiftPM on macOS, so a rule inside an `#if os(iOS)` fence is a rule no test can
+  hold. `RunningAppActivityPlan` therefore decides everything and touches nothing; `RunningAppActivityController` is
+  a thin adapter over five injected `@Sendable` closures whose defaults are the ActivityKit calls.
+- **The drive hangs off `RootLifecycle`, not off the dock's own modifier.** That one unmounts when the shell gives
+  way to the connect gate — which is exactly the disconnect the card must be torn down on. It is a `.task(id:)` over
+  an `Equatable` facts struct, the shape `RobotWidgetFacts` already has and for the reason recorded there.
+  `RunningAppModel` is not edited: it is at SwiftLint's length limit and every input already exists on it.
+- **`Activity.activities` is the source of truth for "is there one", never a stored handle** — the process that
+  renders is not the process that started it. Reconciling against it on every pass is what covers three separate
+  hazards at once: the app was killed and relaunched, the eight-hour cap ended the card, and the reader swiped it
+  away while nothing was running to be told.
+- **A card the reader dismissed must not come back, so the dismissal is durable.** Without it the next foreground
+  pass sees a running app and no card and resurrects exactly what was waved away. `RunningAppActivityDismissalStore`
+  keys on `robot/app` and **expires on `RobotSnapshotStore.freshness`** — past half an hour nothing else here
+  believes the reading it was about either, and an app stopped and restarted while this process was closed would
+  otherwise be suppressed for ever. The eight-hour cap records the same thing: re-creating a card starts a fresh
+  eight hours, so a conversation app left running all day would reappear every eight hours for ever.
+- **A restart is not the app letting go.** `restart-current-app` is stop-then-start behind one request, and a poll
+  landing between the halves reads an idle robot — ending there is a false "stopped" and a new card 1.5 s later.
+  `RobotSession.isRestartingApp` was made public for this one guard; the in-app dock never needed it because it
+  draws what the session holds rather than ending anything on the edge.
+- **An unchanged reading still moves the stale date, but not on every tick.** Skipping identical updates lets a
+  healthy app polled every ten seconds go grey on screen; pushing every tick spends the update budget on nothing.
+  The rule is "rendered content changed, or 60 s since the last push", and `RunningAppActivityContent.rendersSameAs`
+  is what excludes `readAt` from the comparison — it moves with every poll by construction, so a plain `==` would
+  mean no reading is ever unchanged. That was a real bug, caught by its own test rather than on a device.
+- **One alert, on the crash edge, and it rides an `update` because `end` takes no alert configuration.** Not on a
+  start (the reader caused it and the card appearing _is_ the notification), not on a clean finish, not on a wedge
+  (that is the _absence_ of an event, and alerting on silence is how a Wi-Fi blip becomes a notification), not on a
+  refused Stop. The title joins through the installed list and the body is the summary line alone: on a paired Watch
+  this is a real alert, and a stack frame is not a sentence.
+- **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
+  `RunningAppCaption.description` was written to fix, in a second place.
