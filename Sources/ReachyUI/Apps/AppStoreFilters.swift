@@ -5,6 +5,26 @@ import ReachyKit
 /// What the store shows and in what order. Separate from `AppStoreModel` because
 /// that file is already near SwiftLint's type and file limits.
 extension AppStoreModel {
+    /// Which half of the store is on screen, and the first of the three the model
+    /// composes as section → scope → search → order. It sat in `AppStoreModel.swift`
+    /// while its two siblings lived here; adding one property to that file crossed
+    /// the 400-line limit, and this is where the family already was.
+    enum Section: Int, CaseIterable, Identifiable {
+        case installed
+        case discover
+
+        var id: Int {
+            rawValue
+        }
+
+        var title: LocalizedStringResource {
+            switch self {
+            case .installed: .reachy("Installed")
+            case .discover: .reachy("Discover")
+            }
+        }
+    }
+
     /// Scopes are questions, not buckets: a private community Space answers both
     /// `.community` and `.private`. Partitioning them instead would hide such a
     /// Space from a reader who asked for community apps, which is the more

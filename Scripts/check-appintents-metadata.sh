@@ -69,6 +69,12 @@ REQUIRED_APP_ACTIONS = [
     # parameter renamed out of shape fails extraction and nothing else — which
     # is exactly the silence this file exists to break.
     "SearchRobotAppsIntent",
+    # `.system.open`, and iOS 27 / macOS 27 only. Listing it unconditionally is
+    # safe and was checked rather than assumed: availability is a *field* in the
+    # metadata, not an absence from it — a macOS 15 build extracts the action with
+    # `availabilityAnnotations.LNPlatformNameMACOS.introducedVersion = "27.0"`
+    # beside it. The same reading `isDiscoverable = false` gets two entries below.
+    "OpenRobotAppIntent",
 ]
 
 # Required of an iOS bundle and absent from a macOS one by construction.

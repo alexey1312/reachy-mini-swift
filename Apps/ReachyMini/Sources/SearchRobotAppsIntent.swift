@@ -43,13 +43,13 @@ struct SearchRobotAppsIntent {
     var criteria: StringSearchCriteria
 
     /// Nothing is awaited: the search is a screen change, and the screen is the
-    /// only thing that can report it. `AppSearchInbox` is the same seam
+    /// only thing that can report it. `AppStoreRequestInbox` is the same seam
     /// `CallRequestInbox` is, and `ReachyTabShell` is what honours it — including
     /// on the frame the shell first appears, so a request made while the connect
     /// gate is up is not dropped.
     @MainActor
     func perform() async throws -> some IntentResult {
-        AppSearchInbox.shared.receive(term: criteria.term)
+        AppStoreRequestInbox.shared.receive(term: criteria.term)
         return .result()
     }
 }

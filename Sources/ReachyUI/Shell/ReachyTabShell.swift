@@ -43,7 +43,7 @@ struct ReachyTabShell: View {
 
     /// `shared` for the reason `RootCallLifecycle`'s inbox is: the intent that fills
     /// it runs with no initialiser to inject through.
-    private let searches = AppSearchInbox.shared
+    private let requests = AppStoreRequestInbox.shared
 
     init(
         session: RobotSession,
@@ -147,11 +147,18 @@ struct ReachyTabShell: View {
         // lives — and `initial: true` is what lets a request survive the gate: an
         // intent fired at a disconnected app files it, and the shell reads it on the
         // frame it first appears.
-        .onChange(of: searches.pending?.token, initial: true) { _, _ in
-            guard let pending = searches.pending else { return }
-            searches.drop()
+        .onChange(of: requests.pending?.token, initial: true) { _, _ in
+            guard let pending = requests.pending else { return }
+            requests.drop()
             router.tab = .apps
-            store.searchText = pending.term
+            switch pending.request {
+            case let .search(term):
+                store.searchText = term
+            // Only recorded here. Which row it means is `AppStoreScreen`'s to
+            // resolve, because the answer can need a catalogue that has not loaded.
+            case let .openApp(id):
+                store.requestedAppID = id
+            }
         }
         .floatingViewport(model: floating, viewport: viewport, session: session) {
             router.tab = .live

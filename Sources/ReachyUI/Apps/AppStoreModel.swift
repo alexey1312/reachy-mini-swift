@@ -9,24 +9,15 @@ import ReachyKit
 @MainActor
 @Observable
 final class AppStoreModel {
-    enum Section: Int, CaseIterable, Identifiable {
-        case installed
-        case discover
-
-        var id: Int {
-            rawValue
-        }
-
-        var title: LocalizedStringResource {
-            switch self {
-            case .installed: .reachy("Installed")
-            case .discover: .reachy("Discover")
-            }
-        }
-    }
-
     var section: Section = .installed
     var searchText = ""
+    /// An app somebody asked to see the page of, from outside the screen — a
+    /// `.system.open` intent or a tapped Spotlight row. Held here rather than in
+    /// `AppStoreScreen` because the request can arrive before that screen exists,
+    /// and because resolving it may take a catalogue load; the screen clears it once
+    /// it has a row to open. An id this robot has never heard of stays until the
+    /// lists settle and is then dropped rather than guessed at.
+    var requestedAppID: String?
     var scope: Scope = .all
     var sort: Sort = .recommended
 
