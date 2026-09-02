@@ -58,10 +58,17 @@ REQUIRED_APP_ACTIONS = [
     # green.
     "PlaySoundIntent",
     "StopSoundIntent",
-    # The one intent extracted from the app target's own sources rather than
-    # from ReachyWidgetUI: it opens the app (`openAppWhenRun`), which errors in
-    # an appex, so it must never move into the library the extension links.
+    # The two intents extracted from the app target's own sources rather than
+    # from ReachyWidgetUI: both open the app, which errors in an appex, so
+    # neither may move into the library the extension links. `CallRobotIntent`
+    # says so itself; `SearchRobotAppsIntent` is handed `openAppWhenRun` by
+    # `ShowInAppSearchResultsIntent`'s protocol extension and cannot decline it.
     "CallRobotIntent",
+    # The app's first schema conformance (`.system.search`). A schema is
+    # validated by the metadata processor rather than by the compiler, so a
+    # parameter renamed out of shape fails extraction and nothing else — which
+    # is exactly the silence this file exists to break.
+    "SearchRobotAppsIntent",
 ]
 
 # Required of an iOS bundle and absent from a macOS one by construction.
