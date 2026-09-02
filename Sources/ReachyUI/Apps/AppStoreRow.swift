@@ -15,7 +15,11 @@ struct AppStoreRow: View {
     var body: some View {
         HStack(spacing: Space.md) {
             AppArtworkTile(app: app)
+            // Optical: title, subtitle and footnote read as one block; 3 pt is tighter than any token.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 3) {
+                // Optical: badges hug the title; 5 pt is the glyph's own breathing room.
+                // swiftlint:disable:next raw_spacing
                 HStack(spacing: 5) {
                     // Beside the title rather than in `trailing`, whose four cases are
                     // mutually exclusive and are all about the app's state on the robot.

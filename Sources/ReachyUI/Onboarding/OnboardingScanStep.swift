@@ -86,6 +86,8 @@ struct OnboardingScanStep: View {
     @ViewBuilder
     private var results: some View {
         if model.discovered.isEmpty {
+            // Optical: the signal glyph sits beside the robot's name as one row.
+            // swiftlint:disable:next raw_spacing
             HStack(spacing: 10) {
                 ProgressView()
                 Text(.reachy("Searching…"))

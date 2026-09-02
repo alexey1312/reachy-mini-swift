@@ -263,6 +263,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   — and at the default text size the multiplier is 1, so adopting one moves no reference image.
 - **Optical adjustments stay literals.** `Space` governs the rhythm of a layout; a 1 pt gap inside the dock or a 3 pt
   inset on the joystick's arc is not rhythm. A grid that swallowed the optics would be worse than no grid.
+- **Loading captions are the one place for humour.** `contentLoading` titles may play ("Browsing the robot app
+  aisle…"); every other sentence — errors, permissions, confirmations, empty states — says what happened and what to
+  do. Decided at the design review rather than left to each new caption.
 - Nothing in this module renders a domain type. `ReachyStatusLabel` takes a `String`.
 - **A `Tone` colours a foreground, not a fill.** `ReachyBadge` puts the tone on its text and takes the `.badge`
   surface underneath, which is what let the app's one pinned `.foregroundStyle(.white)` go: white read only against a

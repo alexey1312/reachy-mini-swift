@@ -42,6 +42,8 @@ struct BLEConsoleScreen: View {
                 switch model.availability {
                 case .ready, .unknown:
                     if model.discovered.isEmpty {
+                        // Optical: the severity glyph sits beside the script's name as one row.
+                        // swiftlint:disable:next raw_spacing
                         HStack(spacing: 10) {
                             ProgressView()
                             Text(.reachy("Searching over Bluetooth…")).foregroundStyle(.secondary)
@@ -169,6 +171,7 @@ struct BLEConsoleScreen: View {
         }
         .padding(.horizontal)
         // Optical: a one-line strip, tightened past the grid so it reads as chrome.
+        // swiftlint:disable:next raw_spacing
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .reachyScrim(ignoringSafeArea: .top)

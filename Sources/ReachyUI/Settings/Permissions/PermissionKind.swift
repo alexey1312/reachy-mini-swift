@@ -27,7 +27,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
     }
 
     /// What the feature stops doing without it — the usage strings in
-    /// `Apps/Project.swift` say the same thing to the system prompt.
+    /// `Apps/Project.swift` rhyme with these in the system prompt.
     var why: LocalizedStringResource {
         switch self {
         case .bluetooth:
@@ -35,7 +35,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .localNetwork:
             .reachy("Finds your robot on this Wi-Fi and talks to it. Without it the robot cannot be reached at all.")
         case .microphone:
-            .reachy("Speaks to people near the robot through its speaker.")
+            .reachy("Lets you talk to people near the robot through its speaker during a call.")
         }
     }
 

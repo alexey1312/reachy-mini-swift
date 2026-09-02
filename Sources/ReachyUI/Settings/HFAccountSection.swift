@@ -135,8 +135,12 @@ struct HFAccountSection: View {
     }
 
     private func accountLabel(username: String, caption: String) -> some View {
+        // Optical: the avatar sits closer to the name than a Space token allows.
+        // swiftlint:disable:next raw_spacing
         HStack(spacing: 10) {
             HFAvatar(username: username)
+            // Optical: 1 pt, the caption belongs to the name above it rather than reading as a second line.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 1) {
                 Text(username)
                 Text(caption)

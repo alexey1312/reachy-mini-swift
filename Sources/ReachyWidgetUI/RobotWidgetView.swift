@@ -163,6 +163,8 @@ public struct RobotWidgetView: View {
     /// moves every reference it touches with no design reason behind it. The tokens
     /// govern the *new* gap between this column and the button.
     private var textColumn: some View {
+        // Optical: this component's own rhythm, deliberately off the 4-pt grid (Space.swift, rule 2).
+        // swiftlint:disable:next raw_spacing
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: content.symbolName)
                 .font(Typography.screenTitle)

@@ -25,6 +25,14 @@ Four assertions, and one report:
 4. **Collisions** — no two keys derive the same Swift symbol. `xcstringstool`
    makes that a hard *build* error, so catching it here is the difference
    between a lint failure on any machine and a broken build on a Mac.
+5. **Bare literals** — no `Text("…")`, `Button("…")`, `.navigationTitle("…")`,
+   `?? "…"` or the like carries prose that never went through `.reachy(_:)`.
+   Such a string renders perfectly in English and can never be translated,
+   which is exactly the failure rule 9 exists to prevent. What this cannot
+   see is a `String`-typed slot fed by a literal elsewhere (`case .running:
+   "Running"`), so it is a fence for the future rather than a proof; the
+   known exemptions (a dash, an ellipsis, a middle dot) live in
+   BARE_LITERAL_ALLOWLIST, extended here and never inline.
 
 `--report` prints the offending keys instead of just counting them, which is
 what the initial reconciliation was driven from.
@@ -162,6 +170,52 @@ def scan() -> tuple[set[str], set[str], list[str]]:
     return plain, interpolating, non_literal
 
 
+# The SwiftUI entry points that take a `LocalizedStringKey` from a bare
+# literal, plus the two spellings a fallback takes (`?? "…"`). `Text(verbatim:`
+# never matches: the parenthesis has to be followed by the quote itself.
+BARE_LITERAL = re.compile(
+    r'(?<![\w.])(?:Text|Button|Label|Toggle|Section|LabeledContent|TextField|SecureField|Picker|'
+    r'NavigationLink|ContentUnavailableView)\(\s*"((?:[^"\\]|\\.)*)"'
+    r'|\.(?:navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue|help)\(\s*"((?:[^"\\]|\\.)*)"'
+    r'|\?\?\s*"((?:[^"\\]|\\.)*)"'
+)
+
+# Fallbacks a reader never has to translate: punctuation, and the identifiers
+# a log source or a profile is filed under (`?? "robot"` names a journal unit,
+# `?? "default"` an audio profile, `"— (sim)"` a diagnostic column).
+BARE_LITERAL_ALLOWLIST = frozenset({"—", "…", "·", "?", "— (sim)", "robot", "bluetooth", "default"})
+
+
+def is_prose(body: str) -> bool:
+    """Three letters is where a placeholder stops being a glyph and starts being a word."""
+    return body not in BARE_LITERAL_ALLOWLIST and len(re.findall(r"[A-Za-z]", body)) >= 3
+
+
+# Only the targets that link `ReachyDesign` can spell `.reachy(_:)`; the rest
+# (`ReachyKit`, `ReachySSH`, …) carry plain English by construction, and their
+# fallbacks are not a rule-9 failure.
+BARE_LITERAL_ROOTS = (
+    pathlib.Path("Sources/ReachyDesign"),
+    pathlib.Path("Sources/ReachyUI"),
+    pathlib.Path("Sources/ReachyWidgetUI"),
+    pathlib.Path("Apps"),
+)
+
+
+def bare_literals() -> list[str]:
+    """`path:line: "…"` for every literal handed straight to a SwiftUI text slot."""
+    found: list[str] = []
+    for path in swift_sources():
+        if not any(path.is_relative_to(root) for root in BARE_LITERAL_ROOTS):
+            continue
+        source = strip_comments(path.read_text(encoding="utf-8"))
+        for match in BARE_LITERAL.finditer(source):
+            body = next(group for group in match.groups() if group is not None)
+            if is_prose(body):
+                found.append(f"{path}:{source.count(chr(10), 0, match.start()) + 1}: {body!r}")
+    return found
+
+
 def symbol(key: str) -> str:
     """Approximate the Swift symbol `xcstringstool` derives from a key.
 
@@ -270,6 +324,16 @@ def main(argv: list[str]) -> int:
                     f"{CODE_CATALOGUE}: keys {sorted(clashing)} all derive `{name}` — "
                     "xcstringstool fails the build over this. Fix the copy, not the tooling."
                 )
+
+        # 5. Bare literals.
+        bare = bare_literals()
+        if bare:
+            failures.append(
+                f"{len(bare)} bare literals bypass `.reachy(_:)` — route them through it, "
+                "or `Text(verbatim:)` for something a reader never translates"
+            )
+            for site in bare[: 20 if report else 5]:
+                failures.append(f"      {site}")
 
         # A `.reachy(_:)` whose argument is not a literal cannot be checked at
         # all, so it is reported rather than asserted: rule 9 expects literals.

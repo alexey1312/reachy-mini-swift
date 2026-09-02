@@ -54,6 +54,7 @@ struct HFAccountToolbarButton: View {
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "exclamationmark.circle.fill")
                         // Optical: sized against the avatar it is pinned to, not against the text.
+                        // swiftlint:disable:next raw_font
                         .font(.caption2)
                         .foregroundStyle(Tone.warning.style)
                         .background(.background, in: .circle)

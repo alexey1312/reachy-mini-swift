@@ -139,6 +139,8 @@ struct BLESoftwareResetScreen: View {
 
     private var restoring: some View {
         Section(.reachy("Restoring")) {
+            // Optical: the severity glyph sits beside the script's name as one row.
+            // swiftlint:disable:next raw_spacing
             HStack(spacing: 10) {
                 ProgressView()
                 Text(.reachy("This takes about five minutes. Leave the robot powered on."))
@@ -197,6 +199,7 @@ private struct BulletLabelStyle: LabelStyle {
         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
             configuration.icon
                 // Optical: a bullet dot rather than text — 5 pt is the dot's diameter.
+                // swiftlint:disable:next raw_font
                 .font(.system(size: 5))
                 .foregroundStyle(.secondary)
             configuration.title

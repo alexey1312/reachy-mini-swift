@@ -96,6 +96,7 @@ struct LogConsoleView: View {
         .foregroundStyle(Tone.quiet.style)
         .padding(.horizontal, Space.md)
         // Optical: a one-line strip, tightened past the grid so it reads as chrome.
+        // swiftlint:disable:next raw_spacing
         .padding(.vertical, 6)
         .reachyScrim(ignoringSafeArea: .bottom)
     }
@@ -110,19 +111,22 @@ struct LogConsoleView: View {
         if model.paused {
             parts
                 .append(model.pending
-                    .isEmpty ? "paused" : String(localized: .reachy("paused · +\(model.pending.count) new")))
+                    .isEmpty ? String(localized: .reachy("paused")) :
+                    String(localized: .reachy("paused · +\(model.pending.count) new")))
         }
         return parts.joined(separator: " · ")
     }
 
     private func row(_ entry: LogEntry) -> some View {
+        // Optical: log rows are dense on purpose; 6 pt keeps a tail readable without doubling its height.
+        // swiftlint:disable:next raw_spacing
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             if let timestamp = entry.timestamp {
                 Text(timestamp)
                     .foregroundStyle(.tertiary)
             }
             Text(entry.message)
-                .foregroundStyle(Self.color(for: entry.level))
+                .foregroundStyle(Self.style(for: entry.level))
         }
         .font(Typography.consoleLineCompact)
         .textSelection(.enabled)
@@ -181,12 +185,14 @@ struct LogConsoleView: View {
         }
     }
 
-    private static func color(for level: LogLevel) -> Color {
+    /// The two loud levels borrow the design system's tones rather than naming the
+    /// colours themselves, so a console line and a status caption agree by construction.
+    private static func style(for level: LogLevel) -> AnyShapeStyle {
         switch level {
-        case .debug: .secondary
-        case .info: .primary
-        case .warning: .orange
-        case .error: .red
+        case .debug: AnyShapeStyle(.secondary)
+        case .info: AnyShapeStyle(.primary)
+        case .warning: Tone.warning.style
+        case .error: Tone.danger.style
         }
     }
 }

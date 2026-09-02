@@ -48,8 +48,8 @@ final class WiFiSettingsModel {
         case .wlan: String(localized: .reachy("On a network"))
         case .hotspot: String(localized: .reachy("Its own hotspot"))
         case .disconnected: String(localized: .reachy("Not connected"))
-        case .busy: "Working…"
-        case nil: status == nil ? "—" : "Unknown"
+        case .busy: String(localized: .reachy("Working…"))
+        case nil: status == nil ? "—" : String(localized: .reachy("Unknown"))
         }
     }
 

@@ -16,6 +16,8 @@ struct OnboardingWelcomeStep: View {
                 )
             )
         ) {
+            // Optical: the requirement rows read as one list; 14 pt sits between Space.md and Space.lg on purpose.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 14) {
                 requirement(
                     String(localized: .reachy("The robot, powered on")),

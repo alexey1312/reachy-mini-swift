@@ -24,6 +24,8 @@ struct OnboardingPINStep: View {
         ) {
             TextField(.reachy("Code"), text: Binding(get: { model.pinInput }, set: { model.pinInput = $0 }))
                 .textFieldStyle(.roundedBorder)
+                // Optical: a code field wants the title size in monospace; one consumer, so not a Typography role yet.
+                // swiftlint:disable:next raw_font
                 .font(.title3.monospaced())
                 .autocorrectionDisabled()
                 .focused($focused)

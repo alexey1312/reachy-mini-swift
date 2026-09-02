@@ -189,6 +189,7 @@ private struct ConnectRailNode: View {
             Circle().fill(tone.style)
             Image(systemName: symbol)
                 // Optical: the glyph is sized against the disc it sits in.
+                // swiftlint:disable:next raw_font
                 .font(.caption2.bold())
                 // The one pinned foreground here, and it is pinned against a fill
                 // this view owns rather than against an adaptive backdrop: all

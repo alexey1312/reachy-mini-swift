@@ -13,16 +13,22 @@ struct AppIdentityHeader: View {
     var artworkSize: CGFloat = 64
 
     var body: some View {
+        // Optical: artwork-to-text gap of the identity header, between Space.md and Space.lg.
+        // swiftlint:disable:next raw_spacing
         HStack(spacing: 14) {
             AppArtworkTile(app: app, size: artworkSize)
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(app.title)
+                    // Optical: the sheet's own heading, one step below the screen title; a role would have this one consumer.
+                    // swiftlint:disable:next raw_font
                     .font(.title3.weight(.semibold))
                 if let author = app.author {
                     Text(author)
                         .font(Typography.subtitle)
                         .foregroundStyle(.secondary)
                 }
+                // Optical: badge row spacing sized against the glyphs, not the text.
+                // swiftlint:disable:next raw_spacing
                 HStack(spacing: 10) {
                     if app.isOfficial {
                         Label(.reachy("Official"), systemImage: "checkmark.seal.fill")

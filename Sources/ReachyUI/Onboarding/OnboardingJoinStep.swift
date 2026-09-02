@@ -14,6 +14,8 @@ struct OnboardingJoinStep: View {
         OnboardingStepScaffold(title: title, message: message) {
             switch model.joinState {
             case .working:
+                // Optical: the progress glyph sits beside its sentence as one row.
+                // swiftlint:disable:next raw_spacing
                 HStack(spacing: 10) {
                     ProgressView()
                     Text(.reachy("This takes up to a minute."))

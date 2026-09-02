@@ -34,6 +34,8 @@ struct WiFiSettingsCard: View {
                 LabeledContent(.reachy("Network"), value: connected)
             }
             if let joinError = model.joinError {
+                // Optical: the two lines of the status row read as one.
+                // swiftlint:disable:next raw_spacing
                 VStack(alignment: .leading, spacing: 6) {
                     Text(joinError)
                         .font(Typography.detail)

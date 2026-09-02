@@ -45,7 +45,7 @@ struct RobotScreen: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(identity?.name ?? "Robot")
+        .navigationTitle(identity?.name ?? String(localized: .reachy("Robot")))
         .task { prepareHealth() }
         // Kept warm from here rather than from the screen, and it costs nothing:
         // the status is polled whether or not anyone is looking at the loop. So the
@@ -156,7 +156,7 @@ struct RobotScreen: View {
                 // A `disabled` robot answers every motion command and stays limp,
                 // so the motor mode belongs next to the daemon state.
                 if let mode = status.backendStatus?.value1?.motorControlMode {
-                    LabeledContent(.reachy("Motors"), value: mode.rawValue)
+                    LabeledContent(.reachy("Motors"), value: String(localized: MotorModeCaption.text(for: mode)))
                 }
             }
             HStack {

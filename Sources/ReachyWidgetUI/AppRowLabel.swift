@@ -67,6 +67,7 @@ public struct AppRowLabel<Badge: View>: View {
                 .overlay { badge }
             // 1 pt is optical, not rhythm: the caption belongs to the title above
             // it, and a `Space` gap would read as two separate lines.
+            // swiftlint:disable:next raw_spacing
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(layout.titleFont)

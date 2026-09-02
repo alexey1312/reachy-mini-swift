@@ -66,16 +66,16 @@ struct ControllerScreen: View {
                 recordingSection
                 Section(.reachy("Head")) {
                     slider(
-                        "Roll",
+                        .reachy("Roll"),
                         value: $driver.roll,
                         range: -driver.mapping.headAngle ... driver.mapping.headAngle,
                         format: .degrees
                     )
-                    slider("Height", value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
+                    slider(.reachy("Height"), value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
                 }
                 Section(.reachy("Body")) {
                     slider(
-                        String(localized: .reachy("Body yaw")),
+                        .reachy("Body yaw"),
                         value: $driver.bodyYaw,
                         range: -TeleopDriver.bodyYawLimit ... TeleopDriver.bodyYawLimit,
                         format: .degrees
@@ -83,13 +83,13 @@ struct ControllerScreen: View {
                 }
                 Section(.reachy("Antennas")) {
                     slider(
-                        "Left",
+                        .reachy("Left"),
                         value: $driver.antennaLeft,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
                     )
                     slider(
-                        "Right",
+                        .reachy("Right"),
                         value: $driver.antennaRight,
                         range: -antennaRange ... antennaRange,
                         format: .degrees
@@ -183,7 +183,7 @@ struct ControllerScreen: View {
     private enum SliderFormat { case degrees, millimeters }
 
     private func slider(
-        _ title: String,
+        _ title: LocalizedStringResource,
         value: Binding<Double>,
         range: ClosedRange<Double>,
         format: SliderFormat

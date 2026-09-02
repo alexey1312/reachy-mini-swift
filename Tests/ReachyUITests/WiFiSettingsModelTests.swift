@@ -26,6 +26,19 @@ struct WiFiSettingsModelTests {
         #expect(model.modeText == String(localized: .reachy("On a network")))
     }
 
+    /// The two transient words the card can show are catalogue keys like the three
+    /// modes beside them — they used to be the only bare literals in this switch.
+    @Test("a busy or unknown mode is reported in translated words")
+    func modeTextCoversTheTransientModes() async {
+        let busy = WiFiSettingsModel(status: { _ in WiFiStatus(mode: .busy, connected: nil) })
+        await busy.load(session: .preview())
+        #expect(busy.modeText == String(localized: .reachy("Working…")))
+
+        let unknown = WiFiSettingsModel(status: { _ in WiFiStatus(mode: nil, connected: nil) })
+        await unknown.load(session: .preview())
+        #expect(unknown.modeText == String(localized: .reachy("Unknown")))
+    }
+
     /// The rows on screen are better than no rows: a robot that answered once and
     /// then timed out has not forgotten those networks.
     @Test("a failed refresh is reported without emptying the card")

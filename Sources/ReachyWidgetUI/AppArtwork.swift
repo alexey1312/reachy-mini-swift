@@ -95,9 +95,13 @@ public struct AppArtworkTile: View {
                 // and have to track the tile rather than the reader's text size.
                 if let emoji = artwork.emoji {
                     Text(emoji)
+                        // Optical: sized against the glyph it draws, not the reader's text size.
+                        // swiftlint:disable:next raw_font
                         .font(.system(size: size * IconRatio.emoji))
                 } else {
                     Image(systemName: "app.dashed")
+                        // Optical: sized against the glyph it draws, not the reader's text size.
+                        // swiftlint:disable:next raw_font
                         .font(.system(size: size * IconRatio.symbol))
                         // Pinned against the gradient this tile owns, not against an
                         // adaptive backdrop — every artwork colour carries white.

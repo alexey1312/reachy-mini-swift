@@ -136,6 +136,7 @@ struct RemoteRobotRow: View {
         HStack(spacing: Space.md) {
             Image(systemName: "app.connected.to.app.below.fill")
                 // Optical: row artwork, sized against the column it sits in.
+                // swiftlint:disable:next raw_font
                 .font(.title2)
                 // Erased because the two branches are different `ShapeStyle`
                 // types, and a ternary needs one.
@@ -155,6 +156,7 @@ struct RemoteRobotRow: View {
             if !robot.isBusy {
                 Image(systemName: "chevron.forward")
                     // Optical: a disclosure chevron, weighted to match the system's own.
+                    // swiftlint:disable:next raw_font
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
@@ -173,7 +175,7 @@ private extension RemoteRobotRow {
         }
         return switch robot.transport {
         case .usb: String(localized: .reachy("Online · wired"))
-        case .wifi, .unknown, .none: "Online"
+        case .wifi, .unknown, .none: String(localized: .reachy("Online"))
         }
     }
 }
