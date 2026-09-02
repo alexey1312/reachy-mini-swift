@@ -264,6 +264,12 @@ query it; it is the answer to "what does this schema actually require", and it d
 
 So the behaviour ships at the current deployment target and iOS 27 adds an annotation on top of working code.
 
+**`.system.searchInApp` is not adopted, and that is a decision rather than an omission.** It is the 27 rename of
+`.system.search`, which is deprecated there and still present and working. Declaring both would put two
+near-identical search actions in the Shortcuts app on 27 and buy nothing below it, and which one an assistant
+prefers cannot be answered without a 27 device. It goes in when the deployment floor reaches 27 and
+`.system.search` can be removed in the same change.
+
 **Both protocols supply `openAppWhenRun = true` from a framework protocol extension**, which the author never
 writes and cannot decline. A conformance declared inside `ReachyWidgetUI` would therefore stamp `openApp` into the
 **extension's** `Metadata.appintents` — the runtime failure `CallRobotIntent`'s header describes. Schema intents

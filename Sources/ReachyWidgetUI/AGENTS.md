@@ -374,6 +374,48 @@ the intents that take it. Searching for a dance offers to play it. A destination
 - The app-side half is `ReachyEntityIndex` in `ReachyUI`, which is where the delete-vs-`deleteAllSearchableItems`
   trap is written up.
 
+## App Intents schemas (#74)
+
+A schema binds an intent to a system-defined domain the assistant already understands, so it arrives with no
+memorised phrase and nothing per-language. Which domains this client honestly fits — and the evidence for the five
+it does not — is `docs/research/ios-27.md` §3.1; that table is sourced to Xcode's own `AppIntentSchemas.sqlite`,
+which is the database the metadata processor validates against and the only reliable answer to "what does this
+schema require". Read it before adding a conformance; a tutorial is not evidence here.
+
+Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.search`) and `OpenRobotAppIntent`
+(`.system.open`, iOS 27).
+
+- **A schema intent must live in the app target, and it does not get a choice about it.**
+  `ShowInAppSearchResultsIntent` and `OpenIntent` each supply `openAppWhenRun = true` from a framework protocol
+  extension — the author never writes it and cannot decline it — and that flag errors at runtime in an appex. Declare
+  either conformance inside this library and the flag lands in the _extension's_ `Metadata.appintents`. Same rule
+  `CallRobotIntent` records, reached from the opposite direction.
+- **A schema costs no App Shortcut slot.** `ReachyShortcuts` is at ten of ten and the system drops an eleventh
+  silently; a schema intent is reached through its domain instead and appears in none of them. The release build
+  prints the count — it stayed at ten across both adoptions. Ask whether a new intent fits a schema before spending a
+  slot on it.
+- **Nothing in `Sources/` may name an iOS-27 symbol.** `lint-test` is pinned to `macos-15` with
+  `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is `swift build` over every SwiftPM target. An iOS-27
+  symbol is **absent** from the 26.2 SDK rather than unavailable in it, so `@available` does not save the build. This
+  is why `ExecutionTargets` and `LongRunningIntent` are not adopted on the intents here, and why both schema intents
+  live in `Apps/ReachyMini/Sources`, which `swift build` never sees.
+- **An `@available` intent still extracts, and that was measured rather than assumed.** `OpenRobotAppIntent` is
+  iOS 27 / macOS 27 and appears in a macOS 15 build's metadata with
+  `availabilityAnnotations.LNPlatformNameMACOS.introducedVersion = "27.0"` beside it — availability is a field, not
+  an absence, the same reading `isDiscoverable = false` gets. So a 27-only action belongs in
+  `check-appintents-metadata.sh`'s flat list like any other.
+- **A schema is validated by the metadata processor, never by the compiler.** A parameter renamed out of the shape
+  the schema declares fails _extraction_, which is a warning — the same silence that shipped TestFlight 0.1.1 with
+  zero Shortcuts actions. Read `assistantDefinedSchemas` out of the built `extract.actionsdata` and check the domain
+  and name are there; a green build says nothing.
+- **`.system.searchInApp` is deliberately not adopted.** It is the iOS 27 rename of `.system.search`, which is
+  deprecated there but present and working. Adopting both would put two near-identical search actions in the
+  Shortcuts app on 27 and gain nothing below it, and which one the assistant prefers cannot be answered without a 27
+  device. Adopt it when the deployment floor reaches 27 and `.system.search` can go in the same change.
+- **`.system.open` covers apps and nothing else.** A move and a sound have no selection state on their screens to
+  open onto, and a robot other than the connected one is a connection rather than a destination. Each needs a screen
+  change before it needs an entity URL; conforming them first would be an intent that picks a tab and shrugs.
+
 ## The running-app Live Activity
 
 `RunningAppActivityContent.swift`, `RunningAppActivityView.swift`, `RunningAppActivityAttributes.swift` and
