@@ -1,6 +1,5 @@
 import ReachyDesign
 import ReachyKit
-import ReachyWidgetUI
 import SwiftUI
 
 /// Recorded moves from the Pollen HF libraries: pick a library, tap to play.
@@ -60,10 +59,6 @@ struct MovesScreen: View {
                     } else {
                         ForEach(model.moves, id: \.self) { move in
                             moveRow(move)
-                                .reachyEntityIdentifier(
-                                    MoveEntity.self,
-                                    id: MoveEntity(dataset: model.selectedLibrary.dataset, move: move).id
-                                )
                         }
                     }
                 }

@@ -1,6 +1,5 @@
 import ReachyDesign
 import ReachyKit
-import ReachyWidgetUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -103,7 +102,6 @@ struct SoundboardScreen: View {
                 .disabled(!model.rowsAreEnabled(session))
                 .swipeActions(edge: .trailing) { actions(for: row) }
                 .contextMenu { actions(for: row) }
-                .reachyEntityIdentifier(SoundEntity.self, id: row.id)
             }
         } footer: {
             Text(.reachy("The robot keeps these in temporary storage and forgets them when it restarts."))

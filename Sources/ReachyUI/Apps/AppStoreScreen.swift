@@ -98,7 +98,6 @@ struct AppStoreScreen: View {
                         }
                         pinButton(for: app)
                     }
-                    .reachyEntityIdentifier(RobotAppEntity.self, id: app.id)
                 }
             }
         }

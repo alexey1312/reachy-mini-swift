@@ -394,11 +394,24 @@ Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.s
   silently; a schema intent is reached through its domain instead and appears in none of them. The release build
   prints the count — it stayed at ten across both adoptions. Ask whether a new intent fits a schema before spending a
   slot on it.
-- **Nothing in `Sources/` may name an iOS-27 symbol.** `lint-test` is pinned to `macos-15` with
-  `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is `swift build` over every SwiftPM target. An iOS-27
-  symbol is **absent** from the 26.2 SDK rather than unavailable in it, so `@available` does not save the build. This
-  is why `ExecutionTargets` and `LongRunningIntent` are not adopted on the intents here, and why both schema intents
-  live in `Apps/ReachyMini/Sources`, which `swift build` never sees.
+- **Nothing in `Sources/` may name a symbol absent from the 26.2 SDK, and an `@available` annotation does not tell
+  you which those are.** `lint-test` is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs
+  `mise run test`, which is `swift build` over every SwiftPM target. A symbol the 26.2 SDK does not declare is
+  **absent** rather than unavailable, so `@available` does not save the build — it fails to compile.
+  `ExecutionTargets` and `LongRunningIntent` are the obvious cases, which is why they are not adopted here and why
+  both schema intents live in `Apps/ReachyMini/Sources`, a directory `swift build` never sees.
+  - **The trap is the non-obvious case, and it cost a red CI run.** `View.appEntityIdentifier` — onscreen awareness,
+    the thing that lets "play this one" resolve against a visible row — is annotated
+    `@available(macOS 15.4, iOS 18.4, *)`, which reads as _below_ this app's floor. That annotation is its **runtime**
+    availability. The declaration itself ships only in the 27 SDK: `_AppIntents_SwiftUI`'s interface in
+    `MacOSX26.5.sdk` does not contain the name at all, and in `MacOSX.sdk` (27) it does. So the API is back-deployed
+    to 15.4 and unbuildable here at the same time, and nothing in the source says so.
+  - **Neither `mise run test` nor `#if canImport` will catch it.** The overlay module exists in both SDKs — only the
+    member is missing — so `canImport(_AppIntents_SwiftUI)` is true either way. And SwiftPM reuses modules in
+    `.build` compiled against whatever SDK was selected last, so a local run that already built against Xcode 27's
+    SDK passes while CI fails. Verify against the SDK the job uses:
+    `xcrun swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -module-cache-path <fresh> …`,
+    or grep the framework's `.swiftinterface` for the name.
 - **An `@available` intent still extracts, and that was measured rather than assumed.** `OpenRobotAppIntent` is
   iOS 27 / macOS 27 and appears in a macOS 15 build's metadata with
   `availabilityAnnotations.LNPlatformNameMACOS.introducedVersion = "27.0"` beside it — availability is a field, not

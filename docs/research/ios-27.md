@@ -298,6 +298,12 @@ same user-visible result.
   is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is `swift build` over every
   SwiftPM target — and an iOS-27 symbol is simply **absent** from the 26.2 SDK, so `@available` does not save it and
   the module fails to compile. Nothing in `Sources/` may name an iOS-27 symbol until that job moves.
+- **Onscreen awareness is out of reach for the same reason, and it is the one that reads as reachable.**
+  `View.appEntityIdentifier` is annotated `@available(macOS 15.4, iOS 18.4, *)` — _below_ this app's floor — so it
+  looks like a free adoption. That is its runtime availability; the declaration ships only in the 27 SDK.
+  `_AppIntents_SwiftUI`'s interface in `MacOSX26.5.sdk` does not contain the name, and in the 27 SDK it does. Adopted
+  once and reverted after `lint-test` failed with `cannot find 'appEntityIdentifier' in scope`; it goes in with the
+  rest of §3 when that job can open a 27 SDK.
 - **`supportedModes` buys nothing at this floor.** `openAppWhenRun` is `@available(iOS, deprecated: 26.0)`, and a
   deprecation only fires once the _deployment target_ reaches the deprecating version. At iOS 18 nothing warns, so
   the swap removes no diagnostic and changes no behaviour. It is a deployment-floor task.
