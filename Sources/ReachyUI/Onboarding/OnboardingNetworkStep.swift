@@ -90,6 +90,7 @@ struct OnboardingNetworkStep: View {
                 }
             }
             .disabled(model.isBusy)
+            .help(Text(.reachy("Scan again")))
         }
     }
 

@@ -80,13 +80,9 @@ struct MovesScreen: View {
                 }
             }
         }
-        .toolbar {
-            Button {
-                Task { await model.load(session: session, refresh: true) }
-            } label: {
-                Label(.reachy("Refresh"), systemImage: "arrow.clockwise")
-            }
-            .disabled(model.loading || model.isContentLoading)
+        .refreshable { await model.load(session: session, refresh: true) }
+        .reachyRefreshToolbar(isDisabled: model.loading || model.isContentLoading) {
+            await model.load(session: session, refresh: true)
         }
         .task(id: model.selection) {
             guard !previewMode else { return }

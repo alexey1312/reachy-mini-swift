@@ -125,15 +125,8 @@ struct AppStoreScreen: View {
         // `TabView`, below the tab bar, and is on screen for every tab. A second
         // copy on this one would be the same control twice.
         .minimizedSearchToolbar()
-        .toolbar {
-            filterMenu
-            Button {
-                Task { await reload(refresh: true) }
-            } label: {
-                Label(.reachy("Refresh"), systemImage: "arrow.clockwise")
-            }
-            .disabled(model.loading || model.isContentLoading)
-        }
+        .toolbar { filterMenu }
+        .reachyRefreshToolbar(isDisabled: model.loading || model.isContentLoading) { await reload(refresh: true) }
         .sheet(item: $selected) { app in
             NavigationStack {
                 AppDetailSheet(
@@ -219,6 +212,7 @@ struct AppStoreScreen: View {
                     : "line.3.horizontal.decrease.circle"
             )
         }
+        .help(Text(.reachy("Filter and sort")))
     }
 
     @ViewBuilder
@@ -230,7 +224,7 @@ struct AppStoreScreen: View {
                 .reachy("Store unavailable"),
                 systemImage: "wifi.exclamationmark",
                 description: Text(
-                    .reachy("The robot could not reach Hugging Face. Pull to refresh once it is back online.")
+                    .reachy("The robot could not reach Hugging Face. Refresh once it is back online.")
                 )
             )
             // Below the error on purpose: a filter over a catalogue that never arrived

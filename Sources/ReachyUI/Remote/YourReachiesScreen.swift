@@ -71,6 +71,7 @@ struct YourReachiesScreen<SignIn: View>: View {
         .contentLoading(isPresented: model.isContentLoading, title: .reachy("Calling your Reachies home…"))
         .navigationTitle(.reachy("Your Reachies"))
         .refreshable { await model.refresh() }
+        .reachyRefreshToolbar { await model.refresh() }
         .task(id: model.accountGeneration) {
             guard !previewMode else { return }
             await model.load()

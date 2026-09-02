@@ -107,6 +107,7 @@ struct RobotFilesScreen: View {
         }
         .contentLoading(isPresented: !model.hasListed, title: .reachy("Reading the folder…"))
         .refreshable { await model.refresh() }
+        .reachyRefreshToolbar { await model.refresh() }
         .toolbar { toolbarContent }
         .modifier(FileTransferModifier(
             model: model,
@@ -262,6 +263,7 @@ struct RobotFilesScreen: View {
             } label: {
                 Label(.reachy("Actions"), systemImage: "ellipsis.circle")
             }
+            .help(Text(.reachy("Actions")))
         }
         if model.canGoUp {
             ToolbarItem(placement: .navigation) {

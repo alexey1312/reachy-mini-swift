@@ -82,6 +82,7 @@ struct SoundboardScreen: View {
             }
         }
         .refreshable { await model.load(session: session) }
+        .reachyRefreshToolbar { await model.load(session: session) }
         .task {
             guard !previewMode else { return }
             await model.load(session: session)
@@ -181,6 +182,7 @@ struct SoundboardScreen: View {
             } label: {
                 Label(.reachy("Add a sound"), systemImage: "plus")
             }
+            .help(Text(.reachy("Add a sound")))
         }
     }
 

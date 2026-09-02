@@ -73,9 +73,7 @@ struct AppearanceSection: View {
     private func tile(_ theme: ReachyTheme) -> some View {
         Button {
             rawTheme = theme.rawValue
-            #if !os(macOS)
-                WidgetCenter.shared.reloadAllTimelines()
-            #endif
+            WidgetCenter.shared.reloadAllTimelines()
             // The theme is already saved; the icon is best effort. Awaiting it here
             // would block the tile's highlight behind iOS's own alert.
             Task { iconChangeFailed = await AppIconSwitcher.apply(theme) == false }

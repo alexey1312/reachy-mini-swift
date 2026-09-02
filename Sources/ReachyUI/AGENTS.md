@@ -315,8 +315,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     sheet's own sentence, reused rather than reworded.
   - **Refresh is `.refreshable`, not a toolbar item.** The button it replaced could not show its own work: after the
     first listing `isContentLoading` is false by definition, and a LAN round trip takes tens of milliseconds, so a tap
-    drew no frame at all. The system's pull gesture at least has a spinner. macOS has no such gesture and the `.task`
-    covers it there, as it does on the files and remote-robots screens.
+    drew no frame at all. The system's pull gesture at least has a spinner. macOS has no such gesture, so
+    `reachyRefreshToolbar` puts a ⌘R item there and nowhere else — every catalogue screen has exactly one way to ask
+    again on each platform, and the two Refresh buttons the Apps and Moves screens carried on iOS went the same way.
   - **Three things here are deliberately uncovered by any reference**, each for a reason already written up elsewhere in
     this file: the `fileImporter` sheet and the delete `confirmationDialog` both capture as nothing, and the two
     `ControlWidget`s are WidgetKit, which the snapshot suite never exercises. The confirmation _copy_ is model-adjacent

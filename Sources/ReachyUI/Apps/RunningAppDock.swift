@@ -327,6 +327,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Restart")))
         .disabled(!canAct)
     }
 
@@ -338,6 +339,7 @@ struct RunningAppDockContent: View {
                 .labelStyle(.iconOnly)
         }
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Stop")))
         .disabled(!canAct)
     }
 
@@ -354,6 +356,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(isMicrophoneMuted ? .reachy("Unmute the robot") : .reachy("Mute the robot")))
         .disabled(!canAct)
     }
 
@@ -366,6 +369,7 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Stop talking")))
         .disabled(!canAct)
     }
 
@@ -378,5 +382,6 @@ struct RunningAppDockContent: View {
         }
         .reachyButton()
         .buttonBorderShape(.circle)
+        .help(Text(.reachy("Dismiss")))
     }
 }

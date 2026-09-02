@@ -136,6 +136,7 @@ struct TeleopPadCluster: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Reset to neutral")))
             .transition(.scale.combined(with: .opacity))
         }
     }

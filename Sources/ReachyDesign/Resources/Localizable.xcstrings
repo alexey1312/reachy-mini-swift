@@ -15284,31 +15284,31 @@
         }
       }
     },
-    "The robot could not reach Hugging Face. Pull to refresh once it is back online.": {
+    "The robot could not reach Hugging Face. Refresh once it is back online.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Roboter konnte Hugging Face nicht erreichen. Zum Aktualisieren nach unten ziehen, sobald er wieder online ist."
+            "value": "Der Roboter konnte Hugging Face nicht erreichen. Aktualisiere, sobald er wieder online ist."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El robot no pudo contactar con Hugging Face. Desliza para actualizar cuando vuelva a estar en línea."
+            "value": "El robot no pudo conectar con Hugging Face. Actualiza cuando vuelva a estar en línea."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le robot n'a pas pu joindre Hugging Face. Tirez pour actualiser dès qu'il est de nouveau en ligne."
+            "value": "Le robot n'a pas pu joindre Hugging Face. Actualisez quand il sera de nouveau en ligne."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Робот не смог связаться с Hugging Face. Потяните вниз, чтобы обновить, когда он снова будет в сети."
+            "value": "Робот не смог связаться с Hugging Face. Обновите, когда он снова будет в сети."
           }
         }
       }

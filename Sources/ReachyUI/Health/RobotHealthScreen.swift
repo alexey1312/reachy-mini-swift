@@ -44,6 +44,10 @@ struct RobotHealthScreen: View {
             guard !previewMode else { return }
             await model.refreshIMU()
         }
+        .reachyRefreshToolbar {
+            guard !previewMode else { return }
+            await model.refreshIMU()
+        }
         .task {
             // A frozen preview must not open a socket.
             guard !previewMode else { return }

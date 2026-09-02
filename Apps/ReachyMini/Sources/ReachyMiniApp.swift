@@ -33,9 +33,7 @@ struct ReachyMiniApp: App {
                 onDidApplyExternalChange: {
                     // The widget reads the same suite in its own process; a theme or robot
                     // that arrived from another device needs the same nudge the picker gives.
-                    #if !os(macOS)
-                        WidgetCenter.shared.reloadAllTimelines()
-                    #endif
+                    WidgetCenter.shared.reloadAllTimelines()
                 }
             )
             mirror.start()

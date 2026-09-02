@@ -99,6 +99,7 @@ struct LogConsoleView: View {
             Spacer()
             if !atBottom {
                 Button(.reachy("Jump to latest"), systemImage: "arrow.down.to.line") { jumpToken += 1 }
+                    .help(Text(.reachy("Jump to latest")))
                     .buttonStyle(.borderless)
             }
         }
@@ -154,7 +155,8 @@ struct LogConsoleView: View {
     ///
     /// This is the only toolbar in the app with enough in it to divide. The plan
     /// named `RobotScreen`, `AppStoreScreen` and `MovesScreen`; the first lost its
-    /// toolbar with the gear in PR 2, and the other two carry a single Refresh.
+    /// toolbar with the gear in PR 2, and the other two moved their Refresh into the
+    /// macOS-only item `reachyRefreshToolbar` adds, leaving iOS the pull gesture.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem {
@@ -164,6 +166,7 @@ struct LogConsoleView: View {
             ) {
                 model.paused.toggle()
             }
+            .help(Text(model.paused ? .reachy("Resume") : .reachy("Pause")))
         }
         if #available(iOS 26.0, macOS 26.0, *) {
             ToolbarSpacer(.fixed)
@@ -192,6 +195,7 @@ struct LogConsoleView: View {
             } label: {
                 Label(.reachy("More"), systemImage: "ellipsis.circle")
             }
+            .help(Text(.reachy("More")))
         }
     }
 

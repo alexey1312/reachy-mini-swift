@@ -81,6 +81,7 @@ struct CallEndButton: View {
                 .foregroundStyle(Tone.danger.style)
         }
         .buttonStyle(ViewportControlButtonStyle())
+        .help(Text(.reachy("End call")))
     }
 }
 
@@ -110,6 +111,7 @@ struct CameraMicButton: View {
                 .foregroundStyle(tint)
         }
         .buttonStyle(ViewportControlButtonStyle())
+        .help(Text(title))
         // A blocked microphone is still worth explaining while the stream is down,
         // but there is nothing to unmute into, so the rule is unchanged.
         .disabled(session.phase != .streaming)

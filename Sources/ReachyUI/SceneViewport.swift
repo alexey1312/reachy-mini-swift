@@ -97,5 +97,6 @@ struct SceneOptionsMenu: View {
                 .viewportControlLabelStyle()
         }
         .viewportControlMenuStyle()
+        .help(Text(.reachy("Options")))
     }
 }

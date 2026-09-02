@@ -299,6 +299,7 @@ struct FloatingViewport: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(option.title)
                     .accessibilityAddTraits(option == viewport.content ? .isSelected : [])
+                    .help(option.title)
                 }
             }
             .padding(Space.xxs)

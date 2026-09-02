@@ -118,6 +118,7 @@ struct ViewportView: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Close")))
         }
     }
 
@@ -154,6 +155,7 @@ struct ViewportView: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Presence")))
         }
     }
 

@@ -35,6 +35,7 @@ struct HFAccountToolbarButton: View {
                 label(for: account.state)
             }
             .accessibilityLabel(accessibilityLabel(for: account.state))
+            .help(accessibilityLabel(for: account.state))
         }
     }
 

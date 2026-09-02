@@ -51,6 +51,7 @@ struct LiveTab: View {
                             } label: {
                                 Label(.reachy("Controller"), systemImage: "gamecontroller")
                             }
+                            .help(Text(.reachy("Controller")))
                         }
                     }
                     ToolbarItem { optionsMenu }
@@ -89,6 +90,7 @@ struct LiveTab: View {
                 systemImage: floating.hasTabBar ? "pip" : "sidebar.trailing"
             )
         }
+        .help(Text(.reachy("Live options")))
     }
 
     /// What the second place is called where this reader is standing. Never both at
