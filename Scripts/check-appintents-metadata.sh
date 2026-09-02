@@ -62,6 +62,12 @@ REQUIRED_APP_ACTIONS = [
     # from ReachyWidgetUI: it opens the app (`openAppWhenRun`), which errors in
     # an appex, so it must never move into the library the extension links.
     "CallRobotIntent",
+    # The Live Activity's Stop button. `isDiscoverable = false` keeps it out of the
+    # Shortcuts app but not out of this file — the flag is recorded here, it is not
+    # an absence — and it is a `LiveActivityIntent`, so the system performs it in the
+    # app's process. Extraction failing would leave a card whose only control does
+    # nothing, silently.
+    "StopRunningAppActivityIntent",
 ]
 REQUIRED_APPEX_ACTIONS = [
     "RobotAppsConfigurationIntent",

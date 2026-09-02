@@ -19,6 +19,9 @@ struct RootLifecycle: ViewModifier {
     let hfAccount: HFAccount
     let remoteRobots: YourReachiesModel
     let runningApp: RunningAppModel
+    /// Owned here rather than injected: nothing else reads it, and it holds one
+    /// belief (what is on the Lock Screen) that must not be rebuilt per redraw.
+    @State private var runningAppActivity = RunningAppActivityController()
     let router: ReachyRouter
     /// Read for one bit: an active call keeps the stream alive off-screen.
     let call: RobotCallController
@@ -108,6 +111,42 @@ struct RootLifecycle: ViewModifier {
                 continueHandoff(activity)
             }
             .widgetReload(session: session, isPreview: previewMode)
+            // The Live Activity, driven off one `Equatable` value for the same reason
+            // `widgetReload` is: keyed into a `.task(id:)`, the work follows the fact
+            // rather than accompanying it. It lives here and not on the dock's own
+            // modifier because that one unmounts when the shell gives way to the
+            // connect gate — which is exactly the disconnect the card has to be torn
+            // down on.
+            .task(id: activityFacts) {
+                await syncRunningAppActivity()
+            }
+    }
+
+    /// Behind a method rather than inline in the `.task`, and not for tidiness: the
+    /// guard is a branch, and `body` was already at SwiftLint's cyclomatic limit.
+    private func syncRunningAppActivity() async {
+        guard !previewMode else { return }
+        await runningAppActivity.sync(activityFacts)
+    }
+
+    /// Everything the card's decisions turn on, assembled from the session and the
+    /// dock's policy layer. Nothing is read from a store: both halves are already
+    /// observable, so a change to either re-keys the effect above.
+    private var activityFacts: RunningAppActivityFacts {
+        let status = runningApp.visibleStatus(for: session)
+        return RunningAppActivityFacts(
+            status: status,
+            robotID: session.connectedIdentity?.deduplicationKey,
+            robotName: session.connectedIdentity?.name,
+            isReachable: runningApp.isReachable(session),
+            wedged: runningApp.wedged != nil,
+            actionFailure: runningApp.lastError,
+            // A relay session answers `nil`, and an intent can only dial a LAN
+            // address — so this is what decides whether the card draws a Stop.
+            hasLocalAddress: session.address != nil,
+            isRestarting: session.isRestartingApp,
+            isActive: scenePhase == .active
+        )
     }
 
     /// A move outlives this process being put away, and the poll that notices one
