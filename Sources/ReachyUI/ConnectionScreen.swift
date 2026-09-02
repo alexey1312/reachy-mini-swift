@@ -3,8 +3,9 @@ import ReachyKit
 import ReachySimulator
 import SwiftUI
 
-/// The three ways to reach a robot, one segment each, under a rail that says how
-/// the current attempt is going.
+/// The two ways to reach a robot, one segment each, under a rail that says how the
+/// current attempt is going — and the simulator behind a Developer disclosure below
+/// them, for the reader who has no robot at all.
 ///
 /// Two things stay out of the segments on purpose, and both are load-bearing:
 ///
@@ -35,6 +36,9 @@ struct ConnectionScreen: View {
     @Environment(\.reachyPreviewMode) private var previewMode
     @State private var resolving: String?
     @State private var showsOnboarding = false
+    /// Whether the Developer disclosure is open. Injected so a reference can
+    /// capture the simulator rows; closed on every launch otherwise.
+    @State private var showsDeveloper: Bool
     /// Read in `init` rather than defaulted here, and TN3211 is why: Xcode 27
     /// initialises `@State` lazily — back-deployed to iOS 17 — so a default
     /// expression runs at the property's first *access* instead of at the view's
@@ -64,6 +68,7 @@ struct ConnectionScreen: View {
         sweep: CandidateSweep? = nil,
         localDaemon: LocalDaemonModel? = nil,
         route: ConnectRoute = .local,
+        showsDeveloper: Bool = false,
         showRemoteRobots: (() -> Void)? = nil,
         showPermissions: (() -> Void)? = nil
     ) {
@@ -78,6 +83,7 @@ struct ConnectionScreen: View {
         _sweep = State(initialValue: sweep)
         _localDaemon = State(initialValue: localDaemon)
         _route = State(initialValue: route)
+        _showsDeveloper = State(initialValue: showsDeveloper)
     }
 
     var body: some View {
@@ -155,6 +161,10 @@ struct ConnectionScreen: View {
 
     private var form: some View {
         Form {
+            // First, and unconditional: a robot that has never been on a network is
+            // the one keeping every list below empty, and the way out of that
+            // belongs above the lists rather than after two screens of them.
+            setUpSection
             switch route {
             case .local:
                 if showsLocalDaemon, let localDaemon {
@@ -185,17 +195,29 @@ struct ConnectionScreen: View {
                 // made the only way to a remote robot go dead under a finger on a
                 // beat the reader cannot see.
                 YourReachiesSection(show: showRemoteRobots)
-            case .simulator:
-                SimulatorSection(
-                    isConnecting: !session.phase.acceptsConnectionChoice,
-                    connect: connectToSimulator
-                )
             }
-            setUpSection
+            developerSection
             privacySection
             errorSection
         }
         .formStyle(.grouped)
+    }
+
+    /// The simulator, behind a disclosure. It is the answer for a reader who has no
+    /// robot, and that reader is not the one this screen is for; as a segment it
+    /// put "start something that is not a robot" on the app's first screen, and the
+    /// smoke test walked into it every run. Opened by hand, never remembered.
+    private var developerSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showsDeveloper) {
+                SimulatorSection(
+                    isConnecting: !session.phase.acceptsConnectionChoice,
+                    connect: connectToSimulator
+                )
+            } label: {
+                Label(.reachy("Developer"), systemImage: "hammer")
+            }
+        }
     }
 
     /// Outside the segments, for the same reason `setUpSection` is: a refused Local
@@ -271,8 +293,10 @@ struct ConnectionScreen: View {
                 .font(Typography.status)
                 .foregroundStyle(Tone.quiet.style)
             }
-            Button(.reachy("Set up a new robot over Bluetooth")) {
+            Button {
                 showsOnboarding = true
+            } label: {
+                Label(.reachy("Set up a new robot over Bluetooth"), systemImage: "antenna.radiowaves.left.and.right")
             }
         }
     }

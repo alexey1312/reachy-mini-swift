@@ -30,31 +30,31 @@
         }
       }
     },
-    "A Lite robot or a simulator is reached at the address of the computer running its daemon — and only if that daemon was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone.": {
+    "A Lite robot or a simulator is reached at the address of the computer running its software — and only if that software was started with --fastapi-host 0.0.0.0. By default it accepts connections from that computer alone.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein Lite-Roboter oder ein Simulator wird unter der Adresse des Computers erreicht, auf dem sein Daemon läuft — und nur, wenn dieser Daemon mit --fastapi-host 0.0.0.0 gestartet wurde. Standardmäßig nimmt er Verbindungen nur von diesem Computer an."
+            "value": "Ein Lite-Roboter oder ein Simulator wird über die Adresse des Computers erreicht, auf dem seine Software läuft — und nur, wenn diese Software mit --fastapi-host 0.0.0.0 gestartet wurde. Standardmäßig nimmt sie nur Verbindungen von diesem Computer an."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A un robot Lite o a un simulador se llega por la dirección del ordenador que ejecuta su daemon, y solo si ese daemon se inició con --fastapi-host 0.0.0.0. De forma predeterminada solo acepta conexiones desde ese mismo ordenador."
+            "value": "A un robot Lite o a un simulador se llega por la dirección del ordenador que ejecuta su software, y solo si ese software se inició con --fastapi-host 0.0.0.0. Por defecto solo acepta conexiones desde ese mismo ordenador."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un robot Lite ou un simulateur s’atteint à l’adresse de l’ordinateur qui fait tourner son daemon — et seulement si ce daemon a été lancé avec --fastapi-host 0.0.0.0. Par défaut, il n’accepte les connexions que depuis cet ordinateur."
+            "value": "Un robot Lite ou un simulateur est joint à l'adresse de l'ordinateur qui exécute son logiciel — et seulement si ce logiciel a été lancé avec --fastapi-host 0.0.0.0. Par défaut, il n'accepte que les connexions de cet ordinateur."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "К роботу Lite или симулятору обращаются по адресу компьютера, на котором работает их демон, — и только если демон запущен с --fastapi-host 0.0.0.0. По умолчанию он принимает подключения лишь с этого компьютера."
+            "value": "К роботу Lite или симулятору подключаются по адресу компьютера, на котором запущено их ПО, и только если оно запущено с --fastapi-host 0.0.0.0. По умолчанию оно принимает подключения только с этого компьютера."
           }
         }
       }
@@ -84,35 +84,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reachy Mini Wireless поставляется с пользователем pollen и паролем root. Измените их на роботе — до него может добраться любой в этой сети."
-          }
-        }
-      }
-    },
-    "A daemon is running here. This is how a Lite robot and the simulator are reached.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hier läuft ein Daemon. So werden ein Lite-Roboter und der Simulator erreicht."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aquí se está ejecutando un daemon. Así se llega a un robot Lite y al simulador."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un daemon tourne ici. C’est ainsi qu’on atteint un robot Lite et le simulateur."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Здесь запущен демон. Именно так подключаются робот Lite и симулятор."
           }
         }
       }
@@ -1186,64 +1157,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "К списку роботов"
-          }
-        }
-      }
-    },
-    "Backend": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд"
-          }
-        }
-      }
-    },
-    "Backend stopped": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend gestoppt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend detenido"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend arrêté"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд остановлен"
           }
         }
       }
@@ -3162,35 +3075,6 @@
         }
       }
     },
-    "Daemon": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daemon"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daemon"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daemon"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демон"
-          }
-        }
-      }
-    },
     "Daemon logs": {
       "extractionState": "manual",
       "localizations": {
@@ -3274,35 +3158,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Логи демона берутся из journalctl на роботе, которого может не быть на машине разработчика."
-          }
-        }
-      }
-    },
-    "Daemon state": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Daemon-Status"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estado del daemon"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "État du daemon"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Состояние демона"
           }
         }
       }
@@ -3477,6 +3332,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Разрушающее восстановление"
+          }
+        }
+      }
+    },
+    "Developer": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entwickler"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desarrollador"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Développeur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разработчик"
           }
         }
       }
@@ -4960,35 +4844,6 @@
         }
       }
     },
-    "HF": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HF"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HF"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HF"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HF"
-          }
-        }
-      }
-    },
     "Hardware ID": {
       "extractionState": "manual",
       "localizations": {
@@ -6381,35 +6236,6 @@
         }
       }
     },
-    "Known addresses are retried every 10 s. A robot whose daemon isn't running answers nothing on the network — power it on, or enter its address below.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bekannte Adressen werden alle 10 s erneut versucht. Ein Roboter, dessen Daemon nicht läuft, antwortet im Netzwerk nicht — schalte ihn ein oder gib seine Adresse unten ein."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Las direcciones conocidas se reintentan cada 10 s. Un robot cuyo daemon no está en marcha no responde nada en la red — enciéndelo o introduce su dirección abajo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les adresses connues sont réessayées toutes les 10 s. Un robot dont le daemon ne tourne pas ne répond rien sur le réseau — allumez-le, ou saisissez son adresse ci-dessous."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Известные адреса опрашиваются каждые 10 с. Робот, на котором не запущен демон, ничего не отвечает в сети — включите его или введите адрес ниже."
-          }
-        }
-      }
-    },
     "Last output": {
       "extractionState": "manual",
       "localizations": {
@@ -6990,35 +6816,6 @@
         }
       }
     },
-    "Local": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lokal"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Локально"
-          }
-        }
-      }
-    },
     "Local Network permission denied": {
       "extractionState": "manual",
       "localizations": {
@@ -7164,31 +6961,31 @@
         }
       }
     },
-    "Looking for a daemon on this computer…": {
+    "Looking for robot software on this computer…": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suche nach einem Daemon auf diesem Computer…"
+            "value": "Suche nach Roboter-Software auf diesem Computer…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buscando un daemon en este ordenador…"
+            "value": "Buscando el software del robot en este ordenador…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recherche d’un daemon sur cet ordinateur…"
+            "value": "Recherche du logiciel du robot sur cet ordinateur…"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ищем демона на этом компьютере…"
+            "value": "Ищем ПО робота на этом компьютере…"
           }
         }
       }
@@ -7309,31 +7106,31 @@
         }
       }
     },
-    "Measured by the daemon once a second. The rate is what the robot's motors are actually driven at.": {
+    "Measured by the robot's software once a second. The rate is what the motors are actually driven at.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wird vom Daemon einmal pro Sekunde gemessen. Die Rate ist die, mit der die Motoren des Roboters tatsächlich angesteuert werden."
+            "value": "Von der Software des Roboters einmal pro Sekunde gemessen. Die Rate ist die, mit der die Motoren tatsächlich angesteuert werden."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lo mide el daemon una vez por segundo. La tasa es la frecuencia real con la que se accionan los motores del robot."
+            "value": "Medido por el software del robot una vez por segundo. La frecuencia es a la que realmente se mueven los motores."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mesuré par le daemon une fois par seconde. Le taux correspond à la fréquence réelle de commande des moteurs du robot."
+            "value": "Mesuré par le logiciel du robot une fois par seconde. La cadence est celle à laquelle les moteurs sont réellement pilotés."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Измеряется демоном раз в секунду. Частота — это реальная частота управления моторами робота."
+            "value": "Измеряется ПО робота раз в секунду. Это частота, с которой на самом деле управляются моторы."
           }
         }
       }
@@ -7686,35 +7483,6 @@
         }
       }
     },
-    "Motion, teleop and the state stream stay unavailable until it starts.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bewegung, Teleoperation und der Zustandsstream bleiben nicht verfügbar, bis er startet."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El movimiento, la teleoperación y el flujo de estado siguen sin estar disponibles hasta que arranque."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le mouvement, la téléopération et le flux d'état restent indisponibles jusqu'à son démarrage."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Движение, телеуправление и поток состояния недоступны, пока он не запустится."
-          }
-        }
-      }
-    },
     "Motor controller": {
       "extractionState": "manual",
       "localizations": {
@@ -7769,6 +7537,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Моторы"
+          }
+        }
+      }
+    },
+    "Motors and camera are off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera sind aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los motores y la cámara están apagados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les moteurs et la caméra sont éteints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера выключены"
+          }
+        }
+      }
+    },
+    "Motors and camera off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motores y cámara apagados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moteurs et caméra éteints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера выключены"
           }
         }
       }
@@ -7972,6 +7798,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Имя"
+          }
+        }
+      }
+    },
+    "Nearby": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In der Nähe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À proximité"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядом"
           }
         }
       }
@@ -9049,31 +8904,31 @@
         }
       }
     },
-    "Nothing is serving on this computer. A Lite robot is driven by the daemon on the computer it is plugged into, and the simulator is that same daemon with no robot — start one and it appears here.": {
+    "Nothing is serving on this computer. A Lite robot is driven by the software on the computer it is plugged into, and the simulator is that same software with no robot — start it and it appears here.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Auf diesem Computer antwortet nichts. Ein Lite-Roboter wird vom Daemon auf dem Computer gesteuert, an dem er angeschlossen ist, und der Simulator ist derselbe Daemon ohne Roboter — starte einen, und er erscheint hier."
+            "value": "Auf diesem Computer läuft nichts. Ein Lite-Roboter wird von der Software auf dem Computer gesteuert, an dem er hängt, und der Simulator ist dieselbe Software ohne Roboter — starte sie, und sie erscheint hier."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada responde en este ordenador. Un robot Lite lo gobierna el daemon del ordenador al que está conectado, y el simulador es ese mismo daemon sin robot: inicia uno y aparecerá aquí."
+            "value": "Nada se está ejecutando en este ordenador. Un robot Lite lo controla el software del ordenador al que está conectado, y el simulador es ese mismo software sin robot: arráncalo y aparecerá aquí."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rien ne répond sur cet ordinateur. Un robot Lite est piloté par le daemon de l’ordinateur auquel il est branché, et le simulateur est ce même daemon sans robot — lancez-en un et il apparaîtra ici."
+            "value": "Rien ne tourne sur cet ordinateur. Un robot Lite est piloté par le logiciel de l'ordinateur auquel il est branché, et le simulateur est ce même logiciel sans robot — lancez-le et il apparaîtra ici."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "На этом компьютере ничего не отвечает. Роботом Lite управляет демон на компьютере, к которому он подключён, а симулятор — тот же демон без робота: запустите его, и он появится здесь."
+            "value": "На этом компьютере ничего не запущено. Роботом Lite управляет ПО на компьютере, к которому он подключён, а симулятор — то же ПО без робота: запустите его, и он появится здесь."
           }
         }
       }
@@ -9977,6 +9832,35 @@
         }
       }
     },
+    "Power off the robot?": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roboter ausschalten?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Apagar el robot?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éteindre le robot ?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключить робота?"
+          }
+        }
+      }
+    },
     "Power the robot off": {
       "extractionState": "manual",
       "localizations": {
@@ -10876,6 +10760,35 @@
         }
       }
     },
+    "Remote": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remoto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À distance"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалённо"
+          }
+        }
+      }
+    },
     "Remote access": {
       "extractionState": "manual",
       "localizations": {
@@ -11427,35 +11340,6 @@
         }
       }
     },
-    "Robot backend is stopped": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Backend des Roboters ist gestoppt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El backend del robot está detenido"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le backend du robot est arrêté"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд робота остановлен"
-          }
-        }
-      }
-    },
     "Robot files": {
       "extractionState": "manual",
       "localizations": {
@@ -11568,6 +11452,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "На роботе работает"
+          }
+        }
+      }
+    },
+    "Robot software is running here. This is how a Lite robot and the simulator are reached.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier läuft Roboter-Software. So werden ein Lite-Roboter und der Simulator erreicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí se ejecuta el software del robot. Así se llega a un robot Lite y al simulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel du robot tourne ici. C'est ainsi qu'on atteint un robot Lite et le simulateur."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь запущено ПО робота. Так подключаются к роботу Lite и симулятору."
           }
         }
       }
@@ -13138,6 +13051,64 @@
         }
       }
     },
+    "Software": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logiciel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО"
+          }
+        }
+      }
+    },
+    "Software version": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Softwareversion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión del software"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version du logiciel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Версия ПО"
+          }
+        }
+      }
+    },
     "Solve Stewart linkage": {
       "extractionState": "manual",
       "localizations": {
@@ -13515,35 +13486,6 @@
         }
       }
     },
-    "Start robot backend": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend des Roboters starten"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar el backend del robot"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démarrer le backend du robot"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустить бэкенд робота"
-          }
-        }
-      }
-    },
     "Start stream": {
       "extractionState": "manual",
       "localizations": {
@@ -13573,31 +13515,60 @@
         }
       }
     },
-    "Start the robot backend to see the model and the camera.": {
+    "Start the motors and camera": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starte das Backend des Roboters, um Modell und Kamera zu sehen."
+            "value": "Motoren und Kamera starten"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia el backend del robot para ver el modelo y la cámara."
+            "value": "Encender los motores y la cámara"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrez le backend du robot pour voir le modèle et la caméra."
+            "value": "Démarrer les moteurs et la caméra"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запустите бэкенд робота, чтобы увидеть модель и камеру."
+            "value": "Запустить моторы и камеру"
+          }
+        }
+      }
+    },
+    "Start the motors and camera to see the live view.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starte Motoren und Kamera, um die Live-Ansicht zu sehen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enciende los motores y la cámara para ver la vista en directo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrez les moteurs et la caméra pour voir la vue en direct."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустите моторы и камеру, чтобы увидеть живой вид."
           }
         }
       }
@@ -13631,31 +13602,31 @@
         }
       }
     },
-    "Starting the robot backend… this can take a minute": {
+    "Starting the motors and camera… this can take a minute": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Backend des Roboters wird gestartet… das kann eine Minute dauern"
+            "value": "Motoren und Kamera starten… das kann eine Minute dauern"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciando el backend del robot… esto puede tardar un minuto"
+            "value": "Encendiendo los motores y la cámara… puede tardar un minuto"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrage du backend du robot… cela peut prendre une minute"
+            "value": "Démarrage des moteurs et de la caméra… cela peut prendre une minute"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запускаем бэкенд робота… это может занять минуту"
+            "value": "Запускаем моторы и камеру… это может занять минуту"
           }
         }
       }
@@ -14004,35 +13975,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Остановить движение"
-          }
-        }
-      }
-    },
-    "Stop the robot backend?": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backend des Roboters stoppen?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Detener el backend del robot?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arrêter le backend du robot ?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Остановить бэкенд робота?"
           }
         }
       }
@@ -14820,6 +14762,35 @@
         }
       }
     },
+    "The connection is plain HTTP without a password, so use a trusted private network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Verbindung ist reines HTTP ohne Passwort, also nur in einem vertrauenswürdigen privaten Netzwerk."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión es HTTP sin cifrar y sin contraseña, así que usa una red privada de confianza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion est en HTTP simple, sans mot de passe : utilisez un réseau privé de confiance."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Соединение идёт по обычному HTTP без пароля, поэтому используйте доверенную частную сеть."
+          }
+        }
+      }
+    },
     "The daemon for this robot runs on the computer it is plugged into, so its Wi-Fi, software updates and maintenance belong to that computer rather than here.": {
       "extractionState": "manual",
       "localizations": {
@@ -14874,35 +14845,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Демон ничего из этого не сообщает. Это читается напрямую из системы робота по SSH."
-          }
-        }
-      }
-    },
-    "The daemon uses unencrypted HTTP without authentication. Connect only on a trusted private network.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Daemon verwendet unverschlüsseltes HTTP ohne Authentifizierung. Verbinde dich nur in einem vertrauenswürdigen privaten Netzwerk."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El daemon usa HTTP sin cifrar y sin autenticación. Conéctate solo en una red privada de confianza."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le daemon utilise HTTP en clair, sans authentification. Ne vous connectez que sur un réseau privé de confiance."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Демон использует HTTP без шифрования и без аутентификации. Подключайтесь только в доверенной частной сети."
           }
         }
       }
@@ -15048,6 +14990,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Последние пять символов серийного номера, напечатанного на роботе. Регистр важен, и это не всегда цифры. Запуск любого скрипта сбрасывает сеанс робота, поэтому код требуется каждый раз — это правило робота, а не приложения."
+          }
+        }
+      }
+    },
+    "The live view and the controls come back once they start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Live-Ansicht und die Steuerung kommen zurück, sobald sie starten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vista en directo y los controles vuelven cuando arranquen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vue en direct et les commandes reviennent dès qu'ils démarrent."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Живой вид и управление вернутся, как только они запустятся."
+          }
+        }
+      }
+    },
+    "The motors and camera are not running": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motoren und Kamera laufen nicht"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los motores y la cámara no están en marcha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les moteurs et la caméra ne tournent pas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Моторы и камера не запущены"
           }
         }
       }
@@ -15222,35 +15222,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ретранслятор несёт команды робота и его камеру, но не магазин приложений. Подключитесь к той же сети, чтобы смотреть и устанавливать. Уже запущенное приложение по-прежнему видно ниже, и там же его можно остановить."
-          }
-        }
-      }
-    },
-    "The robot backend is not running": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Backend des Roboters läuft nicht"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El backend del robot no está en marcha"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le backend du robot ne tourne pas"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Бэкенд робота не запущен"
           }
         }
       }
@@ -15574,31 +15545,31 @@
         }
       }
     },
-    "The robot goes to sleep first, then its backend shuts down.": {
+    "The robot goes to sleep first, then its motors and camera shut down.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Roboter schläft zuerst ein, dann fährt sein Backend herunter."
+            "value": "Der Roboter schläft zuerst ein, dann schalten sich Motoren und Kamera ab."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El robot se duerme primero y luego se apaga su backend."
+            "value": "El robot se duerme primero y luego se apagan los motores y la cámara."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le robot se met d'abord en veille, puis son backend s'arrête."
+            "value": "Le robot s'endort d'abord, puis ses moteurs et sa caméra s'éteignent."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сначала робот засыпает, затем выключается его бэкенд."
+            "value": "Сначала робот засыпает, затем выключаются его моторы и камера."
           }
         }
       }

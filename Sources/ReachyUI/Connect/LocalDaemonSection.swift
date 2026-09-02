@@ -53,13 +53,13 @@ struct LocalDaemonSection: View {
     private var footer: LocalizedStringResource {
         switch model.status {
         case .checking:
-            .reachy("Looking for a daemon on this computer…")
+            .reachy("Looking for robot software on this computer…")
         case .reachable:
-            .reachy("A daemon is running here. This is how a Lite robot and the simulator are reached.")
+            .reachy("Robot software is running here. This is how a Lite robot and the simulator are reached.")
         case .unreachable:
             .reachy(
                 // swiftlint:disable:next line_length
-                "Nothing is serving on this computer. A Lite robot is driven by the daemon on the computer it is plugged into, and the simulator is that same daemon with no robot — start one and it appears here."
+                "Nothing is serving on this computer. A Lite robot is driven by the software on the computer it is plugged into, and the simulator is that same software with no robot — start it and it appears here."
             )
         }
     }

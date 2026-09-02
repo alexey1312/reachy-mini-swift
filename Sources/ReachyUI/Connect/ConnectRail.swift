@@ -121,9 +121,9 @@ struct ConnectRail: View {
     /// iPhone is about 110 pt, and "Connect to daemon" wraps to three lines there.
     private func caption(for stage: RobotSession.ConnectionStage) -> LocalizedStringResource {
         switch stage {
-        case .connect: .reachy("Daemon")
+        case .connect: .reachy("Software")
         case .compatibility: .reachy("Version")
-        case .backend: .reachy("Backend")
+        case .backend: .reachy("Motors")
         }
     }
 

@@ -36,12 +36,12 @@ struct AsleepBanner: View {
     private var title: String {
         session
             .isBackendRunning ? String(localized: .reachy("Robot is asleep")) :
-            String(localized: .reachy("Robot backend is stopped"))
+            String(localized: .reachy("Motors and camera are off"))
     }
 
     private var detail: String {
         session.isBackendRunning
             ? String(localized: .reachy("The motors are off, so the robot accepts commands without moving."))
-            : String(localized: .reachy("Motion, teleop and the state stream stay unavailable until it starts."))
+            : String(localized: .reachy("The live view and the controls come back once they start."))
     }
 }

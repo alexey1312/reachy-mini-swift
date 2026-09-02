@@ -216,7 +216,7 @@ public struct RobotWidgetContent: Equatable, Sendable {
     /// is not linkable from an extension. Same catalogue keys, so this adds none.
     private static func caption(for transition: RobotSession.PowerTransition) -> String {
         switch transition {
-        case .startingBackend: String(localized: .reachy("Starting the robot backend… this can take a minute"))
+        case .startingBackend: String(localized: .reachy("Starting the motors and camera… this can take a minute"))
         case .stoppingBackend: String(localized: .reachy("Powering off… going to sleep first"))
         case .wakingUp: String(localized: .reachy("Waking up…"))
         case .goingToSleep: String(localized: .reachy("Going to sleep…"))

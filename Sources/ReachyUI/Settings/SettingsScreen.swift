@@ -98,11 +98,11 @@ struct SettingsScreen: View {
                     .font(Typography.status)
                     .foregroundStyle(Tone.danger.style)
             }
-            LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
+            LabeledContent(.reachy("Software version"), value: identity?.daemonVersion ?? "—")
             LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
             if let hardwareID = identity?.hardwareID {
                 // The font goes on the value alone: applied to the row it monospaced the
-                // label too, and "Hardware ID" stood out from "Daemon" and "Connection" above it.
+                // label too, and "Hardware ID" stood out from the rows above it.
                 LabeledContent(.reachy("Hardware ID")) {
                     Text(hardwareID)
                         .font(Typography.console)

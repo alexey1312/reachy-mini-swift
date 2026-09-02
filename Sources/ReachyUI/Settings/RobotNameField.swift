@@ -16,7 +16,7 @@ struct RobotNameField {
             return
         }
         let running = daemonVersion
-            .map { String(localized: .reachy("this robot runs daemon \($0)")) } ??
+            .map { String(localized: .reachy("this robot runs version \($0)")) } ??
             String(localized: .reachy("this robot runs an older one"))
         footer = String(localized: .reachy("Renaming needs newer robot software — \(running). \(Self.hardwareIDNote)"))
     }

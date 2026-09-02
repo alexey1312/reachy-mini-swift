@@ -3,7 +3,8 @@ import ReachyKit
 import ReachySSH
 import SwiftUI
 
-/// Connected-robot controls: identity, live daemon status, wake/sleep, audio.
+/// The connected robot: what it is doing, the one control that changes that, and
+/// who it is — in that order, because that is the order a reader needs them in.
 ///
 /// The navigation container is the host's — this is a column on iPad and Mac and
 /// a tab on iPhone, and both supply their own `NavigationStack`.
@@ -25,6 +26,7 @@ struct RobotScreen: View {
         Form {
             statusSection
             controlSection
+            identitySection
             if let warning = session.compatibilityWarning {
                 Section {
                     Label(warning, systemImage: "exclamationmark.triangle")
@@ -148,23 +150,11 @@ struct RobotScreen: View {
         }
     }
 
+    /// What the robot is doing right now, first. The identity rows used to sit
+    /// above this, so a reader opening the tab to find out why nothing moved read
+    /// the name, the model and a version number before the one line that said.
     private var statusSection: some View {
-        Section(.reachy("Robot")) {
-            LabeledContent(.reachy("Name"), value: identity?.name ?? "—")
-            modelRow
-            LabeledContent(.reachy("Daemon"), value: identity?.daemonVersion ?? "—")
-            LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
-            if let status = session.lastStatus {
-                LabeledContent(
-                    .reachy("Daemon state"),
-                    value: String(localized: DaemonStateCaption.text(for: status.state))
-                )
-                // A `disabled` robot answers every motion command and stays limp,
-                // so the motor mode belongs next to the daemon state.
-                if let mode = status.backendStatus?.value1?.motorControlMode {
-                    LabeledContent(.reachy("Motors"), value: String(localized: MotorModeCaption.text(for: mode)))
-                }
-            }
+        Section(.reachy("Status")) {
             HStack {
                 Text(.reachy("Link"))
                 Spacer()
@@ -174,13 +164,19 @@ struct RobotScreen: View {
                 } else if !session.isBackendRunning {
                     // Reachable but not drivable: claiming a green "Connected" here
                     // is what sent users looking for a network problem they don't have.
-                    Label(.reachy("Backend stopped"), systemImage: "exclamationmark.triangle")
+                    Label(.reachy("Motors and camera off"), systemImage: "exclamationmark.triangle")
                         .foregroundStyle(Tone.warning.style)
                 } else {
                     Label(.reachy("Connected"), systemImage: "checkmark.circle")
                         .foregroundStyle(Tone.success.style)
                     roundTrip
                 }
+            }
+            if let status = session.lastStatus {
+                LabeledContent(
+                    .reachy("Software"),
+                    value: String(localized: DaemonStateCaption.text(for: status.state))
+                )
             }
             if let fault = session.backendFault {
                 Label(fault, systemImage: "wrench.and.screwdriver")
@@ -191,37 +187,40 @@ struct RobotScreen: View {
         }
     }
 
-    /// Power alone. The three destinations that used to sit above these buttons are
-    /// each a tab or a settings row now — the controller behind Live, the move
-    /// library at the root of its own tab, the daemon log with the rest of the
-    /// diagnostics — so this screen is about the robot's identity and its state.
-    ///
-    /// The three rows are one ladder, in the order they take things away: waking
-    /// gives the robot its motors, sleeping takes them, powering off takes the
-    /// backend behind them. Only the last needs asking twice.
+    /// Who the robot is, after what it is doing. "Software version" rather than
+    /// "Daemon": the word names a process, and nothing on this screen asks the
+    /// reader to know there is one.
+    private var identitySection: some View {
+        Section(.reachy("Robot")) {
+            LabeledContent(.reachy("Name"), value: identity?.name ?? "—")
+            modelRow
+            LabeledContent(.reachy("Software version"), value: identity?.daemonVersion ?? "—")
+            LabeledContent(.reachy("Connection"), value: ConnectionLinkCaption.text(for: session.link))
+            // A `disabled` robot answers every motion command and stays limp, so
+            // the motor mode is a fact about the robot worth a row of its own.
+            if let mode = session.lastStatus?.backendStatus?.value1?.motorControlMode {
+                LabeledContent(.reachy("Motors"), value: String(localized: MotorModeCaption.text(for: mode)))
+            }
+        }
+    }
+
+    /// One row of state with the one action that changes it, instead of Wake up and
+    /// Go to sleep side by side — of which one was always the wrong one, and both
+    /// were greyed only during a transition. Power off keeps a row of its own
+    /// because it is the one that asks first.
     private var controlSection: some View {
         Section {
-            Button {
-                Task { await session.wake() }
-            } label: {
-                Label(.reachy("Wake up"), systemImage: "sun.max")
+            if let transition = session.powerTransition {
+                PowerTransitionRow(transition: transition)
+            } else {
+                powerRow
             }
-            .disabled(session.powerTransition != nil)
-            Button {
-                Task { await session.sleep() }
-            } label: {
-                Label(.reachy("Go to sleep"), systemImage: "moon.zzz")
-            }
-            .disabled(session.powerTransition != nil)
             Button(role: .destructive) {
                 powerOff.isConfirming = true
             } label: {
                 Label(.reachy("Power off"), systemImage: "power")
             }
             .disabled(!powerOff.canPowerOff(session))
-            if let transition = session.powerTransition {
-                PowerTransitionRow(transition: transition)
-            }
         } header: {
             Text(.reachy("Control"))
         } footer: {
@@ -229,7 +228,7 @@ struct RobotScreen: View {
         }
         .disabled(!isConnected)
         .confirmationDialog(
-            Text(.reachy("Stop the robot backend?")),
+            Text(.reachy("Power off the robot?")),
             isPresented: $powerOff.isConfirming,
             titleVisibility: .visible
         ) {
@@ -238,6 +237,32 @@ struct RobotScreen: View {
             }
         } message: {
             Text(powerOffConfirmation)
+        }
+    }
+
+    /// The state in words on the left, the way out of it on the right. A stopped
+    /// backend and a sleeping robot both wake: `wake()` starts the motors and
+    /// camera first where they are off.
+    @ViewBuilder
+    private var powerRow: some View {
+        if !session.isBackendRunning {
+            LabeledContent {
+                Button(.reachy("Wake up")) { Task { await session.wake() } }
+            } label: {
+                Label(.reachy("Motors and camera off"), systemImage: "moon.zzz")
+            }
+        } else if session.isAwake {
+            LabeledContent {
+                Button(.reachy("Go to sleep")) { Task { await session.sleep() } }
+            } label: {
+                Label(.reachy("Awake"), systemImage: "sun.max")
+            }
+        } else {
+            LabeledContent {
+                Button(.reachy("Wake up")) { Task { await session.wake() } }
+            } label: {
+                Label(.reachy("Asleep"), systemImage: "moon.zzz")
+            }
         }
     }
 
@@ -266,9 +291,9 @@ struct RobotScreen: View {
 
     private var powerOffConfirmation: LocalizedStringResource {
         if let app = powerOff.runningApp(session) {
-            .reachy("\(app.title) stops first, then the robot goes to sleep and its backend shuts down.")
+            .reachy("\(app.title) stops first, then the robot goes to sleep and its motors and camera shut down.")
         } else {
-            .reachy("The robot goes to sleep first, then its backend shuts down.")
+            .reachy("The robot goes to sleep first, then its motors and camera shut down.")
         }
     }
 

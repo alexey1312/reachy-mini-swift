@@ -45,6 +45,7 @@ struct AudioSettingsSection: View {
                 Button(.reachy("Test sound")) {
                     Task { await model.playTestSound(session: session) }
                 }
+                .reachyButton(.standard)
                 .disabled(model.isBusy || !model.isReady)
             }
             if let errorMessage = model.errorMessage {

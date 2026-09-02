@@ -276,7 +276,7 @@ struct RobotHealthScreen: View {
     }
 
     private var controlLoopFooter: LocalizedStringResource {
-        .reachy("Measured by the daemon once a second. The rate is what the robot's motors are actually driven at.")
+        .reachy("Measured by the robot's software once a second. The rate is what the motors are actually driven at.")
     }
 
     private var systemFooter: LocalizedStringResource {

@@ -88,7 +88,7 @@ struct RobotSessionCancellationTests {
     func realFailureHasAMessage() {
         #expect(
             RobotSession.message(for: URLError(.cannotConnectToHost))
-                == URLError(.cannotConnectToHost).localizedDescription
+                == "Nothing answered. Check that the robot is on and on this network."
         )
     }
 

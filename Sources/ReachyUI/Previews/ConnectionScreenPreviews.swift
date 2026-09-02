@@ -141,3 +141,9 @@ import SwiftUI
         manualInput: "192.168.1.42"
     )
 }
+
+// The simulator rows, which only exist once the disclosure is open. Closed is
+// what every other `Connection —` capture already shows.
+#Preview("Connection — developer section open") {
+    PreviewScene.connection(.preview(phase: .idle, status: nil, address: nil), showsDeveloper: true)
+}
