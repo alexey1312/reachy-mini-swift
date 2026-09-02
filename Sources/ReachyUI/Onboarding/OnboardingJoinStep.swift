@@ -42,17 +42,13 @@ struct OnboardingJoinStep: View {
             case .working:
                 EmptyView()
             case .joined:
-                Button(.reachy("Continue")) {
+                ReachyActionButton(.reachy("Continue"), fullWidth: true) {
                     model.continueAfterJoin()
                 }
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
             case .gaveUp, .refused:
-                Button(.reachy("Try again")) {
+                ReachyActionButton(.reachy("Try again"), fullWidth: true) {
                     model.editNetwork()
                 }
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
             }
         }
     }

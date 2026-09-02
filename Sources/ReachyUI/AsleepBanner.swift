@@ -25,10 +25,9 @@ struct AsleepBanner: View {
             if session.powerTransition != nil {
                 ProgressView()
             } else {
-                Button(.reachy("Wake up")) {
+                ReachyActionButton(.reachy("Wake up")) {
                     Task { await session.wake() }
                 }
-                .reachyButton(.prominent)
             }
         }
     }

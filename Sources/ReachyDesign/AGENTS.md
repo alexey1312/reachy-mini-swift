@@ -23,6 +23,8 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
 | `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — and why it has no glass tier                                                                 |
+| `ReachyActionButton.swift` | The action button that puts width and colour _inside_ the label — full-width capsules, a dark-appearance label                       |
+| `ReachyErrorRow.swift`     | One failure in a form row, with the way out beside it                                                                                |
 | `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
 | `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
 | `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
@@ -67,6 +69,13 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
      reuses that same 1.8 for a different question — is a tint legible beside body text — with no standard behind
      it. It was not reverse-engineered to admit graphite and exclude teal (it predates both measurements), but a
      seventh theme landing near it deserves a look at the number rather than deference to it.
+  4. **≥ 3:1 for the prominent label against the accent, in each appearance** — `prominentLabelContrast`. The
+     label is white in light and **black in dark** (`ButtonEmphasis.prominentLabelHex`), and the test reads that
+     pairing rather than restating it. Found by the design review: `.borderedProminent` paints white, and on the
+     dark accents — chosen light so they read on a black page — white measured 2.05 on graphite and 1.75 on teal,
+     so the two buttons that gate setup and recovery were the least legible controls in the app. Repainting the
+     dark accents would have cost every tinted row its 3:1 against the page (limb 1); painting the label is what
+     `ReachyActionButton` does, and only inside the label — a style's own foreground beats anything set around it.
 - **Bronze's dark accent is `#A86D16`, deliberately darker than a dark-appearance accent usually is.** It shipped as
   `#E3A24A`, chosen against the light-appearance system tones only, before the separation rule above checked
   `palette.dark` against the dark ones. Measured against dark `warning` (`#FF9F0A`), `#E3A24A` scored 2.0° of hue and

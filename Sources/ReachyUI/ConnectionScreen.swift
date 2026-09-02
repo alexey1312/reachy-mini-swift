@@ -241,10 +241,9 @@ struct ConnectionScreen: View {
     @ViewBuilder
     private var errorSection: some View {
         if let error = session.robotError, !session.automaticConnectionAllowed {
+            // The rail's own "Try again" is the retry, so the row carries none.
             Section {
-                Text(error)
-                    .font(Typography.consoleLine)
-                    .foregroundStyle(Tone.danger.style)
+                ReachyErrorRow(error)
             }
         }
         // Separate from the robot's own error, and shown regardless of
@@ -252,9 +251,7 @@ struct ConnectionScreen: View {
         // nothing about a robot is being retried.
         if let simulatorError {
             Section {
-                Text(simulatorError)
-                    .font(Typography.consoleLine)
-                    .foregroundStyle(Tone.danger.style)
+                ReachyErrorRow(simulatorError)
             }
         }
     }

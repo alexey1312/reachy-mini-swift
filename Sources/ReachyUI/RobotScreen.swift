@@ -32,10 +32,10 @@ struct RobotScreen: View {
                 }
             }
             if let error = session.robotError {
+                // No retry beside it: the Link row above reconnects on its own, and a
+                // second button here would race the sweep it reports on.
                 Section {
-                    Text(error)
-                        .font(Typography.consoleLine)
-                        .foregroundStyle(Tone.danger.style)
+                    ReachyErrorRow(error)
                 }
             }
             Section {

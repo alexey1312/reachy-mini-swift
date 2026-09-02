@@ -73,9 +73,9 @@ struct MovesScreen: View {
             }
             if let lastError = model.lastError, !model.isContentLoading {
                 Section {
-                    Text(lastError)
-                        .font(Typography.consoleLine)
-                        .foregroundStyle(Tone.danger.style)
+                    ReachyErrorRow(lastError) {
+                        Task { await model.load(session: session, refresh: true) }
+                    }
                 }
             }
         }

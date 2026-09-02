@@ -102,17 +102,16 @@ struct ConnectHeader: View {
     /// on the label**. `frame(maxWidth: .infinity)` applied outside `buttonStyle`
     /// stretches the container and leaves the capsule hugging its text in the middle
     /// of it — which the third recorded attempt showed as a centred capsule under a
-    /// leading-aligned caption and leading-aligned alternatives.
+    /// leading-aligned caption and leading-aligned alternatives. `ReachyActionButton`
+    /// is that spelling with a name, and it is what every full-width action uses now;
+    /// eight onboarding steps carried the wrong one until it existed.
     private func decision(
         _ title: LocalizedStringResource,
         action: @escaping () -> Void,
         @ViewBuilder alternatives: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Button(action: action) {
-                Text(title).frame(maxWidth: .infinity)
-            }
-            .reachyButton(.prominent)
+            ReachyActionButton(title, fullWidth: true, action: action)
             HStack(spacing: Space.lg) {
                 alternatives()
                 Spacer()

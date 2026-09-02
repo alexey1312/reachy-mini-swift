@@ -47,11 +47,9 @@ struct OnboardingHandoffStep: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         } actions: {
-            Button(.reachy("Done")) {
+            ReachyActionButton(.reachy("Done"), fullWidth: true) {
                 onFinish(model.finish())
             }
-            .reachyButton(.prominent)
-            .frame(maxWidth: .infinity)
         }
     }
 }

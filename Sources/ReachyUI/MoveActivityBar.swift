@@ -53,7 +53,7 @@ struct MoveActivityBar: View {
     }
 
     private var stopButton: some View {
-        Button(action: stop) {
+        ReachyActionButton(.destructive, action: stop) {
             HStack(spacing: Space.sm) {
                 if isStopping {
                     ProgressView()
@@ -65,10 +65,8 @@ struct MoveActivityBar: View {
             }
             .frame(minWidth: 120)
         }
-        .reachyButton(.prominent)
         .buttonBorderShape(.capsule)
         .controlSize(.large)
-        .tint(Tone.danger.style)
         .disabled(isStopping)
     }
 

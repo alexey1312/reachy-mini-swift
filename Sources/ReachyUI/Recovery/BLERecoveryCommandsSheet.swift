@@ -59,9 +59,7 @@ struct BLERecoveryCommandsSheet: View {
                 .textInputAutocapitalization(.never)
             #endif
                 .onSubmit(submit)
-            Button(.reachy("Unlock the robot"), action: submit)
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
+            ReachyActionButton(.reachy("Unlock the robot"), fullWidth: true, action: submit)
                 .disabled(!model.canSubmitPIN)
             if let error = model.errorMessage {
                 Text(error).font(Typography.detail).foregroundStyle(Tone.danger.style)

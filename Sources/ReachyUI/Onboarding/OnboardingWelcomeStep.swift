@@ -48,11 +48,9 @@ struct OnboardingWelcomeStep: View {
                 .foregroundStyle(.secondary)
             }
         } actions: {
-            Button(.reachy("Start")) {
+            ReachyActionButton(.reachy("Start"), fullWidth: true) {
                 model.beginScan()
             }
-            .reachyButton(.prominent)
-            .frame(maxWidth: .infinity)
         }
     }
 

@@ -53,6 +53,15 @@ struct ControllerScreen: View {
                     AsleepBanner(session: session)
                 }
             }
+            // Above the pad, not under the sliders: a failed setup leaves every control
+            // below inert, and the one line saying why used to sit past the fold — the
+            // `Controller — setup failed` reference showed a healthy screen for as long
+            // as the row was at the bottom.
+            if let setupError {
+                Section {
+                    ReachyErrorRow(setupError, retry: start)
+                }
+            }
             Group {
                 Section(.reachy("Head — drag: yaw / pitch, hold sideways: turn the body")) {
                     JoystickPad(mapping: driver.mapping) { deflection in
@@ -100,13 +109,6 @@ struct ControllerScreen: View {
                 }
             }
             .disabled(!session.isAwake)
-            if let setupError {
-                Section {
-                    Text(setupError)
-                        .font(Typography.consoleLine)
-                        .foregroundStyle(Tone.danger.style)
-                }
-            }
         }
         .formStyle(.grouped)
         .navigationTitle(.reachy("Controller"))

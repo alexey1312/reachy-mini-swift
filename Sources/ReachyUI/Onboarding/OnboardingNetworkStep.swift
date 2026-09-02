@@ -58,11 +58,9 @@ struct OnboardingNetworkStep: View {
             .fixedSize(horizontal: false, vertical: true)
             OnboardingErrorText(message: model.errorMessage)
         } actions: {
-            Button(.reachy("Send to the robot")) {
+            ReachyActionButton(.reachy("Send to the robot"), fullWidth: true) {
                 Task { await model.join() }
             }
-            .reachyButton(.prominent)
-            .frame(maxWidth: .infinity)
             .disabled(!model.canJoin)
             OnboardingBackButton(model: model)
         }

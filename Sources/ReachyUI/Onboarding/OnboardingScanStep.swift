@@ -54,11 +54,9 @@ struct OnboardingScanStep: View {
             }
         } actions: {
             if let only = model.discovered.first, model.discovered.count == 1 {
-                Button(.reachy("Connect to this robot")) {
+                ReachyActionButton(.reachy("Connect to this robot"), fullWidth: true) {
                     Task { await model.connect(to: only.id) }
                 }
-                .reachyButton(.prominent)
-                .frame(maxWidth: .infinity)
                 .disabled(model.isBusy)
             }
             OnboardingBackButton(model: model)

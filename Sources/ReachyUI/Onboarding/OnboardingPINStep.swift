@@ -64,11 +64,9 @@ struct OnboardingPINStep: View {
                 OnboardingErrorText(message: model.errorMessage)
             }
         } actions: {
-            Button(.reachy("Unlock")) {
+            ReachyActionButton(.reachy("Unlock"), fullWidth: true) {
                 submit()
             }
-            .reachyButton(.prominent)
-            .frame(maxWidth: .infinity)
             .disabled(!model.canSubmitPIN)
             OnboardingBackButton(model: model)
         }

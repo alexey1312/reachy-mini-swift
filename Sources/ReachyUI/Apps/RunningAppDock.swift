@@ -327,15 +327,13 @@ struct RunningAppDockContent: View {
     }
 
     private var stopButton: some View {
-        Button {
+        ReachyActionButton(.destructive) {
             perform(.stop)
         } label: {
             Label(.reachy("Stop"), systemImage: "stop.fill")
                 .labelStyle(.iconOnly)
         }
-        .reachyButton(.prominent)
         .buttonBorderShape(.circle)
-        .tint(Tone.danger.style)
         .disabled(!canAct)
     }
 

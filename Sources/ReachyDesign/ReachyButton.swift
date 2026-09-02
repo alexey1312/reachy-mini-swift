@@ -14,10 +14,39 @@ public enum ButtonEmphasis: Sendable, CaseIterable {
     /// without competing with the action above them and without clipping when the
     /// text grows.
     case quiet
+    /// Stop, remove, forget: prominent because it is the action, red because it
+    /// cannot be undone. Two call sites spelled it as `.prominent` plus a red tint
+    /// before it had a name — the dock's Stop and the move bar's — which is the
+    /// second consumer rule 10 waits for. The label stays white: white on the
+    /// system red holds ≥ 3:1 in both appearances, so it needs no colour of its own.
+    case destructive
+}
+
+public extension ButtonEmphasis {
+    /// What a `.prominent` label is painted with, per appearance.
+    ///
+    /// `.borderedProminent` paints white, and white is right on the light accents
+    /// (≥ 3.18 on every theme) and wrong on the dark ones: they are picked light so
+    /// they read on a black page, which leaves white on them at 2.05 (graphite) down
+    /// to 1.75 (teal). Black on the same accents holds ≥ 4.86. A label decision, not
+    /// a palette one — repainting the dark accents would cost every tinted row its
+    /// contrast against the page. `ReachyThemeTests.prominentLabelContrast` reads
+    /// this same pair, so the two cannot drift.
+    static func prominentLabelHex(for scheme: ColorScheme) -> UInt32 {
+        scheme == .dark ? 0x000000 : 0xFFFFFF
+    }
+
+    static func prominentLabel(for scheme: ColorScheme) -> Color {
+        Color(hex: prominentLabelHex(for: scheme))
+    }
 }
 
 public extension View {
     /// The app's action button. A call site names emphasis, never a style.
+    ///
+    /// For the two things this cannot do from outside the `Button` — a full-width
+    /// label, and a prominent label painted for the appearance — use
+    /// `ReachyActionButton`, which applies them inside the label and ends here.
     ///
     /// **There is no glass tier here, and that is a measurement rather than a
     /// preference.** `.buttonStyle(.glass)` does not merely fail to render in a
@@ -51,6 +80,7 @@ private struct ReachyButtonStyle: ViewModifier {
         // `.borderless` rather than `.plain`: plain drops the tint too, and a
         // tintless label beside a blue one reads as disabled.
         case .quiet: content.buttonStyle(.borderless)
+        case .destructive: content.buttonStyle(.borderedProminent).tint(Tone.danger.style)
         }
     }
 }
