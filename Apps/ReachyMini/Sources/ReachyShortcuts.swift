@@ -17,6 +17,13 @@ import ReachyWidgetUI
 /// shows up as "Siri stopped hearing that phrase" months later — count before
 /// adding.
 ///
+/// **A schema intent costs no slot here, and that is the way out of this ceiling.**
+/// `SearchRobotAppsIntent` conforms to `.system.search`, so the assistant reaches it
+/// through the domain rather than through a phrase somebody memorised — it appears
+/// in none of the ten below and displaces nothing. Ask whether a new intent fits a
+/// system-defined schema before spending a slot on it; `docs/research/ios-27.md`
+/// §3.1 records which domains this client honestly fits, and which it does not.
+///
 /// **`PlaySoundIntent`, `StopSoundIntent` and `ToggleRobotAppIntent` are the three
 /// turned away by that**, and each was a decision rather than an oversight: displacing
 /// a working phrase for a new one is a trade nobody asked for. The two sound intents

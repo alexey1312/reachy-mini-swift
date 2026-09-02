@@ -141,9 +141,55 @@ struct AppStoreScreen: View {
             .presentationDetents([.medium, .large])
             .reachySheet()
         }
+        // A page somebody asked for from outside this screen — `.system.open`, or a
+        // tapped Spotlight row for an app entity. Keyed on the lists as well as on
+        // the request, because the request routinely arrives before the catalogue
+        // has loaded: `installed` is what a cold launch fills first, and a Discover
+        // row needs the Hub round trip behind it.
+        .onChange(of: openRequest, initial: true) { _, _ in openRequestedApp() }
         .task {
             guard !previewMode else { return }
             await reload()
+        }
+    }
+
+    /// Everything resolving a requested page waits on, in one `Equatable` value —
+    /// the `RoutingTrigger` shape `RootCallLifecycle` uses. The counts rather than
+    /// the arrays: what matters is that a list *changed*, and comparing two
+    /// catalogues of four hundred apps on every redraw is not free.
+    private struct OpenRequest: Equatable {
+        let appID: String?
+        let installedCount: Int
+        let catalogueCount: Int
+    }
+
+    private var openRequest: OpenRequest {
+        OpenRequest(
+            appID: model.requestedAppID,
+            installedCount: model.installed.count,
+            catalogueCount: model.catalogue.count
+        )
+    }
+
+    /// Opens the page for an app named from outside this screen.
+    ///
+    /// **Installed first, deliberately.** The two lists key on the same `RobotApp.id`
+    /// but only the installed one is filled without a Hub round trip, and an app
+    /// somebody asks to open by name is overwhelmingly one they have.
+    ///
+    /// An id that matches nothing is *kept* while the screen is still loading and
+    /// dropped once it is not: a request cleared mid-load would be a page that never
+    /// opens for a reader whose catalogue was a second behind, and a request kept
+    /// for ever would open a page the moment an unrelated app was installed.
+    private func openRequestedApp() {
+        guard let id = model.requestedAppID else { return }
+        if let app = model.installed.first(where: { $0.id == id })
+            ?? model.catalogue.first(where: { $0.id == id })
+        {
+            model.requestedAppID = nil
+            selected = app
+        } else if !model.isContentLoading, !model.loading {
+            model.requestedAppID = nil
         }
     }
 

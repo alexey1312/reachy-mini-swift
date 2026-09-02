@@ -91,8 +91,8 @@ struct RootLifecycle: ViewModifier {
                 // Only a destination this app owns. The OAuth callback shares this
                 // scheme and belongs to the sign-in session, so `ReachyDeepLink`
                 // refuses it rather than landing the user on a tab mid-authorisation.
-                guard let link = ReachyDeepLink(url: url) else { return }
-                follow(link)
+                guard let target = ReachyDeepLink.Target(url: url) else { return }
+                follow(target)
             }
             // A tapped Spotlight row. Its identifier *is* the deep link, so it lands
             // exactly where a widget's tap does — the `.runningApp` completion
@@ -221,9 +221,24 @@ struct RootLifecycle: ViewModifier {
     /// Selecting the tab is `ReachyRouter`'s; whatever a link has to *do* on arrival
     /// is the caller's, and there are two callers now.
     private func follow(_ link: ReachyDeepLink) {
-        router.follow(link)
-        if case .runningApp = link {
+        follow(ReachyDeepLink.Target(destination: link))
+    }
+
+    /// The same, for an arrival that names *which* thing it is about — an entity's
+    /// URL, which is what `OpenIntent` opens and what a Spotlight entity row carries.
+    ///
+    /// The identifier is filed rather than acted on: `AppStoreModel` lives in
+    /// `ReachyTabShell`, one level below this, and resolving an id to a row can need
+    /// a catalogue that has not loaded. An identifier on a destination that has no
+    /// use for one is ignored, not refused — the tab is still where the reader
+    /// asked to go.
+    private func follow(_ target: ReachyDeepLink.Target) {
+        router.follow(target.destination)
+        if case .runningApp = target.destination {
             runningApp.requestExpansion(for: session)
+        }
+        if case .apps = target.destination, let id = target.identifier {
+            AppStoreRequestInbox.shared.receive(appID: id)
         }
     }
 

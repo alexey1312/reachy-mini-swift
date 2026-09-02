@@ -374,6 +374,61 @@ the intents that take it. Searching for a dance offers to play it. A destination
 - The app-side half is `ReachyEntityIndex` in `ReachyUI`, which is where the delete-vs-`deleteAllSearchableItems`
   trap is written up.
 
+## App Intents schemas (#74)
+
+A schema binds an intent to a system-defined domain the assistant already understands, so it arrives with no
+memorised phrase and nothing per-language. Which domains this client honestly fits — and the evidence for the five
+it does not — is `docs/research/ios-27.md` §3.1; that table is sourced to Xcode's own `AppIntentSchemas.sqlite`,
+which is the database the metadata processor validates against and the only reliable answer to "what does this
+schema require". Read it before adding a conformance; a tutorial is not evidence here.
+
+Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.search`) and `OpenRobotAppIntent`
+(`.system.open`, iOS 27).
+
+- **A schema intent must live in the app target, and it does not get a choice about it.**
+  `ShowInAppSearchResultsIntent` and `OpenIntent` each supply `openAppWhenRun = true` from a framework protocol
+  extension — the author never writes it and cannot decline it — and that flag errors at runtime in an appex. Declare
+  either conformance inside this library and the flag lands in the _extension's_ `Metadata.appintents`. Same rule
+  `CallRobotIntent` records, reached from the opposite direction.
+- **A schema costs no App Shortcut slot.** `ReachyShortcuts` is at ten of ten and the system drops an eleventh
+  silently; a schema intent is reached through its domain instead and appears in none of them. The release build
+  prints the count — it stayed at ten across both adoptions. Ask whether a new intent fits a schema before spending a
+  slot on it.
+- **Nothing in `Sources/` may name a symbol absent from the 26.2 SDK, and an `@available` annotation does not tell
+  you which those are.** `lint-test` is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs
+  `mise run test`, which is `swift build` over every SwiftPM target. A symbol the 26.2 SDK does not declare is
+  **absent** rather than unavailable, so `@available` does not save the build — it fails to compile.
+  `ExecutionTargets` and `LongRunningIntent` are the obvious cases, which is why they are not adopted here and why
+  both schema intents live in `Apps/ReachyMini/Sources`, a directory `swift build` never sees.
+  - **The trap is the non-obvious case, and it cost a red CI run.** `View.appEntityIdentifier` — onscreen awareness,
+    the thing that lets "play this one" resolve against a visible row — is annotated
+    `@available(macOS 15.4, iOS 18.4, *)`, which reads as _below_ this app's floor. That annotation is its **runtime**
+    availability. The declaration itself ships only in the 27 SDK: `_AppIntents_SwiftUI`'s interface in
+    `MacOSX26.5.sdk` does not contain the name at all, and in `MacOSX.sdk` (27) it does. So the API is back-deployed
+    to 15.4 and unbuildable here at the same time, and nothing in the source says so.
+  - **Neither `mise run test` nor `#if canImport` will catch it.** The overlay module exists in both SDKs — only the
+    member is missing — so `canImport(_AppIntents_SwiftUI)` is true either way. And SwiftPM reuses modules in
+    `.build` compiled against whatever SDK was selected last, so a local run that already built against Xcode 27's
+    SDK passes while CI fails. Verify against the SDK the job uses:
+    `xcrun swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -module-cache-path <fresh> …`,
+    or grep the framework's `.swiftinterface` for the name.
+- **An `@available` intent still extracts, and that was measured rather than assumed.** `OpenRobotAppIntent` is
+  iOS 27 / macOS 27 and appears in a macOS 15 build's metadata with
+  `availabilityAnnotations.LNPlatformNameMACOS.introducedVersion = "27.0"` beside it — availability is a field, not
+  an absence, the same reading `isDiscoverable = false` gets. So a 27-only action belongs in
+  `check-appintents-metadata.sh`'s flat list like any other.
+- **A schema is validated by the metadata processor, never by the compiler.** A parameter renamed out of the shape
+  the schema declares fails _extraction_, which is a warning — the same silence that shipped TestFlight 0.1.1 with
+  zero Shortcuts actions. Read `assistantDefinedSchemas` out of the built `extract.actionsdata` and check the domain
+  and name are there; a green build says nothing.
+- **`.system.searchInApp` is deliberately not adopted.** It is the iOS 27 rename of `.system.search`, which is
+  deprecated there but present and working. Adopting both would put two near-identical search actions in the
+  Shortcuts app on 27 and gain nothing below it, and which one the assistant prefers cannot be answered without a 27
+  device. Adopt it when the deployment floor reaches 27 and `.system.search` can go in the same change.
+- **`.system.open` covers apps and nothing else.** A move and a sound have no selection state on their screens to
+  open onto, and a robot other than the connected one is a connection rather than a destination. Each needs a screen
+  change before it needs an entity URL; conforming them first would be an intent that picks a tab and shrugs.
+
 ## The running-app Live Activity
 
 `RunningAppActivityContent.swift`, `RunningAppActivityView.swift`, `RunningAppActivityAttributes.swift` and
