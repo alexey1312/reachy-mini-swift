@@ -84,7 +84,8 @@ already resolves to 27 there.
 
 `warm-cache` moves with the build jobs. It is the only job that writes the `SourcePackages` cache on
 `refs/heads/main`, and a package graph resolved by a different Xcode does not serve the jobs that read it.
-`lint-test` stays: it is SwiftPM against the swift.org toolchain and never opens the iOS SDK.
+`lint-test` moved too, later and for a different reason — see the section below, which this line used to
+contradict.
 
 The local install (beta 6) and the image (beta 4) are different builds. That is safe here for one reason only: no
 CI job compares reference images. `preview-build` compiles them.
@@ -97,10 +98,24 @@ whatever `xcode-select` points at. With Xcode 27 selected, that pairing fails: `
 accessible initializers` across `Sources/ReachyUI`, plus `ld` warnings about `building for macOS-11.0` against
 dylibs built for 13.0.
 
-Those errors are cascade, not cause. The cause is one line above them —
-`Sources/ReachyUI/Settings/SystemUpdateCard.swift:61`, a `@ViewBuilder` property wrapping a `switch`, reported as
-`the compiler is unable to type-check this expression in reasonable time`. A failed expression poisons the rest of
-the module, and the accessibility errors are the wreckage.
+**The first reading of this was wrong, and it is worth leaving the correction visible.** It said those errors were
+cascade from one line above them — `SystemUpdateCard`'s `@ViewBuilder` `statusRow`, reported as `unable to
+type-check this expression in reasonable time` — and concluded "nothing is changed here for it". Three days later
+`Scripts/swiftpm-env.sh` (#117) named a different cause with a working remedy, and re-measuring settled it:
+
+```
+swift 6.3.3, DEVELOPER_DIR=Xcode 27 beta 6, SDKROOT=MacOSX.sdk, target ReachyUI
+  → 0  × "unable to type-check this expression in reasonable time"
+  → 401 × inaccessible-initialiser errors, across 10 types:
+    LogConsoleView, AppDetailSheet, ViewportView, RootLifecycle, RunningAppModifier,
+    NetworkRobotsSection, ConversationTranscriptList, ConnectRailNode,
+    BLERecoveryCommandsSheet, SettingsScreen
+```
+
+So they are not cascade and there is no single poisoned expression. The cause is the one `swiftpm-env.sh` states:
+6.3 against the macOS 27 SDK puts the backing storage of a `@State private` property into the synthesised
+memberwise initialiser, which makes that initialiser private too. Giving each affected type an explicit `init` is a
+workaround for a compiler bug spread over ten files.
 
 The same sources, the same SDK, and Xcode 27's own Swift 6.4 build clean:
 
@@ -108,10 +123,12 @@ The same sources, the same SDK, and Xcode 27's own Swift 6.4 build clean:
 xcrun swift build --target ReachyUI   # Build complete! (49.23 s)
 ```
 
-So the tree is not broken; the toolchain pairing is. **Nothing is changed here for it.** swift.org has no 6.4
-release to move `.swift-version` to, and CI is unaffected — `lint-test` stays on `macos-15` with
-`DEVELOPER_DIR=Xcode_26.2`, so it pairs 6.3 with the macOS 26.2 SDK exactly as before. Locally, run `swift build`
-and `swift test` with Xcode 26 selected, or reach for `xcrun swift` and accept Xcode's compiler.
+**What changed, and it is a CI decision rather than a code one.** Locally, `Scripts/swiftpm-env.sh` forces the
+Command Line Tools' release SDK whenever the selected Xcode path contains `beta`, so every `mise run test` here is
+6.3 against a 26.5 SDK and the pairing never arises. On CI, `lint-test` moved to `xcode-27` and **dropped the
+swift.org toolchain**, building with that Xcode's own Swift 6.4 — which is what lifted #124's blocker, and is also
+the configuration the app is actually built and shipped in. What is given up is a release compiler; `.swift-version`
+stays for `Scripts/install-sourcekit.sh` and for a local swiftly-driven build.
 
 This is the measured form of the tooling-matrix gap in §2.
 
@@ -293,11 +310,14 @@ same user-visible result.
 
 **Three items in the §3 bullet above are out of reach from here, and each for a reason worth writing down:**
 
-- **`ExecutionTargets`, `LongRunningIntent` and `CancellableIntent` are blocked by CI rather than by design.** All
-  are `@available(anyAppleOS 27.0)`, and the intents they would go on live in `Sources/ReachyWidgetUI`. `lint-test`
-  is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is `swift build` over every
-  SwiftPM target — and an iOS-27 symbol is simply **absent** from the 26.2 SDK, so `@available` does not save it and
-  the module fails to compile. Nothing in `Sources/` may name an iOS-27 symbol until that job moves.
+- **`ExecutionTargets`, `LongRunningIntent` and `CancellableIntent` were blocked by CI rather than by design, and
+  that job has now moved.** All are `@available(anyAppleOS 27.0)`, and the intents they would go on live in
+  `Sources/ReachyWidgetUI`. `lint-test` used to be pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs
+  `mise run test`, which is `swift build` over every SwiftPM target — and an iOS-27 symbol is simply **absent** from
+  the 26.2 SDK, so `@available` did not save it and the module failed to compile. It is on `xcode-27` now, building
+  with that Xcode's own Swift; see the section above. Adopt these one at a time, cheapest and most reversible first,
+  because a 27 symbol in `Sources/` pins CI to a preview image and the runner label can no longer be rolled back
+  without reverting source.
 - **Onscreen awareness is out of reach for the same reason, and it is the one that reads as reachable.**
   `View.appEntityIdentifier` is annotated `@available(macOS 15.4, iOS 18.4, *)` — _below_ this app's floor — so it
   looks like a free adoption. That is its runtime availability; the declaration ships only in the 27 SDK.
