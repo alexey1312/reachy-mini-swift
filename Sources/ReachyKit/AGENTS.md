@@ -235,3 +235,30 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   daemon 1.9.0's dispatch has no `SET_NAME` branch, and it does not mount `POST /api/daemon/robot-name` either — that
   route postdates the release, so on 1.9.0 a robot cannot be renamed at all. `handshake` probes the route and reports
   `supportsRename`; the field is greyed out rather than left to 404 on save.
+- **The conversation surface is one capability with two arms, and the LAN one multiplexes.**
+  `ConversationClient`/`ConversationChannel` (`Session/`) is the capability — conforming _is_ it, the
+  `DaemonLogClient` shape — with `ConversationRPCClient` dialling the app's own port and
+  `RemoteConversation` going through the daemon's JSON-RPC relay. Both vend **one**
+  `AsyncStream<ConversationEvent>`: the merge is unavoidable on either arm (three `broadcasts(ofType:)` over the
+  relay, a fan-out table over one socket on the LAN), so it belongs below the protocol rather than in every
+  consumer — and order between the notifications is meaning, which separate streams do not have.
+  `canControlConversation` composes the conformance with `predatesRelayCommands`, exactly as `canControlRunningApp`
+  does and for the same reason.
+  - **`ConversationRPCClient` is an actor because a transcript is a call per frame.** It was a socket per call, and
+    its own doc named the trigger for changing: push-to-talk sends `conversation.mic` twice per utterance, and a
+    WebSocket handshake between letting go of a button and the robot ceasing to listen is latency nobody can
+    explain. The five fields carry the same names as `RemoteControlChannel` so a reader of one knows the other; the
+    socket follows demand (`!listeners.isEmpty || inFlight > 0`), so a screen holding a channel pays for one
+    connection, a dock tapping a button pays for one per tap, and an abandoned channel holds nothing even if
+    `close()` was never reached. `ConversationRPCRequestTests` proves both halves by counting the server's accepted
+    connections — one test would pass against a server that could only count to one, so there are two.
+  - **Every stream here uses `AsyncStream.makeStream`, never the builder form.** The builder closure is what a
+    closure capturing the escaping continuation nests inside, and that shape sends `ClosureLifetimeFixup` into a
+    walk it does not return from. An actor has no `withLock` to nest either, which is the structural half of the
+    same guard.
+  - **`RemoteControlChannel.Failure.rpc(code:message:reason:)` was appended so three screens could stop being one
+    string.** `throwIfRPCError` folded the code and the reason into prose, so `-32601` (this build has no such
+    method — retire the control), `not_running` (the app is gone) and `app_unavailable` (there and silent) were
+    indistinguishable over the relay. `errorDescription` composes the identical sentence, and a test pins it: no
+    screen's wording changed. `ConversationFailure` is the shared vocabulary both arms throw, with `-32601` mapped
+    in exactly one initialiser so the two cannot drift.

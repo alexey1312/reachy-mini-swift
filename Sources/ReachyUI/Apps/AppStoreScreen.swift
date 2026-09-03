@@ -11,6 +11,9 @@ struct AppStoreScreen: View {
     /// The dock's model, adopted rather than owned: a row opens the same page the
     /// dock does, and that page carries Restart and Stop.
     let runningApp: RunningAppModel
+    /// Threaded through to `AppDetailSheet`, which hosts the conversation link. Owned by
+    /// `ReachyTabShell`; this screen only passes it on.
+    let conversation: ConversationModel
     /// Opening the account sheet belongs to the root, which owns it. Discover needs
     /// it because a robot with no Hugging Face session has no catalogue to show.
     let signIn: () -> Void
@@ -30,10 +33,14 @@ struct AppStoreScreen: View {
         runningApp: RunningAppModel,
         model: AppStoreModel? = nil,
         install: AppInstallModel? = nil,
+        conversation: ConversationModel? = nil,
         signIn: @escaping () -> Void = {}
     ) {
         self.session = session
         self.runningApp = runningApp
+        // Resolved here rather than in the argument's default, which would be a
+        // `@MainActor` value in a position the `Apps/` targets refuse to compile.
+        self.conversation = conversation ?? ConversationModel()
         self.signIn = signIn
         _model = State(initialValue: model ?? AppStoreModel(session: session))
         _install = State(initialValue: install ?? AppInstallModel(session: session))
@@ -135,7 +142,8 @@ struct AppStoreScreen: View {
                     model: model,
                     session: session,
                     install: install,
-                    runningApp: runningApp
+                    runningApp: runningApp,
+                    conversation: conversation
                 ) { selected = nil }
             }
             .presentationDetents([.medium, .large])

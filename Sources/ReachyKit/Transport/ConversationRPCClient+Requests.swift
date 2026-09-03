@@ -1,129 +1,74 @@
 import Foundation
-import ReachyJSON
 
-/// The request half of Conversation App 1.0's JSON-RPC surface.
+/// The ten verbs the conversation app answers, over the multiplexed socket in
+/// ``ConversationRPCClient``.
 ///
-/// **One socket per call, opened and closed around it.** JSON-RPC matches a reply
-/// to its request by `id`, which on a shared socket means a table of waiters, a
-/// reconnect policy that survives a call in flight, and an actor to hold both —
-/// against a WebSocket handshake to a robot on the same network, for a button
-/// somebody presses now and then. Multiplexing onto ``turns()`` is what to do if
-/// something here ever needs a call per frame rather than per tap.
+/// Each is one line because the whole of the work — correlation, the deadline, the
+/// failure vocabulary — belongs to the socket rather than to the verb.
 public extension ConversationRPCClient {
-    enum Failure: Error, Equatable {
-        /// The app answered `-32601`. A build without this method, which the caller
-        /// hides the control for rather than reports.
-        case methodNotFound
-        case rejected(code: Int, message: String)
-        case timedOut
-        /// The socket failed, or the app answered something that is not JSON-RPC.
-        case unreachable
+    /// Kept as a name so the two shipped call sites and their tests still read
+    /// `ConversationRPCClient.Failure.methodNotFound`. There is one failure type in
+    /// this app and both transports throw it; this is the older spelling of it.
+    typealias Failure = ConversationFailure
+
+    func status() async throws -> ConversationBackendStatus {
+        try await call("conversation.status", expecting: ConversationBackendStatus.self)
+    }
+
+    /// Reads the flag. **The parameters have to be empty**: the app writes the
+    /// microphone whenever `muted` is present, so sending `{"muted": false}` to find
+    /// out the state would unmute the robot on the way past.
+    func microphoneMuted() async throws -> Bool {
+        try await call("conversation.mic", expecting: ConversationMicrophoneReply.self).muted
     }
 
     /// Mutes or unmutes the **robot's** microphone — nothing on this device is
     /// recording, so this switches somebody else's input off.
-    func setMicrophoneMuted(_ muted: Bool) async throws {
-        try await call("conversation.mic", params: ["muted": muted])
+    @discardableResult
+    func setMicrophoneMuted(_ muted: Bool) async throws -> Bool {
+        try await call(
+            "conversation.mic",
+            params: ["muted": .bool(muted)],
+            expecting: ConversationMicrophoneReply.self
+        ).muted
     }
 
     /// Stops the robot mid-sentence. The reason the dock has a button at all: a
     /// robot talking over you is answered faster from a phone than by shouting.
     func interrupt() async throws {
-        try await call("conversation.interrupt", params: [String: Bool]())
+        try await call("conversation.interrupt")
     }
 
-    private func call(_ method: String, params: [String: Bool]) async throws {
-        let id = Int.random(in: 1 ... Int.max)
-        let request = Request(id: id, method: method, params: params)
-        guard let payload = try? JSONCodec.daemon.encode(request),
-              let text = String(data: payload, encoding: .utf8)
-        else { throw Failure.unreachable }
-
-        let socket = session.webSocketTask(with: url)
-        socket.resume()
-        defer { socket.cancel(with: .goingAway, reason: nil) }
-
-        do {
-            try await socket.send(.string(text))
-        } catch {
-            throw Failure.unreachable
-        }
-        try await awaitReply(to: id, on: socket)
+    /// Gives the robot something to respond to — not something to read out. See
+    /// ``ConversationChannel/say(_:)`` for why that distinction has to survive into
+    /// every name above this one.
+    func say(_ text: String) async throws {
+        try await call("conversation.say", params: ["text": .string(text)])
     }
 
-    /// Races the read against one budget for the whole call.
-    ///
-    /// One race, not one per frame: a deadline re-armed inside the loop has to
-    /// cancel the socket to end `receive()`, and `try? await Task.sleep` reports a
-    /// *cancelled* sleep exactly like an elapsed one — so ending the previous
-    /// iteration's timer closed the socket the next one was about to read from.
-    /// Here the sleep may throw, and only a genuinely elapsed budget reaches the
-    /// `cancel` below it.
-    private func awaitReply(to id: Int, on socket: URLSessionWebSocketTask) async throws {
-        let budget = configuration.replyTimeout
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { try await Self.readReply(to: id, on: socket) }
-            group.addTask {
-                try await Task.sleep(for: budget)
-                // `receive()` observes neither a deadline nor task cancellation
-                // (see `ConversationRPCClient.read`), so the socket is what ends it.
-                socket.cancel(with: .goingAway, reason: nil)
-                throw Failure.timedOut
-            }
-            defer { group.cancelAll() }
-            try await group.next()
-        }
+    func personalities() async throws -> ConversationPersonalities {
+        try await call("personalities.list", expecting: ConversationPersonalities.self)
     }
 
-    /// Reads until the reply carrying `id` arrives.
-    ///
-    /// Every other frame is skipped rather than taken: the app broadcasts
-    /// `conversation.turn`, `.transcript` and `.level` on this same socket whenever
-    /// the conversation moves, so the first frame back is regularly not the answer.
-    private static func readReply(to id: Int, on socket: URLSessionWebSocketTask) async throws {
-        while true {
-            guard let message = try? await socket.receive() else { throw Failure.unreachable }
-            let text: String? = switch message {
-            case let .string(text): text
-            case let .data(data): String(data: data, encoding: .utf8)
-            @unknown default: nil
-            }
-            guard let text, let reply = reply(to: id, in: text) else { continue }
-            guard let error = reply.error else { return }
-            throw error.code == -32601
-                ? Failure.methodNotFound
-                : Failure.rejected(code: error.code, message: error.message)
-        }
+    @discardableResult
+    func applyPersonality(named name: String, persist: Bool, force: Bool) async throws -> ConversationApplyResult {
+        try await call(
+            "personalities.apply",
+            params: ["name": .string(name), "persist": .bool(persist), "force": .bool(force)],
+            expecting: ConversationApplyResult.self
+        )
     }
 
-    private struct Request: Encodable {
-        let jsonrpc = "2.0"
-        let id: Int
-        let method: String
-        let params: [String: Bool]
+    func voices() async throws -> [String] {
+        try await call("voices.list", expecting: [String].self)
     }
 
-    internal struct Reply: Decodable {
-        struct Failure: Decodable {
-            let code: Int
-            let message: String
-        }
-
-        let error: Failure?
+    func currentVoice() async throws -> String? {
+        try await call("voices.current", expecting: ConversationVoiceReply.self).voice
     }
 
-    /// The reply to `id`, or nil for a notification or somebody else's answer.
-    ///
-    /// `id` is decoded loosely on purpose: JSON-RPC allows a string or a number,
-    /// and an app echoing `"7"` for a request sent as `7` is answering it.
-    internal static func reply(to id: Int, in frame: String) -> Reply? {
-        guard let data = frame.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-        let answered = (object["id"] as? Int).map { $0 == id }
-            ?? (object["id"] as? String).map { $0 == String(id) }
-            ?? false
-        guard answered else { return nil }
-        return try? JSONCodec.daemon.decode(Reply.self, from: data)
+    @discardableResult
+    func applyVoice(_ voice: String) async throws -> ConversationApplyResult {
+        try await call("voices.apply", params: ["voice": .string(voice)], expecting: ConversationApplyResult.self)
     }
 }

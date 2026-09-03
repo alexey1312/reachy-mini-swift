@@ -1017,3 +1017,65 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   this is a real alert, and a stack frame is not a sentence.
 - **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
   `RunningAppCaption.description` was written to fix, in a second place.
+
+## The conversation, and the record it keeps
+
+`ConversationModel` is owned by `ReachyTabShell`, beside `store` and `install`, and the
+usual reason applies — the dock expands from every tab, so a model built inside a
+destination closure dies with the sheet. The sharper reason is the transcript: **the
+robot keeps no history**, so a record dropped when a screen unmounted is gone for good.
+Living at the shell is what makes it survive a Back, a tab switch and a dismissed sheet.
+One instance is also the only truthful shape — the mute flag is a _remembered_ answer
+about the robot's own microphone, and two models would remember two answers about one
+microphone.
+
+**The socket is the authority on whether a conversation is live, never the app list.**
+An app can be uninstalled while its process keeps serving `/rpc` (`remove_app` has no
+running check — see `.claude/rules/daemon-api.md`), so frames go on arriving and the
+conversation goes on working. There is no code for that case; the absence is the design.
+
+**A verdict may only be reached from a reading that arrived**, which is
+`RunningAppModel.noteTransition`'s rule in a second place. A timeout, a dropped socket
+and an elapsed timer conclude nothing — the transport reconnects on its own and the robot
+may be behind a blip. Only an arriving `not_running` says the app is gone; `.closed`
+draws a gap and stops there. `ConversationModelTests.doesNotConcludeFromATimeout` is what
+holds it.
+
+**The dock's sheet stopped collapsing, and it was measured against the other host.**
+`RunningAppModifier` used to read `visibleStatus` inside its `.sheet` content while
+`visibleStatusChanged` set `isExpanded = false`, so a stopped app emptied and dismissed
+the page. `AppStoreScreen.sheet(item:)` already held the app across exactly that, and the
+two differed only because the dock read it out of the status. It now captures
+`expandedApp`. **This does not weaken "Stop closes the sheet"** — that is a separate,
+deliberate line in `RunningAppModel.stop(session:)`. What the collapse covered was a
+crash, a widget stop and a self-exit, where the honest result is the app's own page,
+frozen, saying what happened.
+
+**The transcript's ladder departs from the log console's on one point.**
+`LogConsoleView` replaces the list with a failure, because a log tail's value is the live
+feed and a frozen tail with no explanation reads as "no output". A transcript's value is
+the _record_, and its explanation is not missing — it is the marker row at the tail. So a
+failure replaces the list **only while the list is empty**; with a record it stays,
+readable and copyable, under a `Read-only record` strip.
+
+**The two picker precedents are split per axis in `ConversationVoiceSheet`, not chosen
+wholesale.** Failure takes `NetworkCredentialsFields`' shape — beside the control, list
+kept — because these pickers are the entire reason that sheet exists and hiding them
+leaves nothing and no explanation. The _value_ takes `AudioSettingsSection`'s
+unselectable tag, because `voices.current` is a different call from `voices.list` and a
+voice set through the app's own page can legitimately not be listed. `isLocked` is a
+third flag distinct from `value == nil`, and it names `lockedTo`: a disabled control with
+no reason attached tells the reader nothing to act on.
+
+**`ScrollPosition` + `onScrollGeometryChange` here, while `LogConsoleView` keeps its
+sentinel row.** That row predates the iOS 18 floor and is recorded above as not a
+required pattern; it measures _row visibility_, which fires during insertion and reports
+late. The geometry reader answers the same question with a tolerance, so a one-point
+overscroll cannot flicker the Jump button. The log console is deliberately **not**
+migrated in the same change — that would move a dozen references for no behaviour.
+
+**`conversation.say` is not text-to-speech and the copy may not imply it is.** The app
+injects the text as a user message and answers it; the words are never read out and never
+return as a transcript line. The control is "Type to Reachy", and the client appends its
+own `.typed` row — a kind of its own, because a `.spoken(.user)` row would be the one
+entry in the record claiming to be a recording of something nobody said.

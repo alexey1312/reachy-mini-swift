@@ -219,16 +219,56 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   to `activity` and maps the raw reasons itself (`static/js/orb.js`); `turn` carries the mapped
   `listening / thinking / speaking / ready`, deduplicated server-side, and the comment beside it in `console.py` says
   it is there "for clients without that mapping (mobile)". Copying the frontend is the wrong instinct here.
-  Also broadcast: `conversation.transcript` `{role, text, final}`, `conversation.level` `{role, rms}`,
-  `conversation.phase`. Request methods include `conversation.status`, `conversation.mic`, `conversation.say`,
+  Also broadcast: `conversation.transcript` `{role, text, final}` and `conversation.level` `{role, rms}` — the
+  latter throttled server-side to 15 Hz and scaled into `0…1`, with the app's own comment saying the cap is "so it
+  stays light on the DataChannel". Request methods: `conversation.status`, `conversation.mic`, `conversation.say`,
   `conversation.interrupt`, `personalities.*`, `voices.*`, `backend.config`.
+- **`conversation.phase` is dead.** `_emit_phase` is defined in `console.py` and called from nowhere in the Space, so
+  a client that waits for one waits for ever. It is in the broadcast list above only in the sense that the code to
+  send it exists.
+- **`final` is `true` in every transcript frame the app sends.** Checked across every `.py` in the Space:
+  `_emit_transcript` has exactly two call sites, the completed user transcription and
+  `response.output_audio_transcript.done`, and both pass `True`; the parameter defaults to `True` and nothing passes
+  `False`. So one notification is one whole utterance and appending is correct. Handling `false` defensively —
+  replacing the trailing non-final line of that role — costs a branch and covers a fork that streams deltas; do not
+  shape a model around a state that never occurs.
+- **`conversation.say` is not text-to-speech, and it never enters the transcript.** It injects the text as a *user*
+  `input_text` item and asks the model to answer it; its own docstring says "Not verbatim TTS (speech-to-speech may
+  rephrase)", and only audio transcription emits user transcript entries. So the robot does not read the words out
+  and the sent text never comes back. Anything naming this feature has to say "give Reachy something to respond to",
+  never "have Reachy say…" — the same honesty test #121 applied to the `phone` App Intents schema. It also barges
+  in, clearing whatever is queued for the speaker.
+- **The backend takes up to 90 seconds to come up**, and `loop_unavailable` is the documented reason meaning
+  "Reachy is still starting up". The app's own web client retries it every 2 s against a 90 s deadline
+  (`static/js/api.js:untilReady`). A client that treats the first failure as fatal is wrong; a transport that
+  swallows the reason hides the one state a screen has to narrate, so the retry belongs above the transport.
+- **The error envelope is `{message, data: {reason}}` with a JSON-RPC `code`**, and the `reason` strings are a
+  stable contract — `api.js` calls it "the stable reason" and maps about twenty of them to copy. Match those rather
+  than inventing any.
 - **There is no initial state to fetch.** `conversation.status` returns backend/connection config, not a turn, and
   `turn` is push-only and emitted on change. A client attaching mid-conversation legitimately knows nothing until the
   next transition — `RunningAppCaption` leaves the daemon's "Running" in place, which is the correct answer, not a
   gap to paper over.
-- A newer daemon relays the same frames over the WebRTC DataChannel (`daemon/jsonrpc_relay.py`), which is what a
-  remote session would need. On 1.9.0 there is no relay, so `RunningAppModel.conversationStreamKey` returns nil
-  without a LAN address rather than pretending.
+- **Daemon 1.10.0 relays all of it over the WebRTC DataChannel, and this client uses both paths.**
+  `daemon/jsonrpc_relay.py` routes by namespace: `apps.*` it answers itself, **everything else** — `conversation.*`,
+  `personalities.*`, `voices.*` — it relays to the running app's `/rpc`. It holds **one** connection to
+  `ws://127.0.0.1:<port>/rpc`, derived from the same `custom_app_url` the LAN path reads, and that connection doubles
+  as the subscription: notifications are re-broadcast verbatim to every client. **So a client sends no subscribe
+  command of any kind** — unlike `subscribe_logs`, which is what starts the journal. Request ids are rewritten to
+  `relay-N` and the caller's own id restored on the reply.
+  `ConversationClient`/`ConversationChannel` is the capability, with `ConversationRPCClient` (LAN) and
+  `RemoteConversation` (relay) as its two arms; `RobotSession.canControlConversation` carries the version gate,
+  because 1.9.0 mounts no relay and each verb would spend a full reply budget finding that out.
+- **The relay's own failure vocabulary**, which a screen has to branch on: `not_running` with code **-32000** when no
+  app is running, `app_unavailable` when its `/rpc` cannot be reached or the connection dropped mid-call, and
+  `method_not_found` / -32601 for a verb the app's build does not have. Those are three different screens — the app
+  is gone, the app is there and silent, this build cannot do it — and folding them into one sentence is what
+  `RemoteControlChannel.Failure.rpc(code:message:reason:)` exists to stop.
+- **Removing an app does not stop it first.** `POST /apps/remove/{app_name}` clears the startup app if it matches and
+  then queues `AppManager.remove_app`, which calls `uninstall_package` immediately — no `is_app_running()` check. The
+  contrast is one method down: `update_app` *does* check and raises. So a running conversation app can be uninstalled
+  out from under itself, and for a window the process keeps serving `/rpc` while the package is gone. A screen must
+  therefore treat **the socket** as the authority on whether a conversation is live, never the installed list.
 
 ## MVP endpoint subset (what upstream actually calls)
 

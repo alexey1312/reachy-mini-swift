@@ -4,26 +4,6 @@ import Testing
 
 @Suite("Conversation JSON-RPC client")
 struct ConversationRPCClientTests {
-    @Test("decodes only conversation.turn notifications")
-    func decodesTurnNotifications() {
-        #expect(ConversationRPCClient
-            .turn(in: #"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"listening"}}"#) == .listening)
-        #expect(ConversationRPCClient
-            .turn(
-                in: #"{"jsonrpc":"2.0","method":"conversation.activity","params":{"reason":"user_speech_started"}}"#
-            ) ==
-            nil)
-        #expect(ConversationRPCClient.turn(in: #"{"jsonrpc":"2.0","id":"1","result":{"ok":true}}"#) == nil)
-        #expect(ConversationRPCClient.turn(in: "not json") == nil)
-    }
-
-    @Test("carries a future turn state instead of rejecting the frame")
-    func carriesUnknownState() {
-        #expect(ConversationRPCClient
-            .turn(in: #"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"waiting_for_tool"}}"#) ==
-            .unknown("waiting_for_tool"))
-    }
-
     @Test("receives turns and reconnects after the app socket drops", .timeLimit(.minutes(1)))
     func reconnectsAfterDrop() async throws {
         let frame = #"{"jsonrpc":"2.0","method":"conversation.turn","params":{"state":"speaking"}}"#

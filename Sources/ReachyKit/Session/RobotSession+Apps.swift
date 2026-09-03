@@ -193,32 +193,6 @@ public extension RobotSession {
         try await withAppsClient { try await $0.appLockStatus() }
     }
 
-    /// Conversation App 1.0's semantic turn state over its direct LAN control
-    /// socket. The app owns the port, so this works with daemon 1.9.0 even though
-    /// relaying the same JSON-RPC frames over WebRTC requires a newer daemon.
-    ///
-    /// The app supplies the port and the session supplies the host — never the
-    /// other way round, see ``RobotApp/customAppPort``.
-    func conversationTurns(for app: RobotApp) throws -> AsyncStream<ConversationTurn> {
-        guard let address else { throw ReachyKitError.notConnected }
-        return try ConversationRPCClient(address: address, port: app.customAppPort).turns()
-    }
-
-    /// Mutes the **robot's** microphone, over the same socket the turns arrive on.
-    func setConversationMicrophoneMuted(_ muted: Bool, for app: RobotApp) async throws {
-        try await conversationClient(for: app).setMicrophoneMuted(muted)
-    }
-
-    /// Stops the robot mid-sentence.
-    func interruptConversation(for app: RobotApp) async throws {
-        try await conversationClient(for: app).interrupt()
-    }
-
-    private func conversationClient(for app: RobotApp) throws -> ConversationRPCClient {
-        guard let address else { throw ReachyKitError.notConnected }
-        return try ConversationRPCClient(address: address, port: app.customAppPort)
-    }
-
     /// Where an app serves its **own** settings page, on the port it declared and
     /// the host this session is connected to.
     ///

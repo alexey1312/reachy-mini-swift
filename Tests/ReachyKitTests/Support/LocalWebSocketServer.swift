@@ -11,16 +11,42 @@ final class LocalWebSocketServer: @unchecked Sendable {
         listener.port?.rawValue ?? 0
     }
 
+    private let accepted = Counter()
+
+    /// How many connections this server has accepted.
+    ///
+    /// The one thing that separates a multiplexed client from one opening a socket per
+    /// call: both answer every request correctly, and only the count tells them apart.
+    var acceptedConnections: Int {
+        accepted.value
+    }
+
     init(onConnection: @escaping @Sendable (NWConnection) -> Void) throws {
         let parameters = NWParameters.tcp
         let wsOptions = NWProtocolWebSocket.Options()
         parameters.defaultProtocolStack.applicationProtocols.insert(wsOptions, at: 0)
         listener = try NWListener(using: parameters, on: .any)
+        let accepted = accepted
         listener.newConnectionHandler = { connection in
+            accepted.increment()
             connection.start(queue: DispatchQueue(label: "LocalWebSocketServer.connection"))
             onConnection(connection)
         }
         listener.start(queue: queue)
+    }
+
+    /// Counted on the listener's own queue and read from a test, so it locks by hand.
+    private final class Counter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+
+        var value: Int {
+            lock.withLock { count }
+        }
+
+        func increment() {
+            lock.withLock { count += 1 }
+        }
     }
 
     /// Waits until the listener is ready and returns its port.
