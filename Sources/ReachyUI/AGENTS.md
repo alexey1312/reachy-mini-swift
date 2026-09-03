@@ -1017,6 +1017,14 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   this is a real alert, and a stack frame is not a sentence.
 - **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
   `RunningAppCaption.description` was written to fix, in a second place.
+- **The other two cards #61 named were refused, and the reasoning is next door.** #123 closed power transitions and
+  the long jobs `wontfix`; `ReachyWidgetUI/AGENTS.md` carries why, because that is where the card is. What belongs
+  on this side is the half that would have driven them, and it is the half that decides:
+  `RobotSession.powerTransition` is cleared by a `defer` in a session that lives in the app's process, so a card
+  started for a 90 s backend start has no writer left the moment the phone is put down — and `SystemUpdateModel` is
+  view-local in two places, so a job card needs #80's hoist and then a third ownership shape on top of it.
+  `RunningAppActivityFacts` deliberately does **not** carry `powerTransition`; adding it is the first move of
+  rebuilding what was refused.
 
 ## Job notifications
 
