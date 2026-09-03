@@ -52,6 +52,11 @@ public final class RobotSceneModel {
     private var platform: StewartIK?
     private var geometryTask: Task<Void, Never>?
     private var streamTask: Task<Void, Never>?
+    private var thermalTask: Task<Void, Never>?
+    /// Kept so the lighting can be changed after construction. `makeRig()` returns a
+    /// detached entity and used to be added and forgotten, which is what made a
+    /// thermal response impossible rather than merely unwritten.
+    private let lighting = RobotSceneLighting.makeRig()
     private var lastPublishedFrameAt: Date?
 
     public init(
@@ -62,21 +67,51 @@ public final class RobotSceneModel {
         self.stream = stream
         self.client = client
         self.cache = cache
-        container.addChild(RobotSceneLighting.makeRig())
+        container.addChild(lighting)
     }
 
     public func start() {
         guard geometryTask == nil else { return }
+        startWatchingThermalState()
         geometryTask = Task { [weak self] in
             await self?.loadGeometry()
         }
     }
 
+    /// A long telepresence session on an iPhone throttles, and shadows are the one
+    /// thing here that costs fill rate without carrying information. Applied once
+    /// straight away — the device may already be hot when the viewer opens — and then
+    /// on every change until `stop()`.
+    ///
+    /// Untested by design: what is worth pinning is the *rule*, which lives in
+    /// `SceneThermalPolicy`, and the *effect*, which `RobotSceneLightingTests` covers.
+    /// A test of this wiring would be a test of `NotificationCenter`.
+    private func startWatchingThermalState() {
+        guard thermalTask == nil else { return }
+        applyThermalState()
+        thermalTask = Task { [weak self] in
+            let changes = NotificationCenter.default.notifications(
+                named: ProcessInfo.thermalStateDidChangeNotification
+            )
+            for await _ in changes {
+                guard !Task.isCancelled else { return }
+                self?.applyThermalState()
+            }
+        }
+    }
+
+    private func applyThermalState() {
+        let quality = SceneThermalPolicy.quality(for: ProcessInfo.processInfo.thermalState)
+        RobotSceneLighting.setShadowsEnabled(quality == .full, in: lighting)
+    }
+
     public func stop() {
         geometryTask?.cancel()
         streamTask?.cancel()
+        thermalTask?.cancel()
         geometryTask = nil
         streamTask = nil
+        thermalTask = nil
     }
 
     /// Drops the state stream but keeps the downloaded geometry, the entity tree
