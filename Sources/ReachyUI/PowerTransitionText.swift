@@ -8,6 +8,12 @@ import SwiftUI
 /// page, which wakes a sleeping robot before it launches anything. Both owe the
 /// reader the same sentence, because seconds of nothing read as a button that did
 /// not work.
+///
+/// **Deliberately not a Live Activity, and #123 closed the question.** The status
+/// widget already draws all four transitions on the Lock Screen out of
+/// `RobotPowerTransitionState`, where a per-transition window retires them; a card
+/// could only ever be requested from the foreground, which is exactly where this
+/// row already is. `ReachyWidgetUI/AGENTS.md` has the rest.
 struct PowerTransitionRow: View {
     let transition: RobotSession.PowerTransition
 
