@@ -41,6 +41,20 @@ struct ReachyTabShell: View {
     /// disagree about what it was asked for.
     @State private var presence = PresenceModel()
 
+    /// The conversation, and above all its transcript.
+    ///
+    /// Here rather than on the screen for the reason `store` and `install` are here — the
+    /// dock expands from every tab and a model built in a destination closure dies with
+    /// the sheet — but with a sharper consequence: the robot keeps no transcript, so a
+    /// record dropped when a screen unmounted would be gone for good. Owning it at the
+    /// shell is what makes it survive a Back, a tab switch and a dismissed sheet, and
+    /// tears it down only with the connection.
+    ///
+    /// One instance is also the only truthful shape. The mute flag is a remembered answer
+    /// about the robot's own microphone, and two models would remember two answers about
+    /// one microphone — a disagreement nothing on screen could resolve.
+    @State private var conversation = ConversationModel()
+
     /// `shared` for the reason `RootCallLifecycle`'s inbox is: the intent that fills
     /// it runs with no initialiser to inject through.
     private let requests = AppStoreRequestInbox.shared
@@ -107,6 +121,7 @@ struct ReachyTabShell: View {
                         runningApp: runningApp,
                         store: store,
                         install: install,
+                        conversation: conversation,
                         findRobot: findRobot
                     )
                 }
@@ -176,7 +191,13 @@ struct ReachyTabShell: View {
         // Not mounted in the gate: with no connection `RunningAppModel.canPoll` is
         // false and the dock draws nothing, so the polling should die with the shell
         // rather than idle behind the gate.
-        .runningApp(session: session, model: runningApp, store: store, install: install)
+        .runningApp(
+            session: session,
+            model: runningApp,
+            store: store,
+            install: install,
+            conversation: conversation
+        )
     }
 
     private var dockIsUp: Bool {
@@ -186,7 +207,7 @@ struct ReachyTabShell: View {
     /// The strip, wherever it is drawn. One definition, six mount points, of which
     /// exactly one is live on any given OS.
     private var dock: some View {
-        RunningAppDock(session: session, model: runningApp)
+        RunningAppDock(session: session, model: runningApp, conversation: conversation)
     }
 
     /// Below iOS 26.1, and on every macOS, the inset belongs to the **tab**: on the

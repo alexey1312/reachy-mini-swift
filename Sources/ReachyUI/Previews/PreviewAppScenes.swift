@@ -39,7 +39,8 @@ extension PreviewScene {
         app: RobotApp,
         model: AppStoreModel? = nil,
         install: AppInstallModel? = nil,
-        runningApp: RunningAppModel? = nil
+        runningApp: RunningAppModel? = nil,
+        conversation: ConversationModel? = nil
     ) -> some View {
         NavigationHost {
             AppDetailSheet(
@@ -48,6 +49,7 @@ extension PreviewScene {
                 session: session,
                 install: install ?? .preview(state: .idle, session: session),
                 runningApp: runningApp ?? .preview(),
+                conversation: conversation ?? .preview(),
                 dismiss: {}
             )
         }
@@ -58,8 +60,9 @@ extension PreviewScene {
     /// which is where the running app lives — handing the page a status the session
     /// did not agree with would preview a state the app cannot reach.
     ///
-    /// `conversationTurn` seeds the model this builds; a `model` passed in already
-    /// carries its own turn, and then this argument has nothing left to say.
+    /// `conversationTurn` seeds the conversation model this builds — it moved off
+    /// `RunningAppModel` with the rest of the conversation state, so the two are now
+    /// separate arguments rather than one.
     static func runningAppDetail(
         _ status: RobotAppStatus,
         phase: RobotSession.ConnectionPhase = .connected(.preview),
@@ -74,7 +77,8 @@ extension PreviewScene {
             // "Install" for the app currently holding the robot.
             app: status.app,
             model: .preview(session: session, section: .installed, installed: [status.app]),
-            runningApp: model ?? .preview(conversationTurn: conversationTurn)
+            runningApp: model ?? .preview(),
+            conversation: .preview(turn: conversationTurn)
         )
     }
 
@@ -149,5 +153,39 @@ extension PreviewScene {
             )
         }
         .preview()
+    }
+}
+
+extension PreviewScene {
+    /// The conversation screen, handed a model already in the state being pictured.
+    ///
+    /// Not `private`, like every other factory here: Prefire copies each preview body
+    /// verbatim into a generated file, where a `private` helper is out of scope.
+    static func conversation(
+        _ model: ConversationModel,
+        session: RobotSession? = nil,
+        app: RobotApp = .previewConversation
+    ) -> some View {
+        // `nil` and resolved here, never a defaulted `@MainActor` value: that spelling
+        // compiles in the SwiftPM targets and fails in the `Apps/` ones, which is a
+        // failure `swift build` cannot see because `Previews/` is excluded from it.
+        let session = session ?? .preview(runningApp: RobotAppStatus(app: app, state: .running))
+        return NavigationHost {
+            ConversationScreen(app: app, session: session, model: model)
+        }
+        .preview()
+    }
+
+    /// The personality and voice sheet, previewed as the form it is — the sheet
+    /// presentation itself captures as nothing.
+    static func conversationVoices(
+        _ model: ConversationVoiceModel,
+        session: RobotSession? = nil
+    ) -> some View {
+        let session = session ?? .preview(
+            runningApp: RobotAppStatus(app: .previewConversation, state: .running)
+        )
+        return ConversationVoiceSheet(app: .previewConversation, session: session, model: model)
+            .preview()
     }
 }

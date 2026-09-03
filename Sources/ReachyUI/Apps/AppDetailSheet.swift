@@ -28,6 +28,9 @@ struct AppDetailSheet: View {
     let session: RobotSession
     let install: AppInstallModel
     let runningApp: RunningAppModel
+    /// Owned by `ReachyTabShell`, adopted here — the transcript must outlive this sheet,
+    /// which the dock dismisses and re-presents freely.
+    let conversation: ConversationModel
     let dismiss: () -> Void
 
     @State private var confirmingRemoval = false
@@ -45,6 +48,21 @@ struct AppDetailSheet: View {
               status.app.name == app.name || app.matches(installed: status.app)
         else { return nil }
         return status
+    }
+
+    /// Whether to offer the conversation.
+    ///
+    /// **Deliberately not gated on `state == .running`, on reachability, or on the turn.**
+    /// Those are the three things that flicker, and a link that vanishes under a thumb is
+    /// a bug this repository has hit before. `runningStatus != nil` is the same condition
+    /// that puts the Status section on screen and is stable for the life of the run.
+    ///
+    /// The contrast is the Settings link two sections down, which *is* gated on running
+    /// and reachable: that one leads to a page served by the app's own process, so a dead
+    /// process means a spinner that can never resolve. This one leads to a record that is
+    /// worth reading precisely when the process has died.
+    private var offersConversation: Bool {
+        app.exposesConversationRPC && session.canControlConversation && runningStatus != nil
     }
 
     /// Whether Start is on screen: the asleep footer is a sentence about it, and
@@ -112,6 +130,18 @@ struct AppDetailSheet: View {
                     Section { AsleepBanner(session: session) }
                 }
                 actions
+            }
+
+            if offersConversation {
+                Section {
+                    NavigationLink {
+                        ConversationScreen(app: app, session: session, model: conversation)
+                    } label: {
+                        Label(.reachy("Conversation"), systemImage: "bubble.left.and.bubble.right")
+                    }
+                } footer: {
+                    Text(.reachy("What Reachy hears and says, from the moment this opens. The robot keeps no history."))
+                }
             }
 
             if let settingsURL {
@@ -193,7 +223,7 @@ struct AppDetailSheet: View {
                 RunningAppCaption.label(
                     of: status,
                     failure: .shownSeparately,
-                    conversationTurn: runningApp.conversationTurn,
+                    conversationTurn: conversation.turn,
                     isReachable: isReachable,
                     wedged: isWedged,
                     font: .body
