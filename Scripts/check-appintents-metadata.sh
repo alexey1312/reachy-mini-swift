@@ -100,11 +100,71 @@ REQUIRED_APPEX_ACTIONS = [
     "SoundControlConfigurationIntent",
 ]
 
+# `size:` on a collection `@Parameter` is a *requirement* on the selection, and the
+# way to get it wrong compiles, extracts and ships. `IntentCollectionSize` is
+# `ExpressibleByIntegerLiteral` onto `init(exactly:)`, so `size: [.systemSmall: 2]`
+# means min 2 *and* max 2 — a robot with one installed app can then never satisfy the
+# configuration, and the only symptom is the widget sitting in WidgetKit's redacted
+# placeholder for ever: no error, no crash, no Edit sheet that can be closed, and no
+# buttons, because a placeholder has none. Sources/ReachyWidgetUI/AGENTS.md has the
+# incident; it shipped once already, in #7.
+#
+# Nothing else in this repository can see it. The previews render
+# `RobotAppsWidgetView` directly, so the snapshot suite never opens
+# `Metadata.appintents`; and `AppIntentsTesting`, which was wanted for exactly this,
+# exposes no parameter metadata and no `IntentCollectionSize` at all
+# (docs/research/ios-27.md §3.1). The built file is the only witness, which is why the
+# check is here and not in `swift test`.
+#
+# Two assertions, because there are two ways to be wrong and the first hides the
+# second. The list below names the parameters that must carry sizes *at all*: deleting
+# the `size:` argument leaves no tag behind, and a rule quantified over parameters that
+# have one would pass over it in silence. The rule itself is then quantified over every
+# parameter in the bundle rather than over that list, so the next `@Parameter(size:)`
+# anywhere in this app is covered without anyone remembering to come back here.
+#
+# The rule is `min == 0` (and a `max` that can hold something), and 2 / 4 / 8 are
+# deliberately *not* repeated here. Those are a grid decision — `RobotAppsWidgetContent`
+# truncates with `prefix`, so growing the large widget changes them legitimately — and a
+# guard that pinned them would go red for a design change and teach everyone to edit the
+# guard. What may not change is the floor: an empty selection means "show the robot's
+# own list", so zero is a state rather than a bound nobody reaches, and any other
+# minimum is a widget that cannot render until the reader has picked that many.
+#
+# Read out of the *app* bundle rather than the appex, which is what makes one assertion
+# cover both platforms: the entry is byte-identical in Release/ReachyMini.app/Contents/
+# Resources/Metadata.appintents and Release-iphoneos/ReachyMini.app/Metadata.appintents,
+# and a macOS bundle has no appex to look in. It also asserts, in passing, that the
+# widget's configuration intent reaches the app's own metadata — it does, because the
+# app links ReachyWidgetUI too.
+COLLECTION_SIZE_TAG = "LNValueTypeMetadataKeyCollectionSizes"
+REQUIRED_COLLECTION_SIZES = [("RobotAppsConfigurationIntent", "apps")]
+
+
+def collection_sizes(parameter):
+    """The `{family: {min, max}}` payload, or None where the parameter declares none.
+
+    `typeSpecificMetadata` is a flat tag-then-payload array — `[tag, {...}, ...]` — and
+    not an object, so this walks it in pairs. Reading index 1 happens to work today and
+    would start reading the wrong dictionary, silently, the day a parameter carries a
+    second kind of metadata ahead of this one.
+    """
+    entries = parameter.get("typeSpecificMetadata") or []
+    for tag, payload in zip(entries[::2], entries[1::2]):
+        if tag == COLLECTION_SIZE_TAG:
+            sizes = (payload or {}).get("collectionSizes", {}).get("sizes")
+            return sizes if isinstance(sizes, dict) else {}
+    return None
+
+
 metadata = list(target.rglob("extract.actionsdata"))
 app_files = [p for p in metadata if not any(a.suffix == ".appex" for a in p.parents)]
 appex_files = [p for p in metadata if p not in app_files]
 
 failures = []
+# Reported on success, so a green log says the check ran. A check nobody can see is one
+# that gets deleted unnoticed.
+checked_sizes = 0
 
 if len(app_files) != 1:
     failures.append(
@@ -124,6 +184,43 @@ else:
         failures.append(f"app metadata is missing actions: {missing} (has {sorted(actions)})")
     if not data.get("autoShortcuts"):
         failures.append("app metadata has no autoShortcuts — ReachyShortcuts was not extracted")
+
+    # Every parameter, not only the one named in REQUIRED_COLLECTION_SIZES: the rule is
+    # about `@Parameter(size:)` and not about this one intent.
+    for action_name, action in sorted(actions.items()):
+        for parameter in action.get("parameters") or []:
+            sizes = collection_sizes(parameter)
+            if sizes is None:
+                continue
+            checked_sizes += 1
+            for family, bounds in sorted(sizes.items()):
+                minimum = (bounds or {}).get("min")
+                maximum = (bounds or {}).get("max")
+                if minimum != 0 or not isinstance(maximum, int) or maximum < 1:
+                    failures.append(
+                        f"{action_name}.{parameter.get('name')} declares {family} = "
+                        f"{bounds}, but a collection @Parameter(size:) must range from 0 "
+                        f"up to at least 1 — a bare integer literal is "
+                        f"IntentCollectionSize(exactly:), so min == max, and that or a "
+                        f"max of 0 leaves the widget in its placeholder for ever "
+                        f"(Sources/ReachyWidgetUI/RobotAppsConfigurationIntent.swift)"
+                    )
+
+    for action_name, parameter_name in REQUIRED_COLLECTION_SIZES:
+        parameters = (actions.get(action_name) or {}).get("parameters") or []
+        parameter = next((p for p in parameters if p.get("name") == parameter_name), None)
+        if parameter is None:
+            failures.append(
+                f"{action_name} has no parameter named {parameter_name!r} (has "
+                f"{[p.get('name') for p in parameters]}) — the name in the metadata is "
+                f"the Swift property's, so this is a rename or a dropped intent"
+            )
+        elif not collection_sizes(parameter):
+            failures.append(
+                f"{action_name}.{parameter_name} carries no {COLLECTION_SIZE_TAG}: the "
+                f"@Parameter(size:) argument is gone, which leaves every family "
+                f"unconstrained and is exactly as silent as getting the bounds wrong"
+            )
 
 # The widget extension is iOS-only; a macOS bundle legitimately has no appex.
 for appex in appex_files:
@@ -156,7 +253,8 @@ if failures:
 data = json.loads(app_files[0].read_text())
 print(
     f"App Intents metadata OK: {len(data['actions'])} actions, "
-    f"{len(data['autoShortcuts'])} app shortcuts"
+    f"{len(data['autoShortcuts'])} app shortcuts, "
+    f"{checked_sizes} sized collection parameter(s)"
     + (f", appex metadata present ({len(appex_files)})" if appex_files else "")
 )
 PY

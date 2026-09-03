@@ -106,6 +106,15 @@ reverse.
   directly, so nothing in `Metadata.appintents` is exercised by the snapshot suite. What does catch it is reading the
   built metadata — `python3 -c "import json; print(json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyWidget.appex/Metadata.appintents/extract.actionsdata'))['actions']['RobotAppsConfigurationIntent']['parameters'][0]['typeSpecificMetadata'][1])"`
   — or adding it to a Home Screen.
+- **That trap is now a build failure, and the guard holds a rule rather than the numbers.**
+  `Scripts/check-appintents-metadata.sh` reads every collection `@Parameter` in the app bundle's metadata and
+  fails unless each family ranges from `min: 0` up to a `max` of at least 1. The 2 / 4 / 8 are deliberately not
+  repeated there: they are a grid decision, `RobotAppsWidgetContent` truncates with `prefix`, and a guard that
+  pinned them would go red for a design change and teach everyone to edit the guard. A second, narrower assertion
+  names `RobotAppsConfigurationIntent.apps` explicitly, because deleting the `size:` argument leaves no tag behind
+  and the general rule would then pass over it in silence. Both read the **app** bundle rather than the appex,
+  which is what makes one assertion cover macOS and iOS alike. `AppIntentsTesting` would not have caught any of
+  this — it exposes no parameter metadata at all (`docs/research/ios-27.md` §3.1).
 - Extension processes are disposable; persist pending and failure state in App Group stores and reload affected
   timelines rather than relying on memory.
 - On iOS 18, widget and Control Centre intents cannot open the app with `openAppWhenRun`; use `widgetURL` where an
