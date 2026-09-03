@@ -68,32 +68,14 @@ struct SystemUpdateCard: View {
         }
     }
 
-    @ViewBuilder
     private var statusRow: some View {
-        switch model?.state ?? .idle {
-        case .idle:
-            LabeledContent(.reachy("Installed"), value: session.lastStatus?.version ?? "—")
-        case .checking:
-            Label(.reachy("Checking for updates…"), systemImage: "arrow.triangle.2.circlepath")
-        case let .upToDate(current):
-            Label(.reachy("Up to date — \(current)"), systemImage: "checkmark.circle")
-                .foregroundStyle(Tone.success.style)
-        case let .robotOffline(current):
-            Label(.reachy("\(current) — the robot can't reach the internet"), systemImage: "wifi.exclamationmark")
-                .foregroundStyle(Tone.warning.style)
-        case let .available(current, latest):
-            LabeledContent(.reachy("Update available")) { Text(.reachy("\(current) → \(latest)")).monospaced() }
-        case .installing:
-            Label(.reachy("Installing — this takes a minute or two…"), systemImage: "arrow.down.circle")
-        case .restarting:
-            Label(.reachy("The robot is restarting…"), systemImage: "arrow.clockwise")
-        case let .finished(version):
-            Label(.reachy("Updated to \(version)."), systemImage: "checkmark.circle")
-                .foregroundStyle(Tone.success.style)
-        case let .failed(message):
-            Label(message, systemImage: "xmark.octagon")
-                .foregroundStyle(Tone.danger.style)
-        }
+        SystemUpdateStatusRow(
+            row: SystemUpdateCaption.row(
+                for: model?.state ?? .idle,
+                purpose: .offered,
+                installed: session.lastStatus?.version
+            )
+        )
     }
 
     @ViewBuilder

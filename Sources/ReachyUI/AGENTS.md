@@ -820,6 +820,17 @@ target learned doing it:
 - **A sentence is one key.** Prose split across `+` for the sake of the 120-column rule became one literal with
   `// swiftlint:disable:next line_length` above it. Two half-keys cannot be reordered by a translator, and the
   fragments collide as generated symbols with whatever else ends in the same words.
+- **A caption may be shared by two surfaces, and then it takes an argument rather than a screen.**
+  `SystemUpdateCaption` maps `SystemUpdateModel.State` for both `SystemUpdateCard` and `DaemonUpdateScreen`; four of
+  its nine arms were already word-for-word identical, which is rule 10's trigger and the hazard `RunningAppCaption`
+  names — two surfaces that must not be allowed to say the same fact two ways. What genuinely differs is not the
+  screen but the **question**: in settings an update is an offer, so up to date is the good news; in front of a
+  daemon below this app's floor it is a requirement, and up to date is the dead end. Hence `Purpose`, the same shape
+  as `RunningAppCaption.Failure`. It returns a three-case `Row` rather than a view, which is what keeps the file
+  reachable from `swift test` — and what took two nine-arm `@ViewBuilder` switches, one of them the expression
+  `docs/research/ios-27.md` recorded as unable to type-check in reasonable time, down to one three-arm renderer.
+  Nine arms is cyclomatic complexity 10, exactly what `--strict` allows, so every fork on `Purpose` is a function of
+  its own; one `if` or `??` in `row(for:purpose:installed:)` would fail the build.
 
 ## Previews and snapshots
 
