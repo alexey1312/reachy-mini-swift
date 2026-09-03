@@ -193,12 +193,14 @@ struct JobNotificationPlanTests {
         #expect(requests[0].threadIdentifier.contains("hw-kitchen"))
     }
 
+    /// Sub-second on purpose: a job the daemon refuses outright settles in well under
+    /// a second, so a retry inside the same second is the case that would collide.
     @Test("two runs of the same job stack rather than replace one another")
     func repeatRunsGetDistinctIdentifiers() {
         var plan = plan()
         let notice = notice(.appInstall)
-        let first = run(&plan, notice, .failed("pip exited 1"), settledAt: 60)
-        let second = run(&plan, notice, .succeeded(detail: nil), settledAt: 600)
+        let first = run(&plan, notice, .failed("pip exited 1"), settledAt: 0.05)
+        let second = run(&plan, notice, .succeeded(detail: nil), settledAt: 0.4)
         #expect(first[0].identifier != second[0].identifier)
         #expect(first[0].threadIdentifier == second[0].threadIdentifier)
     }
@@ -222,13 +224,18 @@ struct JobNotificationPlanTests {
     }
 
     /// An unnamed robot is a real state — `RobotIdentity.name` is optional — and the
-    /// copy must not come out with a hole in it.
-    @Test("an unnamed robot still produces a sentence")
+    /// copy must not come out with a hole in it. Empty counts as unnamed:
+    /// `/api/daemon/robot-name` can answer with an empty body, which arrives as `""`
+    /// rather than `nil` and would otherwise leave the sentence starting mid-air.
+    @Test("an unnamed robot still produces a sentence, empty name included")
     func unnamedRobotStillReads() {
-        var plan = plan()
-        let anonymous = notice(.systemUpdate, robot: nil, robotName: nil)
-        let requests = run(&plan, anonymous, .succeeded(detail: "1.10.0"))
-        #expect(!requests[0].body.isEmpty)
-        #expect(!requests[0].body.hasPrefix(" "))
+        for name in [nil, "", "   "] {
+            var plan = plan()
+            let anonymous = notice(.systemUpdate, robot: nil, robotName: name)
+            let requests = run(&plan, anonymous, .succeeded(detail: "1.10.0"))
+            #expect(!requests[0].body.isEmpty)
+            #expect(!requests[0].body.hasPrefix(" "), "\(String(describing: name)) left a hole")
+            #expect(requests[0].body.contains("Reachy Mini"))
+        }
     }
 }

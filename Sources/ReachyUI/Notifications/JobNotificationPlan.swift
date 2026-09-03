@@ -163,8 +163,11 @@ struct JobNotificationPlan: Equatable, Sendable {
         guard let copy = Self.announcement(for: notice, result) else { return [] }
         return [.post(Request(
             // Two genuinely separate runs of the same job stack in Notification
-            // Centre rather than replacing one another.
-            identifier: "\(notice.key.identifier)#\(Int(date.timeIntervalSince1970))",
+            // Centre rather than replacing one another. Milliseconds rather than
+            // seconds: a job the daemon refuses outright settles in well under one,
+            // so a retry inside the same second would otherwise reuse the identifier
+            // and replace the banner it was meant to follow.
+            identifier: "\(notice.key.identifier)#\(Int(date.timeIntervalSince1970 * 1000))",
             threadIdentifier: notice.key.threadIdentifier,
             title: copy.title,
             body: copy.body
@@ -257,7 +260,13 @@ struct JobNotificationPlan: Equatable, Sendable {
     }
 
     /// The same fallback the widget's content already uses for an unnamed robot.
+    ///
+    /// Empty counts as absent. `RobotIdentity.name` comes straight from
+    /// `/api/daemon/robot-name`, which can answer with an empty body — and a body
+    /// reading " is running 1.10.0." is worse than one naming no robot at all.
     private static func displayName(_ notice: Notice) -> String {
-        notice.robotName ?? String(localized: .reachy("Reachy Mini"))
+        let name = notice.robotName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let name, !name.isEmpty else { return String(localized: .reachy("Reachy Mini")) }
+        return name
     }
 }

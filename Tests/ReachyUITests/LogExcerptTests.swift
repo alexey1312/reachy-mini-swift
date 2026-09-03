@@ -97,10 +97,28 @@ struct LogExcerptTests {
     @Test("a gap is stated when lines were dropped, and absent when none were")
     func marksTheGap() {
         let dropped = LogExcerpt.build(from: filler(5000), budget: .init(characters: 500))
-        #expect(dropped.text.contains("earlier lines omitted"))
+        #expect(dropped.text.contains("omitted"))
         let whole = LogExcerpt.build(from: filler(3))
-        #expect(whole.text.contains("earlier lines omitted") == false)
+        #expect(whole.text.contains("omitted") == false)
         #expect(whole.coverage.omittedLines == 0)
+    }
+
+    /// The count is a total, so where earlier problems were carried the dropped lines
+    /// are scattered between them as well as before the tail. The marker must not put
+    /// all of them at the one point it happens to sit at.
+    @Test("the gap marker does not claim a single location when the excerpt is scattered")
+    func theGapMarkerDoesNotOverclaim() {
+        var scattered = ["ERROR first failure"]
+        scattered += (0 ..< 2000).map { "INFO routine \($0)" }
+        scattered += ["WARNING second problem"]
+        scattered += (0 ..< 2000).map { "INFO more routine \($0)" }
+        let text = LogExcerpt.build(from: entries(scattered)).text
+        #expect(text.contains("not all of them at this point"))
+
+        // A contiguous drop keeps the plainer sentence, because there it is true.
+        let contiguous = LogExcerpt.build(from: filler(5000), budget: .init(characters: 500))
+        #expect(contiguous.text.contains("earlier lines omitted"))
+        #expect(contiguous.text.contains("not all of them at this point") == false)
     }
 
     @Test("the coverage adds up, so the sentence built from it is true")

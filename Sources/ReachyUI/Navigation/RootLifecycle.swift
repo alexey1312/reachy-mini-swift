@@ -160,8 +160,12 @@ struct RootLifecycle: ViewModifier {
     /// can have changed.
     private func sceneChanged() async {
         guard !previewMode else { return }
-        await JobNotificationCenter.shared.sceneBecame(active: scenePhase == .active)
+        // `sceneActivated()` first, and the order is load-bearing. Reading the
+        // notification authorization is a cross-process call; ahead of this it would
+        // delay the move-activity refresh on every transition, and a phase flip while
+        // it was outstanding would cancel the whole task before the refresh ever ran.
         await sceneActivated()
+        await JobNotificationCenter.shared.sceneBecame(active: scenePhase == .active)
     }
 
     /// A move outlives this process being put away, and the poll that notices one

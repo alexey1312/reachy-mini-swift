@@ -28,14 +28,11 @@ public enum RobotSceneLighting {
     /// Only the key light is touched, because only the key light ever had a shadow.
     public static func setShadowsEnabled(_ enabled: Bool, in rig: Entity) {
         guard let key = rig.children.first(where: { $0.name == "key" }) as? DirectionalLight else { return }
-        if enabled {
-            key.shadow = .init()
-        } else {
-            // Assigning `nil` removes the component, which is the only thing that
-            // actually stops the shadow: `light.shadow` reads back non-nil either way,
-            // as the comment below records.
-            key.components.remove(DirectionalLightComponent.Shadow.self)
-        }
+        // One mechanism in both directions, and the same one `makeLight` uses.
+        // Assigning `nil` removes the component, which is the only thing that actually
+        // stops the shadow — `light.shadow` reads back non-nil either way, as the
+        // comment below records, so the tests check the component instead.
+        key.shadow = enabled ? .init() : nil
     }
 
     private static func makeLight(

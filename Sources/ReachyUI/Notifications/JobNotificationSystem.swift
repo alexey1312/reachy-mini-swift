@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import UserNotifications
 
 /// The boundary itself: three closures over `UserNotifications`, deciding nothing.
@@ -16,6 +17,11 @@ import UserNotifications
 /// Moving any of these into an initialiser, a computed property that is read at
 /// construction, or file scope would put a crash back into the test suite.
 enum JobNotificationSystem {
+    private nonisolated static let log = Logger(
+        subsystem: "com.alexey1312.ReachyMini",
+        category: "JobNotifications"
+    )
+
     static let isEnabled: JobNotificationCenter.IsEnabled = {
         JobNotificationSettings.isOn()
     }
@@ -34,11 +40,17 @@ enum JobNotificationSystem {
         content.threadIdentifier = request.threadIdentifier
         content.sound = .default
         content.interruptionLevel = .active
-        // `trigger: nil` delivers immediately. A failed add is not worth surfacing:
+        // `trigger: nil` delivers immediately. A failed add is not worth *showing* —
         // the job's own screen already says what happened, and the notification was
-        // only ever the copy for someone who is not looking at it.
-        try? await UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: request.identifier, content: content, trigger: nil)
-        )
+        // only ever the copy for someone who is not looking at it — but it is worth
+        // logging. Silence is the designed behaviour in half the cases here, so
+        // without this line "notifications stopped working" has no symptom at all.
+        do {
+            try await UNUserNotificationCenter.current().add(
+                UNNotificationRequest(identifier: request.identifier, content: content, trigger: nil)
+            )
+        } catch {
+            log.error("could not post \(request.identifier, privacy: .public): \(error)")
+        }
     }
 }

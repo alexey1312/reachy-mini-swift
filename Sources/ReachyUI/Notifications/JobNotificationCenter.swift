@@ -84,13 +84,3 @@ final class JobNotificationCenter {
         }
     }
 }
-
-#if DEBUG
-    extension JobNotificationCenter {
-        /// A centre that decides normally and delivers nowhere. Previews mount the
-        /// real models, and a preview must not put a banner on the developer's Mac.
-        static func inert() -> JobNotificationCenter {
-            JobNotificationCenter(isEnabled: { false }, authorization: { .undetermined }, post: { _ in })
-        }
-    }
-#endif

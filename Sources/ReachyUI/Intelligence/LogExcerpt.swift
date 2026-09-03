@@ -49,27 +49,35 @@ enum LogExcerpt {
     /// shown time running backwards will describe a sequence that never happened.
     static func build(from entries: [LogEntry], budget: Budget = .default) -> Excerpt {
         guard !entries.isEmpty else { return Excerpt() }
-        var clamped = 0
-        let lines = entries.map { entry -> String in
-            let safe = neutralise(entry.text)
-            guard safe.count > budget.lineLimit else { return safe }
-            clamped += 1
-            return String(safe.prefix(budget.lineLimit)) + "…"
-        }
+        // Windowing runs over lengths alone, and only the lines that survive it are
+        // clamped and neutralised. The console holds up to 20 000 entries and this is
+        // called on the main actor from a tap, so transforming the whole buffer to
+        // keep ~200 lines of it was real work spent on the discarded 99%.
+        let costs = entries.map { min($0.text.count, budget.lineLimit) + 1 }
 
         let tailBudget = Int(Double(budget.characters) * (1 - budget.earlierProblemsShare))
-        let tailStart = firstIndex(fitting: tailBudget, in: lines)
-        let spent = lines[tailStart...].reduce(0) { $0 + $1.count + 1 }
-        let earlier = earlierProblems(
+        let tailStart = firstIndex(fitting: tailBudget, in: costs)
+        let spent = costs[tailStart...].reduce(0, +)
+        let earlierIndices = earlierProblems(
             in: entries,
-            lines: lines,
+            costs: costs,
             before: tailStart,
             budget: max(0, budget.characters - spent)
         )
 
-        let included = earlier.count + (lines.count - tailStart)
+        var clamped = 0
+        let render = { (index: Int) -> String in
+            let safe = neutralise(entries[index].text)
+            guard safe.count > budget.lineLimit else { return safe }
+            clamped += 1
+            return String(safe.prefix(budget.lineLimit)) + "…"
+        }
+        let earlier = earlierIndices.map(render)
+        let tail = (tailStart ..< entries.count).map(render)
+
+        let included = earlier.count + tail.count
         return Excerpt(
-            text: compose(earlier: earlier, tail: Array(lines[tailStart...]), omitted: entries.count - included),
+            text: compose(earlier: earlier, tail: tail, omitted: entries.count - included),
             coverage: Coverage(
                 includedLines: included,
                 totalLines: entries.count,
@@ -81,12 +89,12 @@ enum LogExcerpt {
 
     /// Walks back from the newest line while the running total fits. Always keeps at
     /// least one line: an excerpt of nothing says less than a truncated last line.
-    private static func firstIndex(fitting budget: Int, in lines: [String]) -> Int {
+    private static func firstIndex(fitting budget: Int, in costs: [Int]) -> Int {
         var used = 0
-        var index = lines.count
+        var index = costs.count
         while index > 0 {
-            let cost = lines[index - 1].count + 1
-            guard used + cost <= budget || index == lines.count else { break }
+            let cost = costs[index - 1]
+            guard used + cost <= budget || index == costs.count else { break }
             used += cost
             index -= 1
         }
@@ -95,30 +103,42 @@ enum LogExcerpt {
 
     /// The most recent warnings and errors from *before* the tail, newest-first while
     /// the budget lasts, then flipped back into chronological order.
+    ///
+    /// Returns indices rather than text: the caller renders, so nothing outside the
+    /// window is ever transformed.
     private static func earlierProblems(
         in entries: [LogEntry],
-        lines: [String],
+        costs: [Int],
         before tailStart: Int,
         budget: Int
-    ) -> [String] {
+    ) -> [Int] {
         guard tailStart > 0, budget > 0 else { return [] }
         var used = 0
-        var picked: [String] = []
+        var picked: [Int] = []
         for index in (0 ..< tailStart).reversed() where entries[index].level >= .warning {
-            let cost = lines[index].count + 1
-            guard used + cost <= budget else { break }
-            used += cost
-            picked.append(lines[index])
+            guard used + costs[index] <= budget else { break }
+            used += costs[index]
+            picked.append(index)
         }
         return picked.reversed()
     }
 
     /// The gap is stated rather than left implicit, so the model does not read two
     /// lines an hour apart as adjacent.
+    ///
+    /// The wording depends on whether the earlier block is there, because the count is
+    /// a total rather than the size of this one gap: with earlier problems carried, the
+    /// dropped lines are scattered *between* them as well as before the tail, and a
+    /// marker saying otherwise would be the one sentence in the excerpt asserting
+    /// something untrue.
     private static func compose(earlier: [String], tail: [String], omitted: Int) -> String {
         var blocks = earlier
         if omitted > 0 {
-            blocks.append("… \(omitted) earlier lines omitted …")
+            blocks.append(
+                earlier.isEmpty
+                    ? "… \(omitted) earlier lines omitted …"
+                    : "… \(omitted) lines omitted, not all of them at this point …"
+            )
         }
         blocks.append(contentsOf: tail)
         return blocks.joined(separator: "\n")

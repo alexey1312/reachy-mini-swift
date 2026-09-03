@@ -15,6 +15,7 @@ struct NotificationsSection: View {
     @AppStorage(JobNotificationSettings.key) private var isOn = false
     @State private var authorization: PermissionState
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.scenePhase) private var scenePhase
 
     private let read: @Sendable () async -> PermissionState
     private let ask: @Sendable () async -> PermissionState
@@ -55,7 +56,11 @@ struct NotificationsSection: View {
         } footer: {
             footer
         }
-        .task { await appeared() }
+        // Keyed on the scene phase, not a bare `.task`. A bare one runs on appear and
+        // never again, and the trip this row's own Open Settings button starts —
+        // background, change the permission, come back — leaves the Form mounted, so
+        // the answer on screen would stay whatever it was before the reader changed it.
+        .task(id: scenePhase) { await appeared() }
     }
 
     /// A `VStack` rather than two `Text`s, because a `Section` handed a bare pair
@@ -77,8 +82,11 @@ struct NotificationsSection: View {
     /// sees the truth. The switch is deliberately **not** flipped off here: silently
     /// rewriting a setting the reader chose is worse than saying why it is not
     /// working, which is what `isBlocked` puts on screen.
+    ///
+    /// Only on activation: the other phases cannot have changed the answer, and
+    /// re-reading on the way out would spend a cross-process call on nothing.
     private func appeared() async {
-        guard !previewMode else { return }
+        guard !previewMode, scenePhase == .active else { return }
         authorization = await read()
     }
 

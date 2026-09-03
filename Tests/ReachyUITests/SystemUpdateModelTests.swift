@@ -356,24 +356,30 @@ struct SystemUpdateModelTests {
 
     /// The job outlived the budget, so nothing is known about it yet. The screen
     /// stays on `installing`; a notification would be a verdict.
+    ///
+    /// It also has to *disarm*. This path ends the run without assigning a terminal
+    /// state, so a notice left in place would ride along into whatever assigned
+    /// `.failed` next — a `check` that threw, say — and announce a transport error as
+    /// this update's failure.
     @Test("a job still running when the budget runs out announces its start and nothing else")
     func aJobPastItsBudgetAnnouncesNoOutcome() async {
         let log = JobEventLog()
-        let model = await makeModel(
-            UpdateStubClient(
-                availability: .available(current: "1.9.0", latest: "1.10.0"),
-                jobStatuses: [.inProgress],
-                repeatsLastStatus: true
-            ),
-            jobPollBudget: .zero,
-            notifying: log
+        let client = UpdateStubClient(
+            availability: .available(current: "1.9.0", latest: "1.10.0"),
+            jobStatuses: [.inProgress],
+            repeatsLastStatus: true
         )
+        let model = await makeModel(client, jobPollBudget: .zero, notifying: log)
 
         await model.check(preRelease: false)
         await model.install(preRelease: false)
 
         #expect(model.state == .installing)
         #expect(log.startCount == 1)
+        #expect(log.results.isEmpty)
+
+        // Anything that reaches a terminal state afterwards belongs to something else.
+        model.failForTesting("a later, unrelated failure")
         #expect(log.results.isEmpty)
     }
 }

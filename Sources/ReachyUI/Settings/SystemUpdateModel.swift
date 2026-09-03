@@ -151,6 +151,13 @@ final class SystemUpdateModel {
         case .stillRunning, .cancelled, .failed:
             // `stillRunning` leaves `installing` on screen, which is what is true:
             // announcing a restart here blamed the release for a job still going.
+            //
+            // The notice is dropped here rather than left armed. These two paths end
+            // the run *without* assigning a terminal state, so `pending` would survive
+            // into whatever assigned `.failed` next — a `check` that threw, say — and
+            // announce a transport error as this update's failure. `.failed` already
+            // announced itself on the way in and clears its own.
+            pending = nil
             return
         }
     }
@@ -259,6 +266,13 @@ final class SystemUpdateModel {
 
 #if DEBUG
     extension SystemUpdateModel {
+        /// Drives `state` to a failure the way an unrelated later call would, so a
+        /// test can prove the notice was disarmed rather than merely unused. Only a
+        /// member of this file may assign `state`, which is why it is here.
+        func failForTesting(_ message: String) {
+            state = .failed(message)
+        }
+
         /// One update parked mid-flight. `events` and `reconnect` are stubbed out rather than
         /// left at their defaults: the real ones open a WebSocket and wait out a reboot.
         static func preview(
