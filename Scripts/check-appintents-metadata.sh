@@ -142,19 +142,28 @@ REQUIRED_COLLECTION_SIZES = [("RobotAppsConfigurationIntent", "apps")]
 
 
 def collection_sizes(parameter):
-    """The `{family: {min, max}}` payload, or None where the parameter declares none.
+    """`(declares_sizes, {family: {min, max}} or None)` — the flag and the payload.
 
     `typeSpecificMetadata` is a flat tag-then-payload array — `[tag, {...}, ...]` — and
     not an object, so this walks it in pairs. Reading index 1 happens to work today and
     would start reading the wrong dictionary, silently, the day a parameter carries a
     second kind of metadata ahead of this one.
+
+    The two halves are returned separately because they fail for opposite reasons and
+    collapsing them is how a guard stops guarding: *no tag* means the `size:` argument
+    is gone, which is the bug this file exists for; *a tag with nothing readable behind
+    it* means the metadata shape moved under us, and the fix is here rather than in the
+    intent. Returning an empty dict for the second used to make it indistinguishable
+    from "no families to check", so any sized parameter outside
+    REQUIRED_COLLECTION_SIZES would have passed in silence — while still being counted
+    in the success line, which is worse than not counting it.
     """
     entries = parameter.get("typeSpecificMetadata") or []
     for tag, payload in zip(entries[::2], entries[1::2]):
         if tag == COLLECTION_SIZE_TAG:
             sizes = (payload or {}).get("collectionSizes", {}).get("sizes")
-            return sizes if isinstance(sizes, dict) else {}
-    return None
+            return True, sizes if isinstance(sizes, dict) else None
+    return False, None
 
 
 metadata = list(target.rglob("extract.actionsdata"))
@@ -189,20 +198,40 @@ else:
     # about `@Parameter(size:)` and not about this one intent.
     for action_name, action in sorted(actions.items()):
         for parameter in action.get("parameters") or []:
-            sizes = collection_sizes(parameter)
-            if sizes is None:
+            declares_sizes, sizes = collection_sizes(parameter)
+            if not declares_sizes:
                 continue
             checked_sizes += 1
+            subject = f"{action_name}.{parameter.get('name')}"
+            # Every `bounds` is validated as an object before it is read. A shape change
+            # would otherwise reach `.get` on an int and end the run in an AttributeError
+            # traceback — which does fail the build, but at the end of a release archive,
+            # where the difference between a sentence and a stack trace is the difference
+            # between fixing it and reverting something at random.
+            if not sizes:
+                failures.append(
+                    f"{subject} declares {COLLECTION_SIZE_TAG} with no readable "
+                    f"{{family: {{min, max}}}} behind it — the metadata shape moved and "
+                    f"this guard is no longer checking anything. Fix the guard, not the "
+                    f"intent."
+                )
+                continue
             for family, bounds in sorted(sizes.items()):
-                minimum = (bounds or {}).get("min")
-                maximum = (bounds or {}).get("max")
+                if not isinstance(bounds, dict):
+                    failures.append(
+                        f"{subject} declares {family} = {bounds!r}, which is not a "
+                        f"{{min, max}} object — see above, the shape moved"
+                    )
+                    continue
+                minimum = bounds.get("min")
+                maximum = bounds.get("max")
                 if minimum != 0 or not isinstance(maximum, int) or maximum < 1:
                     failures.append(
-                        f"{action_name}.{parameter.get('name')} declares {family} = "
-                        f"{bounds}, but a collection @Parameter(size:) must range from 0 "
-                        f"up to at least 1 — a bare integer literal is "
-                        f"IntentCollectionSize(exactly:), so min == max, and that or a "
-                        f"max of 0 leaves the widget in its placeholder for ever "
+                        f"{subject} declares {family} = {bounds}, but a collection "
+                        f"@Parameter(size:) must range from 0 up to at least 1 — a bare "
+                        f"integer literal is IntentCollectionSize(exactly:), so "
+                        f"min == max, and that or a max of 0 leaves the widget in its "
+                        f"placeholder for ever "
                         f"(Sources/ReachyWidgetUI/RobotAppsConfigurationIntent.swift)"
                     )
 
@@ -215,7 +244,7 @@ else:
                 f"{[p.get('name') for p in parameters]}) — the name in the metadata is "
                 f"the Swift property's, so this is a rename or a dropped intent"
             )
-        elif not collection_sizes(parameter):
+        elif not collection_sizes(parameter)[0]:
             failures.append(
                 f"{action_name}.{parameter_name} carries no {COLLECTION_SIZE_TAG}: the "
                 f"@Parameter(size:) argument is gone, which leaves every family "

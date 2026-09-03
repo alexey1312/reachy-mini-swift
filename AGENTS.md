@@ -153,8 +153,10 @@ is silent on macOS.
 `Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
 resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is
 that larger runners are billed — including on public repositories, where the standard ones are free. Three cores is
-why compilation dominates every number in this file. **Every job now runs on `xcode-27`, `lint-test` included, and
-with Xcode's own Swift rather than a swift.org toolchain overlaid.** That was #124's blocker: an iOS/macOS-27 symbol
+why compilation dominates every number in this file. **Every job in `ci.yml` now runs on `xcode-27`, `lint-test`
+included, and
+with Xcode's own Swift rather than a swift.org toolchain overlaid** (`release.yml` stays on `macos-15`; it writes a
+GitHub release and compiles nothing). That was #124's blocker: an iOS/macOS-27 symbol
 is _absent_ from the 26.2 SDK, so `@available` does not save it and `swift build` fails over a declaration the four
 app jobs compile happily. Pairing swift.org 6.3 with the 27 SDK is not the way out and that is measured: 6.3.3
 against Xcode 27 beta 6's macOS SDK puts the backing storage of a `@State private` property into the synthesised
