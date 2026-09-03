@@ -2901,6 +2901,35 @@
         }
       }
     },
+    "Copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать"
+          }
+        }
+      }
+    },
     "Copy all": {
       "extractionState": "manual",
       "localizations": {
@@ -3071,6 +3100,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось сохранить ключ робота."
+          }
+        }
+      }
+    },
+    "Couldn't explain the log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Protokoll konnte nicht erklärt werden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo explicar el registro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d'expliquer le journal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось объяснить лог"
           }
         }
       }
@@ -4173,6 +4231,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Все установленные приложения, их общее окружение Python и собственные настройки каждого."
+          }
+        }
+      }
+    },
+    "Explain": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erklären"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explicar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expliquer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объяснить"
+          }
+        }
+      }
+    },
+    "Explain the log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll erklären"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explicar el registro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expliquer le journal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объяснение лога"
           }
         }
       }
@@ -10789,6 +10905,35 @@
         }
       }
     },
+    "Reading the log…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll wird gelesen…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leyendo el registro…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture du journal…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читаем лог…"
+          }
+        }
+      }
+    },
     "Reading the robot's description…": {
       "extractionState": "manual",
       "localizations": {
@@ -14671,6 +14816,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Зависло при остановке"
+          }
+        }
+      }
+    },
+    "Summarized on this device and never sent anywhere. It can be wrong — the log is the record.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Gerät zusammengefasst und nirgendwohin gesendet. Es kann falsch sein — maßgeblich ist das Protokoll."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumido en este dispositivo y nunca enviado a ninguna parte. Puede equivocarse: el registro es lo que cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résumé sur cet appareil et jamais envoyé nulle part. Cela peut être faux — le journal fait foi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обобщено на этом устройстве и никуда не отправлялось. Может быть неверным — источник истины это сам лог."
           }
         }
       }

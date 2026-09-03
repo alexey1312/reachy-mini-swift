@@ -1080,3 +1080,80 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
 - **Notifications is not a Privacy anchor on macOS.** It is a pane of its own, so `PrivacySettingsLink.macOSURL`
   became a switch over whole URLs rather than over anchors. A wrong pane id still has **no runtime signal** —
   `NSWorkspace.open` returns `true` and shows whatever it found — so it is clicked by hand before merge.
+
+## Explaining the log on device
+
+`Intelligence/LogExcerpt.swift`, `LogExplanationPrompt.swift`, `OnDeviceLanguageModel.swift`,
+`LogExplanationModel.swift`, `LogExplanationSheet.swift`. Issue #72, and the first thing in this app to
+reach Apple Intelligence.
+
+- **One file imports `FoundationModels`, and no session is ever stored.** `OnDeviceLanguageModel` builds a
+  `LanguageModelSession` inside one gated function, uses it once and drops it. That is right on its own terms — one
+  explanation is one prompt over a frozen excerpt, and a reused session would carry the previous excerpt in its
+  transcript and hit the context window on the second run — and it happens to remove the problem of a 26-only stored
+  property on a type at the iOS 18 floor. Every 26-only symbol lives inside a private `@available` enum, the
+  `ReachyPlacedAccessory` trick in a value flavour.
+- **Every symbol was checked against the SDK's `.swiftinterface`, not assumed, and three of them are traps.** The
+  local Xcode is a 27 beta; `lint-test` runs 26.2, where a 27 symbol is simply absent and `@available` does not save
+  it. `GenerationOptions` is therefore **never constructed here**: `init(samplingMode:…)` is iOS 27 (back-deployed,
+  so it _runs_ on 26 but exists only in the 27 SDK) while the 26 spelling `init(sampling:…)` takes its first
+  argument without a default — so `GenerationOptions(temperature:…)` compiles locally and fails on CI. Letting the
+  framework supply its own default argument sidesteps the whole question. Likewise every
+  `init(model: some LanguageModel, …)` is 27; the 26 initialiser takes `SystemLanguageModel` and defaults it.
+  `tokenCount(for:)` is 26.4.
+- **Whether `@Generable` works under CI's toolchain is unresolved, and the design does not need the answer.** It
+  compiles locally, and the compiler line shows why — the plugin arrives as
+  `-load-resolved-plugin …/Platforms/MacOSX.platform/…/libFoundationModelsMacros.dylib`, from the platform
+  directory rather than any `-plugin-path`. But that is Xcode's own toolchain; CI swaps in swift.org 6.3 via
+  `TOOLCHAINS`, which is exactly the configuration where `#Preview` and `@Entry` are documented to fail against a
+  plugin from the _same_ directory. Plain-`String` output needs no macro at all and is the right shape for "explain
+  this log" regardless, so the risk is avoided for free. Settle it with a CI run, never with a local build.
+- **The log is untrusted input, and the separation is structural rather than a wording choice.**
+  `LogExplanationPrompt.instructions` is the only trusted channel and no log text reaches it — there is a test that
+  says so. The corpus lives inside a `BEGIN/END LOG EXCERPT` fence whose markers `LogExcerpt.neutralise` rewrites
+  where a journal line happens to contain one, so the corpus cannot close its own fence; the "this is data" framing
+  sits _outside_ the fence at both ends, so a line claiming otherwise is provably inside a delimited region. What
+  actually bounds the damage is structural: no tools, no network, no actuator. The worst outcome is a wrong sentence
+  in a sheet.
+- **The excerpt is `visible`, frozen at the tap, and the tail is the spine.** `copyText` and `export(address:)`
+  already ship what is on screen, so a third "take what you can see" operation quietly taking something else would
+  be the surprising one. The window grows backwards from the newest line — a journal's ending is where the failure
+  is — and only the leftover quarter goes to older warnings, which are then reversed into chronological order,
+  because a model shown time running backwards will describe a sequence that never happened. The gap between the two
+  blocks is stated rather than implied. The budget is in characters, not tokens: log text tokenizes far worse than
+  prose and `tokenCount(for:)` is out of reach.
+- **The entry point is on `LogConsoleScreen` and not on `LogConsoleView`.** The shared view has five other callers —
+  `AppDetailSheet` embeds it _inside_ a `Form` section — so a `.toolbar` there would surface on their bars. The
+  corpora differ too: pip installer output and a BLE recovery journal are not journalctl, and the instructions are
+  written for journalctl. Rule 10 exactly. If a second corpus earns it, the move is one defaulted parameter.
+- **Hidden, not disabled.** On a device below iOS 26, on ineligible hardware, and with Apple Intelligence switched
+  off there is no button and no explanation of its absence — the issue's own rule. `.disabled` is the other
+  condition entirely and matches what `Export` and `Copy all` already do with an empty console.
+
+### Two ways a preview overwrote its own seeded state, both found in a reference
+
+Neither showed up in a test, and both are the same rule — _a preview must be final on its first frame_ — broken by
+an effect the screen runs over an injected model. Worth reading before adding a preview for anything whose model has
+a `refresh`-shaped method.
+
+- **A stub gate that disagreed with the seeded phase.** `LogExplanationModel.preview` used to inject
+  `availability: { .available }` and then seed `phase = .unavailable(…)`. `LogConsoleScreen` refreshes the gate from
+  a `.task`, and **Prefire renders one instance twice — light, then dark** — so the light capture was taken before
+  that effect and the dark one after it. The result was eighteen dark references showing an Explain button that the
+  matching light references did not, from the same preview. The factory now derives the gate from the phase, and
+  `previewPhasesSurviveARefresh` fails if that is ever undone.
+- **The sheet's own `.task` running over the seeded summary.** `LogExplanationSheet` starts the explanation on
+  appearance, which with a stubbed `respond` replaced a hand-written summary with an empty one — the reference read
+  "0 of 0 lines were sent". It carries the `guard !previewMode` that `LogConsoleScreen.stream()` and
+  `PermissionsScreen.appeared()` already carry, for the same reason.
+
+**The console's own gate defaults to unavailable in `PreviewScene.logConsole`, and that is load-bearing twice
+over.** Left to build its own model the screen would read the _simulator's_ real Apple Intelligence state, so the
+nine `Log console —` references would differ between machines; defaulting it off also keeps every one of them
+byte-identical to what it was before #72 and covers the absence, which is the state of every device below iOS 26.
+The presence gets a preview of its own, because a reference for the offered state alone cannot tell a conditional
+toolbar item from a permanent one.
+
+**Nothing here can show that the summary is any good.** No test and no reference can: that is a device check on an
+iPhone with Apple Intelligence enabled, against a robot that has actually crashed. What the suite does cover is the
+windowing, the fence, and every state the sheet can be in.
