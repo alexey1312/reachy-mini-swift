@@ -1115,10 +1115,12 @@ reach Apple Intelligence.
 - **Whether `@Generable` works under CI's toolchain is unresolved, and the design does not need the answer.** It
   compiles locally, and the compiler line shows why — the plugin arrives as
   `-load-resolved-plugin …/Platforms/MacOSX.platform/…/libFoundationModelsMacros.dylib`, from the platform
-  directory rather than any `-plugin-path`. But that is Xcode's own toolchain; CI swaps in swift.org 6.3 via
-  `TOOLCHAINS`, which is exactly the configuration where `#Preview` and `@Entry` are documented to fail against a
-  plugin from the _same_ directory. Plain-`String` output needs no macro at all and is the right shape for "explain
-  this log" regardless, so the risk is avoided for free. Settle it with a CI run, never with a local build.
+  directory rather than any `-plugin-path`. But that was Xcode's own toolchain against a CI that swapped in
+  swift.org 6.3 via `TOOLCHAINS` — exactly the configuration where `#Preview` and `@Entry` are documented to fail
+  against a plugin from the _same_ directory. **That difference is gone**: `lint-test` builds with Xcode 27's own
+  Swift now, so CI and a local build are the same configuration and the risk was never taken. Plain-`String` output
+  needs no macro at all and is the right shape for "explain this log" regardless, so nothing here changes for it —
+  but a future `@Generable` is now a question a CI run can answer rather than one to design around.
 - **The log is untrusted input, and the separation is structural rather than a wording choice.**
   `LogExplanationPrompt.instructions` is the only trusted channel and no log text reaches it — there is a test that
   says so. The corpus lives inside a `BEGIN/END LOG EXCERPT` fence whose markers `LogExcerpt.neutralise` rewrites
