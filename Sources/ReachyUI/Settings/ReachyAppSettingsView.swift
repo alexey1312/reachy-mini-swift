@@ -1,8 +1,8 @@
 import ReachyDesign
 import SwiftUI
 
-/// The macOS Settings window (⌘,): the two things that are about this app rather
-/// than about a robot.
+/// The macOS Settings window (⌘,): the things that are about this app rather than
+/// about a robot.
 ///
 /// Appearance and Privacy both also live in the Settings tab, which only exists
 /// once a robot has answered — and a Mac reader expects ⌘, to work before that.
@@ -11,6 +11,7 @@ import SwiftUI
 public struct ReachyAppSettingsView: View {
     enum Pane: Hashable {
         case appearance
+        case notifications
         case privacy
     }
 
@@ -34,6 +35,17 @@ public struct ReachyAppSettingsView: View {
                 .formStyle(.grouped)
             } label: {
                 Label(.reachy("Appearance"), systemImage: "paintpalette")
+            }
+            // Here as well as in the Settings tab, and for the reason above: that tab
+            // does not exist until a robot has answered, and whether this Mac should
+            // buzz is not a fact about any robot.
+            Tab(value: .notifications) {
+                Form {
+                    NotificationsSection()
+                }
+                .formStyle(.grouped)
+            } label: {
+                Label(.reachy("Notifications"), systemImage: "bell")
             }
             Tab(value: .privacy) {
                 PermissionsScreen()

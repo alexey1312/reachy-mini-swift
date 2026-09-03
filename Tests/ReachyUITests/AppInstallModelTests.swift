@@ -221,6 +221,118 @@ struct AppInstallModelTests {
         #expect(client.updated == ["dance_party"])
     }
 
+    // MARK: - What a long job tells anyone waiting on it
+
+    /// **The assertion that pins the whole design.** The screen collapses a timeout
+    /// into a failure, because the sheet is in front of someone who can go and look.
+    /// The notification must not: nobody answered, and "failed" would be a verdict
+    /// inferred from a timer. Unify the two mappings and this goes red.
+    @Test("a timeout reads as a failure on screen and as an unanswered job to anyone away from it")
+    func timeoutIsAFailureOnScreenAndSilenceInTheAnnouncement() async throws {
+        let log = JobEventLog()
+        let session = await connected(InstallRobotClient())
+        let app = try Self.app("reachy-mini-dance")
+        let model = AppInstallModel(
+            session: session,
+            events: { _, _ in events([.finished(.timedOut)]) },
+            notify: { log.record($0) }
+        )
+
+        await model.perform(.install(app))
+
+        guard case .failed = model.state else {
+            Issue.record("expected a failure on screen, got \(model.state)")
+            return
+        }
+        #expect(log.results == [.unanswered])
+    }
+
+    /// The model announces the outcome faithfully; deciding that a successful removal
+    /// is not worth a banner belongs to `JobNotificationPlan`, which is where it is
+    /// tested. Splitting it this way is what keeps the policy in one place.
+    @Test("each operation announces its own kind, and reports the outcome unedited")
+    func announcesEachOperationUnderItsOwnKind() async throws {
+        let session = await connected(InstallRobotClient())
+        let app = try Self.app("dance_party", kind: "installed")
+        let expected: [(AppInstallModel.Operation, JobNotificationPlan.Kind)] = [
+            (.install(app), .appInstall), (.update(app), .appUpdate), (.remove(app), .appRemove),
+        ]
+
+        for (operation, kind) in expected {
+            let log = JobEventLog()
+            let model = AppInstallModel(
+                session: session,
+                events: { _, _ in events([.finished(.succeeded)]) },
+                notify: { log.record($0) }
+            )
+            await model.perform(operation)
+            #expect(log.notices.allSatisfy { $0.key.kind == kind }, "\(operation) announced the wrong kind")
+            #expect(log.results == [.succeeded(detail: nil)])
+        }
+    }
+
+    /// The daemon's own name is the key and the title is only display text, so a
+    /// rename under a running job cannot change what the announcement is about.
+    @Test("the announcement is keyed by the daemon's name and reads with the title")
+    func announcementIsKeyedByNameAndReadsWithTitle() async throws {
+        let log = JobEventLog()
+        let session = await connected(InstallRobotClient())
+        let app = try Self.app("dance_party", kind: "installed")
+        let model = AppInstallModel(
+            session: session,
+            events: { _, _ in events([.finished(.succeeded)]) },
+            notify: { log.record($0) }
+        )
+
+        await model.perform(.install(app))
+
+        #expect(log.notices.allSatisfy { $0.key.subject == "dance_party" })
+        #expect(log.notices.allSatisfy { $0.subjectTitle == app.title })
+        #expect(log.notices.allSatisfy { $0.robotName == "testbot" })
+    }
+
+    /// A stream that simply ends is the absence of an event, and nothing may be
+    /// announced on an absence — the rule `RunningAppActivityPlan` states as "never
+    /// on silence", reaching this model through its own choke point.
+    @Test("a job whose stream ends without an outcome announces no outcome")
+    func aStreamThatEndsQuietlyAnnouncesNothing() async throws {
+        let log = JobEventLog()
+        let session = await connected(InstallRobotClient())
+        let model = AppInstallModel(
+            session: session,
+            events: { _, _ in events([.line("Collecting")]) },
+            notify: { log.record($0) }
+        )
+
+        try await model.perform(.install(Self.app("reachy-mini-dance")))
+
+        #expect(log.startCount == 1)
+        #expect(log.results.isEmpty)
+    }
+
+    /// A daemon that refuses the job outright still produces an error that *arrived*,
+    /// which is the difference between this and the case above.
+    @Test("a daemon that refuses to start the job announces the failure")
+    func aRefusedStartIsAnnounced() async throws {
+        let log = JobEventLog()
+        let client = InstallRobotClient()
+        client.refusesToStart = true
+        let session = await connected(client)
+        let model = AppInstallModel(
+            session: session,
+            events: { _, _ in events([]) },
+            notify: { log.record($0) }
+        )
+
+        try await model.perform(.install(Self.app("local-thing")))
+
+        #expect(log.results.count == 1)
+        guard case .failed = log.results[0] else {
+            Issue.record("expected a failure, got \(log.results)")
+            return
+        }
+    }
+
     @Test("dismissing clears the outcome so the overlay can go away")
     func dismisses() async throws {
         let session = await connected(InstallRobotClient())

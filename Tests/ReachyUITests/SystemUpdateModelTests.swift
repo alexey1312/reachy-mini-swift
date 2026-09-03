@@ -8,6 +8,9 @@ import Testing
 private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unchecked Sendable {
     private let lock = NSLock()
     private let availability: DaemonUpdateAvailability
+    /// A check that throws. Distinct from `startError`: one happens before any job
+    /// exists, the other after one has begun, and only the second may be announced.
+    private let availabilityError: Error?
     private let startError: Error?
     private var starts: [Bool] = []
     /// What `/update/info` answers, one status per call. An exhausted script throws,
@@ -20,11 +23,13 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
 
     init(
         availability: DaemonUpdateAvailability,
+        availabilityError: Error? = nil,
         startError: Error? = nil,
         jobStatuses: [DaemonJob.Status] = [],
         repeatsLastStatus: Bool = false
     ) {
         self.availability = availability
+        self.availabilityError = availabilityError
         self.startError = startError
         self.jobStatuses = jobStatuses
         self.repeatsLastStatus = repeatsLastStatus
@@ -64,7 +69,10 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
     }
 
     func availableUpdate(preRelease _: Bool) async throws -> DaemonUpdateAvailability {
-        availability
+        if let availabilityError {
+            throw availabilityError
+        }
+        return availability
     }
 
     func startUpdate(preRelease: Bool) async throws -> String {
@@ -102,7 +110,8 @@ struct SystemUpdateModelTests {
         events: [UpdateLogEvent] = [.closed],
         reconnectsAs version: String? = "1.10.0",
         jobPollInterval: Duration = .zero,
-        jobPollBudget: Duration = .seconds(20 * 60)
+        jobPollBudget: Duration = .seconds(20 * 60),
+        notifying log: JobEventLog? = nil
     ) async -> SystemUpdateModel {
         let session = await makeSession(client)
         return SystemUpdateModel(
@@ -115,7 +124,8 @@ struct SystemUpdateModelTests {
             },
             reconnect: { version },
             jobPollInterval: jobPollInterval,
-            jobPollBudget: jobPollBudget
+            jobPollBudget: jobPollBudget,
+            notify: { event in log?.record(event) }
         )
     }
 
@@ -283,5 +293,87 @@ struct SystemUpdateModelTests {
         await model.check(preRelease: false)
         await model.install(preRelease: false)
         #expect(model.state == .failed(String(localized: .reachy("The robot reported that the update failed."))))
+    }
+
+    // MARK: - What a long job tells anyone waiting on it
+
+    @Test("a finished update announces that it began and then that it landed")
+    func announcesAFinishedUpdate() async {
+        let log = JobEventLog()
+        let model = await makeModel(
+            UpdateStubClient(availability: .available(current: "1.9.0", latest: "1.10.0")),
+            reconnectsAs: "1.10.0",
+            notifying: log
+        )
+
+        await model.check(preRelease: false)
+        await model.install(preRelease: false)
+
+        #expect(log.startCount == 1)
+        #expect(log.results == [.succeeded(detail: "1.10.0")])
+    }
+
+    /// The identity is captured when the job starts, which is the whole reason this
+    /// can be announced at all: by the time `confirmRestart` answers, the daemon has
+    /// been down and back and the session may name nothing.
+    @Test("the announcement carries the robot the update began on")
+    func announcementNamesTheRobotItBeganOn() async {
+        let log = JobEventLog()
+        let model = await makeModel(
+            UpdateStubClient(availability: .available(current: "1.9.0", latest: "1.10.0")),
+            notifying: log
+        )
+
+        await model.check(preRelease: false)
+        await model.install(preRelease: false)
+
+        #expect(log.notices.allSatisfy { $0.robotName == "testbot" })
+        #expect(log.notices.allSatisfy { $0.key.kind == .systemUpdate })
+    }
+
+    /// A failed check is a sub-second thing the reader just tapped, on a screen they
+    /// are looking at. It reaches `state = .failed` like any other failure and must
+    /// still say nothing — which it does by never having started a job.
+    @Test("a check that failed announces nothing, because no job ever began")
+    func aFailedCheckAnnouncesNothing() async {
+        let log = JobEventLog()
+        let model = await makeModel(
+            UpdateStubClient(
+                availability: .available(current: "1.9.0", latest: "1.10.0"),
+                availabilityError: URLError(.cannotConnectToHost)
+            ),
+            notifying: log
+        )
+
+        await model.check(preRelease: false)
+
+        guard case .failed = model.state else {
+            Issue.record("expected a failure, got \(model.state)")
+            return
+        }
+        #expect(log.events.isEmpty)
+    }
+
+    /// The job outlived the budget, so nothing is known about it yet. The screen
+    /// stays on `installing`; a notification would be a verdict.
+    @Test("a job still running when the budget runs out announces its start and nothing else")
+    func aJobPastItsBudgetAnnouncesNoOutcome() async {
+        let log = JobEventLog()
+        let model = await makeModel(
+            UpdateStubClient(
+                availability: .available(current: "1.9.0", latest: "1.10.0"),
+                jobStatuses: [.inProgress],
+                repeatsLastStatus: true
+            ),
+            jobPollBudget: .zero,
+            notifying: log
+        )
+
+        await model.check(preRelease: false)
+        await model.install(preRelease: false)
+
+        #expect(model.state == .installing)
+        #expect(log.startCount == 1)
+        #expect(log.results.isEmpty)
     }
 }

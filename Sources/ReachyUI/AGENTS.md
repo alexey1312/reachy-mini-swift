@@ -1017,3 +1017,66 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   this is a real alert, and a stack frame is not a sentence.
 - **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
   `RunningAppCaption.description` was written to fix, in a second place.
+
+## Job notifications
+
+`Notifications/JobNotificationPlan.swift`, `JobNotificationCenter.swift`, `JobNotificationSystem.swift`,
+`NotificationPermission.swift`, `JobNotificationSettings.swift`, plus `Settings/NotificationsSection.swift`. Issue
+#80, and it is sequenced **after** the Live Activity rather than instead of it.
+
+- **A pure reducer again, but the reason is not the Live Activity's and copying that one's doc comment would be
+  wrong.** `UserNotifications` ships on both platforms this app targets, so there is no `#if os` fence anywhere here.
+  The split earns its place on something harder: `UNUserNotificationCenter.current()` **traps** in a process with no
+  bundle identifier, which is exactly what `mise run test` is. A rule that calls it is a rule that crashes the whole
+  suite rather than failing one case. Hence the discipline the boundary file states outright — the singleton appears
+  only inside a `@Sendable` closure _body_, never in an initialiser, a computed property read at construction, or
+  file scope.
+- **The centre is a `shared` singleton, and the Live Activity's `@State`-on-`RootLifecycle` shape would break this.**
+  ActivityKit refuses a request from anywhere but the foreground, so driving the card from SwiftUI costs it nothing.
+  A job notification's entire purpose is the moment the app is _not_ on screen, and putting an update pass in the
+  delivery path makes delivery contingent on a redraw a backgrounded scene may coalesce. `RootLifecycle` contributes
+  one fact — the scene phase — through `sceneChanged()`, which fires on **every** phase and not only on activation.
+- **Authorization is cached and refreshed on scene change, not read per event, and that is a race fix.**
+  `receive(_:)` must mutate the plan _synchronously_: wrap it in a `Task` and a settle can overtake the start it
+  belongs to, whereupon the plan's primary guard silently drops it. Scene activation is also the only moment the
+  answer can have changed — coming back from Settings is a phase transition by definition.
+- **`running: Set<Key>` is the primary guard, and it is a whole class of bugs rather than one.** A settle whose start
+  was never observed belongs to a relaunched process, a stale model, or a `check` that failed before any job existed.
+  None of those may notify and none has to be enumerated to be refused. `.started` inserts the key **whether or not
+  posting is permitted**, so a reader who grants permission halfway through a ten-minute update is still told — the
+  one asymmetry in the file, and it has a test because otherwise it reads as an oversight.
+- **No durable store, deliberately, and this is where it differs from `RunningAppActivityDismissalStore`.** That
+  exists because a _card persists_ and is reconciled against `Activity.activities` on every foreground pass, so a
+  swipe has to be remembered. A notification is an event: once delivered it is over, and the only process that could
+  re-emit it is one that never observed the start.
+- **The announcement rides `AppJobMonitor.Outcome`, never `AppInstallModel.State`.** `state(for:operation:)` collapses
+  `.timedOut` into `.failed`, which is right on a sheet in front of someone who can go and look, and wrong in a
+  notification, where "failed" would be a verdict inferred from a timer about a register that never answered. Keeping
+  the two mappings separate is the point; unifying them is the one refactor that breaks this silently, and
+  `AppInstallModelTests` has the assertion that goes red when it happens.
+- **`SystemUpdateModel` announces off a `didSet` and `AppInstallModel` off explicit calls, and the asymmetry is
+  deliberate.** `state` reaches a terminal value from six places in the update model, so a `didSet` is what makes a
+  missed announcement impossible — and it inherits three existing rules for free, because a cancelled call, a job
+  still running, and a failed `check` all work by _not assigning_. The install model cannot use one, for the reason
+  in the bullet above.
+- **Nothing survives the app being unloaded, and the copy says so.** Both hook points are polls that die with the
+  process; `UIBackgroundModes` is `["audio","voip"]` and neither covers one. The deliverable is "announced while the
+  app is still running in the background", and the footer key is written to prevent the over-promise. Keep that
+  clause through review.
+- **Zero capability changes.** No usage string, no background mode, no `aps-environment`, no `.timeSensitive` (which
+  would need its own entitlement and a review justification for a finished install). `Apps/Project.swift`'s comment
+  about declaring no push entitlement stays true, and a reviewer will look for exactly that.
+- **No `UNUserNotificationCenterDelegate`, and it is not an omission.** Three layers already say the same thing: the
+  plan refuses while `isForeground`; both platforms suppress foreground alerts by default when no delegate implements
+  `willPresent`; and a delegate written only to `return []` would cost an `NSApplicationDelegateAdaptor` on macOS,
+  which this app does not have. A pleasant consequence worth writing down because it reads as an accident: on macOS a
+  visible-but-not-key window reports `.inactive`, so a reader with the app open behind Xcode **does** get told.
+  Routing a _tap_ is what a delegate would be for, and that is a follow-up rather than this issue.
+- **The fourth `PermissionKind` is not a device permission**, and the enum's doc comment says why at length — it
+  gates no hardware and blocks nothing, and exists only so the Settings toggle cannot silently do nothing. It is also
+  the one row with no matching usage string in `Apps/Project.swift`: the system writes that prompt's text.
+  `PermissionState.restricted` is unreachable for it, and `.ephemeral` is deliberately not named — it is
+  `API_UNAVAILABLE(macos)`, so spelling it fails the one CI job that compiles every SwiftPM target.
+- **Notifications is not a Privacy anchor on macOS.** It is a pane of its own, so `PrivacySettingsLink.macOSURL`
+  became a switch over whole URLs rather than over anchors. A wrong pane id still has **no runtime signal** —
+  `NSWorkspace.open` returns `true` and shows whatever it found — so it is clicked by hand before merge.

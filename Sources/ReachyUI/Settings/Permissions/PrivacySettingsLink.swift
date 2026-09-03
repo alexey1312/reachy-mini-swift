@@ -28,6 +28,8 @@ public enum PrivacySettingsLink {
         case bluetooth
         case microphone
         case localNetwork
+        /// Not a privacy pane on macOS at all — see `macOSURL(_:)`.
+        case notifications
     }
 
     @MainActor
@@ -54,13 +56,27 @@ public enum PrivacySettingsLink {
         /// **A wrong anchor has no runtime signal.** `NSWorkspace.open` returns `true`
         /// and shows whatever pane it managed to find, so these were checked by hand
         /// rather than inferred.
+        /// Notifications is the one destination that is **not** an anchor on the shared
+        /// prefix: on macOS it is a pane of its own rather than a list inside Privacy &
+        /// Security, so the whole URL differs and not just the fragment. That is why
+        /// this is a switch over URLs and no longer a switch over anchors.
         static func macOSURL(_ pane: Pane) -> String {
-            let anchor = switch pane {
+            switch pane {
+            case .notifications:
+                "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
+            case .bluetooth, .microphone, .localNetwork:
+                "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(privacyAnchor(pane))"
+            }
+        }
+
+        private static func privacyAnchor(_ pane: Pane) -> String {
+            switch pane {
             case .bluetooth: "Privacy_Bluetooth"
             case .microphone: "Privacy_Microphone"
             case .localNetwork: "Privacy_LocalNetwork"
+            // Unreachable: `macOSURL` routes it to its own pane above.
+            case .notifications: "Privacy_LocalNetwork"
             }
-            return "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(anchor)"
         }
     #endif
 }

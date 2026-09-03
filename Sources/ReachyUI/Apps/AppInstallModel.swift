@@ -35,6 +35,14 @@ final class AppInstallModel {
             }
         }
 
+        var notificationKind: JobNotificationPlan.Kind {
+            switch self {
+            case .install: .appInstall
+            case .update: .appUpdate
+            case .remove: .appRemove
+            }
+        }
+
         /// Upstream's budgets, which are what the robot was tested against.
         var configuration: AppJobMonitor.Configuration {
             switch self {
@@ -64,15 +72,25 @@ final class AppInstallModel {
     /// The one step a stubbed client cannot drive: it opens a WebSocket and polls
     /// alongside it. Injected by tests and previews.
     private let makeEvents: (String, AppJobMonitor.Configuration) throws -> AsyncStream<AppJobMonitor.Event>
+    /// How this model tells anyone a long job began and ended. A closure, so nothing
+    /// here imports `UserNotifications`; the default is resolved in the body rather
+    /// than in the signature, because a default argument is evaluated in a nonisolated
+    /// context.
+    private let notify: JobNotify
+    /// The job in flight, captured when it starts, so a rename or a reconnection
+    /// midway cannot change what the announcement is about.
+    private var pending: JobNotificationPlan.Notice?
 
     init(
         session: RobotSession,
-        events: ((String, AppJobMonitor.Configuration) throws -> AsyncStream<AppJobMonitor.Event>)? = nil
+        events: ((String, AppJobMonitor.Configuration) throws -> AsyncStream<AppJobMonitor.Event>)? = nil,
+        notify: JobNotify? = nil
     ) {
         self.session = session
         makeEvents = events ?? { [session] jobID, configuration in
             try session.appJobEvents(jobID: jobID, configuration: configuration)
         }
+        self.notify = notify ?? { JobNotificationCenter.shared.receive($0) }
     }
 
     var isBusy: Bool {
@@ -93,6 +111,7 @@ final class AppInstallModel {
 
     func perform(_ operation: Operation) async {
         state = .running(operation)
+        announceStart(of: operation)
         log.clear()
 
         let jobID: String
@@ -114,6 +133,7 @@ final class AppInstallModel {
                     break
                 case let .finished(outcome):
                     state = Self.state(for: outcome, operation: operation)
+                    announce(Self.result(for: outcome))
                 }
             }
         } catch {
@@ -159,12 +179,60 @@ final class AppInstallModel {
         }
     }
 
+    /// The announcement rides `AppJobMonitor.Outcome`, **not** `State`, and the two
+    /// mappings are deliberately not one function.
+    ///
+    /// `state(for:operation:)` collapses `.timedOut` into `.failed`, which is right on
+    /// screen — the sheet is in front of someone who can go and look — and wrong in a
+    /// notification, where "failed" would be a verdict inferred from a timer about a
+    /// register that simply never answered. Unifying the two is the one refactor that
+    /// would break this silently.
+    private static func result(for outcome: AppJobMonitor.Outcome) -> JobNotificationPlan.Result {
+        switch outcome {
+        case .succeeded:
+            .succeeded(detail: nil)
+        case let .failed(reason):
+            .failed(reason ?? String(localized: .reachy("The robot did not say why.")))
+        case .daemonRestarted:
+            .inconclusive
+        case .timedOut:
+            .unanswered
+        }
+    }
+
+    private func announceStart(of operation: Operation) {
+        let app = operation.app
+        let notice = JobNotificationPlan.Notice(
+            key: .init(
+                kind: operation.notificationKind,
+                robotID: session.connectedRobotID,
+                // The daemon's own name, never the title: a title is display text and
+                // may change under a job that is already running.
+                subject: app.name
+            ),
+            robotName: session.connectedIdentity?.name,
+            subjectTitle: app.title
+        )
+        pending = notice
+        notify(.started(notice, at: Date()))
+    }
+
+    private func announce(_ result: JobNotificationPlan.Result) {
+        guard let notice = pending else { return }
+        pending = nil
+        notify(.settled(notice, result, at: Date()))
+    }
+
     /// A cancelled call leaves the state exactly as it was: the sheet the user was
     /// watching went away, which is not an install failure and must not be drawn
     /// as one. `RobotSession.message(for:)` logs it either way.
+    ///
+    /// The announcement inherits that rule for free: a cancelled call returns before
+    /// the assignment, so nothing is said about a job whose screen went away.
     private func fail(on error: any Error, operation: Operation) {
         guard let message = RobotSession.message(for: error) else { return }
         state = .failed(operation, message)
+        announce(.failed(message))
     }
 }
 
@@ -179,7 +247,9 @@ final class AppInstallModel {
         ) -> AppInstallModel {
             let model = AppInstallModel(
                 session: session ?? .preview(),
-                events: { _, _ in AsyncStream { $0.finish() } }
+                events: { _, _ in AsyncStream { $0.finish() } },
+                // A preview must not put a banner on anybody's Lock Screen.
+                notify: { _ in }
             )
             model.state = state
             for line in lines {
