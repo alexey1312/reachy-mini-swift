@@ -1018,6 +1018,146 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
 - **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
   `RunningAppCaption.description` was written to fix, in a second place.
 
+## Job notifications
+
+`Notifications/JobNotificationPlan.swift`, `JobNotificationCenter.swift`, `JobNotificationSystem.swift`,
+`NotificationPermission.swift`, `JobNotificationSettings.swift`, plus `Settings/NotificationsSection.swift`. Issue
+#80, and it is sequenced **after** the Live Activity rather than instead of it.
+
+- **A pure reducer again, but the reason is not the Live Activity's and copying that one's doc comment would be
+  wrong.** `UserNotifications` ships on both platforms this app targets, so there is no `#if os` fence anywhere here.
+  The split earns its place on something harder: `UNUserNotificationCenter.current()` **traps** in a process with no
+  bundle identifier, which is exactly what `mise run test` is. A rule that calls it is a rule that crashes the whole
+  suite rather than failing one case. Hence the discipline the boundary file states outright — the singleton appears
+  only inside a `@Sendable` closure _body_, never in an initialiser, a computed property read at construction, or
+  file scope.
+- **The centre is a `shared` singleton, and the Live Activity's `@State`-on-`RootLifecycle` shape would break this.**
+  ActivityKit refuses a request from anywhere but the foreground, so driving the card from SwiftUI costs it nothing.
+  A job notification's entire purpose is the moment the app is _not_ on screen, and putting an update pass in the
+  delivery path makes delivery contingent on a redraw a backgrounded scene may coalesce. `RootLifecycle` contributes
+  one fact — the scene phase — through `sceneChanged()`, which fires on **every** phase and not only on activation.
+- **Authorization is cached and refreshed on scene change, not read per event, and that is a race fix.**
+  `receive(_:)` must mutate the plan _synchronously_: wrap it in a `Task` and a settle can overtake the start it
+  belongs to, whereupon the plan's primary guard silently drops it. Scene activation is also the only moment the
+  answer can have changed — coming back from Settings is a phase transition by definition.
+- **`running: Set<Key>` is the primary guard, and it is a whole class of bugs rather than one.** A settle whose start
+  was never observed belongs to a relaunched process, a stale model, or a `check` that failed before any job existed.
+  None of those may notify and none has to be enumerated to be refused. `.started` inserts the key **whether or not
+  posting is permitted**, so a reader who grants permission halfway through a ten-minute update is still told — the
+  one asymmetry in the file, and it has a test because otherwise it reads as an oversight.
+- **No durable store, deliberately, and this is where it differs from `RunningAppActivityDismissalStore`.** That
+  exists because a _card persists_ and is reconciled against `Activity.activities` on every foreground pass, so a
+  swipe has to be remembered. A notification is an event: once delivered it is over, and the only process that could
+  re-emit it is one that never observed the start.
+- **The announcement rides `AppJobMonitor.Outcome`, never `AppInstallModel.State`.** `state(for:operation:)` collapses
+  `.timedOut` into `.failed`, which is right on a sheet in front of someone who can go and look, and wrong in a
+  notification, where "failed" would be a verdict inferred from a timer about a register that never answered. Keeping
+  the two mappings separate is the point; unifying them is the one refactor that breaks this silently, and
+  `AppInstallModelTests` has the assertion that goes red when it happens.
+- **`SystemUpdateModel` announces off a `didSet` and `AppInstallModel` off explicit calls, and the asymmetry is
+  deliberate.** `state` reaches a terminal value from six places in the update model, so a `didSet` is what makes a
+  missed announcement impossible — and it inherits three existing rules for free, because a cancelled call, a job
+  still running, and a failed `check` all work by _not assigning_. The install model cannot use one, for the reason
+  in the bullet above.
+- **Nothing survives the app being unloaded, and the copy says so.** Both hook points are polls that die with the
+  process; `UIBackgroundModes` is `["audio","voip"]` and neither covers one. The deliverable is "announced while the
+  app is still running in the background", and the footer key is written to prevent the over-promise. Keep that
+  clause through review.
+- **Zero capability changes.** No usage string, no background mode, no `aps-environment`, no `.timeSensitive` (which
+  would need its own entitlement and a review justification for a finished install). `Apps/Project.swift`'s comment
+  about declaring no push entitlement stays true, and a reviewer will look for exactly that.
+- **No `UNUserNotificationCenterDelegate`, and it is not an omission.** Three layers already say the same thing: the
+  plan refuses while `isForeground`; both platforms suppress foreground alerts by default when no delegate implements
+  `willPresent`; and a delegate written only to `return []` would cost an `NSApplicationDelegateAdaptor` on macOS,
+  which this app does not have. A pleasant consequence worth writing down because it reads as an accident: on macOS a
+  visible-but-not-key window reports `.inactive`, so a reader with the app open behind Xcode **does** get told.
+  Routing a _tap_ is what a delegate would be for, and that is a follow-up rather than this issue.
+- **The fourth `PermissionKind` is not a device permission**, and the enum's doc comment says why at length — it
+  gates no hardware and blocks nothing, and exists only so the Settings toggle cannot silently do nothing. It is also
+  the one row with no matching usage string in `Apps/Project.swift`: the system writes that prompt's text.
+  `PermissionState.restricted` is unreachable for it, and `.ephemeral` is deliberately not named — it is
+  `API_UNAVAILABLE(macos)`, so spelling it fails the one CI job that compiles every SwiftPM target.
+- **Notifications is not a Privacy anchor on macOS.** It is a pane of its own, so `PrivacySettingsLink.macOSURL`
+  became a switch over whole URLs rather than over anchors. A wrong pane id still has **no runtime signal** —
+  `NSWorkspace.open` returns `true` and shows whatever it found — so it is clicked by hand before merge.
+
+## Explaining the log on device
+
+`Intelligence/LogExcerpt.swift`, `LogExplanationPrompt.swift`, `OnDeviceLanguageModel.swift`,
+`LogExplanationModel.swift`, `LogExplanationSheet.swift`. Issue #72, and the first thing in this app to
+reach Apple Intelligence.
+
+- **One file imports `FoundationModels`, and no session is ever stored.** `OnDeviceLanguageModel` builds a
+  `LanguageModelSession` inside one gated function, uses it once and drops it. That is right on its own terms — one
+  explanation is one prompt over a frozen excerpt, and a reused session would carry the previous excerpt in its
+  transcript and hit the context window on the second run — and it happens to remove the problem of a 26-only stored
+  property on a type at the iOS 18 floor. Every 26-only symbol lives inside a private `@available` enum, the
+  `ReachyPlacedAccessory` trick in a value flavour.
+- **Every symbol was checked against the SDK's `.swiftinterface`, not assumed, and three of them are traps.** The
+  local Xcode is a 27 beta; `lint-test` runs 26.2, where a 27 symbol is simply absent and `@available` does not save
+  it. `GenerationOptions` is therefore **never constructed here**: `init(samplingMode:…)` is iOS 27 (back-deployed,
+  so it _runs_ on 26 but exists only in the 27 SDK) while the 26 spelling `init(sampling:…)` takes its first
+  argument without a default — so `GenerationOptions(temperature:…)` compiles locally and fails on CI. Letting the
+  framework supply its own default argument sidesteps the whole question. Likewise every
+  `init(model: some LanguageModel, …)` is 27; the 26 initialiser takes `SystemLanguageModel` and defaults it.
+  `tokenCount(for:)` is 26.4.
+- **Whether `@Generable` works under CI's toolchain is unresolved, and the design does not need the answer.** It
+  compiles locally, and the compiler line shows why — the plugin arrives as
+  `-load-resolved-plugin …/Platforms/MacOSX.platform/…/libFoundationModelsMacros.dylib`, from the platform
+  directory rather than any `-plugin-path`. But that is Xcode's own toolchain; CI swaps in swift.org 6.3 via
+  `TOOLCHAINS`, which is exactly the configuration where `#Preview` and `@Entry` are documented to fail against a
+  plugin from the _same_ directory. Plain-`String` output needs no macro at all and is the right shape for "explain
+  this log" regardless, so the risk is avoided for free. Settle it with a CI run, never with a local build.
+- **The log is untrusted input, and the separation is structural rather than a wording choice.**
+  `LogExplanationPrompt.instructions` is the only trusted channel and no log text reaches it — there is a test that
+  says so. The corpus lives inside a `BEGIN/END LOG EXCERPT` fence whose markers `LogExcerpt.neutralise` rewrites
+  where a journal line happens to contain one, so the corpus cannot close its own fence; the "this is data" framing
+  sits _outside_ the fence at both ends, so a line claiming otherwise is provably inside a delimited region. What
+  actually bounds the damage is structural: no tools, no network, no actuator. The worst outcome is a wrong sentence
+  in a sheet.
+- **The excerpt is `visible`, frozen at the tap, and the tail is the spine.** `copyText` and `export(address:)`
+  already ship what is on screen, so a third "take what you can see" operation quietly taking something else would
+  be the surprising one. The window grows backwards from the newest line — a journal's ending is where the failure
+  is — and only the leftover quarter goes to older warnings, which are then reversed into chronological order,
+  because a model shown time running backwards will describe a sequence that never happened. The gap between the two
+  blocks is stated rather than implied. The budget is in characters, not tokens: log text tokenizes far worse than
+  prose and `tokenCount(for:)` is out of reach.
+- **The entry point is on `LogConsoleScreen` and not on `LogConsoleView`.** The shared view has five other callers —
+  `AppDetailSheet` embeds it _inside_ a `Form` section — so a `.toolbar` there would surface on their bars. The
+  corpora differ too: pip installer output and a BLE recovery journal are not journalctl, and the instructions are
+  written for journalctl. Rule 10 exactly. If a second corpus earns it, the move is one defaulted parameter.
+- **Hidden, not disabled.** On a device below iOS 26, on ineligible hardware, and with Apple Intelligence switched
+  off there is no button and no explanation of its absence — the issue's own rule. `.disabled` is the other
+  condition entirely and matches what `Export` and `Copy all` already do with an empty console.
+
+### Two ways a preview overwrote its own seeded state, both found in a reference
+
+Neither showed up in a test, and both are the same rule — _a preview must be final on its first frame_ — broken by
+an effect the screen runs over an injected model. Worth reading before adding a preview for anything whose model has
+a `refresh`-shaped method.
+
+- **A stub gate that disagreed with the seeded phase.** `LogExplanationModel.preview` used to inject
+  `availability: { .available }` and then seed `phase = .unavailable(…)`. `LogConsoleScreen` refreshes the gate from
+  a `.task`, and **Prefire renders one instance twice — light, then dark** — so the light capture was taken before
+  that effect and the dark one after it. The result was eighteen dark references showing an Explain button that the
+  matching light references did not, from the same preview. The factory now derives the gate from the phase, and
+  `previewPhasesSurviveARefresh` fails if that is ever undone.
+- **The sheet's own `.task` running over the seeded summary.** `LogExplanationSheet` starts the explanation on
+  appearance, which with a stubbed `respond` replaced a hand-written summary with an empty one — the reference read
+  "0 of 0 lines were sent". It carries the `guard !previewMode` that `LogConsoleScreen.stream()` and
+  `PermissionsScreen.appeared()` already carry, for the same reason.
+
+**The console's own gate defaults to unavailable in `PreviewScene.logConsole`, and that is load-bearing twice
+over.** Left to build its own model the screen would read the _simulator's_ real Apple Intelligence state, so the
+nine `Log console —` references would differ between machines; defaulting it off also keeps every one of them
+byte-identical to what it was before #72 and covers the absence, which is the state of every device below iOS 26.
+The presence gets a preview of its own, because a reference for the offered state alone cannot tell a conditional
+toolbar item from a permanent one.
+
+**Nothing here can show that the summary is any good.** No test and no reference can: that is a device check on an
+iPhone with Apple Intelligence enabled, against a robot that has actually crashed. What the suite does cover is the
+windowing, the fence, and every state the sheet can be in.
+
 ## The conversation, and the record it keeps
 
 `ConversationModel` is owned by `ReachyTabShell`, beside `store` and `install`, and the

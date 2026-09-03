@@ -54,6 +54,10 @@ struct PermissionsScreen: View {
         // running the snapshot happens to have granted.
         guard !previewMode else { return }
         resolved.refresh()
+        // In a `Task` off `onAppear` rather than in a `.task` of its own, so there is
+        // no question of which runs first: `model` is resolved on the line above, and
+        // a second effect would have to resolve it again or race with this one.
+        Task { await resolved.refreshNotifications() }
         if localNetworkProvenByConnection {
             resolved.noteLocalNetworkProvenByConnection()
         }
@@ -108,6 +112,7 @@ struct PermissionsScreen: View {
         case .bluetooth: await model.requestBluetooth()
         case .localNetwork: await model.checkLocalNetwork()
         case .microphone: await model.requestMicrophone()
+        case .notifications: await model.requestNotifications()
         }
     }
 
@@ -135,7 +140,7 @@ struct PermissionsScreen: View {
                 // same as "refused" and the copy must not let it read that way.
                 Text(.reachy("Checking looks for a robot on this Wi-Fi, and asks for permission if it has not yet."))
             }
-        case .microphone:
+        case .microphone, .notifications:
             EmptyView()
         }
     }

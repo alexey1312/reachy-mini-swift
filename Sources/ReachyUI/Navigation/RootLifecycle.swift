@@ -59,7 +59,7 @@ struct RootLifecycle: ViewModifier {
                 await ReachyEntityIndex.indexIfNeeded(robotID: connectedRobotID)
             }
             .task(id: scenePhase) {
-                await sceneActivated()
+                await sceneChanged()
             }
             // `initial: true` because a cold launch fills the inbox in
             // `scene(_:willConnectTo:)`, before this body has ever run.
@@ -148,6 +148,24 @@ struct RootLifecycle: ViewModifier {
             isRestarting: session.isRestartingApp,
             isActive: scenePhase == .active
         )
+    }
+
+    /// Every phase, not only activation.
+    ///
+    /// The job notification centre's entire decision is "is the reader looking at
+    /// this right now", so the transition *away* matters at least as much as the one
+    /// back — and it is the only thing in this file that cares about `.background`.
+    /// It is also where authorization is re-read, because coming back from Settings
+    /// is a scene-phase change by definition and there is no other moment the answer
+    /// can have changed.
+    private func sceneChanged() async {
+        guard !previewMode else { return }
+        // `sceneActivated()` first, and the order is load-bearing. Reading the
+        // notification authorization is a cross-process call; ahead of this it would
+        // delay the move-activity refresh on every transition, and a phase flip while
+        // it was outstanding would cancel the whole task before the refresh ever ran.
+        await sceneActivated()
+        await JobNotificationCenter.shared.sceneBecame(active: scenePhase == .active)
     }
 
     /// A move outlives this process being put away, and the poll that notices one

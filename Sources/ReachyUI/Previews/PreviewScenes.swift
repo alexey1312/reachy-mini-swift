@@ -92,23 +92,9 @@ enum PreviewScene {
         .preview()
     }
 
-    // The app-store and running-app wrappers live in `PreviewAppScenes.swift` —
-    // this file is at its length limit.
-
-    static func logConsole(
-        _ model: LogConsoleModel? = nil,
-        setupError: String? = nil,
-        session: RobotSession? = nil
-    ) -> some View {
-        NavigationHost {
-            LogConsoleScreen(
-                session: session ?? .preview(),
-                model: model ?? .preview(),
-                setupError: setupError
-            )
-        }
-        .preview()
-    }
+    // The app-store and running-app wrappers live in `PreviewAppScenes.swift`, and
+    // `logConsole` moved to `PreviewIntelligenceScenes.swift` when #72 gave it a
+    // fourth argument — this file is at its length limit.
 
     /// The local-daemon row on its own.
     ///

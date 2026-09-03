@@ -38,6 +38,10 @@ struct SettingsScreen: View {
                 SystemUpdateCard(session: session)
             }
             AppearanceSection()
+            // Between appearance and privacy because all three are about the app
+            // rather than the robot: how it looks, what it tells you, what it is
+            // allowed to do.
+            NotificationsSection()
             privacySection
             AdvancedSettingsSection(session: session)
         }

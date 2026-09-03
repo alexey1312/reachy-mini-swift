@@ -11,6 +11,11 @@ import SwiftUI
         .preview()
 }
 
+#Preview("App settings window — notifications") {
+    ReachyAppSettingsView(pane: .notifications)
+        .preview()
+}
+
 #Preview("App settings window — privacy") {
     ReachyAppSettingsView(pane: .privacy)
         .preview()

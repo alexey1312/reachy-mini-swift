@@ -17,6 +17,7 @@ extension PreviewScene {
         bluetooth: PermissionState = .granted,
         localNetwork: PermissionState = .granted,
         microphone: PermissionState = .granted,
+        notifications: PermissionState = .granted,
         availability: BLEAvailability? = nil
     ) -> some View {
         NavigationHost {
@@ -25,6 +26,7 @@ extension PreviewScene {
                     bluetooth: bluetooth,
                     localNetwork: localNetwork,
                     microphone: microphone,
+                    notifications: notifications,
                     availability: availability
                 )
             )

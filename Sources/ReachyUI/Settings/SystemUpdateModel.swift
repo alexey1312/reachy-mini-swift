@@ -22,7 +22,25 @@ final class SystemUpdateModel {
         case failed(String)
     }
 
-    private(set) var state: State = .idle
+    /// A `didSet` rather than a call at each terminal assignment, and that is what
+    /// makes a missed announcement impossible here: `state` reaches a terminal value
+    /// from six separate places, and hand-writing the call at each is exactly how one
+    /// gets forgotten. It also inherits three of this type's existing rules for free,
+    /// because each of them works by *not assigning* — a cancelled call (`fail(on:)`),
+    /// a job still running (`JobOutcome.stillRunning`), and a `check` that never
+    /// started an install.
+    private(set) var state: State = .idle {
+        didSet { announceIfSettled() }
+    }
+
+    /// The job in flight, captured when it starts.
+    ///
+    /// Identity has to be taken at the beginning: a system update takes the daemon
+    /// down, so by the time `confirmRestart` answers, `session.connectedIdentity` may
+    /// be `nil` or belong to a reconnection. Clearing it on the way out is also what
+    /// stops a second assignment to the same terminal state announcing twice.
+    private var pending: JobNotificationPlan.Notice?
+
     /// Shared with `LogConsoleView`, so pip output gets the same filter, pause and
     /// export the daemon journal has.
     let log = LogConsoleModel()
@@ -36,17 +54,24 @@ final class SystemUpdateModel {
     /// budget is generous because it bounds a wedged daemon, not a normal install.
     private let jobPollInterval: Duration
     private let jobPollBudget: Duration
+    /// How this model tells anyone a long job began and ended. A closure, so nothing
+    /// here imports `UserNotifications` or knows that notifications exist; the default
+    /// is resolved in the body rather than in the signature, because a default
+    /// argument is evaluated in a nonisolated context.
+    private let notify: JobNotify
 
     init(
         session: RobotSession,
         events: ((String) throws -> AsyncStream<UpdateLogEvent>)? = nil,
         reconnect: (() async -> String?)? = nil,
         jobPollInterval: Duration = .seconds(3),
-        jobPollBudget: Duration = .seconds(20 * 60)
+        jobPollBudget: Duration = .seconds(20 * 60),
+        notify: JobNotify? = nil
     ) {
         self.session = session
         self.jobPollInterval = jobPollInterval
         self.jobPollBudget = jobPollBudget
+        self.notify = notify ?? { JobNotificationCenter.shared.receive($0) }
         makeEvents = events ?? { [session] jobID in try session.updateLog(jobID: jobID) }
         self.reconnect = reconnect ?? { [session] in await session.reconnectAfterUpdate() }
     }
@@ -75,7 +100,14 @@ final class SystemUpdateModel {
     /// closing is treated as "installed, now rebooting" rather than as a failure.
     func install(preRelease: Bool) async {
         guard case let .available(current, _) = state else { return }
+        // Before the assignment, so the identity is the one the job began on rather
+        // than whatever a reconnection later produces.
+        pending = JobNotificationPlan.Notice(
+            key: .init(kind: .systemUpdate, robotID: session.connectedRobotID),
+            robotName: session.connectedIdentity?.name
+        )
         state = .installing
+        pending.map { notify(.started($0, at: Date())) }
         log.clear()
 
         let jobID: String
@@ -119,6 +151,13 @@ final class SystemUpdateModel {
         case .stillRunning, .cancelled, .failed:
             // `stillRunning` leaves `installing` on screen, which is what is true:
             // announcing a restart here blamed the release for a job still going.
+            //
+            // The notice is dropped here rather than left armed. These two paths end
+            // the run *without* assigning a terminal state, so `pending` would survive
+            // into whatever assigned `.failed` next — a `check` that threw, say — and
+            // announce a transport error as this update's failure. `.failed` already
+            // announced itself on the way in and clears its own.
+            pending = nil
             return
         }
     }
@@ -195,6 +234,27 @@ final class SystemUpdateModel {
         state = .finished(version: version)
     }
 
+    /// Fires on every write to `state` and does something for exactly two of them.
+    ///
+    /// `pending` is both the guard and the payload: it is only set by `install`, so a
+    /// `check` that failed has nothing to announce, and clearing it means a repeat
+    /// assignment to the same terminal state cannot announce twice.
+    private func announceIfSettled() {
+        guard let notice = pending, let result = Self.result(for: state) else { return }
+        pending = nil
+        notify(.settled(notice, result, at: Date()))
+    }
+
+    /// Only the two terminal states. `restarting` and `installing` are mid-flight, and
+    /// the three check outcomes never belong to a job at all.
+    private static func result(for state: State) -> JobNotificationPlan.Result? {
+        switch state {
+        case let .finished(version): .succeeded(detail: version)
+        case let .failed(message): .failed(message)
+        default: nil
+        }
+    }
+
     /// A cancelled call leaves the state exactly as it was: the screen the user
     /// was on went away, which is not an update failure and must not be drawn as
     /// one. `RobotSession.message(for:)` logs it either way.
@@ -206,6 +266,13 @@ final class SystemUpdateModel {
 
 #if DEBUG
     extension SystemUpdateModel {
+        /// Drives `state` to a failure the way an unrelated later call would, so a
+        /// test can prove the notice was disarmed rather than merely unused. Only a
+        /// member of this file may assign `state`, which is why it is here.
+        func failForTesting(_ message: String) {
+            state = .failed(message)
+        }
+
         /// One update parked mid-flight. `events` and `reconnect` are stubbed out rather than
         /// left at their defaults: the real ones open a WebSocket and wait out a reboot.
         static func preview(
@@ -216,7 +283,10 @@ final class SystemUpdateModel {
             let model = SystemUpdateModel(
                 session: session ?? .preview(),
                 events: { _ in AsyncStream { $0.finish() } },
-                reconnect: { nil }
+                reconnect: { nil },
+                // `state` is assigned directly below, which now reaches the notifier.
+                // A preview must not put a banner on anybody's Lock Screen.
+                notify: { _ in }
             )
             model.state = state
             for line in lines {

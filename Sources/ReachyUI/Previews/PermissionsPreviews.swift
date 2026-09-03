@@ -8,11 +8,29 @@ import SwiftUI
     PreviewScene.permissions()
 }
 
-// The first run: three rows, three ways to ask. Bluetooth and the microphone say "not
-// asked yet"; the local network says "not known yet", because its probe cannot tell
-// the two apart.
+// The first run: four rows, four ways to ask. Bluetooth, the microphone and
+// notifications say "not asked yet"; the local network says "not known yet", because
+// its probe cannot tell the two apart.
 #Preview("Privacy — nothing asked yet") {
-    PreviewScene.permissions(bluetooth: .undetermined, localNetwork: .undetermined, microphone: .undetermined)
+    PreviewScene.permissions(
+        bluetooth: .undetermined,
+        localNetwork: .undetermined,
+        microphone: .undetermined,
+        notifications: .undetermined
+    )
+}
+
+// The fourth row on its own, unanswered. Paired with the refusal below rather than
+// left alone: a reference for one state cannot tell a conditional row from a
+// permanent one.
+#Preview("Privacy — notifications not asked yet") {
+    PreviewScene.permissions(notifications: .undetermined)
+}
+
+// A refusal that costs no feature — nothing else this app does is affected — which is
+// exactly why the row has to say so rather than colour like the other three.
+#Preview("Privacy — notifications denied") {
+    PreviewScene.permissions(notifications: .denied)
 }
 
 // The refusal that used to be invisible: unmuting did nothing at all and said nothing.
@@ -40,5 +58,10 @@ import SwiftUI
 
 // Every row blocked, which is also the widest the captions ever get.
 #Preview("Privacy — everything refused") {
-    PreviewScene.permissions(bluetooth: .denied, localNetwork: .denied, microphone: .denied)
+    PreviewScene.permissions(
+        bluetooth: .denied,
+        localNetwork: .denied,
+        microphone: .denied,
+        notifications: .denied
+    )
 }

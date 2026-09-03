@@ -3,7 +3,7 @@ import Observation
 import ReachyKit
 import ReachyMedia
 
-/// What the app has been allowed to do, and the three ways to ask for more.
+/// What the app has been allowed to do, and the four ways to ask for more.
 ///
 /// The governing rule is that **opening the screen must never raise a prompt.**
 /// `refresh()` therefore reads only the two sources that can answer without asking —
@@ -27,6 +27,10 @@ final class PermissionsModel {
     private let promptBluetooth: @Sendable () async -> BLEAvailability
     private let promptMicrophone: @Sendable () async -> PermissionState
     private let probeLocalNetwork: @Sendable () async -> PermissionState
+    /// Async because `notificationSettings()` is, and still non-prompting — the rule
+    /// this screen turns on is "does not ask", not "answers synchronously".
+    private let readNotifications: @Sendable () async -> PermissionState
+    private let promptNotifications: @Sendable () async -> PermissionState
 
     /// The probes default to `nil` and are resolved here rather than in the signature.
     /// Two reasons, and both would be compile errors: a bare `BluetoothPermission
@@ -40,7 +44,9 @@ final class PermissionsModel {
         readMicrophone: (@Sendable () -> PermissionState)? = nil,
         promptBluetooth: (@Sendable () async -> BLEAvailability)? = nil,
         promptMicrophone: (@Sendable () async -> PermissionState)? = nil,
-        probeLocalNetwork: (@Sendable () async -> PermissionState)? = nil
+        probeLocalNetwork: (@Sendable () async -> PermissionState)? = nil,
+        readNotifications: (@Sendable () async -> PermissionState)? = nil,
+        promptNotifications: (@Sendable () async -> PermissionState)? = nil
     ) {
         states = PermissionKind.allCases.reduce(into: [:]) { result, kind in
             result[kind] = initial[kind] ?? .undetermined
@@ -50,6 +56,8 @@ final class PermissionsModel {
         self.promptBluetooth = promptBluetooth ?? { await BluetoothPermission.promptForAccess() }
         self.promptMicrophone = promptMicrophone ?? { await MicrophonePermission.request() }
         self.probeLocalNetwork = probeLocalNetwork ?? { await LocalNetworkProbe.resolve() }
+        self.readNotifications = readNotifications ?? { await NotificationPermission.current }
+        self.promptNotifications = promptNotifications ?? { await NotificationPermission.request() }
     }
 
     subscript(kind: PermissionKind) -> PermissionState {
@@ -63,6 +71,14 @@ final class PermissionsModel {
         states[.microphone] = readMicrophone()
     }
 
+    /// The async half of `refresh()`, and non-prompting for the same reason it is.
+    /// Kept separate rather than making `refresh()` async: every existing caller is
+    /// synchronous, and turning them all async to carry one more read would be a wide
+    /// change for a narrow reason.
+    func refreshNotifications() async {
+        states[.notifications] = await readNotifications()
+    }
+
     /// A LAN-linked session is proof on its own: every daemon call needs the grant, so
     /// a robot answering over the network cannot be reached without it. Worth taking,
     /// because the probe can only ever confirm a grant by *finding* something — and
@@ -74,6 +90,13 @@ final class PermissionsModel {
 
     func requestMicrophone() async {
         await run(.microphone) { await self.promptMicrophone() }
+    }
+
+    /// Reached from two buttons — this screen's Allow, and the Settings toggle. Two
+    /// paths to one prompt is not a defect: the system only ever asks once, and the
+    /// microphone already has exactly this shape.
+    func requestNotifications() async {
+        await run(.notifications) { await self.promptNotifications() }
     }
 
     /// There is no way to check the local network without also asking for it, so this
@@ -113,15 +136,23 @@ final class PermissionsModel {
             bluetooth: PermissionState = .granted,
             localNetwork: PermissionState = .granted,
             microphone: PermissionState = .granted,
+            notifications: PermissionState = .granted,
             availability: BLEAvailability? = nil
         ) -> PermissionsModel {
             let model = PermissionsModel(
-                initial: [.bluetooth: bluetooth, .localNetwork: localNetwork, .microphone: microphone],
+                initial: [
+                    .bluetooth: bluetooth,
+                    .localNetwork: localNetwork,
+                    .microphone: microphone,
+                    .notifications: notifications,
+                ],
                 readBluetooth: { bluetooth },
                 readMicrophone: { microphone },
                 promptBluetooth: { BLEAvailability.ready },
                 promptMicrophone: { microphone },
-                probeLocalNetwork: { localNetwork }
+                probeLocalNetwork: { localNetwork },
+                readNotifications: { notifications },
+                promptNotifications: { notifications }
             )
             model.bluetoothAvailability = availability
             return model

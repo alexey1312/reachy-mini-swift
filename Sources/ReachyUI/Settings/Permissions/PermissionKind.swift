@@ -2,7 +2,7 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// The three device permissions this app asks for, and how each one reads on screen.
+/// The permissions this app asks for, and how each one reads on screen.
 ///
 /// A presentation type, so it lives here and not in `ReachyKit`: a caller maps its own
 /// domain value onto words and a tone, never the other way round — the same reason
@@ -13,16 +13,28 @@ import SwiftUI
 /// but only because App Store validation (ITMS-90683) demands one for the capture
 /// APIs the WebRTC binary merely references; no prompt can ever fire, so there is
 /// nothing here to report.
+///
+/// Notifications are the fourth row and the odd one, because they are not a device
+/// permission at all. They gate no hardware and block nothing: a refusal costs the
+/// reader one message about a job that finished while they were somewhere else, and
+/// every other thing this app does is unaffected. The row exists anyway, because the
+/// alternative is a switch in Settings that silently does nothing — which is the
+/// failure this whole screen was built to end. It is also the only row with no
+/// matching usage string in `Apps/Project.swift`: the system writes that prompt's
+/// text, not this app. It goes last so the three device permissions keep the order
+/// they have always had.
 enum PermissionKind: CaseIterable, Hashable, Sendable {
     case bluetooth
     case localNetwork
     case microphone
+    case notifications
 
     var title: LocalizedStringResource {
         switch self {
         case .bluetooth: .reachy("Bluetooth")
         case .localNetwork: .reachy("Local network")
         case .microphone: .reachy("Microphone")
+        case .notifications: .reachy("Notifications")
         }
     }
 
@@ -36,6 +48,10 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
             .reachy("Finds your robot on this Wi-Fi and talks to it. Without it the robot cannot be reached at all.")
         case .microphone:
             .reachy("Lets you talk to people near the robot through its speaker during a call.")
+        case .notifications:
+            // "In another app", not "when the app is closed". Nothing here survives
+            // the process being unloaded, and the copy must not imply it does.
+            .reachy("Tells you when an install or a robot update finishes while you're in another app.")
         }
     }
 
@@ -44,6 +60,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .bluetooth: "dot.radiowaves.left.and.right"
         case .localNetwork: "wifi"
         case .microphone: "mic"
+        case .notifications: "bell"
         }
     }
 
@@ -52,6 +69,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .bluetooth: .bluetooth
         case .localNetwork: .localNetwork
         case .microphone: .microphone
+        case .notifications: .notifications
         }
     }
 
@@ -81,10 +99,13 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
     /// but nothing has proved the answer either way (see `LocalNetworkProbe`). A
     /// granted permission on a Wi-Fi with no robot on it lands here too, so the word
     /// has to be "unknown" rather than "not asked".
+    ///
+    /// Notifications sit with the two that have a real status API: `notificationSettings()`
+    /// answers precisely, so there is nothing unknown about this one.
     private var undeterminedCaption: String {
         switch self {
         case .localNetwork: String(localized: .reachy("Not known yet"))
-        case .bluetooth, .microphone: String(localized: .reachy("Not asked yet"))
+        case .bluetooth, .microphone, .notifications: String(localized: .reachy("Not asked yet"))
         }
     }
 

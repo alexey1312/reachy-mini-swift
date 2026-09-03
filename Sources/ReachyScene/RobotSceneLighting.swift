@@ -18,6 +18,23 @@ public enum RobotSceneLighting {
         return rig
     }
 
+    /// Turns the key light's shadow on or off on a rig that already exists.
+    ///
+    /// `makeRig()` runs once from `RobotSceneModel.init` and returns a detached
+    /// entity, so before this there was no way to change the lighting after
+    /// construction at all — which is what made a thermal response impossible rather
+    /// than merely unwritten.
+    ///
+    /// Only the key light is touched, because only the key light ever had a shadow.
+    public static func setShadowsEnabled(_ enabled: Bool, in rig: Entity) {
+        guard let key = rig.children.first(where: { $0.name == "key" }) as? DirectionalLight else { return }
+        // One mechanism in both directions, and the same one `makeLight` uses.
+        // Assigning `nil` removes the component, which is the only thing that actually
+        // stops the shadow — `light.shadow` reads back non-nil either way, as the
+        // comment below records, so the tests check the component instead.
+        key.shadow = enabled ? .init() : nil
+    }
+
     private static func makeLight(
         named name: String,
         intensity: Float,

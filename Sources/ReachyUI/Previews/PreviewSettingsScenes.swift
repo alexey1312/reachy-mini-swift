@@ -191,6 +191,23 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The job-notification opt-in on its own.
+    ///
+    /// Its own scene rather than through `SettingsScreen`, where it sits below the
+    /// fold on both snapshot devices — the same reason `advancedScreen` exists.
+    static func notificationSettings(
+        on: Bool,
+        authorization: PermissionState = .granted
+    ) -> some View {
+        NavigationHost {
+            Form {
+                NotificationsSection.preview(on: on, authorization: authorization)
+            }
+            .formStyle(.grouped)
+        }
+        .preview()
+    }
+
     /// The console body on its own. It has three callers with three different sources, so it is
     /// worth snapshotting apart from any of them.
     static func consoleView(

@@ -88,6 +88,35 @@
         }
       }
     },
+    "A finished install or robot update is announced. A job the robot never answered is not.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine abgeschlossene Installation oder ein fertiges Roboter-Update wird gemeldet. Ein Auftrag, den der Roboter nie beantwortet hat, nicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se avisa cuando termina una instalación o una actualización del robot. Un trabajo que el robot nunca respondió, no."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une installation terminée ou une mise à jour du robot est annoncée. Une tâche à laquelle le robot n'a jamais répondu ne l'est pas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О завершённой установке или обновлении робота сообщим. О задаче, на которую робот так и не ответил, — нет."
+          }
+        }
+      }
+    },
     "A move is running on the robot": {
       "extractionState": "manual",
       "localizations": {
@@ -751,6 +780,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложение, установленное на вашем Reachy Mini."
+          }
+        }
+      }
+    },
+    "Announced while the app is still running in the background, not after it has been closed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gemeldet, solange die App noch im Hintergrund läuft — nicht mehr, nachdem sie geschlossen wurde."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se avisa mientras la app sigue en segundo plano, no después de cerrarla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annoncé tant que l'app tourne encore en arrière-plan, pas une fois qu'elle est fermée."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщим, пока приложение ещё работает в фоне, — но не после того, как оно закрыто."
           }
         }
       }
@@ -2843,6 +2901,35 @@
         }
       }
     },
+    "Copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать"
+          }
+        }
+      }
+    },
     "Copy all": {
       "extractionState": "manual",
       "localizations": {
@@ -3013,6 +3100,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось сохранить ключ робота."
+          }
+        }
+      }
+    },
+    "Couldn't explain the log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Protokoll konnte nicht erklärt werden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo explicar el registro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d'expliquer le journal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось объяснить лог"
           }
         }
       }
@@ -4115,6 +4231,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Все установленные приложения, их общее окружение Python и собственные настройки каждого."
+          }
+        }
+      }
+    },
+    "Explain": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erklären"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explicar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expliquer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объяснить"
+          }
+        }
+      }
+    },
+    "Explain the log": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll erklären"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explicar el registro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expliquer le journal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объяснение лога"
           }
         }
       }
@@ -9165,6 +9339,64 @@
         }
       }
     },
+    "Notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notificaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уведомления"
+          }
+        }
+      }
+    },
+    "Notifications are switched off in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen sind in den Einstellungen ausgeschaltet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las notificaciones están desactivadas en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les notifications sont désactivées dans les Réglages."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уведомления отключены в настройках."
+          }
+        }
+      }
+    },
     "Off": {
       "extractionState": "manual",
       "localizations": {
@@ -10669,6 +10901,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Читаем папку…"
+          }
+        }
+      }
+    },
+    "Reading the log…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll wird gelesen…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leyendo el registro…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture du journal…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читаем лог…"
           }
         }
       }
@@ -14559,6 +14820,35 @@
         }
       }
     },
+    "Summarized on this device and never sent anywhere. It can be wrong — the log is the record.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Gerät zusammengefasst und nirgendwohin gesendet. Es kann falsch sein — maßgeblich ist das Protokoll."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumido en este dispositivo y nunca enviado a ninguna parte. Puede equivocarse: el registro es lo que cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résumé sur cet appareil et jamais envoyé nulle part. Cela peut être faux — le journal fait foi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обобщено на этом устройстве и никуда не отправлялось. Может быть неверным — источник истины это сам лог."
+          }
+        }
+      }
+    },
     "Switch to the robot's own hotspot": {
       "extractionState": "manual",
       "localizations": {
@@ -14787,6 +15077,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Бирюза"
+          }
+        }
+      }
+    },
+    "Tell me when a job finishes": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melden, wenn ein Auftrag fertig ist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisarme cuando termine un trabajo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me prévenir quand une tâche se termine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщать о завершении задачи"
+          }
+        }
+      }
+    },
+    "Tells you when an install or a robot update finishes while you're in another app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meldet dir, wenn eine Installation oder ein Roboter-Update fertig wird, während du in einer anderen App bist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te avisa cuando termina una instalación o una actualización del robot mientras estás en otra app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous prévient quand une installation ou une mise à jour du robot se termine pendant que vous êtes dans une autre app."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщает, что установка или обновление робота завершились, пока вы в другом приложении."
           }
         }
       }
@@ -17861,6 +18209,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доступно обновление"
+          }
+        }
+      }
+    },
+    "Update failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update fehlgeschlagen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La actualización falló"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la mise à jour"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновление не удалось"
+          }
+        }
+      }
+    },
+    "Update finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update abgeschlossen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualización finalizada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mise à jour terminée"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновление завершено"
           }
         }
       }

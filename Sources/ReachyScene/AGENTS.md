@@ -42,3 +42,23 @@ ever sends the robot a command.
   now takes a `StewartIK` and recovers the angles from the pose, which is exactly what the daemon would have sent;
   `RobotSceneModel` builds it from the same `StewartGeometry` the passive solver gets, so the rods, the cranks and
   the head cannot disagree about what they were derived from.
+
+## Heat
+
+`SceneThermalPolicy.swift`, plus `RobotSceneLighting.setShadowsEnabled(_:in:)` and a watch in
+`RobotSceneModel.start()`. Taken out of #77, whose tracking half is untouched — the thermal response is
+worth having on its own and depends on nothing.
+
+- **The rig had no mutation path at all before this.** `makeRig()` runs once from `init` and returns a
+  detached entity, which was added and forgotten; that is what made a thermal response impossible rather
+  than merely unwritten. `RobotSceneModel` now keeps the rig.
+- **The threshold is `.serious`, not `.fair`.** `.fair` is ordinary — a phone doing steady work sits there
+  for minutes — and reacting to it would flicker the viewer between two appearances for no thermal benefit.
+  `.serious` is where the system has already begun throttling and says so.
+- **Shadows are what is given up, and there is nothing else to give.** There is **no level of detail here at
+  all**: every one of the ~41 STL meshes is built at full resolution, so "step down the LOD" is a system to
+  write rather than a knob to turn. Adding one under cover of a thermal fix would be the wrong shape.
+- The rule is tested and the wiring is not, deliberately: `SceneThermalPolicy` pins _when_,
+  `RobotSceneLightingTests` pins _what_, and a test of the notification in between would be a test of
+  `NotificationCenter`. Reading `light.shadow` back is misleading — the component is the only honest signal,
+  which the rig's own test already records.
