@@ -11,6 +11,7 @@ struct AppsTab: View {
     /// see `ReachyTabShell`.
     let store: AppStoreModel
     let install: AppInstallModel
+    let conversation: ConversationModel
     /// Leaving a relay session is the way back to a robot that can serve the store,
     /// and only the root knows how to do it.
     let findRobot: () -> Void
@@ -25,6 +26,7 @@ struct AppsTab: View {
                         runningApp: runningApp,
                         model: store,
                         install: install,
+                        conversation: conversation,
                         signIn: { router.showsAccount = true }
                     )
                 } else {

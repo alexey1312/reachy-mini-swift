@@ -84,9 +84,21 @@ public extension RemoteControlChannel {
     /// `{type, command}` protocol uses — so this is a second reader, not a reuse.
     /// The daemon's own `reason` rides in `data` and is kept: `already_running` is
     /// what tells a caller the robot is busy rather than broken.
+    ///
+    /// **The `code` is kept too, and that is the point of this shape.** It used to
+    /// be folded into prose along with the reason, which left every caller with one
+    /// string and no way to tell `-32601` (this build of the app has no such method,
+    /// so retire the control) from `-32000` with `not_running` (the app is gone) from
+    /// `app_unavailable` (it is there and not answering). Those are three different
+    /// screens. The relay's own vocabulary is in `jsonrpc_relay.py`.
+    ///
+    /// An error object without a code falls back to ``Failure/robot(_:)``: that is
+    /// not JSON-RPC-conformant, but it costs one branch to survive, and inventing a
+    /// zero would hand callers a number to branch on that the robot never sent.
     private static func throwIfRPCError(in data: Data) throws {
         struct Reply: Decodable {
             struct Failure: Decodable {
+                let code: Int?
                 let message: String?
                 let data: Detail?
 
@@ -99,16 +111,13 @@ public extension RemoteControlChannel {
         }
         guard let failure = try? JSONCodec.daemon.decode(Reply.self, from: data).error else { return }
         let message = failure.message ?? "The robot refused the call"
-        guard let reason = failure.data?.reason, !reason.isEmpty else {
-            throw Failure.robot(message)
+        let reason = failure.data?.reason.flatMap { $0.isEmpty ? nil : $0 }
+        guard let code = failure.code else {
+            guard let reason else { throw Failure.robot(message) }
+            throw Failure.robot("\(message) (\(reason))")
         }
-        throw Failure.robot("\(message) (\(reason))")
+        throw Failure.rpc(code: code, message: message, reason: reason)
     }
-}
-
-/// The `result` half of a JSON-RPC reply.
-private struct RPCResult<Value: Decodable>: Decodable {
-    let result: Value
 }
 
 /// Without this every relayed failure reaches the screen as
@@ -124,6 +133,12 @@ extension RemoteControlChannel.Failure: LocalizedError {
             "The robot did not answer in time"
         case .closed:
             "The connection to the robot closed"
+        // Deliberately the sentence `throwIfRPCError` used to compose by hand, to
+        // the character. `RobotSession.message(for:)` reads `localizedDescription`,
+        // so carrying the code as a field rather than in prose has to be invisible
+        // to every screen — and a test pins this string for that reason.
+        case let .rpc(_, message, reason):
+            reason.map { "\(message) (\($0))" } ?? message
         }
     }
 }

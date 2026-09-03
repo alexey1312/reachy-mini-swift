@@ -139,14 +139,12 @@ enum RunningAppCaption {
         }
     }
 
+    /// Delegated rather than duplicated: the dock's strip and the conversation screen
+    /// are on screen together whenever that screen is open, and two copies of this
+    /// mapping would be two chances for them to say the robot is in two states at once.
+    /// The keys are the same literals, so the catalogue is unchanged.
     private static func title(of turn: ConversationTurn) -> String {
-        switch turn {
-        case .listening: String(localized: .reachy("Listening…"))
-        case .thinking: String(localized: .reachy("Thinking…"))
-        case .speaking: String(localized: .reachy("Speaking…"))
-        case .ready: String(localized: .reachy("Ready"))
-        case let .unknown(state): state
-        }
+        String(localized: ConversationTurnCaption.title(of: turn))
     }
 
     /// The same, with the failure inlined — `Failure.inline`, and only that.

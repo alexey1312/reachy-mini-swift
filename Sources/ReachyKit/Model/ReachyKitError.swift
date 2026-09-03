@@ -88,6 +88,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     ///
     /// Appended, like every case since ``daemonLogsUnavailable``.
     case movesUnavailable
+    /// This connection cannot reach a robot app's own `/rpc` surface. Either the
+    /// transport does not carry it, or the relayed daemon predates the JSON-RPC
+    /// relay that would.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case conversationUnavailable
 
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
@@ -127,7 +133,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
              .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
-             .audioTuningUnavailable, .movesUnavailable:
+             .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable:
             nil
         }
     }
@@ -186,6 +192,8 @@ extension ReachyKitError: LocalizedError {
             "The robot's audio board cannot be reached over this connection"
         case .movesUnavailable:
             "The robot's moves cannot be played over this connection"
+        case .conversationUnavailable:
+            "The conversation cannot be reached over this connection"
         case let .soundTooLarge(bytes, limit):
             """
             \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \

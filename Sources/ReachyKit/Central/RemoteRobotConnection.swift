@@ -94,7 +94,10 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
         } catch RemoteControlChannel.Failure.timedOut {
             motorMode = nil
         } catch let error as RemoteControlChannel.Failure {
-            // `.closed` is the poll's proof the relay died and has to escape.
+            // `.closed` is the poll's proof the relay died and has to escape. So
+            // does `.rpc`, and it cannot arise here anyway: `get_state` goes through
+            // `perform`, whose `throwIfError` reads the `{"error": "…"}` string shape
+            // and has no code to carry — only `call`'s JSON-RPC path produces `.rpc`.
             guard case .robot = error else { throw error }
             // `.robot` is the robot saying something is wrong, and it used to vanish
             // here — an unknown motor mode reads as a robot asleep, which disables

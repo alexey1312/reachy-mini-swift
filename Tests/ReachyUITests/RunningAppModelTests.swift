@@ -124,8 +124,16 @@ struct RunningAppModelTests {
         #expect(model.isExpanded == false)
     }
 
-    @Test("the expanded sheet closes when its app disappears")
-    func disappearanceCollapses() {
+    /// **The behaviour #70 reversed.** An app that stops used to take the page with it,
+    /// which is right for a page of metadata about a process and wrong once a transcript
+    /// is pushed from that page: the robot keeps no history, so a record dismissed out
+    /// from under a reader is gone for good.
+    ///
+    /// Stop still closes it — that is a separate line in `stop(session:)`, and the test
+    /// below holds it. What changed is the crash, the widget stop and the self-exit,
+    /// where the honest result is the app's own page saying what happened.
+    @Test("an app that disappears leaves its page open, frozen")
+    func disappearanceKeepsThePageOpen() {
         let model = RunningAppModel()
         model.isExpanded = true
 
@@ -133,7 +141,7 @@ struct RunningAppModelTests {
         #expect(model.isExpanded)
 
         model.visibleStatusChanged(nil)
-        #expect(!model.isExpanded)
+        #expect(model.isExpanded)
     }
 
     // MARK: - A deep link asking for the page
@@ -277,91 +285,5 @@ struct RunningAppModelTests {
 
         #expect(session.runningApp == nil)
         #expect(model.lastError == nil)
-    }
-
-    // MARK: - Conversation turn
-
-    @Test("only a running official conversation app gets a turn stream")
-    func choosesConversationStream() {
-        let model = RunningAppModel()
-        let connected = session(.running)
-        let conversation = RobotAppStatus(app: Self.conversationApp, state: .running)
-
-        #expect(model.conversationStreamKey(for: conversation, session: connected, active: true) != nil)
-        #expect(model.conversationStreamKey(for: status(.running), session: connected, active: true) == nil)
-        #expect(model.conversationStreamKey(
-            for: RobotAppStatus(app: Self.conversationApp, state: .starting),
-            session: connected,
-            active: true
-        ) == nil)
-        #expect(model.conversationStreamKey(for: conversation, session: connected, active: false) == nil)
-        #expect(model.conversationStreamKey(
-            for: conversation,
-            session: .preview(link: .remote),
-            active: true
-        ) == nil)
-    }
-
-    /// `.task(id:)` restarts on a changed id and on nothing else, so a port the
-    /// daemon only learned on the second poll has to change the key.
-    @Test("a newly reported port redials rather than reusing the socket")
-    func portIsPartOfTheStreamIdentity() {
-        let model = RunningAppModel()
-        let connected = session(.running)
-        let unknownPort = RobotAppStatus(
-            app: .preview(name: "reachy_mini_conversation_app", installed: true),
-            state: .running
-        )
-        let key = { (status: RobotAppStatus) in
-            model.conversationStreamKey(for: status, session: connected, active: true)
-        }
-
-        #expect(key(RobotAppStatus(app: Self.conversationApp, state: .running)) != key(unknownPort))
-        #expect(key(unknownPort) != nil)
-    }
-
-    @Test("the latest semantic turn enriches the process status")
-    func observesConversationTurn() async {
-        let turns = AsyncStream<ConversationTurn> { continuation in
-            continuation.yield(.thinking)
-            continuation.yield(.speaking)
-            continuation.finish()
-        }
-        let model = RunningAppModel(conversationTurns: { _, _ in turns })
-        let conversation = RobotAppStatus(app: Self.conversationApp, state: .running)
-
-        await model.observeConversation(status: conversation, session: session(.running))
-
-        #expect(model.conversationTurn == .speaking)
-    }
-
-    /// The seam is handed the app, not just the session: the port lives on the app
-    /// and dialling the daemon's own 8000 would reach the REST API instead.
-    @Test("the observed app is the one the stream is opened for")
-    func opensTheStreamForTheRunningApp() async {
-        final class Observed { var app: RobotApp? }
-        let observed = Observed()
-        let model = RunningAppModel(conversationTurns: { _, app in
-            observed.app = app
-            return AsyncStream { $0.finish() }
-        })
-
-        await model.observeConversation(
-            status: RobotAppStatus(app: Self.conversationApp, state: .running),
-            session: session(.running)
-        )
-
-        #expect(observed.app?.customAppPort == 7860)
-    }
-
-    @Test("an unavailable RPC surface quietly keeps the ordinary status")
-    func ignoresUnavailableConversationSurface() async {
-        struct Unavailable: Error {}
-        let model = RunningAppModel(conversationTurns: { _, _ in throw Unavailable() })
-        let conversation = RobotAppStatus(app: Self.conversationApp, state: .running)
-
-        await model.observeConversation(status: conversation, session: session(.running))
-
-        #expect(model.conversationTurn == nil)
     }
 }

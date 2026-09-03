@@ -13,10 +13,6 @@ import ReachyKit
 @MainActor
 @Observable
 final class RunningAppModel {
-    typealias ConversationTurns = @MainActor (RobotSession, RobotApp) throws -> AsyncStream<ConversationTurn>
-    typealias SetConversationMuted = @MainActor (RobotSession, RobotApp, Bool) async throws -> Void
-    typealias InterruptConversation = @MainActor (RobotSession, RobotApp) async throws -> Void
-
     /// How long a deep link asking for the running app's page waits for one to
     /// appear.
     ///
@@ -83,38 +79,7 @@ final class RunningAppModel {
     /// only answer 400 — which is how one wedged app became a nine-step incident
     /// on 2026-08-08.
     private(set) var wedged: RobotAppStatus?
-    /// The app's own state inside the daemon's broader `.running` process state.
-    /// Nil for every other app, old Conversation App builds, and remote sessions
-    /// whose daemon cannot relay `/rpc` yet.
-    ///
-    /// Everything about the conversation is written in
-    /// `RunningAppModel+Conversation.swift` — this file is at SwiftLint's length
-    /// limit — so these three keep a module-wide setter rather than a
-    /// `private(set)` one, which does not reach across files. Stored properties
-    /// cannot live in an extension, which is the whole of the reason. Spelling
-    /// that as `internal(set)` is what the compiler calls redundant: the setter
-    /// of an internal property already is.
-    var conversationTurn: ConversationTurn?
-    /// What this dock last asked the robot's microphone to be.
-    ///
-    /// Remembered rather than read: `conversation.mic` is a command, and
-    /// `conversation.status` answers with backend configuration, not with the mic.
-    /// So this is right until something other than this dock mutes the app — which
-    /// nothing else in this app does, and only the app's own web UI could.
-    ///
-    /// Deliberately not `private(set)`: the two controls live in
-    /// `RunningAppModel+Conversation.swift`, because this file is at SwiftLint's
-    /// length limit, and `private(set)` does not reach across files.
-    var isMicrophoneMuted = false
-    /// Cleared for good once the app answers `-32601`. A build without these methods
-    /// cannot grow them mid-session, and a control that always fails is worse than
-    /// no control.
-    var offersConversationControls = true
-
     private let configuration: Configuration
-    let conversationTurns: ConversationTurns
-    let setConversationMuted: SetConversationMuted
-    let interruptConversation: InterruptConversation
     private var dismissal: Dismissal?
     private var watch: TransitionWatch?
     /// When ``lastError`` was recorded, so the poll can retire it.
@@ -122,18 +87,8 @@ final class RunningAppModel {
     /// When a deep link last asked for the page, while there was nothing to open.
     private var requestedExpansion: Date?
 
-    init(
-        configuration: Configuration = Configuration(),
-        conversationTurns: @escaping ConversationTurns = { try $0.conversationTurns(for: $1) },
-        setConversationMuted: @escaping SetConversationMuted = {
-            try await $0.setConversationMicrophoneMuted($2, for: $1)
-        },
-        interruptConversation: @escaping InterruptConversation = { try await $0.interruptConversation(for: $1) }
-    ) {
+    init(configuration: Configuration = Configuration()) {
         self.configuration = configuration
-        self.conversationTurns = conversationTurns
-        self.setConversationMuted = setConversationMuted
-        self.interruptConversation = interruptConversation
     }
 
     // MARK: - Visibility
@@ -194,11 +149,26 @@ final class RunningAppModel {
         requestedExpansion = date
     }
 
+    /// **This no longer closes an open page, and that is #70's doing.**
+    ///
+    /// It used to, and the sheet's content re-read the status besides — so an app that
+    /// stopped emptied the page and dismissed it. That is right for a page of metadata
+    /// about a process, and wrong once a transcript is pushed from it: the robot keeps no
+    /// history, so a record yanked away is gone for good. `AppStoreScreen`'s
+    /// `.sheet(item:)` already held the app across exactly this, which is what made the
+    /// two hosts differ.
+    ///
+    /// **It does not weaken "Stop closes the sheet"** — that is a separate, deliberate
+    /// line in ``stop(session:)``. What the collapse actually covered was a crash, a
+    /// widget stop and a self-exit, and in all three the honest result is the app's own
+    /// page, frozen, saying what happened.
+    ///
+    /// A pending expansion request is untouched by a nil status, exactly as before: a
+    /// deep link usually arrives while the app it names is still starting from cold, so
+    /// "there is nothing to open yet" is the ordinary case rather than a reason to give
+    /// up. What retires it is ``expansionRequestWindow`` elapsing.
     func visibleStatusChanged(_ status: RobotAppStatus?, at date: Date = Date()) {
-        guard status != nil else {
-            isExpanded = false
-            return
-        }
+        guard status != nil else { return }
         guard let requested = requestedExpansion else { return }
         requestedExpansion = nil
         guard date.timeIntervalSince(requested) <= Self.expansionRequestWindow else { return }
@@ -358,8 +328,7 @@ final class RunningAppModel {
         noteTransition(session.runningApp)
     }
 
-    /// The one writer of `lastError` and its clock, so both stay private to this
-    /// file while `RunningAppModel+Conversation` can still report.
+    /// The one writer of `lastError` and its clock.
     func recordFailure(_ error: any Error) {
         let previous = lastError
         lastError.recordDaemonFailure(error)
@@ -380,14 +349,12 @@ final class RunningAppModel {
             isExpanded: Bool = false,
             busy: Bool = false,
             error: String? = nil,
-            conversationTurn: ConversationTurn? = nil,
             wedged: RobotAppStatus? = nil
         ) -> RunningAppModel {
             let model = RunningAppModel()
             model.isExpanded = isExpanded
             model.busy = busy
             model.lastError = error
-            model.conversationTurn = conversationTurn
             model.wedged = wedged
             return model
         }
