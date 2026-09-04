@@ -1,3 +1,4 @@
+import AppIntents
 import ReachyDesign
 import ReachyKit
 import ReachyWidgetUI
@@ -172,6 +173,10 @@ struct AppDetailSheet: View {
             }
         }
         .formStyle(.grouped)
+        // The one page about one app, which is exactly the shape onscreen awareness
+        // takes: "start this one" said in front of it needs no picker and no name.
+        // The store's own list is deliberately not marked — see `onscreenEntity`.
+        .onscreenEntity(EntityIdentifier(for: RobotAppEntity.self, identifier: app.id))
         .navigationTitle(app.title)
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

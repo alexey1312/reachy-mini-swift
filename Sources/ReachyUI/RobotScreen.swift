@@ -1,6 +1,8 @@
+import AppIntents
 import ReachyDesign
 import ReachyKit
 import ReachySSH
+import ReachyWidgetUI
 import SwiftUI
 
 /// The connected robot: what it is doing, the one control that changes that, and
@@ -48,6 +50,11 @@ struct RobotScreen: View {
         }
         .formStyle(.grouped)
         .readablePage()
+        // The robot this tab is about, so "put this one to sleep" needs no name.
+        // `deduplicationKey` rather than the display name: it is `RobotEntity.id`
+        // and the key every App Group store is already written against, so the
+        // entity and the snapshot name the same robot with no join.
+        .onscreenEntity(identity.map { EntityIdentifier(for: RobotEntity.self, identifier: $0.deduplicationKey) })
         .navigationTitle(identity?.name ?? String(localized: .reachy("Robot")))
         // Wake and sleep are long enough to look away from: the end of either is a
         // tick, and a refused one is a different tick.

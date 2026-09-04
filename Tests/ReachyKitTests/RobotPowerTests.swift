@@ -7,6 +7,25 @@ import Testing
 /// the head wherever it happens to be.
 @Suite("Robot power", .timeLimit(.minutes(1)))
 struct RobotPowerTests {
+    /// The progress the wait reports, collected off whatever executor each poll
+    /// resumes on.
+    private final class Reports: @unchecked Sendable {
+        private let lock = NSLock()
+        private var collected: [Double] = []
+
+        var values: [Double] {
+            lock.lock()
+            defer { lock.unlock() }
+            return collected
+        }
+
+        func append(_ fraction: Double) {
+            lock.lock()
+            collected.append(fraction)
+            lock.unlock()
+        }
+    }
+
     private final class Client: RobotAPIClient, MovePlaybackClient, @unchecked Sendable {
         private let lock = NSLock()
         private var calls: [String] = []
@@ -15,6 +34,11 @@ struct RobotPowerTests {
         /// What `daemon/status` answers. `.stopped` is what `daemon/stop` — the
         /// app's Power off — leaves behind, with the daemon's HTTP server still up.
         var state: Components.Schemas.DaemonState = .running
+        /// A backend that changes state under a poll, which is the only shape
+        /// `waitForBackendRunning` can be asked anything about. Consumed from the
+        /// front; `state` answers once it runs out, so a sequence names only the
+        /// steps that matter.
+        var states: [Components.Schemas.DaemonState] = []
 
         var recorded: [String] {
             lock.lock()
@@ -34,7 +58,14 @@ struct RobotPowerTests {
 
         func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
             record("daemonStatus")
-            return .preview(state: state)
+            return .preview(state: nextState())
+        }
+
+        /// Synchronous for the reason `stillRunning()` is: `NSLock` is `noasync`.
+        private func nextState() -> Components.Schemas.DaemonState {
+            lock.lock()
+            defer { lock.unlock() }
+            return states.isEmpty ? state : states.removeFirst()
         }
 
         func startDaemon(wakeUp: Bool) async throws {
@@ -152,6 +183,65 @@ struct RobotPowerTests {
 
         #expect(resumption == .startingBackend)
         #expect(client.recorded == ["daemonStatus"])
+    }
+
+    // MARK: - Waiting a cold start out
+
+    /// The budget a `LongRunningIntent` buys the time for. Poll fast, because the
+    /// real interval is for a robot rather than a test runner.
+    private func patientPower(_ client: Client, budget: Duration = .seconds(10)) -> RobotPower {
+        var configuration = RobotSession.Configuration()
+        configuration.pollInterval = .milliseconds(1)
+        configuration.daemonStartTimeout = budget
+        return RobotPower(client: client, configuration: configuration)
+    }
+
+    @Test("a backend that comes up is waited out, and reported on the way")
+    func waitsForAStartToFinish() async {
+        let client = Client()
+        client.states = [.starting, .starting, .running]
+        let reported = Reports()
+
+        let running = await patientPower(client).waitForBackendRunning { reported.append($0) }
+
+        #expect(running)
+        // The system ends a background extension whose intent stops reporting, so
+        // a poll that reports nothing is the failure mode this asserts against.
+        #expect(reported.values.count == 3)
+        #expect(reported.values.allSatisfy { $0 >= 0 && $0 <= 1 })
+    }
+
+    /// `.error` is a finished job, not a slow one — the daemon records a failed
+    /// start that way and stops. Both branches answer `false`, so the assertion has
+    /// to be the *duration*: the wrong one returns the same verdict ten seconds
+    /// later, and the suite would pass green with only `test_time` grown
+    /// (project rule 7).
+    @Test("a failed start ends the wait rather than spending the budget")
+    func aFailedStartIsNotATimeout() async {
+        let client = Client()
+        // Still `.starting` after the failure, so `.error` is the only thing that
+        // can end this wait early — otherwise a later `.running` would, and the
+        // mutation that deletes the branch would still pass.
+        client.states = [.starting, .error]
+        client.state = .starting
+        let started = ContinuousClock.now
+
+        let running = await patientPower(client).waitForBackendRunning()
+
+        #expect(running == false)
+        #expect(started.duration(to: .now) < .seconds(1))
+    }
+
+    /// The other half of that pair: a backend that never arrives is bounded, and
+    /// the boundary is the one the robot's own start budget names.
+    @Test("a start that never finishes is given up on")
+    func theBudgetEndsTheWait() async {
+        let client = Client()
+        client.state = .starting
+
+        let running = await patientPower(client, budget: .milliseconds(50)).waitForBackendRunning()
+
+        #expect(running == false)
     }
 
     /// An intent has no screen to put an error on, so it has to be thrown rather

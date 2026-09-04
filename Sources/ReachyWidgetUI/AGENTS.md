@@ -161,11 +161,28 @@ reverse.
     nothing. `RobotSnapshotStore.recordPower` is the writer that moves the motors alone.
   - **`.startingBackend` writes nothing about the motors and stays pending.** `resume()` waits for none of a 90 s
     cold start, so `isAwake: true` there would be the widget's version of pretending the job is done.
-- **`RobotPowerTransitionState` is `RobotAppLaunchState` with one rule that one does not have.** A pending marker is
-  **superseded by a snapshot taken after it started**: the extension is not running to clear its own marker, so a
-  wake tapped on the widget and finished with the app open would otherwise say "Waking up…" for the rest of the
-  window. Its windows are per transition, because a cold start outlives a wake by minutes and one window would be
-  wrong for one of them. `failureWindow` deliberately _references_ the launcher's constant rather than restating it.
+  - **`awaitStartedBackend` is the one caller that may claim otherwise, and only because it waited.** It is the
+    second half of a cold wake for a `LongRunningIntent` (#124) — a second connection, deliberately outside
+    `executionTimeout`, and `RobotPower.waitForBackendRunning` under it. A backend that came up after
+    `wake_up=true` really is an awake robot, because the daemon enabled the motors and played the animation itself,
+    so this is the one place `isAwake: true` is written about a start. Below iOS 27 nothing reaches it.
+- **`RobotPowerTransitionState` is `RobotAppLaunchState` with one rule that one does not have.** An **intent's**
+  pending marker is **superseded by a snapshot taken after it started**: the extension is not running to clear its
+  own marker, so a wake tapped on the widget and finished with the app open would otherwise say "Waking up…" for the
+  rest of the window. Its windows are per transition, because a cold start outlives a wake by minutes and one window
+  would be wrong for one of them. `failureWindow` deliberately _references_ the launcher's constant rather than
+  restating it.
+  - **`Pending.Writer` is what makes that rule an intent's rather than everyone's (#127).** The app is the second
+    writer now, and supersession is exactly wrong for it: it clears its own marker in a `defer` and writes a
+    snapshot every `pollInterval` while the transition runs, so its own reading would retire its own marker within
+    three seconds and put **Wake up** back under a ninety-second cold start. `.session` is exempt; the window is the
+    only backstop it has left, and it is the right one — what that covers is the app being killed mid-transition,
+    with no writer left at all.
+  - **It is additive under the `.stored` freeze, which is the whole of what project rule 11 asks here.** `writer`
+    defaults to `.intent` in the memberwise `init` so every existing call site is unchanged, and `Pending` has a
+    hand-written `init(from:)` so a blob a shipped build wrote decodes as an intent's. Synthesised decoding would
+    throw on the missing key, and `RobotPowerTransitionStore.current` swallows that with `try?` — the entire symptom
+    would be a widget that had quietly stopped showing transitions.
 - **Every moment `RobotWidgetContent.refreshDates` files lands a millisecond _past_ its boundary, the freshness one
   included.** Each entry is rebuilt from the stores at its own date, and `RobotSnapshotStore.state(at:)` calls the
   boundary itself fresh (`treatsTheBoundaryAsFresh` pins that) — so an entry filed at exactly `takenAt + freshness`
@@ -403,29 +420,64 @@ Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.s
   silently; a schema intent is reached through its domain instead and appears in none of them. The release build
   prints the count — it stayed at ten across both adoptions. Ask whether a new intent fits a schema before spending a
   slot on it.
-- **Nothing in `Sources/` may name a symbol absent from the 26.2 SDK, and an `@available` annotation does not tell
-  you which those are.** `lint-test` is pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs
-  `mise run test`, which is `swift build` over every SwiftPM target. A symbol the 26.2 SDK does not declare is
-  **absent** rather than unavailable, so `@available` does not save the build — it fails to compile.
-  `ExecutionTargets` and `LongRunningIntent` are the obvious cases, which is why they are not adopted here and why
-  both schema intents live in `Apps/ReachyMini/Sources`, a directory `swift build` never sees.
-  - **The trap is the non-obvious case, and it cost a red CI run.** `View.appEntityIdentifier` — onscreen awareness,
-    the thing that lets "play this one" resolve against a visible row — is annotated
-    `@available(macOS 15.4, iOS 18.4, *)`, which reads as _below_ this app's floor. That annotation is its **runtime**
-    availability. The declaration itself ships only in the 27 SDK: `_AppIntents_SwiftUI`'s interface in
-    `MacOSX26.5.sdk` does not contain the name at all, and in `MacOSX.sdk` (27) it does. So the API is back-deployed
-    to 15.4 and unbuildable here at the same time, and nothing in the source says so.
-  - **Neither `mise run test` nor `#if canImport` will catch it.** The overlay module exists in both SDKs — only the
-    member is missing — so `canImport(_AppIntents_SwiftUI)` is true either way. And SwiftPM reuses modules in
-    `.build` compiled against whatever SDK was selected last, so a local run that already built against Xcode 27's
-    SDK passes while CI fails. Verify against the SDK the job uses:
-    `xcrun swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -module-cache-path <fresh> …`,
-    or grep the framework's `.swiftinterface` for the name.
+- **`Sources/` may name a 27 symbol now, and what that cost was a CI image rather than an annotation (#124).**
+  `lint-test` was pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs `mise run test`, which is
+  `swift build` over every SwiftPM target — and a symbol the 26.2 SDK does not declare is **absent** rather than
+  unavailable, so `@available` did not save the build, it failed to compile. That job is on `xcode-27` now (#131).
+  Two things follow, and the second is the one that bites locally.
+  - **`Scripts/swiftpm-env.sh` no longer swaps the SDK out from under an Xcode toolchain**, and it had to stop:
+    it forced the Command Line Tools' 26.5 SDK whenever a beta Xcode was selected, so every local `mise run build`
+    would now fail over declarations the four app jobs compile happily. It still fires for a swift.org toolchain,
+    which cannot pair with a beta SDK at all — and there the swap only changes _which_ error you read, since 27
+    symbols are absent from 26.5 either way. **So Xcode's own Swift is the local requirement now**, which is also
+    the configuration the app is built and shipped in.
+  - **The trap was the non-obvious case, and it cost a red CI run before any of this.**
+    `View.appEntityIdentifier` — onscreen awareness — is annotated `@available(macOS 15.4, iOS 18.4, *)`, which
+    reads as _below_ this app's floor. That annotation is its **runtime** availability. The declaration ships only
+    in the 27 SDK: `_AppIntents_SwiftUI`'s interface in `MacOSX26.5.sdk` does not contain the name at all, and in
+    the 27 SDK it does. So the API is back-deployed to 15.4 and was unbuildable here at the same time, and nothing
+    in the source says so. `View.onscreenEntity(_:)` is the adoption, and it carries **both** availabilities: an
+    `#available(iOS 18.4, macOS 15.4, …)` for the runtime floor, in a file that only compiles against the 27 SDK.
+  - **`#if canImport` still cannot see any of this**, which is worth keeping in mind for the next such symbol: the
+    overlay module exists in both SDKs and only the member is missing, so `canImport(_AppIntents_SwiftUI)` is true
+    either way. SwiftPM also reuses modules in `.build` compiled against whatever SDK was selected last, so a local
+    run can pass against one SDK and fail against another with no source change. Grep the framework's
+    `.swiftinterface` for the name rather than trusting either.
+- **Of the four adoptions #124 was holding, two shipped and two are refused — and the refusals are the useful
+  half.** Reasoning and the SDK measurements are in `docs/research/ios-27.md` §3.1; the short forms:
+  - **`LongRunningIntent`, on `WakeRobotIntent` alone.** A cold backend start is budgeted at 90 s against an
+    intent's 30, which is exactly the case `performBackgroundTask`'s own documentation names, and it is the only
+    job in this app that outlives an intent. Below 27 nothing changes: the dialog still hands back a promise and
+    the widget's marker covers the rest. `RobotPowerCommand.awaitStartedBackend` is the half that waits.
+  - **Onscreen awareness, on the two screens that are about one entity** — `AppDetailSheet` and `RobotScreen`. A
+    _list_ is deliberately not marked: it is not about one thing, and naming the row somebody scrolled past is how
+    an assistant becomes confidently wrong.
+  - **`ExecutionTargets` is refused because this app has no third process.** The default is "any available target",
+    and the two targets that exist here are the app and the widget extension — which every intent in this library
+    must be allowed to run in, because the same types are in both bundles' metadata and a Control Centre button
+    runs in the appex by design. Declaring the set would restate the process layout. The one thing it could change
+    is pinning an intent to `.main`, and that is the behaviour the widget's buttons exist to avoid. It goes in with
+    an App Intents extension, if this app ever grows one.
+  - **`CancellableIntent` is refused because nothing here belongs to the intent alone.** Its own documentation's
+    example rolls back a _payment_; every piece of state this app keeps across an intent boundary describes the
+    **robot** — a transition the daemon owns, which outlives the process that asked for it. Cancelling the intent
+    does not cancel `daemon/start`, so a handler retiring the pending marker would put **Wake up** back under a
+    robot that is still starting, which is the bug the marker exists to prevent. `Task.isCancelled` already ends
+    the polling, and that is the whole of the cleanup there is.
 - **An `@available` intent still extracts, and that was measured rather than assumed.** `OpenRobotAppIntent` is
   iOS 27 / macOS 27 and appears in a macOS 15 build's metadata with
   `availabilityAnnotations.LNPlatformNameMACOS.introducedVersion = "27.0"` beside it — availability is a field, not
   an absence, the same reading `isDiscoverable = false` gets. So a 27-only action belongs in
   `check-appintents-metadata.sh`'s flat list like any other.
+  - **An `@available` _conformance_ extracts too, and it does not carry the annotation — measured on the macOS 15
+    Debug bundle.** `WakeRobotIntent`'s entry lists
+    `systemProtocols: ["com.apple.link.systemProtocol.LongRunning", "…ProgressReporting"]` while its
+    `availabilityAnnotations` is the plain `LNPlatformNameWildcard: "*"` every other intent has — so the extension
+    declaring it is `@available(iOS 27.0, …)` shows up as a protocol the intent conforms to _unconditionally_.
+    Harmless here, because `performBackgroundTask` is reached only inside an `#available` check and a system below
+    27 gets an intent that simply returns, but it is the shape to keep in mind: the metadata says nothing about
+    which OS the conformance is for. `openAppWhenRun` stayed `false` and `autoShortcuts` stayed at ten, which is
+    the pair to read whenever a conformance is added.
 - **A schema is validated by the metadata processor, never by the compiler.** A parameter renamed out of the shape
   the schema declares fails _extraction_, which is a warning — the same silence that shipped TestFlight 0.1.1 with
   zero Shortcuts actions. Read `assistantDefinedSchemas` out of the built `extract.actionsdata` and check the domain
@@ -536,12 +588,14 @@ and note first what it deliberately does _not_ say:
   `RobotSnapshotStore.freshness` because past half an hour nothing else here believes the reading either. A power
   card's window would have to be the transition's own 30–120 s, which is _shorter than the thing being dismissed_,
   so a swipe would not hold for the life of the card; anything longer suppresses the reader's next deliberate tap.
-- **What the investigation did find is a defect, and it is #127.** The one true half of the case for a card is that
-  the plumbing would be free: `powerTransition` is `public internal(set)` on an `@Observable` session
-  `RootLifecycle` already holds. That is an argument for writing `RobotPowerTransitionStore` from the app — which
-  nothing does today. `begin(_:)` is called only from `RobotPowerCommand`, so during an app-driven 90 s start or
-  power-off the widget and the menu-bar popover render the pre-transition reading with a live button. Same need, on
-  a surface built for it, correcting itself on a timeline, and on macOS as well — where a card is impossible.
+- **What the investigation did find is a defect, it was #127, and it is fixed.** The one true half of the case for
+  a card was that the plumbing would be free: `powerTransition` is `public internal(set)` on an `@Observable`
+  session `RootLifecycle` already holds. That was an argument for writing `RobotPowerTransitionStore` from the app,
+  which nothing did — `begin(_:)` was called only from `RobotPowerCommand`, so during an app-driven 90 s start or
+  power-off the widget and the menu-bar popover rendered the pre-transition reading with a live button. Same need,
+  on a surface built for it, correcting itself on a timeline, and on macOS as well, where a card is impossible.
+  `RobotPowerMirror` in `ReachyUI` is that write, and `Pending.Writer` is what lets the marker survive the
+  session's own next snapshot.
 
 ### The long jobs
 

@@ -216,18 +216,31 @@ public struct RobotWidgetContent: Equatable, Sendable {
 
     /// A transition still worth reporting.
     ///
-    /// **Superseded by a reading taken after it started**, which
-    /// `RobotAppLaunchState` has no equivalent of. The extension is not running to
-    /// clear its own marker, so a wake tapped on the widget and then completed with
-    /// the app open would otherwise say "Waking up…" for the rest of the window.
-    /// Whoever wrote that snapshot spoke to the robot more recently than this marker
-    /// did. The window is only the floor, for a phone that never opens the app.
+    /// **An intent's marker is superseded by a reading taken after it started**,
+    /// which `RobotAppLaunchState` has no equivalent of. The extension is not
+    /// running to clear its own marker, so a wake tapped on the widget and then
+    /// completed with the app open would otherwise say "Waking up…" for the rest of
+    /// the window. Whoever wrote that snapshot spoke to the robot more recently than
+    /// this marker did. The window is only the floor, for a phone that never opens
+    /// the app.
+    ///
+    /// **The app's own markers are exempt, and the exemption is why they can exist
+    /// at all.** That reason above is specific to a process that is not running: the
+    /// app clears its marker in a `defer` and writes a snapshot every `pollInterval`
+    /// the whole time the transition is in flight, so the rule would hide a marker
+    /// it wrote three seconds ago and leave the widget offering **Wake up** through
+    /// ninety seconds of a cold start — the "tap it again" bug this surface exists
+    /// to prevent. The window is the only backstop left for a `.session` marker, and
+    /// it is the right one: what it covers is the app being killed mid-transition,
+    /// with no writer left to clear anything.
     private static func pending(
         _ power: RobotPowerTransitionState?,
         snapshot: RobotSnapshot,
         at date: Date
     ) -> RobotPowerTransitionState.Pending? {
-        guard let pending = power?.pending(at: date), snapshot.takenAt <= pending.since else { return nil }
+        guard let pending = power?.pending(at: date),
+              pending.writer == .session || snapshot.takenAt <= pending.since
+        else { return nil }
         return pending
     }
 

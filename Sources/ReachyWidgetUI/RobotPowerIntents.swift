@@ -153,18 +153,69 @@ public struct WakeRobotIntent: AppIntent {
 
     public init() {}
 
-    /// The dialog is the whole of what a starting backend can be reported as: the
-    /// job takes tens of seconds, this process has seconds, and a spinner nobody
-    /// can see is worth less than a sentence saying the robot is on its way.
+    /// Below iOS 27 the dialog is the whole of what a starting backend can be
+    /// reported as: the job takes tens of seconds, this process has seconds, and a
+    /// spinner nobody can see is worth less than a sentence saying the robot is on
+    /// its way. On 27 the process can ask for those seconds — see `coldStart`.
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        switch try await RobotPowerCommand(.wake, robot: robot?.id).perform() {
+        let command = RobotPowerCommand(.wake, robot: robot?.id)
+        switch try await command.perform() {
         case .startingBackend:
-            return .result(dialog: IntentDialog(.reachy("Reachy Mini was off. It's starting up and will wake itself.")))
+            return await .result(dialog: coldStart(command))
         case .woke, .none:
             return .result(dialog: IntentDialog(.reachy("Reachy Mini is awake.")))
         }
     }
+
+    /// What to say about a backend that was off, once the daemon has accepted the job.
+    ///
+    /// **iOS 27 is the first release where there is a second answer.** A backend start
+    /// is budgeted at 90 s against an intent's 30, so every version of this until now
+    /// has had to hand back a promise and leave the widget's marker to cover the rest.
+    /// `LongRunningIntent.performBackgroundTask` extends that budget, which is exactly
+    /// the case its own documentation names — so on 27 the intent waits, reports
+    /// progress, and answers with what happened rather than with what was asked for.
+    ///
+    /// **Progress is not optional decoration here.** The system ends a background
+    /// extension whose intent stops reporting, and it is the same value a Live
+    /// Activity draws the bar from — which is why `RobotPower.waitForBackendRunning`
+    /// reports once per poll and says outright that the fraction is of the *budget*,
+    /// the daemon publishing nothing about how far along a start is.
+    ///
+    /// The local `let` is what the reporting closure captures, rather than `self`:
+    /// `Progress` is `Sendable` (the compiler says so — an explicit
+    /// `nonisolated(unsafe)` here is diagnosed as unnecessary) while an intent
+    /// carrying a `RobotEntity?` is not, so capturing the intent would put a
+    /// `Sendable` requirement on every parameter it grows.
+    private func coldStart(_ command: RobotPowerCommand) async -> IntentDialog {
+        let starting = IntentDialog(.reachy("Reachy Mini was off. It's starting up and will wake itself."))
+        guard #available(iOS 27.0, macOS 27.0, watchOS 27.0, tvOS 27.0, visionOS 27.0, *) else {
+            return starting
+        }
+        let progress = progress
+        progress.totalUnitCount = 100
+        progress.localizedDescription = String(localized: .reachy("Starting Reachy Mini"))
+        // `try?`: the only thing that throws here is the system refusing the
+        // extension, and the honest answer to that is the sentence this method
+        // would have given below 27 — the daemon has the job either way.
+        let awake = try? await performBackgroundTask {
+            await command.awaitStartedBackend { fraction in
+                progress.completedUnitCount = Int64(fraction * 100)
+            }
+        }
+        return awake == true ? IntentDialog(.reachy("Reachy Mini is awake.")) : starting
+    }
 }
+
+/// The one job in this app that outlives an intent's budget.
+///
+/// `ExecutionTargets` and `CancellableIntent` were considered with it and refused;
+/// `docs/research/ios-27.md` §3.1 carries both reasons, and the second one is this
+/// app's own pending marker: it describes the *robot's* transition, which the daemon
+/// owns and which outlives every process that asks for it, so a cancellation handler
+/// has nothing true to write.
+@available(iOS 27.0, macOS 27.0, watchOS 27.0, tvOS 27.0, visionOS 27.0, *)
+extension WakeRobotIntent: LongRunningIntent {}
 
 /// Sleeping takes the motors away from whatever is using them, so the app using
 /// them is stopped first — see `RobotSleep`.

@@ -16,12 +16,40 @@ import ReachyKit
 public struct RobotPowerTransitionState: Codable, Sendable, Equatable {
     /// A tap that has not come back yet.
     public struct Pending: Codable, Sendable, Equatable {
+        /// Which of the two processes wrote this, because the rule that retires a
+        /// marker is different for each and there is no other way to tell them
+        /// apart afterwards.
+        ///
+        /// An intent's marker is superseded by a reading taken after it — the
+        /// extension is not running to clear its own. The app's is not: it clears
+        /// its marker in a `defer` and writes a fresh snapshot every poll interval
+        /// while the transition is still in flight, so supersession would hide the
+        /// marker within one interval of it being written.
+        public enum Writer: String, Codable, Sendable, Equatable {
+            case intent
+            case session
+        }
+
         public let transition: RobotSession.PowerTransition
         public let since: Date
+        public let writer: Writer
 
-        public init(transition: RobotSession.PowerTransition, since: Date) {
+        public init(transition: RobotSession.PowerTransition, since: Date, writer: Writer = .intent) {
             self.transition = transition
             self.since = since
+            self.writer = writer
+        }
+
+        /// Hand-written for the field above, and it is the whole of what the
+        /// `.stored` freeze asks for (project rule 11): a blob written by a shipped
+        /// build carries no `writer`, and the only process that wrote one then was
+        /// an intent. Synthesised decoding would fail on the missing key instead,
+        /// which reads as a widget that has forgotten how to show a transition.
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            transition = try container.decode(RobotSession.PowerTransition.self, forKey: .transition)
+            since = try container.decode(Date.self, forKey: .since)
+            writer = try container.decodeIfPresent(Writer.self, forKey: .writer) ?? .intent
         }
     }
 
@@ -104,8 +132,19 @@ public struct RobotPowerTransitionStore {
     /// Clears any earlier failure, for the reason `RobotAppLaunchStateStore.begin`
     /// does: the user has just retried, and why the last attempt failed reads as
     /// this one failing while it is still in flight.
-    public func begin(_ transition: RobotSession.PowerTransition, at date: Date = Date()) {
-        write(RobotPowerTransitionState(pending: .init(transition: transition, since: date), failure: nil))
+    ///
+    /// `writer` defaults to `.intent` so every existing call site is unchanged;
+    /// the app passes `.session`, which is what buys its own markers the exemption
+    /// from supersession that `RobotWidgetContent.pending` grants.
+    public func begin(
+        _ transition: RobotSession.PowerTransition,
+        writer: RobotPowerTransitionState.Pending.Writer = .intent,
+        at date: Date = Date()
+    ) {
+        write(RobotPowerTransitionState(
+            pending: .init(transition: transition, since: date, writer: writer),
+            failure: nil
+        ))
     }
 
     public func succeed() {

@@ -82,6 +82,45 @@ public struct RobotPower: Sendable {
         try await client.startDaemon(wakeUp: true)
     }
 
+    /// Waits out the start `resume()` deliberately does not, for the one caller that
+    /// can afford to.
+    ///
+    /// **This is not a second answer to `resume()`'s question and must never become
+    /// one.** `resume()` returns on job acceptance because an intent has seconds, and
+    /// that stays true of every caller below iOS 27. What changed is that a
+    /// `LongRunningIntent` can ask the system for the rest of the ninety, so the wake
+    /// intent has somewhere to spend them — and it spends them here rather than
+    /// growing a poll of its own next to the session's.
+    ///
+    /// The twin is `RobotSession.waitForDaemonRunning`, and the two agree on the part
+    /// that matters: `.error` and `.stopped` are finished jobs and answer `false`
+    /// rather than keeping the caller waiting for a start that is not coming. A status
+    /// that fails to arrive concludes nothing and is asked again — only the deadline
+    /// ends the wait.
+    ///
+    /// `reporting` is handed **the fraction of the budget spent**, not of the job
+    /// done: the daemon publishes no progress for a backend start, so an honest bar
+    /// can only show the clock. It is called once per poll, which is what a
+    /// `LongRunningIntent` needs — the system ends a background extension that stops
+    /// reporting.
+    public func waitForBackendRunning(reporting: @Sendable (Double) -> Void = { _ in }) async -> Bool {
+        let started = ContinuousClock.now
+        let budget = configuration.daemonStartTimeout
+        let deadline = started + budget
+        while ContinuousClock.now < deadline, !Task.isCancelled {
+            try? await Task.sleep(for: configuration.pollInterval)
+            let spent = started.duration(to: .now) / budget
+            reporting(min(max(spent, 0), 1))
+            guard let status = try? await client.daemonStatus() else { continue }
+            switch status.state {
+            case .running: return true
+            case .error, .stopped: return false
+            default: continue
+            }
+        }
+        return false
+    }
+
     /// The animation must finish *before* power is cut, otherwise the head drops
     /// wherever it happens to be.
     public func sleep() async throws {
