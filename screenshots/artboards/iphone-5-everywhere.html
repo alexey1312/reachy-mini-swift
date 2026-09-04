@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1242">
+<title>Hey Reachy stickers — everywhere</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+  .board{position:relative;width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+
+  .head{position:absolute;top:216px;left:96px;width:1050px;}
+  h1{font-size:90px;font-weight:700;letter-spacing:-.025em;line-height:1.08;}
+  .sub{font-size:51px;font-weight:400;line-height:1.42;color:#6B7686;margin-top:36px;max-width:960px;}
+
+  .row{position:absolute;left:96px;top:790px;width:1050px;display:flex;gap:48px;}
+
+  .tile{
+    position:relative;width:501px;height:690px;border-radius:66px;overflow:hidden;
+    background:linear-gradient(180deg,#B3BCCA 0%,#9AA6B8 17%,#3E4757 83%,#353C4A 100%);
+  }
+  .tile .art{position:absolute;left:100px;top:196px;width:300px;height:300px;
+    filter:drop-shadow(0 12px 24px rgba(0,0,0,.28));}
+  .tile .name{
+    position:absolute;left:44px;top:42px;color:#2E3646;
+    font-size:39px;font-weight:600;letter-spacing:.005em;
+  }
+  .ctl{position:absolute;right:42px;bottom:60px;display:flex;gap:18px;}
+  .ctl span{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.26);}
+  .shutter{
+    position:absolute;right:42px;bottom:42px;width:96px;height:96px;border-radius:50%;
+    border:6px solid rgba(255,255,255,.9);
+  }
+  .shutter i{position:absolute;left:6px;top:6px;width:72px;height:72px;border-radius:50%;background:#FFFFFF;}
+
+  .panel{
+    position:absolute;left:96px;top:1528px;width:1050px;height:760px;
+    background:#FFFFFF;border:3px solid #E4E7EC;border-radius:66px;overflow:hidden;
+  }
+  .panel h2{font-size:48px;font-weight:700;letter-spacing:-.01em;margin:48px 0 0 60px;}
+  .panel .who{font-size:36px;color:#6B7686;margin:10px 0 0 60px;}
+  .pgrid{position:absolute;left:60px;top:262px;display:flex;flex-wrap:wrap;gap:36px 42px;width:930px;}
+  .pgrid img{width:201px;height:201px;}
+
+  .foot{position:absolute;left:96px;bottom:150px;font-size:45px;line-height:1.35;color:#6B7686;}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <h1>They turn up<br>beyond Messages</h1>
+    <p class="sub">FaceTime, the Messages camera and the system Stickers app.</p>
+  </div>
+
+  <div class="row">
+    <div class="tile">
+      <img class="art" src="stickers/jazzman.png" alt="Reachy the jazz musician on a FaceTime call">
+      <div class="name">FaceTime</div>
+      <div class="ctl"><span></span><span></span><span></span></div>
+    </div>
+    <div class="tile">
+      <img class="art" src="stickers/cowboy.png" alt="Reachy the cowboy in the Messages camera">
+      <div class="name">Messages camera</div>
+      <div class="shutter"><i></i></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Stickers</h2>
+    <div class="who">Hey Reachy</div>
+    <div class="pgrid">
+      <img src="stickers/doctor.png" alt="Reachy as a doctor">
+      <img src="stickers/farmer.png" alt="Reachy as a farmer">
+      <img src="stickers/captain.png" alt="Reachy as a sea captain">
+      <img src="stickers/explorer.png" alt="Reachy as an explorer">
+      <img src="stickers/builder.png" alt="Reachy as a builder">
+      <img src="stickers/student.png" alt="Reachy as a student">
+      <img src="stickers/rich.png" alt="Reachy in a top hat">
+      <img src="stickers/fisherman.png" alt="Reachy as a fisherman">
+    </div>
+  </div>
+
+  <div class="foot">The same cast, anywhere you can send one.</div>
+
+</div>
+</body>
+</html>

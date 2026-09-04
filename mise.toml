@@ -549,6 +549,15 @@ run = """
 set -euo pipefail
 IN="${REACHY_SHOT_HTML:-screenshots/artboards}"
 OUT="${REACHY_SHOT_OUT:-screenshots/store}"
+# The artboards reference their images by relative path, and WKWebView is only
+# given read access to the artboard directory — so the stickers and the simulator
+# captures are assembled beside the HTML rather than referenced where they live.
+# From the stills rather than the shipped APNGs: an animation's first frame is a
+# rest pose, and some of them start from nothing — `magician-pop` appears out of
+# thin air, so its frame zero is an almost empty picture.
+mkdir -p "$IN/stickers"
+cp -f art/stickers/*.png "$IN/stickers/"
+for f in screenshots/raw/capture-*.png; do [ -e "$f" ] && cp -f "$f" "$IN/"; done
 swift Scripts/render-store-screenshots.swift "$IN" "$OUT"
 # The sizes are the whole point, so they are asserted rather than trusted.
 for f in "$OUT"/*.png; do
