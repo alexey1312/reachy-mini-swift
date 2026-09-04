@@ -237,13 +237,16 @@ run = '''
 set -o pipefail
 SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
 xcrun simctl boot "$SIM" 2>/dev/null || true
-# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment.
+# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment, but
+# only when it is xcodebuild's own environment — passed as a trailing
+# `TEST_RUNNER_X=y` build setting it is silently ignored, the runner sees nothing,
+# and the test skips itself while the run still reports TEST SUCCEEDED.
+export TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}"
 xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   -destination "platform=iOS Simulator,name=${SIM}" \
   -derivedDataPath Apps/DerivedData \
   -testLanguage en -testRegion US \
   CODE_SIGNING_ALLOWED=NO \
-  TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
   -skipPackagePluginValidation -skipMacroValidation \
   2>&1 | xcsift
 '''
@@ -537,6 +540,60 @@ run = """
 set -o pipefail
 swift Scripts/render-app-icon.swift
 git status --porcelain Apps/ReachyMini/Resources
+"""
+
+[tasks."screenshots:store"]
+description = "Render the App Store artboards to exact iMessage screenshot sizes"
+run = """
+#!/bin/bash
+set -euo pipefail
+IN="${REACHY_SHOT_HTML:-screenshots/artboards}"
+OUT="${REACHY_SHOT_OUT:-screenshots/store}"
+swift Scripts/render-store-screenshots.swift "$IN" "$OUT"
+# The sizes are the whole point, so they are asserted rather than trusted.
+for f in "$OUT"/*.png; do
+  sips -g pixelWidth -g pixelHeight "$f" | tail -2 | tr -d ' \n' | sed "s|^|$(basename "$f") |"
+  echo
+done
+"""
+
+[tasks."screenshots:capture"]
+description = "Drive Messages on a simulator and photograph it for the store listing"
+depends = ["project"]
+run = """
+#!/bin/bash
+set -euo pipefail
+SIM="${REACHY_SHOT_SIM:-iPhone 17 Pro Max}"
+OUT="${REACHY_SHOT_DIR:-screenshots/raw}"
+mkdir -p "$OUT"
+UDID="$(xcrun simctl list devices available -j | python3 -c "
+import json,sys,os
+d=json.load(sys.stdin)['devices']
+print(next(x['udid'] for v in d.values() for x in v if x['name']==os.environ['SIM']))
+")"
+xcrun simctl boot "$UDID" 2>/dev/null || true
+xcrun simctl install "$UDID" Apps/DerivedData/Build/Products/Debug-iphonesimulator/ReachyMini.app
+# TEST_RUNNER_ only reaches the XCUITest runner through xcodebuild's OWN environment;
+# as a trailing `TEST_RUNNER_X=y` build setting it is silently dropped and the test
+# skips itself while the run still reports TEST SUCCEEDED.
+export TEST_RUNNER_REACHY_CAPTURE=1
+xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
+  -destination "id=$UDID" -derivedDataPath Apps/DerivedData \
+  -only-testing:ReachyMiniUITests/StickerCaptureTests \
+  -testLanguage en -testRegion US CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation 2>&1 | xcsift
+xcrun simctl io "$UDID" screenshot "$OUT/$(echo "$SIM" | tr ' ' '-').png"
+echo "wrote $OUT/$(echo "$SIM" | tr ' ' '-').png"
+"""
+
+[tasks."stickers:build"]
+description = "Regenerate the iMessage sticker catalogue from art/stickers"
+run = """
+#!/bin/bash
+set -euo pipefail
+uv run --quiet --with-requirements Scripts/stickers-requirements.txt \
+  python Scripts/build-stickers.py
+git status --porcelain Apps/ReachyStickers
 """
 
 [tasks.sim-daemon]

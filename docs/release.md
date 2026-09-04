@@ -335,6 +335,55 @@ one `asc` command to revert. Their public halves are readable without a session:
 `contentAdvisoryRating`, `advisories` and `genres`; the content-rights
 declaration is private and cannot be checked this way.
 
+## The sticker pack
+
+**Nothing here ships until Pollen Robotics answer in writing.** The sixteen
+characters are their "Reachies" artwork, and `art/stickers/README.md` says so; the
+App Store is public distribution, and a Guideline 5.2.1 rejection or an IP complaint
+lands on this listing rather than on the pack alone. Build it, run it, look at it —
+but hold `release:ios`, `metadata push`, `screenshots upload` and any submission
+until permission exists. Ask through Pollen's Discord or huggingface.co/pollen-robotics.
+
+Beyond that gate the pack costs the release almost nothing:
+
+- **A new App ID**, `com.alexey1312.ReachyMini.Stickers`, registered by the first
+  signed build with `-allowProvisioningUpdates`. Unlike the widget it needs **no**
+  manual Signing & Capabilities step — a codeless sticker pack shares no state, so
+  there is no App Group on it.
+- **iOS only.** The extension is embedded with an `.ios` platform condition, so the
+  macOS archive never sees it and the notary never has to. Do not remove that
+  condition; `docs/release.md`'s notarization note explains what it costs.
+- **One extension, and there cannot be two.** iOS allows a single
+  `com.apple.message-payload-provider` per app, rejected at _install_ time rather
+  than at build time. See `Apps/ReachyStickers/AGENTS.md`.
+
+### iMessage screenshots
+
+App Store Connect keeps a separate screenshot row for the Messages extension, and
+`asc metadata push` never touches it — screenshots are their own command family.
+The two sizes worth filling are the ones the section offers:
+
+| Device type                      | Pixels                   |
+| -------------------------------- | ------------------------ |
+| `IMESSAGE_APP_IPHONE_65`         | 1242x2688 (or 1284x2778) |
+| `IMESSAGE_APP_IPAD_PRO_3GEN_129` | 2048x2732 (or 2064x2752) |
+
+```bash
+mise run screenshots:capture   # drive Messages on a simulator, photograph it
+mise run screenshots:store     # render the artboards to exact pixel sizes
+mise run asc -- screenshots upload --app 6799644194 --version 0.6.0 \
+  --device-type IMESSAGE_APP_IPHONE_65 --path screenshots/store
+```
+
+Two things to know before shooting. The `iPad Pro 13-inch (M5)` simulator is
+natively 2064x2752, which is an accepted iPad size with no resampling at all —
+whereas **no iOS 27 simulator is a 6.5" iPhone**, so that frame has to be composed to
+size whatever else happens. And the simulator will not show you the pack: its
+`stickerd` does not surface third-party packs in either the "+" drawer or the
+Stickers browser, even though `pluginkit -mAvv -p com.apple.message-payload-provider`
+lists the extension correctly. Confirm the drawer on hardware through
+`mise run device` before submitting.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,

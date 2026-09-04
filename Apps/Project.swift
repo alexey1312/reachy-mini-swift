@@ -28,7 +28,7 @@ let project = Project(
         base: [
             // Beta: the first tag is 0.1.0, and the tag and the shipped version
             // have to be the same number to be worth reading.
-            "MARKETING_VERSION": "0.5.0",
+            "MARKETING_VERSION": "0.6.0",
             "CURRENT_PROJECT_VERSION": "1",
         ],
         configurations: [
@@ -195,6 +195,12 @@ let project = Project(
                 // No longer conditional: the extension has a Mac destination, so the
                 // macOS app embeds it and the Mac gets the two reading widgets.
                 .target(name: "ReachyWidget"),
+                // Conditional, because a Messages extension has no macOS form:
+                // embedding it unconditionally puts an appex the Mac cannot host into
+                // the Developer ID bundle, where the notary reads every executable and
+                // 0.4.0 already failed once over exactly that. And there is one of
+                // these because iOS permits one `message-payload-provider` per app.
+                .target(name: "ReachyStickers", condition: .when([.ios])),
             ],
             // Two files rather than one generated dictionary: the macOS build is
             // sandboxed and hardened for Developer ID, and those keys are
@@ -275,6 +281,42 @@ let project = Project(
                 // The notary reads every executable in the bundle, not only the app's,
                 // so an extension needs this as much as its host — see the app target.
                 "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": "YES",
+            ])
+        ),
+        // A codeless sticker pack: no `sources:`, because Messages renders the
+        // catalogue through the system's own `StickerBrowserViewController`, and no
+        // `.mac`, because a Messages extension has no macOS form. Everything under
+        // Resources is generated — see `Apps/ReachyStickers/AGENTS.md`.
+        .target(
+            name: "ReachyStickers",
+            destinations: [.iPhone, .iPad],
+            product: .stickerPackExtension,
+            bundleId: "com.alexey1312.ReachyMini.Stickers",
+            deploymentTargets: .iOS("18.0"),
+            infoPlist: .extendingDefault(with: [
+                // What a reader sees in the Messages drawer.
+                "CFBundleDisplayName": .string("Reachy Mini"),
+                // App Store validation requires an extension's version to match its
+                // host's; both come from the project-level settings above.
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
+                // Reaches the system Stickers app, the Messages camera and FaceTime
+                // rather than only a conversation. Xcode's template spells this as an
+                // `INFOPLIST_KEY_`, which only works when Xcode writes the plist.
+                "NSStickerSharingLevel": .string("OS"),
+                "NSExtension": .dictionary([
+                    "NSExtensionPointIdentifier": .string("com.apple.message-payload-provider"),
+                    // A system class, not one of ours — this is the codeless part.
+                    "NSExtensionPrincipalClass": .string("StickerBrowserViewController"),
+                ]),
+            ]),
+            // Named, not globbed: `**` walks *into* the catalogue and copies every
+            // nested `Contents.json` separately, failing as "Multiple commands produce".
+            resources: ["ReachyStickers/Resources/Stickers.xcassets"],
+            settings: .settings(base: [
+                "ASSETCATALOG_COMPILER_APPICON_NAME": "iMessage App Icon",
+                "SKIP_INSTALL": "YES",
             ])
         ),
         // Smoke tests: the one thing snapshots cannot see is the app binary itself
