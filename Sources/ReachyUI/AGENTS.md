@@ -1037,6 +1037,36 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   `RunningAppActivityFacts` deliberately does **not** carry `powerTransition`; adding it is the first move of
   rebuilding what was refused.
 
+## The widget's marker, written from the app (#127)
+
+`RobotPowerFacts` and `RobotPowerMirror` in `ReachyRootViewSupport.swift`, mounted by
+`.powerTransitionMirror(session:isPreview:)` beside `widgetReload` in `RootLifecycle`.
+
+- **The app had two power paths and marked only the lesser one.** Every `RobotPowerTransitionStore.begin` in the
+  tree was `RobotPowerCommand`'s — Control Centre, Siri, Shortcuts, the widget's button and the macOS menu bar —
+  while the Robot tab's ladder, Start on an app's page and the connection stepper wrote nothing at all. All six
+  assignments to `RobotSession.powerTransition` set an in-process property and stopped there. So a cold start begun
+  in the app left the Lock Screen widget saying "Asleep" under an unchanged **Wake up** for up to the 90 s the
+  daemon takes, and the tap it invited was not harmless: `RobotSleep` has no status guard, and a power-off during
+  the app's own reaches `daemon/stop`, which answers **409** while another job runs.
+- **It cannot be folded into `widgetReload`, and the reason is the shape of the fact.** That one watches the
+  _reading_ — phase, `isAwake`, the running app — and a transition beginning moves none of them. This watches the
+  transition and the sentence the last one left behind, and writes a marker the widget renders _instead of_ the
+  reading.
+- **The decision is a pure reducer and the writing is three lines.** What can be wrong here is the edges: a
+  transition changing under the marker re-opens it (`wake()` claims `.wakingUp` and becomes `.startingBackend` the
+  moment it finds the backend down, and those windows are 30 s and 120 s apart), and a transition ending is a
+  failure only when the sentence is a **new** one — `claimRobotForApp` wakes the robot without clearing
+  `robotError`, because it throws to the Apps model rather than reporting onto the Robot tab, so an error from this
+  morning is still there when its transition ends.
+- **`robotError` is already written by the time the edge is observed.** Each rung clears it on entry and
+  `report(_:)` fills it in ahead of the `defer` that ends the transition. `startBackend()` clears it too — checked,
+  because #127 asked for it as the one `ReachyKit` edit this might owe, and it does not.
+- **Nothing here can be captured.** What changes is _when_ the widget shows a marker, which is a temporal property
+  no reference image holds — `robotWidgetPreviewTransition` already covers the rendered pending state, so the drawn
+  content is unchanged by this. It is a device check: begin a cold start from the Robot tab and watch the Lock
+  Screen.
+
 ## Job notifications
 
 `Notifications/JobNotificationPlan.swift`, `JobNotificationCenter.swift`, `JobNotificationSystem.swift`,

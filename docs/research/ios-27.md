@@ -123,12 +123,21 @@ The same sources, the same SDK, and Xcode 27's own Swift 6.4 build clean:
 xcrun swift build --target ReachyUI   # Build complete! (49.23 s)
 ```
 
-**What changed, and it is a CI decision rather than a code one.** Locally, `Scripts/swiftpm-env.sh` forces the
-Command Line Tools' release SDK whenever the selected Xcode path contains `beta`, so every `mise run test` here is
-6.3 against a 26.5 SDK and the pairing never arises. On CI, `lint-test` moved to `xcode-27` and **dropped the
-swift.org toolchain**, building with that Xcode's own Swift 6.4 — which is what lifted #124's blocker, and is also
-the configuration the app is actually built and shipped in. What is given up is a release compiler; `.swift-version`
-stays for `Scripts/install-sourcekit.sh` and for a local swiftly-driven build.
+**What changed, and it is a CI decision rather than a code one.** On CI, `lint-test` moved to `xcode-27` and
+**dropped the swift.org toolchain**, building with that Xcode's own Swift 6.4 — which is what lifted #124's blocker,
+and is also the configuration the app is actually built and shipped in. What is given up is a release compiler;
+`.swift-version` stays for `Scripts/install-sourcekit.sh` and for a local swiftly-driven build.
+
+**Locally the same move had to be made, and it is what #124 actually cost.** `Scripts/swiftpm-env.sh` forced the
+Command Line Tools' 26.5 SDK whenever the selected Xcode path contained `beta`, so every `mise run test` here paired
+whatever compiler was in play with a release SDK — which was harmless while nothing in `Sources/` named a 27 symbol
+and fatal the moment something did. It now fires **only for a swift.org toolchain**, measured rather than assumed:
+`swift build` against Xcode 27 beta 6's macOS 27 SDK with that Xcode's own Swift 6.4 completes in **32 s** here, the
+same configuration `lint-test` builds in. A swift.org toolchain keeps the swap and now cannot build this package
+against either SDK — 27 symbols are absent from 26.5 — so all the swap buys there is a legible error
+(`cannot find 'LongRunningIntent' in scope`) instead of 401 inaccessible-initialiser ones. The version line is the
+test, because it is the measurement rather than a path guess: Xcode's toolchain stamps `swiftlang-6.4.0.33.1`, a
+swift.org build stamps `swift-6.3.3-RELEASE`.
 
 This is the measured form of the tooling-matrix gap in §2.
 
@@ -308,22 +317,42 @@ intent's whole `perform()` arrives for free: the system opens the entity's URL, 
 `AppUnionValue` is iOS 27 and satisfies neither conditional extension, putting `perform()` back in our hands for the
 same user-visible result.
 
-**Three items in the §3 bullet above are out of reach from here, and each for a reason worth writing down:**
+**Four items were out of reach from here and #124 settled all four — two adopted, two refused. The refusals are the
+half worth reading:**
 
-- **`ExecutionTargets`, `LongRunningIntent` and `CancellableIntent` were blocked by CI rather than by design, and
-  that job has now moved.** All are `@available(anyAppleOS 27.0)`, and the intents they would go on live in
-  `Sources/ReachyWidgetUI`. `lint-test` used to be pinned to `macos-15` with `DEVELOPER_DIR=Xcode_26.2` and runs
-  `mise run test`, which is `swift build` over every SwiftPM target — and an iOS-27 symbol is simply **absent** from
-  the 26.2 SDK, so `@available` did not save it and the module failed to compile. It is on `xcode-27` now, building
-  with that Xcode's own Swift; see the section above. Adopt these one at a time, cheapest and most reversible first,
-  because a 27 symbol in `Sources/` pins CI to a preview image and the runner label can no longer be rolled back
-  without reverting source.
-- **Onscreen awareness is out of reach for the same reason, and it is the one that reads as reachable.**
-  `View.appEntityIdentifier` is annotated `@available(macOS 15.4, iOS 18.4, *)` — _below_ this app's floor — so it
-  looks like a free adoption. That is its runtime availability; the declaration ships only in the 27 SDK.
-  `_AppIntents_SwiftUI`'s interface in `MacOSX26.5.sdk` does not contain the name, and in the 27 SDK it does. Adopted
-  once and reverted after `lint-test` failed with `cannot find 'appEntityIdentifier' in scope`; it goes in with the
-  rest of §3 when that job can open a 27 SDK.
+- **`LongRunningIntent` is adopted, on `WakeRobotIntent` and nowhere else.** Its own documentation names the case
+  exactly: the system gives a background task 30 seconds and some tasks need more. A cold backend start is budgeted
+  at **90 s**, which is why `RobotPower.resume()` returns on job acceptance and hands the rest to a durable marker —
+  the one job in this app that outlives an intent. On 27 the intent waits it out inside `performBackgroundTask`,
+  reports progress once per poll (the system ends an extension that stops reporting, and a Live Activity draws the
+  bar from the same `Progress`), and answers with what happened rather than with what was asked for. The fraction is
+  of the **budget**, not of the job: the daemon publishes nothing about how far along a start is, and an honest bar
+  can only show the clock. Below 27 nothing changes at all.
+- **Onscreen awareness is adopted, on two screens.** `View.appEntityIdentifier` is annotated
+  `@available(macOS 15.4, iOS 18.4, *)` — _below_ this app's floor — so it reads as a free adoption. That is its
+  runtime availability; the declaration ships only in the 27 SDK, `_AppIntents_SwiftUI`'s interface in
+  `MacOSX26.5.sdk` not containing the name at all. `View.onscreenEntity(_:)` carries both facts, and it is applied
+  to `AppDetailSheet` and `RobotScreen` — the two screens that are about exactly one entity. A **list** is
+  deliberately not marked: `appEntityIdentifier(forSelectionType:identifier:)` is the shape for one and needs a
+  selection these catalogues do not have, and marking a list with whichever row was scrolled past is how an
+  assistant becomes confidently wrong.
+- **`ExecutionTargets` is refused, and the SDK's own documentation is why.** `IntentExecutionTargets` says the
+  problem it solves outright: intents reused between an app, a widget extension and an **App Intents extension**
+  through a Swift package may be performed from any of them, and by default the system uses any available target.
+  This app has no App Intents extension, so the available targets are the app and the widget extension — and every
+  intent in `ReachyWidgetUI` must be allowed in both, because the same types are in both bundles' metadata and
+  `WakeRobotIntent` / `SleepRobotIntent` are what the Control Centre controls run. `[.main, .widgetKitExtension]`
+  is therefore what "any available target" already means here. The one thing the annotation could change is pinning
+  an intent to `.main`, which is precisely the behaviour an interactive widget exists to avoid. It becomes a real
+  decision the day this app grows an App Intents extension, and not before.
+- **`CancellableIntent` is refused, and the reason is this app's own state model rather than the API.** The
+  protocol buys extra time to clean up, and the reason enum tells a user cancellation from a 30-second timeout —
+  its documented example rolls back a payment. Nothing here has an equivalent: every piece of state kept across an
+  intent boundary describes the **robot**, not the intent. `RobotPowerTransitionState.Pending` is a transition the
+  daemon owns; cancelling the intent does not cancel `daemon/start`, so retiring the marker on cancellation would
+  put **Wake up** back under a robot that really is still starting — the exact bug the marker exists to prevent —
+  and re-opening it would extend a deadline over a job nobody is watching any more. `Task.isCancelled` already ends
+  the polling, which is the whole of the cleanup there is. Adopt it when something belongs to the intent alone.
 - **`supportedModes` buys nothing at this floor.** `openAppWhenRun` is `@available(iOS, deprecated: 26.0)`, and a
   deprecation only fires once the _deployment target_ reaches the deprecating version. At iOS 18 nothing warns, so
   the swap removes no diagnostic and changes no behaviour. It is a deployment-floor task.

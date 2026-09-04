@@ -165,8 +165,12 @@ types — `LogConsoleView`, `AppDetailSheet`, `ViewportView`, `RootLifecycle` an
 once blamed one slow-to-type-check expression for this; that reading predates `Scripts/swiftpm-env.sh` and is wrong
 — the same measurement now reports **zero** type-check timeouts.) What is given up is a release compiler; what is
 gained is the configuration the app is actually built and shipped in, since all four app jobs, both release scripts
-and Xcode Cloud already use Xcode's Swift. `.swift-version` stays: `Scripts/install-sourcekit.sh` reads it, and
-swiftly still drives a local `swift build`. The
+and Xcode Cloud already use Xcode's Swift. `.swift-version` stays for `Scripts/install-sourcekit.sh`, which reads
+it — but **a swift.org toolchain can no longer build this package at all**, and that is #124's real local cost
+rather than a CI detail: `Sources/` names 27 symbols now (`LongRunningIntent`, `View.appEntityIdentifier`), which
+are absent from the 26.5 SDK that pairing is forced onto. `Scripts/swiftpm-env.sh` therefore fires only for a
+swift.org toolchain, where the swap now buys a legible error instead of the 401 above; with Xcode's own Swift it
+does nothing and `swift build` sees the 27 SDK, measured at 32 s for the whole package. The
 `macos-*` family cannot host Xcode 27 at all — `macos-26` tops out at 26.6 — so the old two-image split is gone, and
 with it the reason 26.4.1 was pinned (`actool` failing `CompileAssetCatalogVariant` for the macOS variant of an Icon
 Composer `.icon` on 26.2). `xcode-27` is a public preview image (actions/runner-images#14404) carrying Xcode 27

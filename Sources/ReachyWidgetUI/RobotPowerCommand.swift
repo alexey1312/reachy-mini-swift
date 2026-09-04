@@ -1,4 +1,5 @@
 import Foundation
+import ReachyDesign
 import ReachyKit
 import WidgetKit
 
@@ -83,6 +84,47 @@ public struct RobotPowerCommand: Sendable {
             // the widget's own notice, and the thrown error is for Shortcuts and
             // for a debugger.
             throw error
+        }
+    }
+
+    /// The rest of a cold wake, for a caller that has been given the time to wait.
+    ///
+    /// **Everything above returns on job acceptance because an intent has seconds.**
+    /// `LongRunningIntent` is what changes that premise on iOS 27, and this is where
+    /// the extra time is spent: the same 90 s budget `RobotSession.wake()` has always
+    /// waited out, and the same three writes it ends with — a snapshot saying the
+    /// robot is awake, a marker cleared, a timeline reloaded.
+    ///
+    /// A second connection rather than one threaded out of `perform()`, and
+    /// deliberately outside `Self.executionTimeout`: that budget exists to stop an
+    /// intent sitting on a 35 s hub session it cannot afford, and the whole point
+    /// here is a caller that can.
+    ///
+    /// A failure to connect is reported the way a failure to start is — the reader
+    /// asked for a robot to wake up and it did not, and which of the two went wrong
+    /// is not a distinction a widget's one line can carry.
+    public func awaitStartedBackend(reporting: @Sendable (Double) -> Void) async -> Bool {
+        let transitions = RobotPowerTransitionStore()
+        do {
+            let target = try await RobotIntentTarget.connection(to: robot, timeout: 10)
+            let power = RobotPower(client: target.client, configuration: .widgetIntent)
+            guard await power.waitForBackendRunning(reporting: reporting) else {
+                transitions.fail(message: String(localized: .reachy("The robot took too long to start.")))
+                reload()
+                return false
+            }
+            // `wake_up=true` had the daemon enable the motors and play the animation
+            // itself, so a running backend here really is an awake robot — which is
+            // exactly the claim `RobotPowerCommand.record` refused to make while
+            // nothing had waited for it.
+            RobotSnapshotStore().recordPower(isAwake: true, robotID: target.robot.key, robotName: target.robot.name)
+            transitions.succeed()
+            reload()
+            return true
+        } catch {
+            transitions.fail(message: RobotSession.describe(error))
+            reload()
+            return false
         }
     }
 

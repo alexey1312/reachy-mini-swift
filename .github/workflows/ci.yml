@@ -48,9 +48,11 @@ jobs:
     # initialiser, which makes that initialiser private too, and ReachyUI then fails at
     # 401 call sites across **ten** types — `LogConsoleView`, `AppDetailSheet`,
     # `ViewportView`, `RootLifecycle` and six more. Giving each an explicit `init` is a
-    # workaround for a compiler bug, spread over ten files, in service of a signal that
-    # is already thinner than it looks: `Scripts/swiftpm-env.sh` swaps the 27 SDK out
-    # from under every local SwiftPM task anyway.
+    # workaround for a compiler bug, spread over ten files, in service of a toolchain
+    # nothing else here uses. `Scripts/swiftpm-env.sh` used to swap the 27 SDK out from
+    # under every local SwiftPM task, which made this signal thinner than it looked; it
+    # fires only for a swift.org toolchain now (#124), so a local `swift build` and this
+    # job compile the same sources against the same SDK.
     #
     # What is given up is a release compiler. What is gained is the configuration the
     # app is actually built and shipped in — all four app jobs, both release scripts and

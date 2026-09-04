@@ -112,6 +112,11 @@ struct RootLifecycle: ViewModifier {
                 continueHandoff(activity)
             }
             .widgetReload(session: session, isPreview: previewMode)
+            // The second half of the same idea, and it cannot be folded into that one:
+            // a transition beginning moves neither `isAwake` nor the running app, so
+            // `RobotWidgetFacts` never changes and the marker the widget renders
+            // instead of the reading would never be written.
+            .powerTransitionMirror(session: session, isPreview: previewMode)
             // The Live Activity, driven off one `Equatable` value for the same reason
             // `widgetReload` is: keyed into a `.task(id:)`, the work follows the fact
             // rather than accompanying it. It lives here and not on the dock's own

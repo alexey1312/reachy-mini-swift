@@ -63,6 +63,43 @@ struct RobotPowerTransitionStateTests {
         #expect(store.current?.failure == nil)
     }
 
+    // MARK: - Who wrote it
+
+    /// The app is the other writer now, and the flag is the only thing that can
+    /// tell the two apart once the record is on disk.
+    @Test("the app's own marker says so, and an intent's still does not")
+    func recordsTheWriter() throws {
+        let store = try store()
+
+        store.begin(.startingBackend, writer: .session, at: now)
+        #expect(store.current?.pending?.writer == .session)
+
+        store.begin(.startingBackend, at: now)
+        #expect(store.current?.pending?.writer == .intent)
+    }
+
+    /// Additive under the `.stored` freeze (project rule 11): records written by
+    /// shipped builds are on disk, and the only process that wrote one then was an
+    /// intent. Synthesised decoding would throw on the missing key, and
+    /// `RobotPowerTransitionStore.current` swallows that with `try?` — so the whole
+    /// symptom would be a widget that had quietly stopped showing transitions.
+    @Test("a record written before the writer existed decodes as an intent's")
+    func decodesALegacyRecord() throws {
+        let defaults = try #require(
+            UserDefaults(suiteName: "RobotPowerTransitionStateTests.\(UUID().uuidString)")
+        )
+        let legacy = """
+        {"pending":{"transition":"startingBackend","since":\(now.timeIntervalSinceReferenceDate)}}
+        """
+        defaults.set(Data(legacy.utf8), forKey: RobotPowerTransitionStore.key)
+
+        let pending = try #require(RobotPowerTransitionStore(defaults: defaults).current?.pending)
+
+        #expect(pending.writer == .intent)
+        #expect(pending.transition == .startingBackend)
+        #expect(pending.since == now)
+    }
+
     /// One window would be wrong twice — too short for a cold start, or long enough
     /// to leave "Going to sleep…" up for two minutes after a four-second operation.
     @Test("a cold start is given a longer window than any other transition")

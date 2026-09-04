@@ -184,9 +184,14 @@ struct RobotWidgetContentTests {
 
     private func pending(
         _ transition: RobotSession.PowerTransition,
-        secondsAgo: Double = 0
+        secondsAgo: Double = 0,
+        writer: RobotPowerTransitionState.Pending.Writer = .intent
     ) -> RobotPowerTransitionState {
-        RobotPowerTransitionState(pending: .init(transition: transition, since: now.addingTimeInterval(-secondsAgo)))
+        RobotPowerTransitionState(pending: .init(
+            transition: transition,
+            since: now.addingTimeInterval(-secondsAgo),
+            writer: writer
+        ))
     }
 
     @Test("a transition in flight replaces the state and takes the button away")
@@ -249,6 +254,40 @@ struct RobotWidgetContentTests {
 
         #expect(content.isPending == false)
         #expect(content.detail.localizedCaseInsensitiveContains("awake"))
+    }
+
+    /// The app clears its own marker in a `defer` and writes a snapshot every poll
+    /// interval while the transition runs, so supersession would hide a marker three
+    /// seconds after it was written — and leave **Wake up** on screen through ninety
+    /// seconds of a cold start the app itself started.
+    @Test("the app's own transition is not superseded by the app's own reading")
+    func aSessionTransitionSurvivesANewerReading() {
+        let content = RobotWidgetContent(
+            // Taken now; the transition began a minute ago — the exact pairing that
+            // retires an intent's marker one test above.
+            state: .fresh(snapshot()),
+            power: pending(.startingBackend, secondsAgo: 60, writer: .session),
+            at: now
+        )
+
+        #expect(content.isPending)
+        #expect(content.action == nil)
+    }
+
+    /// The window is the only backstop a `.session` marker has left, and it covers
+    /// the one case with no writer at all: the app killed mid-transition.
+    @Test("even the app's own transition is forgotten past its window")
+    func aSessionTransitionStillExpires() {
+        let window = RobotPowerTransitionState.window(for: .goingToSleep)
+
+        let content = RobotWidgetContent(
+            state: .fresh(snapshot()),
+            power: pending(.goingToSleep, secondsAgo: window + 1, writer: .session),
+            at: now
+        )
+
+        #expect(content.isPending == false)
+        #expect(content.action == .sleep)
     }
 
     @Test("a failure is reported in place of the state but keeps the button")
