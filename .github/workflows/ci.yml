@@ -36,9 +36,36 @@ env:
 jobs:
   lint-test:
     name: Lint & Test (macOS)
-    runs-on: macos-15
+    # On `xcode-27` with the four Xcode jobs, and building with that Xcode's own Swift
+    # 6.4 rather than a swift.org toolchain overlaid on top of it. The 26.2 pin was what
+    # blocked #124: an iOS/macOS-27 symbol is simply *absent* from that SDK, so
+    # `@available` does not save it and `swift build` fails over a declaration the four
+    # app jobs compile happily.
+    #
+    # Pairing swift.org 6.3 with the macOS 27 SDK is not the way out, and that was
+    # measured rather than assumed: 6.3.3 against Xcode 27 beta 6's SDK puts the backing
+    # storage of a `@State private` property into the synthesised memberwise
+    # initialiser, which makes that initialiser private too, and ReachyUI then fails at
+    # 401 call sites across **ten** types — `LogConsoleView`, `AppDetailSheet`,
+    # `ViewportView`, `RootLifecycle` and six more. Giving each an explicit `init` is a
+    # workaround for a compiler bug, spread over ten files, in service of a signal that
+    # is already thinner than it looks: `Scripts/swiftpm-env.sh` swaps the 27 SDK out
+    # from under every local SwiftPM task anyway.
+    #
+    # What is given up is a release compiler. What is gained is the configuration the
+    # app is actually built and shipped in — all four app jobs, both release scripts and
+    # Xcode Cloud use Xcode's Swift — and one step fewer per run.
+    runs-on: xcode-27
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_26.2.app/Contents/Developer"
+      # The stable symlink, never the versioned path: the image's own
+      # `/Applications/Xcode_27_beta_N.app` moved from beta 3 to beta 4 at one rollout.
+      #
+      # `Scripts/swiftpm-env.sh` deliberately does not fire here. It forces the Command
+      # Line Tools' release SDK whenever the selected Xcode path contains `beta`, which
+      # this one does not — so this job really does compile against the 27 SDK. A guard
+      # that silently rescued CI would be the worst outcome available: green, and
+      # proving nothing.
+      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -47,22 +74,16 @@ jobs:
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Lint runs before the toolchain install, not after: it is the fastest signal in
-      # the workflow and nothing it checks needs Swift 6.3. It no longer gates the other
-      # jobs — `needs: lint` cost every one of them a serial 40 s, against a formatting
-      # slip that a PR author sees within the minute anyway.
+      # Lint runs first because it is the fastest signal in the workflow. It no longer
+      # gates the other jobs — `needs: lint` cost every one of them a serial 40 s,
+      # against a formatting slip that a PR author sees within the minute anyway.
+      # SwiftLint's `json_codec_only` rule needs SourceKit, which moves with the Xcode:
+      # checked under Xcode 27 beta 6 locally and clean.
       - name: Check formatting (Swift + Markdown)
         run: mise run format-check
 
       - name: Lint (SwiftLint + actionlint)
         run: mise run lint
-
-      - name: Install Swift 6.3 toolchain
-        run: |
-          curl -fLo swift-6.3.pkg "https://download.swift.org/swift-6.3-release/xcode/swift-6.3-RELEASE/swift-6.3-RELEASE-osx.pkg"
-          sudo installer -pkg swift-6.3.pkg -target /
-          TOOLCHAINS=$(plutil -extract CFBundleIdentifier raw /Library/Developer/Toolchains/swift-6.3-RELEASE.xctoolchain/Info.plist)
-          echo "TOOLCHAINS=$TOOLCHAINS" >> "$GITHUB_ENV"
 
       - name: Cache SPM dependencies
         uses: actions/cache@v6
@@ -71,9 +92,14 @@ jobs:
           # Keyed on the workspace path: .build/workspace-state.json records the WebRTC
           # xcframework absolutely, so a cache restored elsewhere (as after the repo
           # rename) sends SwiftPM looking where the artifact is not.
-          key: ${{ runner.os }}-swift-6.3-spm-${{ github.workspace }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          #
+          # The compiler is part of the key, not decoration: modules in `.build` are
+          # compiled against one SDK, and a restore-key prefix that outlived the move
+          # off Xcode 26.2 would have handed this job 26.2 modules — a false pass in
+          # the one job that exists to catch exactly that.
+          key: ${{ runner.os }}-swift-6.4-spm-${{ github.workspace }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-swift-6.3-spm-${{ github.workspace }}-
+            ${{ runner.os }}-swift-6.4-spm-${{ github.workspace }}-
 
       - name: Show Swift version
         run: swift --version
@@ -139,7 +165,8 @@ jobs:
       # and moves again at the next. Deliberately Xcode's own Swift, with no swift.org
       # toolchain overlaid: xcodebuild cannot load the local package's manifest under
       # one (its clang fails to spawn the linker). These jobs exist to compile the app
-      # shell and the Tuist manifest; lint-test is what holds the code to Swift 6.3.
+      # shell and the Tuist manifest; lint-test is what holds the SwiftPM graph and runs
+      # the suite, on the same image and the same Swift since #124's blocker was lifted.
       DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7

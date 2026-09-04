@@ -92,38 +92,11 @@ struct DaemonUpdateScreen: View {
         }
     }
 
-    @ViewBuilder
+    /// `.upToDate` is reachable here, and it is the state this screen phrases
+    /// differently from the settings card: the robot is on the newest published
+    /// release and that release is still older than this app needs.
     private var statusRow: some View {
-        switch state {
-        case .idle, .checking:
-            Label(.reachy("Checking for updates…"), systemImage: "arrow.triangle.2.circlepath")
-        case let .upToDate(current):
-            // Reachable when the robot is genuinely on the newest published release
-            // yet still older than this app expects.
-            Label(
-                .reachy("The robot is on \(current), the newest release available to it."),
-                systemImage: "exclamationmark.triangle"
-            )
-            .foregroundStyle(Tone.warning.style)
-        case let .robotOffline(current):
-            Label(
-                .reachy("The robot (\(current)) can't reach the internet, so it can't download an update."),
-                systemImage: "wifi.exclamationmark"
-            )
-            .foregroundStyle(Tone.warning.style)
-        case let .available(current, latest):
-            LabeledContent(.reachy("Available")) { Text(.reachy("\(current) → \(latest)")).monospaced() }
-        case .installing:
-            Label(.reachy("Installing — this takes a minute or two…"), systemImage: "arrow.down.circle")
-        case .restarting:
-            Label(.reachy("The robot is restarting…"), systemImage: "arrow.clockwise")
-        case let .finished(version):
-            Label(.reachy("Updated to \(version)."), systemImage: "checkmark.circle")
-                .foregroundStyle(Tone.success.style)
-        case let .failed(message):
-            Label(message, systemImage: "xmark.octagon")
-                .foregroundStyle(Tone.danger.style)
-        }
+        SystemUpdateStatusRow(row: SystemUpdateCaption.row(for: state, purpose: .required))
     }
 
     @ViewBuilder

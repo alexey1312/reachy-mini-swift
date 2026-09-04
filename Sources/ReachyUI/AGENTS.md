@@ -820,6 +820,17 @@ target learned doing it:
 - **A sentence is one key.** Prose split across `+` for the sake of the 120-column rule became one literal with
   `// swiftlint:disable:next line_length` above it. Two half-keys cannot be reordered by a translator, and the
   fragments collide as generated symbols with whatever else ends in the same words.
+- **A caption may be shared by two surfaces, and then it takes an argument rather than a screen.**
+  `SystemUpdateCaption` maps `SystemUpdateModel.State` for both `SystemUpdateCard` and `DaemonUpdateScreen`; four of
+  its nine arms were already word-for-word identical, which is rule 10's trigger and the hazard `RunningAppCaption`
+  names — two surfaces that must not be allowed to say the same fact two ways. What genuinely differs is not the
+  screen but the **question**: in settings an update is an offer, so up to date is the good news; in front of a
+  daemon below this app's floor it is a requirement, and up to date is the dead end. Hence `Purpose`, the same shape
+  as `RunningAppCaption.Failure`. It returns a three-case `Row` rather than a view, which is what keeps the file
+  reachable from `swift test` — and what took two nine-arm `@ViewBuilder` switches, one of them the expression
+  `docs/research/ios-27.md` recorded as unable to type-check in reasonable time, down to one three-arm renderer.
+  Nine arms is cyclomatic complexity 10, exactly what `--strict` allows, so every fork on `Purpose` is a function of
+  its own; one `if` or `??` in `row(for:purpose:installed:)` would fail the build.
 
 ## Previews and snapshots
 
@@ -1017,6 +1028,14 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   this is a real alert, and a stack frame is not a sentence.
 - **A refused Stop updates and never ends.** Ending on a failed Stop reads as the Stop having worked — the bug
   `RunningAppCaption.description` was written to fix, in a second place.
+- **The other two cards #61 named were refused, and the reasoning is next door.** #123 closed power transitions and
+  the long jobs `wontfix`; `ReachyWidgetUI/AGENTS.md` carries why, because that is where the card is. What belongs
+  on this side is the half that would have driven them, and it is the half that decides:
+  `RobotSession.powerTransition` is cleared by a `defer` in a session that lives in the app's process, so a card
+  started for a 90 s backend start has no writer left the moment the phone is put down — and `SystemUpdateModel` is
+  view-local in two places, so a job card needs #80's hoist and then a third ownership shape on top of it.
+  `RunningAppActivityFacts` deliberately does **not** carry `powerTransition`; adding it is the first move of
+  rebuilding what was refused.
 
 ## Job notifications
 
@@ -1104,10 +1123,12 @@ reach Apple Intelligence.
 - **Whether `@Generable` works under CI's toolchain is unresolved, and the design does not need the answer.** It
   compiles locally, and the compiler line shows why — the plugin arrives as
   `-load-resolved-plugin …/Platforms/MacOSX.platform/…/libFoundationModelsMacros.dylib`, from the platform
-  directory rather than any `-plugin-path`. But that is Xcode's own toolchain; CI swaps in swift.org 6.3 via
-  `TOOLCHAINS`, which is exactly the configuration where `#Preview` and `@Entry` are documented to fail against a
-  plugin from the _same_ directory. Plain-`String` output needs no macro at all and is the right shape for "explain
-  this log" regardless, so the risk is avoided for free. Settle it with a CI run, never with a local build.
+  directory rather than any `-plugin-path`. But that was Xcode's own toolchain against a CI that swapped in
+  swift.org 6.3 via `TOOLCHAINS` — exactly the configuration where `#Preview` and `@Entry` are documented to fail
+  against a plugin from the _same_ directory. **That difference is gone**: `lint-test` builds with Xcode 27's own
+  Swift now, so CI and a local build are the same configuration and the risk was never taken. Plain-`String` output
+  needs no macro at all and is the right shape for "explain this log" regardless, so nothing here changes for it —
+  but a future `@Generable` is now a question a CI run can answer rather than one to design around.
 - **The log is untrusted input, and the separation is structural rather than a wording choice.**
   `LogExplanationPrompt.instructions` is the only trusted channel and no log text reaches it — there is a test that
   says so. The corpus lives inside a `BEGIN/END LOG EXCERPT` fence whose markers `LogExcerpt.neutralise` rewrites

@@ -153,8 +153,20 @@ is silent on macOS.
 `Apple M1 (Virtual)`, and `macos-15-xlarge` reports 5 cores / 14 GiB / `Apple M2 Pro (Virtual)`. The xlarge label does
 resolve on this account, so the only thing standing between this project and roughly twice the compile throughput is
 that larger runners are billed — including on public repositories, where the standard ones are free. Three cores is
-why compilation dominates every number in this file. **Every Xcode job runs on `xcode-27`; only `lint-test` stays on
-`macos-15` with 26.2**, because it is SwiftPM against the swift.org toolchain and never opens the iOS SDK. The
+why compilation dominates every number in this file. **Every job in `ci.yml` now runs on `xcode-27`, `lint-test`
+included, and
+with Xcode's own Swift rather than a swift.org toolchain overlaid** (`release.yml` stays on `macos-15`; it writes a
+GitHub release and compiles nothing). That was #124's blocker: an iOS/macOS-27 symbol
+is _absent_ from the 26.2 SDK, so `@available` does not save it and `swift build` fails over a declaration the four
+app jobs compile happily. Pairing swift.org 6.3 with the 27 SDK is not the way out and that is measured: 6.3.3
+against Xcode 27 beta 6's macOS SDK puts the backing storage of a `@State private` property into the synthesised
+memberwise initialiser, making that initialiser private, and `ReachyUI` then fails at 401 call sites across **ten**
+types — `LogConsoleView`, `AppDetailSheet`, `ViewportView`, `RootLifecycle` and six more. (`docs/research/ios-27.md`
+once blamed one slow-to-type-check expression for this; that reading predates `Scripts/swiftpm-env.sh` and is wrong
+— the same measurement now reports **zero** type-check timeouts.) What is given up is a release compiler; what is
+gained is the configuration the app is actually built and shipped in, since all four app jobs, both release scripts
+and Xcode Cloud already use Xcode's Swift. `.swift-version` stays: `Scripts/install-sourcekit.sh` reads it, and
+swiftly still drives a local `swift build`. The
 `macos-*` family cannot host Xcode 27 at all — `macos-26` tops out at 26.6 — so the old two-image split is gone, and
 with it the reason 26.4.1 was pinned (`actool` failing `CompileAssetCatalogVariant` for the macOS variant of an Icon
 Composer `.icon` on 26.2). `xcode-27` is a public preview image (actions/runner-images#14404) carrying Xcode 27

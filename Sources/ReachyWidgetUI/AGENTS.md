@@ -106,6 +106,15 @@ reverse.
   directly, so nothing in `Metadata.appintents` is exercised by the snapshot suite. What does catch it is reading the
   built metadata — `python3 -c "import json; print(json.load(open('Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyWidget.appex/Metadata.appintents/extract.actionsdata'))['actions']['RobotAppsConfigurationIntent']['parameters'][0]['typeSpecificMetadata'][1])"`
   — or adding it to a Home Screen.
+- **That trap is now a build failure, and the guard holds a rule rather than the numbers.**
+  `Scripts/check-appintents-metadata.sh` reads every collection `@Parameter` in the app bundle's metadata and
+  fails unless each family ranges from `min: 0` up to a `max` of at least 1. The 2 / 4 / 8 are deliberately not
+  repeated there: they are a grid decision, `RobotAppsWidgetContent` truncates with `prefix`, and a guard that
+  pinned them would go red for a design change and teach everyone to edit the guard. A second, narrower assertion
+  names `RobotAppsConfigurationIntent.apps` explicitly, because deleting the `size:` argument leaves no tag behind
+  and the general rule would then pass over it in silence. Both read the **app** bundle rather than the appex,
+  which is what makes one assertion cover macOS and iOS alike. `AppIntentsTesting` would not have caught any of
+  this — it exposes no parameter metadata at all (`docs/research/ios-27.md` §3.1).
 - Extension processes are disposable; persist pending and failure state in App Group stores and reload affected
   timelines rather than relying on memory.
 - On iOS 18, widget and Control Centre intents cannot open the app with `openAppWhenRun`; use `widgetURL` where an
@@ -476,3 +485,86 @@ Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.s
   160 pt truncation point, every Dynamic Island presentation, StandBy, the Watch and CarPlay, whether `staleDate`
   flips when claimed, and that the system ends a card at eight hours. The previews render `RunningAppActivityView`
   directly, never through ActivityKit — the same blind spot `supportedFamilies` already has.
+
+## The two cards that were refused (#123)
+
+#61 asked for three activities and #118 shipped one. The other two — the power transitions and the long jobs —
+are closed `wontfix`, after #123 asked the only question worth asking about them: not "how would we build these"
+but **whether either fact has a shape a card can hold**. Neither has. Read this before proposing either again,
+and note first what it deliberately does _not_ say:
+
+- **The reason is not that they are short.** Two of the four transitions are minutes. `RobotSession.powerOff` is
+  `releaseRunningApp()` (≤ `appStopTimeout`, 30 s) and then `waitForDaemonStopped` (≤ `daemonStopTimeout`, 60 s);
+  a cold start is `daemonStartTimeout`'s 90 s. Only `wakingUp` is seconds, and even that is bounded by the
+  session's 10 s `moveCompletionTimeout` rather than the 4 s the widget intent uses. A refusal resting on a
+  stopwatch is one somebody reopens with a stopwatch, correctly.
+- **The reason is a property of the fact, not of the clock.** A card can only hold something that stays true while
+  nothing is running. An app that held the robot at T did hold it at T, so the running-app card degrades honestly
+  to the past tense plus the age of the reading. A transition and a job are **intervals whose only interesting
+  property is that they ended** — and the ending is precisely the event a frozen card cannot receive.
+
+### Power transitions
+
+- **The Lock Screen already carries all four, from a surface that retires itself.** `RobotWidgetContent` renders
+  `RobotPowerTransitionState.Pending` as its detail line with the button withdrawn and `isStale` forced false, on
+  the three `accessory*` families, and files a refresh moment a millisecond past the transition's own window
+  (120 / 60 / 30 / 45 s). A card would be a second claim about one robot on one Lock Screen — what `staleDate`'s
+  alignment with the widget's boundary and `MenuBarContent` both exist to prevent — and it would be the half that
+  **cannot end itself**, because `staleDate` sets `isStale` and does not end a card.
+- **It could exist only where it is redundant and never where it would help.** ActivityKit refuses a request from
+  anywhere but the foreground, and `powerTransition` is written only by `RobotSession+Power`, `+Connect` and
+  `+AppLifecycle` — the app, on screen, where `PowerTransitionRow` and `statusText` are already saying the same
+  sentence on the Robot tab, an app's page and the connection stepper. Every transition started with the app _not_
+  running goes through `RobotPowerCommand` in the extension's process and could request nothing.
+  `LiveActivityIntent` is not the way round it: that conformance would relocate all four shipped callers of the
+  power intents into the app's process, which `RunningAppActivityIntents.swift` refuses by name.
+- **There is no ending, and the ordinary case is the one with no writer left.** `powerTransition` is cleared by a
+  `defer` inside an async method of a session that lives in the app's process, so a phone put down during a 90 s
+  start is a `defer` that never runs. Reconciliation fires on the next foreground pass, which may be the next day,
+  and adopting a card whose start this device never observed is what the plan's own rules already refuse. Worse,
+  `waitForDaemonRunning` bounds itself on `ContinuousClock`, which advances across suspension — so a resumed app
+  files a 90-second timeout about a start that may have succeeded hours ago. On a screen that is a line the reader
+  can act on; on a frozen card it would be a verdict.
+- **`powerOff` would put two cards on one tap.** It releases the running app first, so the running-app card ends
+  and a power card starts, up to `appStopTimeout` apart, for one deliberate action.
+- **It could never alert and never carry a button.** "Never on silence" forbids alerting on the end, which is the
+  only moment worth telling anybody about; the start is something the reader just did. And a Cancel would send
+  `daemon/stop` at a daemon with a start job already running, which `.claude/rules/daemon-api.md` records as a
+  **409**, while the end of a stop is a SIGKILL. What is left is a silent, self-freezing restatement of a sentence
+  the reader was looking at when they caused it, carrying nothing but `widgetURL` back to that same screen.
+- **And the dismissal has no window that works.** `RunningAppActivityDismissalStore` expires on
+  `RobotSnapshotStore.freshness` because past half an hour nothing else here believes the reading either. A power
+  card's window would have to be the transition's own 30–120 s, which is _shorter than the thing being dismissed_,
+  so a swipe would not hold for the life of the card; anything longer suppresses the reader's next deliberate tap.
+- **What the investigation did find is a defect, and it is #127.** The one true half of the case for a card is that
+  the plumbing would be free: `powerTransition` is `public internal(set)` on an `@Observable` session
+  `RootLifecycle` already holds. That is an argument for writing `RobotPowerTransitionStore` from the app — which
+  nothing does today. `begin(_:)` is called only from `RobotPowerCommand`, so during an app-driven 90 s start or
+  power-off the widget and the menu-bar popover render the pre-transition reading with a live button. Same need, on
+  a surface built for it, correcting itself on a timeline, and on macOS as well — where a card is impossible.
+
+### The long jobs
+
+- **There is still no denominator, and #117 did not add one.** `JobInfo` is `{command, status, logs}` and
+  `JobStatus` is `{pending, in_progress, done, failed}`; `DaemonJob` mirrors it exactly. What #117 changed is
+  `SystemUpdateModel`'s explicit `installing → restarting → finished/failed` machine, which is _phases_ rather
+  than a percentage — and a card can draw phases honestly. That is the strongest form of the case, and it is the
+  reason #123 was worth asking rather than assuming. It fails on the three below.
+- **The one honest ending is one a card cannot say.** An update ends with `systemctl restart`, which kills the
+  daemon before a terminal `done`, and an app suspended across that reaches `JobNotificationPlan.Result
+  .inconclusive`, whose whole point is that it is neither success nor failure. A card frozen at "Installing…"
+  cannot be told, and `isStale` never becomes a verdict.
+- **The ownership shape is wrong, and #80 wrote down why before this was asked.** A card is requested in the
+  foreground and a job notification is posted out of it, so a job card would need a third shape holding both.
+  `SystemUpdateModel` is view-local `@State` built in a `.task` in `SystemUpdateCard` and `DaemonUpdateScreen`, so
+  it would need the hoist #80 paid for first. Backgrounded-but-executing, the card says "Installing…" underneath
+  a notification saying it finished; truly suspended, neither fires and the card is the only residue of a job
+  whose outcome nobody learns.
+- **And it is one job, not a family.** An app install has no phases at all — `AppJobMonitor` reconciles a socket
+  and a poll into four outcomes.
+
+### What this does not close
+
+`docs/research/ios-27.md` §3 records `supplementalActivityFamilies([.small])`, which puts the **existing**
+running-app card on Apple Watch and the CarPlay dashboard with no watchOS app at all. That is more surface for a
+card that already earns its place, and neither refusal here touches it.
