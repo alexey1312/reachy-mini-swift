@@ -133,6 +133,7 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
 ./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run asc -- ...     # App Store Connect CLI with the release key loaded
 ./bin/mise run update-spec    # Refresh + normalize daemon OpenAPI spec
+./bin/mise run geometry:usdz  # Export the robot's USDZ for object-tracking training (#77)
 ./bin/mise run theme:colors   # Regenerate Theme*.colorset from ReachyTheme.palette
 ./bin/mise run theme:icons    # Regenerate the six AppIcon*.icon bundles from the palette
 ./bin/mise run test:snapshots # Snapshot-test every ReachyUI preview (iOS Simulator)
@@ -391,6 +392,39 @@ which is the size the README already used). Do **not** re-add a gradient-plus-gl
 generate it: that would be a second answer to "what does the icon look like" that can drift from `actool`'s,
 which is exactly the divergence deleting the asset catalogue removed. It shipped stale once already — the README
 carried the coral icon for the whole of the theming work.
+
+**The robot's USDZ is generated, and three of its steps read as something else —
+`./bin/mise run geometry:usdz`** (`Scripts/export-robot-usdz.sh`, wrapping the
+`ReachyGeometryExport` executable target). It writes the training _input_ for Create ML's
+object-tracking template, out of the description and meshes `ReachySimulator` already carries; what
+ships is the `.referenceobject` that training produces, and the USDZ itself is under `.build` and
+regenerable. The target exists rather than a `Scripts/*.swift` because a script cannot link a target,
+so `URDFParser` and `STLDecoder` would have to be copied — and a robot exported by a second decoder
+is one that can drift from the robot on screen. `URDFFlatteningTests` is what holds the export and
+`RobotSceneGraph` to the same placement for all 153 visuals, and it goes red under a transposed
+composition, checked by mutating it.
+
+- **Model I/O cannot write a `usdz`.** `MDLAsset.canExportFileExtension` answers **false** for
+  `"usdz"` and true for `usdc`, `usda` and `obj` (measured on Xcode 27.0 Beta 6). So the exporter
+  writes `.usdc` and the script packages it with `/usr/bin/usdzip --arkitAsset`, which is Apple's
+  own packager and the mode that flattens composition arcs and adjusts the data to RealityKit's
+  requirements. `usdcat` and `usdzip` are macOS's own (`Apple USD Tools`), used the way
+  `release-macos.sh` uses `lipo` — nothing pins them because nothing installs them.
+- **Model I/O writes no `metersPerUnit`, and USD's default when it is unauthored is 0.01.** A 0.249 m
+  robot would therefore be read as 0.249 **cm** by everything downstream, with every tool reporting
+  success. The script round-trips the layer through `.usda` to author `metersPerUnit = 1`, refuses to
+  author a second one, and then checks the _package_ rather than the layer — `--arkitAsset` rewrites,
+  so surviving the export is not the same claim as surviving that.
+- **That check is `grep <(usdcat …)`, not `usdcat … | grep`, and the difference is not style.**
+  `grep -q` exits on its first match, `usdcat` takes SIGPIPE writing the remaining ~160 MB, and
+  `set -o pipefail` reports the pipeline as failed — which reads exactly like the metadatum having
+  been lost. That misreading happened once already.
+- **The antennas are left out by default, and the flag is `--with-antennas`.** `left_antenna` and
+  `right_antenna` are two of the robot's nine actuators, and at the URDF's zero configuration they
+  stand straight up: the export measures **0.155 × 0.391 × 0.156 m** with them and
+  **0.155 × 0.249 × 0.156 m** without, base on the ground plane either way — so they are 14 cm of a
+  39 cm model, and they are 14 cm that is somewhere else on a real robot. Which one trains better is a
+  device question and deliberately not decided here.
 
 **An App Group is not a wildcard capability.** `iOS Team Provisioning Profile: *` cannot carry one, so every target
 that declares it — the app and each extension separately, each with its own App ID — needs it added once through

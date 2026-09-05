@@ -365,6 +365,10 @@ xcrun simctl install "$SIM" Apps/DerivedData/Build/Products/Debug-iphonesimulato
 xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 '''
 
+[tasks."geometry:usdz"]
+description = "Export the robot's USDZ for Create ML object-tracking training (#77)"
+run = "Scripts/export-robot-usdz.sh"
+
 [tasks.lint]
 description = "Run SwiftLint, actionlint, the catalogue check, and the version lockstep checks"
 # The shebang is not decoration: mise runs an inline task with `sh -c`, which on macOS is

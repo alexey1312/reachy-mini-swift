@@ -140,6 +140,16 @@ let package = Package(
         // Not a product: stubs for the test targets only, in a plain target because
         // one test target cannot import another's sources.
         .target(name: "ReachyTestSupport"),
+        // Also not a product, and not shipped at all: it writes the USD scene an
+        // object tracker is trained from (#77), out of the description and meshes
+        // `ReachySimulator` already carries. An executable rather than a
+        // `Scripts/*.swift` because a script cannot link a target — `URDFParser`
+        // and `STLDecoder` would have to be copied, and a robot exported by a
+        // second decoder is one that can drift from the robot on screen.
+        .executableTarget(
+            name: "ReachyGeometryExport",
+            dependencies: ["ReachyKit", "ReachySimulator"]
+        ),
         .testTarget(
             name: "ReachyDesignTests",
             dependencies: ["ReachyDesign"]
@@ -164,7 +174,11 @@ let package = Package(
         ),
         .testTarget(
             name: "ReachySceneTests",
-            dependencies: ["ReachyScene", "ReachyKit"]
+            // `ReachySimulator` for its bundled description alone, the reason
+            // `ReachyKitTests` takes it: the property `URDFFlatteningTests` holds is
+            // about the *real* robot's 162 visuals composing identically two ways,
+            // and a synthetic fixture cannot fail the way a 41-mesh chain can.
+            dependencies: ["ReachyScene", "ReachyKit", "ReachySimulator"]
         ),
         .testTarget(
             name: "ReachySimulatorTests",
