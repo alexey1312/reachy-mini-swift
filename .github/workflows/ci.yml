@@ -291,16 +291,18 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # The only job in this file that boots a simulator, and `test:smoke` boots it before
-      # xcodebuild starts compiling — so a stock one (294 processes, 2.89 GB measured on
-      # iOS 27.0 / iPhone 17 Pro) holds that memory for the whole job on a runner with 7 GiB
-      # and three cores. The ci profile leaves nothing enabled because nothing this job
-      # asserts on is drawn by a background daemon: 71 processes and 583 MB. What it costs is
-      # a cold `simslim on` — 93 s on a laptop, and a shared runner is slower — so this is a
-      # trade to read off the job's wall clock, not one to assume. A failure here is a
-      # warning: the smoke test runs against a stock simulator perfectly well.
-      - name: Slim the simulator
-        run: mise run simulator:slim || echo "::warning::Could not slim the simulator — smoking against a stock one."
-
+      # **Slimming the simulator was tried here and taken out again.** This is the only job
+      # that boots one, and `test:smoke` boots it before xcodebuild compiles, so a stock
+      # simulator (294 processes, 2.89 GB) holds that memory through the whole build on a
+      # three-core, 7 GiB runner — the theory being that it swaps. It does: on run
+      # 34147407915 the smoke step itself came out at **5.0 min against a 10.1–12.5 min**
+      # baseline. What ate it was the slimming, at 6.1 min — 2.7 of that the simulator's
+      # first boot, which this job pays either way, and the rest 170 `launchctl` transitions
+      # that all fail on pass 1 under iOS 27 and land on pass 2. Job total: **13.0 min
+      # against 12.0, 12.1, 13.1 and 14.8** before it. A wash, and a loss against the good
+      # runs. A slim simulator is worth roughly 2.4 min of build-and-test here; what an
+      # ephemeral runner cannot do is *arrive* slim, and paying ~3.4 min of launchctl every
+      # job to get there is what cancels it out. Locally it stays on — bootstrap.sh and
+      # `mise run simulator:slim`, where the state persists and costs 3.3 s to confirm.
       - name: Smoke test
         run: mise run test:smoke

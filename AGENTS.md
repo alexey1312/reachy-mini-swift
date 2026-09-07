@@ -444,11 +444,17 @@ iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`
   `verify` against the profile, then `doctor --requires widgets,siri`, then `measure`.
 - **Networking is untouched**, so discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected: the disable
   list carries no `mDNSResponder`, `configd` or `networkd`, and `sharingd` is always left enabled.
-- **On CI it is one step in one job**, because `smoke` is the only job that boots a simulator — and `test:smoke`
-  boots it _before_ xcodebuild compiles, so a stock simulator holds its 2.89 GB for the whole job on a three-core,
-  7 GiB runner. Whether that pays is **not yet measured**: the cold `simslim on` costs 93 s here and more there,
-  against a job that has run 9.9–10.7 min. Read it off the smoke job's wall clock, record the number here, and drop
-  the step if it loses. It warns rather than fails, so the wrong answer is a slower job and not a red one.
+- **On CI it was measured and taken out again, and the reason is not the one the theory predicted.** `smoke` is the
+  only job that boots a simulator, and `test:smoke` boots it _before_ xcodebuild compiles, so a stock simulator holds
+  its 2.89 GB through the whole build on a three-core, 7 GiB runner. That really does cost: on run 34147407915 the
+  smoke step came out at **5.0 min against a 10.1–12.5 min baseline** — a slim simulator is worth roughly 2.4 min of
+  build-and-test here, once its boot is accounted for. What cancelled it was reaching that state: 6.1 min, of which
+  2.7 is the first boot this job pays anyway and ~3.4 is 170 `launchctl` transitions, all of which fail on pass 1
+  under iOS 27 and land on pass 2. Job total **13.0 min against 12.0, 12.1, 13.1 and 14.8** before it — a wash, and a
+  loss against the good runs. So the value is real and an ephemeral runner cannot keep it: what would pay is a
+  simulator that _arrives_ slim, which GitHub-hosted macOS gives no way to arrange. Do not re-add the step without
+  new evidence — a leaner profile (the launchctl cost is per daemon, and `widgets` alone is 675 MB across three of
+  them) is the one variant not tried.
 
 **Four device/runtime identifiers are in play, and they deliberately do not match.** Changing one without the others
 either re-records everything or fails the run outright:
