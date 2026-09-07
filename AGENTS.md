@@ -11,8 +11,9 @@ The development environment is installed **only** via:
 ./bootstrap.sh
 ```
 
-It installs all pinned tools (swiftformat, swiftlint, hk, dprint, actionlint, git-cliff, xcsift, tuist) through the
-self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githooks`).
+It installs all pinned tools (swiftformat, swiftlint, hk, dprint, actionlint, git-cliff, xcsift, tuist, simslim)
+through the self-contained `./bin/mise` binary, wires git hooks (`core.hooksPath .githooks`) and slims the iOS
+simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests' simulator is slimmed** below).
 
 - **Never** install tools globally (`brew install swiftlint`, `npm i -g`, etc.).
 - **Never** call tools bare (`swift build`, `swiftlint`) — always `./bin/mise run <task>` or `./bin/mise x -- <tool>`,
@@ -25,6 +26,11 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   Find updates with `./bin/mise latest <tool>` — `mise outdated` reports nothing here, because an exact pin always
   matches its own request. `latest` also hides releases younger than `minimum_release_age` (a day-old `asc` 3.7.0
   read as 3.6.1, with the real answer only in `ls-remote`'s trailing warning); an exact pin installs one anyway.
+- **`mise lock` guesses a platform's asset by name, and for a tool that ships one it guesses wrong.** simslim
+  publishes a macos-arm64 tarball beside its Homebrew bottles, and a plain `./bin/mise lock` wrote the
+  `arm64_sonoma.bottle` — a Mach-O binary — into `platforms.linux-arm64`. Lock a single-platform tool with
+  `./bin/mise lock -p macos-arm64 <tool>` so the entry names only the platform it exists on, and disable it elsewhere
+  in `bootstrap.sh` (which is also what keeps `mise install` from failing the whole run on an Intel Mac).
 - A `github:` tool takes **`bin=`** to name a bare binary asset and `exe=` to name one inside an archive, and picking
   the wrong one fails late: `[exe=asc]` installs an unrunnable `asc_3.7.0_macOS` and only errors at "couldn't exec
   process". Prefire ships a tarball and so uses `exe`; `asc` ships the binary itself and uses `bin`.
@@ -133,6 +139,9 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run test:snapshots:record  # Re-record the reference images
 ./bin/mise run snapshots:build        # Compile previews + snapshot target, run nothing (CI's preview job)
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
+./bin/mise run simulator:slim  # Slim the iOS simulator the tests run on (bootstrap.sh does this too)
+./bin/mise run simulator:check # Is it still slim, what does it cost, do widgets and App Intents still work
+./bin/mise run simulator:stock # Put it back to stock
 ```
 
 `build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it in a
@@ -405,6 +414,41 @@ for any module those previews name — the generated file imports that list and 
 directory list `prefire playbook` is handed in `mise.toml`, which appears in **two** tasks (`project` and
 `storybook`). Miss the first and the previews compile while generating no tests at all, which reads as everything
 passing; miss the last and the previews are simply absent from the storybook, with no error anywhere.
+
+**The simulator the tests run on is slimmed, and `bootstrap.sh` is what does it.** `simslim` is pinned in
+`mise.toml` like every other tool; `Scripts/simslim.sh` resolves the device the snapshot and smoke tasks name
+(`REACHY_SNAPSHOT_SIM` / `REACHY_SNAPSHOT_OS`) and applies one of the two profiles committed in `Scripts/simslim/`.
+Slimming writes `launchctl disable` entries into that simulator's own launchd database and reboots it. Measured on
+iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`) against **110 and 1.12 GB** on
+`dev.json`, and **71 and 583 MB** on `ci.json`.
+
+- **`dev.json` keeps `widgets` and `siri` because of what this app is, not out of caution.** The `widgets` category
+  disables `PosterBoard`, `chronod` and `liveactivitiesd`, and this repository ships a widget extension, a Live
+  Activity and nine Control Centre controls — none of which updates on a simulator without those three. App Intents
+  are executed by `siriactionsd` and indexed by `com.apple.linkd`, which sits in the `other` category and is
+  therefore named in `keep` rather than paid for by keeping all fourteen of them. Nothing _automated_ needs any of
+  it — the Live Activity previews are plain SwiftUI views the snapshot target renders in-process, and the smoke test
+  launches the app and walks tabs — so `ci.json` keeps nothing at all.
+- **It does not move a reference image, and that is measured rather than assumed.** The 470-test snapshot suite ran
+  stock and then fully slimmed with 0 failures both times and all 1880 reference PNGs byte-identical; the smoke run
+  passed slimmed at an unchanged 31.4 s. The plausible worry is timing — a preview holding an indeterminate
+  `ProgressView` captures at whatever phase it reached — and it does not materialise. Compare checksums either side
+  of a run to check this, not `git status`, which an uncommitted tree misreads.
+- **What it buys is memory, not speed.** In that same pair the second run dropped 617 s → 199 s purely because it
+  reused the first one's compile in the same DerivedData; the test phases were 119.5 s and 116.0 s.
+- **Applying it is a no-op when the state already matches** — 3.3 s, against 93 s to slim a stock device cold and
+  58 s to undo it (measured on a laptop; a runner is slower). That is what makes it safe to run from `bootstrap.sh`
+  every time and from CI on every job, rather than something to do once and remember.
+- **The state is per-simulator and resets to stock silently** — on `erase`, on delete-and-recreate, and on a device
+  from a new runtime, with nothing failing and no test going red. `mise run simulator:check` is what says so:
+  `verify` against the profile, then `doctor --requires widgets,siri`, then `measure`.
+- **Networking is untouched**, so discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected: the disable
+  list carries no `mDNSResponder`, `configd` or `networkd`, and `sharingd` is always left enabled.
+- **On CI it is one step in one job**, because `smoke` is the only job that boots a simulator — and `test:smoke`
+  boots it _before_ xcodebuild compiles, so a stock simulator holds its 2.89 GB for the whole job on a three-core,
+  7 GiB runner. Whether that pays is **not yet measured**: the cold `simslim on` costs 93 s here and more there,
+  against a job that has run 9.9–10.7 min. Read it off the smoke job's wall clock, record the number here, and drop
+  the step if it loses. It warns rather than fails, so the wrong answer is a slower job and not a red one.
 
 **Four device/runtime identifiers are in play, and they deliberately do not match.** Changing one without the others
 either re-records everything or fails the run outright:

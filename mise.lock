@@ -202,6 +202,15 @@ checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc61
 url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
 url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
 
+[[tools."github:MobAI-App/simslim"]]
+version = "0.8.0"
+backend = "github:MobAI-App/simslim"
+
+[tools."github:MobAI-App/simslim"."platforms.macos-arm64"]
+checksum = "sha256:c7d33ba033488521eb42ec2057c3a069b13b6551c9ebfe4455128befe2ad9b19"
+url = "https://github.com/MobAI-App/simslim/releases/download/v0.8.0/simslim-v0.8.0-macos-arm64.tar.gz"
+url_api = "https://api.github.com/repos/MobAI-App/simslim/releases/assets/538466697"
+
 [[tools."github:rorkai/App-Store-Connect-CLI"]]
 version = "3.7.0"
 backend = "github:rorkai/App-Store-Connect-CLI"

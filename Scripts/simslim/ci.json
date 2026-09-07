@@ -1,0 +1,6 @@
+{
+  "name": "reachy-ci",
+  "description": "The smoke job, which is the only CI job that boots a simulator: it launches the app and walks the tabs. Nothing it asserts on is drawn by a background daemon, so nothing is kept.",
+  "except": [],
+  "keep": []
+}

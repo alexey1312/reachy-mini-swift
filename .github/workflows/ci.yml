@@ -291,5 +291,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # The only job in this file that boots a simulator, and `test:smoke` boots it before
+      # xcodebuild starts compiling — so a stock one (294 processes, 2.89 GB measured on
+      # iOS 27.0 / iPhone 17 Pro) holds that memory for the whole job on a runner with 7 GiB
+      # and three cores. The ci profile leaves nothing enabled because nothing this job
+      # asserts on is drawn by a background daemon: 71 processes and 583 MB. What it costs is
+      # a cold `simslim on` — 93 s on a laptop, and a shared runner is slower — so this is a
+      # trade to read off the job's wall clock, not one to assume. A failure here is a
+      # warning: the smoke test runs against a stock simulator perfectly well.
+      - name: Slim the simulator
+        run: mise run simulator:slim || echo "::warning::Could not slim the simulator — smoking against a stock one."
+
       - name: Smoke test
         run: mise run test:smoke
