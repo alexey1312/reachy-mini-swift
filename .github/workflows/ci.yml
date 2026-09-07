@@ -31,8 +31,10 @@ env:
 # only: merging runs them a second time over the tree the PR already proved, and two
 # runs of five jobs against five slots is what turned a 22-minute CI into 30 (measured:
 # 4.7 min of queueing for the app build, 8.1 for the smoke test). A push to main is
-# therefore one job — lint and the SwiftPM suite, which is what a squashed commit can
-# still get wrong.
+# therefore lint and the SwiftPM suite — what a squashed commit can still get wrong —
+# plus the cache warmer and `smoke`, which carries no `if:` because since ADR 0005 it
+# is the only job that launches the app binary at all. Three of five slots on a push,
+# five on a pull request.
 jobs:
   lint-test:
     name: Lint & Test (macOS)
@@ -272,12 +274,19 @@ jobs:
       - name: Compile previews and snapshot target
         run: mise run snapshots:build
 
-  # The one job that launches the app binary: XCUITest walks the connect gate on
-  # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  # The one job that launches the app binary: Maestro walks the connect gate on a
+  # simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  #
+  # No `if:`, unlike the four heavy jobs above, and it is the only job here without
+  # one besides `lint-test`. Since the XCUITest bundle was replaced (ADR 0005) this
+  # is the *only* app-launch coverage there is, so a pull request must not merge
+  # without it — and a push re-checks what a squashed commit can still get wrong.
+  # The cost is that a push to main now spends three of the five concurrent macOS
+  # slots rather than two, so a merge landing while a PR run is in flight queues one
+  # job more than it used to. A PR run still spends exactly five.
   smoke:
-    name: Smoke (iOS Simulator)
+    name: Smoke (Maestro, iOS Simulator)
     runs-on: xcode-27
-    if: github.event_name == 'pull_request'
     timeout-minutes: 60
     permissions:
       id-token: write
@@ -293,3 +302,17 @@ jobs:
 
       - name: Smoke test
         run: mise run test:smoke
+
+      # Maestro writes a screenshot and the full view hierarchy for the failing
+      # step. That is new: a red XCUITest gave one log line, and these flows select
+      # by visible text, where seeing the screen is most of the diagnosis.
+      - name: Upload Maestro debug output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug
+          path: |
+            Apps/DerivedData/MaestroDebug
+            Apps/DerivedData/MaestroReports
+          retention-days: 7
+          if-no-files-found: ignore

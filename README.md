@@ -155,6 +155,11 @@ Two different things, and which one you want depends on what you are working on:
   reference images, stored in Git LFS. The approach is [ADR 0002](docs/adr/0002-preview-driven-snapshot-testing.md).
 - `./bin/mise run storybook` — the same previews as a browsable catalogue on a simulator.
 - `./bin/mise run test:sim` — integration tests against a running `sim-daemon`; the plain `test` run skips them.
+- `./bin/mise run test:smoke` — the app itself, built and installed on a simulator, walked end to end by the
+  [Maestro](https://github.com/mobile-dev-inc/maestro) flows in `Apps/Maestro`. The reasoning, and what it gives up
+  against the XCUITest suite it replaced, is [ADR 0005](docs/adr/0005-maestro-flows-for-app-smoke-tests.md).
+  `test:flows` re-runs those flows against the installed app without recompiling; `test:smoke:sim` adds the full
+  user path against a running `sim-daemon`.
 
 ## Compatibility and network security
 
