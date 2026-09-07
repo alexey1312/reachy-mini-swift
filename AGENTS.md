@@ -446,15 +446,16 @@ iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`
   list carries no `mDNSResponder`, `configd` or `networkd`, and `sharingd` is always left enabled.
 - **On CI it was measured and taken out again, and the reason is not the one the theory predicted.** `smoke` is the
   only job that boots a simulator, and `test:smoke` boots it _before_ xcodebuild compiles, so a stock simulator holds
-  its 2.89 GB through the whole build on a three-core, 7 GiB runner. That really does cost: on run 34147407915 the
-  smoke step came out at **5.0 min against a 10.1–12.5 min baseline** — a slim simulator is worth roughly 2.4 min of
-  build-and-test here, once its boot is accounted for. What cancelled it was reaching that state: 6.1 min, of which
-  2.7 is the first boot this job pays anyway and ~3.4 is 170 `launchctl` transitions, all of which fail on pass 1
-  under iOS 27 and land on pass 2. Job total **13.0 min against 12.0, 12.1, 13.1 and 14.8** before it — a wash, and a
-  loss against the good runs. So the value is real and an ephemeral runner cannot keep it: what would pay is a
-  simulator that _arrives_ slim, which GitHub-hosted macOS gives no way to arrange. Do not re-add the step without
-  new evidence — a leaner profile (the launchctl cost is per daemon, and `widgets` alone is 675 MB across three of
-  them) is the one variant not tried.
+  its 2.89 GB through the whole build on a three-core, 7 GiB runner. That really does cost, and the pair that shows it
+  is two runs of the same tree — **34147407915 with the step, 34148583326 without**: the smoke step alone was
+  **5.0 min slim against 10.3 stock** (10.1–12.5 across the four PR runs before them). A slim simulator is worth
+  roughly 2.4 min of build-and-test here once its boot is counted. What cancelled it was reaching that state: 6.1 min,
+  of which 2.7 is the first boot this job pays anyway and ~3.4 is 170 `launchctl` transitions, all of which fail on
+  pass 1 under iOS 27 and land on pass 2. Job total **13.0 min against 12.4** — the slimming loses by about what it
+  costs. So the value is real and an ephemeral runner cannot keep it: what would pay is a simulator that _arrives_
+  slim, which GitHub-hosted macOS gives no way to arrange. Do not re-add the step without new evidence — a leaner
+  profile (the launchctl cost is per daemon, and `widgets` alone is 675 MB across three of them) is the one variant
+  not tried.
 
 **Four device/runtime identifiers are in play, and they deliberately do not match.** Changing one without the others
 either re-records everything or fails the run outright:

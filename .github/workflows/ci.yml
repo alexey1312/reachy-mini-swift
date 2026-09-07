@@ -294,15 +294,16 @@ jobs:
       # **Slimming the simulator was tried here and taken out again.** This is the only job
       # that boots one, and `test:smoke` boots it before xcodebuild compiles, so a stock
       # simulator (294 processes, 2.89 GB) holds that memory through the whole build on a
-      # three-core, 7 GiB runner — the theory being that it swaps. It does: on run
-      # 34147407915 the smoke step itself came out at **5.0 min against a 10.1–12.5 min**
-      # baseline. What ate it was the slimming, at 6.1 min — 2.7 of that the simulator's
-      # first boot, which this job pays either way, and the rest 170 `launchctl` transitions
-      # that all fail on pass 1 under iOS 27 and land on pass 2. Job total: **13.0 min
-      # against 12.0, 12.1, 13.1 and 14.8** before it. A wash, and a loss against the good
-      # runs. A slim simulator is worth roughly 2.4 min of build-and-test here; what an
-      # ephemeral runner cannot do is *arrive* slim, and paying ~3.4 min of launchctl every
-      # job to get there is what cancels it out. Locally it stays on — bootstrap.sh and
-      # `mise run simulator:slim`, where the state persists and costs 3.3 s to confirm.
+      # three-core, 7 GiB runner — the theory being that it swaps. It does, and the pair
+      # that shows it is two runs of the same tree: **34147407915 with the step, 34148583326
+      # without**. The smoke step alone went **5.0 min slim against 10.3 stock** (10.1–12.5
+      # across the four PR runs before them). What ate that was reaching the state: 6.1 min,
+      # of which 2.7 is the simulator's first boot this job pays either way and ~3.4 is 170
+      # `launchctl` transitions, all of which fail on pass 1 under iOS 27 and land on pass 2.
+      # Job total **13.0 min against 12.4** — the slimming loses by about what it costs. So
+      # the win is real (~2.4 min of build-and-test on a slim simulator once its boot is
+      # counted) and an ephemeral runner cannot keep it: what would pay is a simulator that
+      # *arrives* slim. Locally it stays on — bootstrap.sh and `mise run simulator:slim`,
+      # where the state persists and costs 3.3 s to confirm.
       - name: Smoke test
         run: mise run test:smoke
