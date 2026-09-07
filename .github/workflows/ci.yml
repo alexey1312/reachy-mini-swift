@@ -291,19 +291,26 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # **Slimming the simulator was tried here and taken out again.** This is the only job
-      # that boots one, and `test:smoke` boots it before xcodebuild compiles, so a stock
-      # simulator (294 processes, 2.89 GB) holds that memory through the whole build on a
-      # three-core, 7 GiB runner — the theory being that it swaps. It does, and the pair
-      # that shows it is two runs of the same tree: **34147407915 with the step, 34148583326
-      # without**. The smoke step alone went **5.0 min slim against 10.3 stock** (10.1–12.5
-      # across the four PR runs before them). What ate that was reaching the state: 6.1 min,
-      # of which 2.7 is the simulator's first boot this job pays either way and ~3.4 is 170
-      # `launchctl` transitions, all of which fail on pass 1 under iOS 27 and land on pass 2.
-      # Job total **13.0 min against 12.4** — the slimming loses by about what it costs. So
-      # the win is real (~2.4 min of build-and-test on a slim simulator once its boot is
-      # counted) and an ephemeral runner cannot keep it: what would pay is a simulator that
-      # *arrives* slim. Locally it stays on — bootstrap.sh and `mise run simulator:slim`,
-      # where the state persists and costs 3.3 s to confirm.
+      # **Slimming pays exactly where the simulator survives the job, which is what this
+      # `if` says.** This is the only job that boots one, and `test:smoke` boots it before
+      # xcodebuild compiles, so a stock simulator (294 processes, 2.89 GB) holds that memory
+      # through the whole build. On a three-core, 7 GiB runner that is worth real time: two
+      # runs of the same tree — **34147407915 with the step, 34148583326 without** — put the
+      # smoke step at **5.0 min slim against 10.3 stock** (10.1–12.5 across five stock runs).
+      # What cancelled it on a GitHub-hosted runner was reaching that state from scratch:
+      # 6.1 min, of which 2.7 is the simulator's first boot this job pays either way and
+      # ~3.4 is 170 `launchctl` transitions, all of which fail on pass 1 under iOS 27 and
+      # land on pass 2. Job total 13.0 min against 12.4 — a loss by about what it cost.
+      # An ephemeral runner throws the overrides away every time and so pays that every
+      # time; a self-hosted one keeps them, where `simslim on` is the 3.3 s no-op it is on a
+      # laptop and the 5.3 min stays won. Only the very first run on a new machine pays the
+      # full slim. The profile is `dev.json` (the script's default): a self-hosted runner is
+      # somebody's Mac, and re-slimming its simulator to `ci.json` between jobs would strip
+      # the widgets and App Intents they hand-test on it. Set `REACHY_SIMSLIM_PROFILE: ci`
+      # if a machine ever runs this against a simulator nothing else uses.
+      - name: Slim the simulator
+        if: runner.environment == 'self-hosted'
+        run: mise run simulator:slim || echo "::warning::Could not slim the simulator — smoking against a stock one."
+
       - name: Smoke test
         run: mise run test:smoke

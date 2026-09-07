@@ -1,6 +1,6 @@
 {
   "name": "reachy-ci",
-  "description": "What a runner gets: nothing kept. No job in ci.yml calls it today — slimming a GitHub-hosted runner's simulator cost more than it gave back (see the note above the smoke job) — but $CI selects this rather than dev.json wherever these tasks do run, including a self-hosted runner whose simulator keeps the state between jobs.",
+  "description": "For a simulator nothing else uses: keeps nothing at all, because the one CI job that boots one launches the app and walks tabs. Nothing selects this by itself — REACHY_SIMSLIM_PROFILE=ci does. A self-hosted runner shares its simulators with whoever uses that Mac, so ci.yml slims with dev.json instead.",
   "except": [],
   "keep": []
 }

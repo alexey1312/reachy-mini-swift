@@ -19,9 +19,11 @@ PROFILE_DIR=Scripts/simslim
 device_name="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 device_os="${REACHY_SNAPSHOT_OS:-27.0}"
 device_udid=""
-# CI has no widgets to hand-check and no Shortcuts app to drive App Intents from, so it gets
-# the profile that keeps nothing.
-profile="${REACHY_SIMSLIM_PROFILE:-$([ -n "${CI:-}" ] && echo ci || echo dev)}"
+# One default for every machine, deliberately — including a runner. The only CI that slims a
+# simulator here is a self-hosted one, which is somebody's Mac, and flipping the same device
+# between profiles between jobs would take the widgets and App Intents they hand-test out
+# from under them. ci.json is for a simulator nothing else uses: REACHY_SIMSLIM_PROFILE=ci.
+profile="${REACHY_SIMSLIM_PROFILE:-dev}"
 action=apply
 
 while [ $# -gt 0 ]; do
