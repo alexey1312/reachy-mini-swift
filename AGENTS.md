@@ -444,18 +444,18 @@ iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`
   `verify` against the profile, then `doctor --requires widgets,siri`, then `measure`.
 - **Networking is untouched**, so discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected: the disable
   list carries no `mDNSResponder`, `configd` or `networkd`, and `sharingd` is always left enabled.
-- **On CI it pays only where the simulator survives the job, and `ci.yml` gates the step on exactly that**
-  (`if: runner.environment == 'self-hosted'`). `smoke` is the only job that boots a simulator, and `test:smoke` boots
-  it _before_ xcodebuild compiles, so a stock one holds its 2.89 GB through the whole build on a three-core, 7 GiB
-  runner. That costs real time, and the pair that shows it is two runs of the same tree — **34147407915 with the step,
-  34148583326 without**: the smoke step alone was **5.0 min slim against 10.3 stock** (10.1–12.5 across five stock
-  runs). What cancelled it on a GitHub-hosted runner was reaching that state from scratch — 6.1 min, of which 2.7 is
-  the first boot this job pays anyway and ~3.4 is 170 `launchctl` transitions, all of which fail on pass 1 under
-  iOS 27 and land on pass 2 — for a job total of **13.0 min against 12.4**, a loss by about what it cost. An ephemeral
-  runner throws the overrides away and pays that every time; a self-hosted one keeps them, where the same command is
-  the 3.3 s no-op it is on a laptop and the 5.3 min stays won. Do not switch it on for GitHub-hosted runners without
-  new evidence — a leaner profile (the launchctl cost is per daemon, and `widgets` alone is 675 MB across three of
-  them) is the one variant not tried.
+- **CI slims unconditionally, and that is a bet on where CI runs rather than a free win — the numbers are in the
+  comment above the smoke step.** `smoke` is the only job that boots a simulator, and `test:smoke` boots it _before_
+  xcodebuild compiles, so a stock one holds its 2.89 GB through the whole build on a three-core, 7 GiB runner. That
+  costs real time, and the pair that shows it is two runs of the same tree — **34147407915 with the step, 34148583326
+  without**: the smoke step alone was **5.0 min slim against 10.3 stock** (10.1–12.5 across five stock runs). Reaching
+  that state from scratch costs 6.1 min — 2.7 the first boot this job pays anyway, ~3.4 the 170 `launchctl`
+  transitions, all of which fail on pass 1 under iOS 27 and land on pass 2 — so a GitHub-hosted runner came out at
+  **13.0 min against 12.4**, about 0.6 min worse. The cost is per _machine_, not per job: an ephemeral runner is a new
+  machine every time, a self-hosted one keeps the overrides and gets the laptop's 3.3 s no-op with the 5.3 min still
+  won. This repository's CI is moving to a self-hosted Mac, which is what the default is for; until then the hosted
+  runners pay 0.6 min a run. If that ever needs shrinking, the untried variant is a leaner profile — the launchctl
+  cost is per daemon, and `widgets` alone is 675 MB across three of them.
 - **Both CI and a laptop slim with `dev.json`, and that is not an oversight.** A self-hosted runner is somebody's Mac,
   so a job that re-slimmed the shared device to `ci.json` would strip the widgets and App Intents they hand-test
   between one run and the next. `ci.json` is for a simulator nothing else uses, and only `REACHY_SIMSLIM_PROFILE=ci`
