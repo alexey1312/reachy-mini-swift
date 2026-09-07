@@ -448,14 +448,15 @@ iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`
   comment above the smoke step.** `smoke` is the only job that boots a simulator, and `test:smoke` boots it _before_
   xcodebuild compiles, so a stock one holds its 2.89 GB through the whole build on a three-core, 7 GiB runner. That
   costs real time, and the pair that shows it is two runs of the same tree — **34147407915 with the step, 34148583326
-  without**: the smoke step alone was **5.0 min slim against 10.3 stock** (10.1–12.5 across five stock runs). Reaching
-  that state from scratch costs 6.1 min — 2.7 the first boot this job pays anyway, ~3.4 the 170 `launchctl`
-  transitions, all of which fail on pass 1 under iOS 27 and land on pass 2 — so a GitHub-hosted runner came out at
-  **13.0 min against 12.4**, about 0.6 min worse. The cost is per _machine_, not per job: an ephemeral runner is a new
-  machine every time, a self-hosted one keeps the overrides and gets the laptop's 3.3 s no-op with the 5.3 min still
-  won. This repository's CI is moving to a self-hosted Mac, which is what the default is for; until then the hosted
-  runners pay 0.6 min a run. If that ever needs shrinking, the untried variant is a leaner profile — the launchctl
-  cost is per daemon, and `widgets` alone is 675 MB across three of them.
+  without**: the smoke step alone was **5.0 min slim against 10.3 stock**, and 5.0 and 7.2 across the two slimmed runs
+  against 10.1–12.5 across six stock ones. Reaching that state from scratch costs 6.1–6.2 min — ~2.7 the first boot
+  this job pays anyway, ~3.4 the 170 `launchctl` transitions, all of which fail on pass 1 under iOS 27 and land on
+  pass 2 — which is more than it gives back: job totals **13.0 and 15.5 against 12.0, 12.1, 12.4, 13.0, 13.1 and
+  14.8**, roughly 1.3 min a run worse on the means. The cost is per _machine_, not per job: an ephemeral runner is a
+  new machine every time, a self-hosted one keeps the overrides and gets the laptop's 3.3 s no-op with the ~4.7 min
+  still won. This repository's CI is moving to a self-hosted Mac, which is what the default is for; until it moves,
+  the hosted runners pay that ~1.3 min. If that ever needs shrinking, the untried variant is a leaner profile — the
+  launchctl cost is per daemon, and `widgets` alone is 675 MB across three of them.
 - **Both CI and a laptop slim with `dev.json`, and that is not an oversight.** A self-hosted runner is somebody's Mac,
   so a job that re-slimmed the shared device to `ci.json` would strip the widgets and App Intents they hand-test
   between one run and the next. `ci.json` is for a simulator nothing else uses, and only `REACHY_SIMSLIM_PROFILE=ci`
