@@ -99,9 +99,20 @@ jobs:
           # compiled against one SDK, and a restore-key prefix that outlived the move
           # off Xcode 26.2 would have handed this job 26.2 modules — a false pass in
           # the one job that exists to catch exactly that.
+          #
+          # There is no restore-keys prefix any more, which is that same reason one step
+          # further: `.build` holds compiled modules, so a dependency bump misses the
+          # exact key and the prefix then hands the job modules built against the
+          # previous WebRTC xcframework. #136 hit it — every file in ReachyMedia failed
+          # as "SwiftCompile … failed with a nonzero exit code" with no diagnostic under
+          # it, while the four Xcode jobs stayed green, because they cache sources and
+          # this one caches modules. It does not recover on its own either: actions/cache
+          # writes an entry only after a green job, so every rerun restored the same
+          # stale one and main stayed red until the entry was deleted by hand. The prefix
+          # bought 75 s — 3m08 warm against 4m23 cold, measured on runs 33852617664 and
+          # 34145097667 — and a changed dependency graph is exactly when a cold build is
+          # wanted.
           key: ${{ runner.os }}-swift-6.4-spm-${{ github.workspace }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-swift-6.4-spm-${{ github.workspace }}-
 
       - name: Show Swift version
         run: swift --version
