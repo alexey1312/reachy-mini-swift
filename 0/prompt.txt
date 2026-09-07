@@ -1,0 +1,22 @@
+<task-notification>
+<task-id>b1pa8pp6k</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/2020a4c8-6b86-4e07-9864-cf9c6e944042/tasks/b1pa8pp6k.output</output-file>
+<status>completed</status>
+<summary>Background command "Watch PR 136 checks until they finish" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+https://github.com/alexey1312/reachy-mini-swift/actions/runs/34145097667/job/101815292187
+Я вмерджил но билд и тесты упали
+
+---
+
+<task-notification>
+<task-id>bqia02jhc</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/2020a4c8-6b86-4e07-9864-cf9c6e944042/tasks/bqia02jhc.output</output-file>
+<status>completed</status>
+<summary>Background command "Watch main's re-run" completed (exit code 0)</summary>
+</task-notification>
