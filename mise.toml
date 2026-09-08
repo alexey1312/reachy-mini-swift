@@ -247,11 +247,20 @@ mkdir -p Apps/DerivedData/MaestroReports
 # buffers until the run ends: Maestro's per-command progress is the only thing
 # that tells a slow driver handshake from a wedged one.
 # The flow directory is named explicitly — a bare `.` walks into Apps/DerivedData.
+# Timed, and the exit code preserved across the timing line: Maestro reports how
+# long the *flows* took, never how long its driver took to come up — and that
+# difference is the whole question when this step reads as one opaque number.
+_m0=$(date +%s)
+set +e
 maestro --device "$UDID" test \
   --exclude-tags daemon \
   --format junit --output Apps/DerivedData/MaestroReports/flows.xml \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
   Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:smoke:sim"]
@@ -264,11 +273,17 @@ UDID="$(Scripts/maestro-sim.sh)"
 mkdir -p Apps/DerivedData/MaestroReports
 # No tag filter, so the `daemon`-tagged flow runs too. Its host arrives as a flow
 # variable rather than the TEST_RUNNER_ environment forwarding the XCUITest needed.
+_m0=$(date +%s)
+set +e
 maestro --device "$UDID" test \
   -e HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
   --format junit --output Apps/DerivedData/MaestroReports/flows-sim.xml \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
   Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 # The fast loop, and the reason Maestro is here at all: the flows re-run against
@@ -279,10 +294,16 @@ run = '''
 #!/bin/bash
 set -euo pipefail
 UDID="$(Scripts/maestro-sim.sh --no-build)"
+_m0=$(date +%s)
+set +e
 maestro --device "$UDID" test \
   --exclude-tags daemon \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
   Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:sim"]

@@ -10,6 +10,17 @@
 set -euo pipefail
 exec 3>&1 1>&2
 
+# Phase timings. The whole task reads as one opaque number on CI otherwise — a
+# 14-minute step whose build, simulator boot and driver startup are indivisible.
+_t_start=$(date +%s)
+_t_last=$_t_start
+phase() {
+    local now
+    now=$(date +%s)
+    printf 'timing  %-24s %5ds\n' "$1" "$((now - _t_last))"
+    _t_last=$now
+}
+
 BUILD=1
 [ "${1:-}" = "--no-build" ] && BUILD=0
 
@@ -27,8 +38,11 @@ if not matches:
 print(matches[0]["udid"])
 ' "$SIM")"
 
+phase "resolve udid"
+
 xcrun simctl boot "$UDID" 2>/dev/null || true
 xcrun simctl bootstatus "$UDID" -b
+phase "boot + bootstatus"
 
 # This is what replaces `-testLanguage en -testRegion US` on the xcodebuild test
 # line the XCUITest smoke used. Maestro has no equivalent flag for a device it did
@@ -39,6 +53,7 @@ xcrun simctl bootstatus "$UDID" -b
 # `ru-KZ`, which is where this was found.
 xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array en
 xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string en_US
+phase "pin language"
 
 if [ "$BUILD" = "1" ]; then
     # A concrete destination rather than `generic/platform=iOS Simulator`, which
@@ -51,6 +66,7 @@ if [ "$BUILD" = "1" ]; then
         -skipPackagePluginValidation -skipMacroValidation \
         ${REACHY_XCB_EXTRA:-} \
         2>&1 | xcsift
+    phase "xcodebuild build"
 fi
 
 [ -d "$APP" ] || {
@@ -58,5 +74,7 @@ fi
     exit 1
 }
 xcrun simctl install "$UDID" "$APP"
+phase "simctl install"
+printf 'timing  %-24s %5ds\n' "prep total" "$(($(date +%s) - _t_start))"
 
 echo "$UDID" >&3
