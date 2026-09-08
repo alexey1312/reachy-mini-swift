@@ -94,7 +94,16 @@ if ! grep -qm1 "metersPerUnit = 1" <(/usr/bin/usdcat --flatten "$BASE.usdz" 2>/d
   exit 1
 fi
 
+# Only now, because a failure above is the one time these are worth reading. The
+# .usda is the flattened layer metersPerUnit was authored into and the .usdc is
+# what Model I/O wrote before that round trip; usdzip has taken what it needed
+# from the first and nothing reads the second at all. The .usda alone is ~150 MB,
+# in a directory nothing prunes.
+\rm -f "$BASE.usda" "$BASE.usdc"
+
 echo
 echo "Packaged $BASE.usdz ($(du -h "$BASE.usdz" | cut -f1))"
-echo "Train it in Create ML → Object Tracking; the .referenceobject it writes"
-echo "belongs at Sources/ReachyScene/Resources/reachy-mini.referenceobject."
+echo "Train it in Create ML → Object Tracking. Where the .referenceobject it"
+echo "writes belongs is not settled: at around 12 MB it is above the 9.5 MB"
+echo "ReachySimulator precedent, so it likely goes in the app target rather than"
+echo "in ReachyScene — see #77."
