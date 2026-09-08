@@ -50,6 +50,11 @@ git-cliff = "2.13.1"  # Changelog generation
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
 uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
+# Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
+# rather than left to a global `brew install` because CI and a fresh clone have no brew
+# copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
+# is the only asset it publishes, so bootstrap.sh disables it everywhere else.
+"github:MobAI-App/simslim[exe=simslim]" = "0.8.0"
 
 [tasks.build]
 description = "Build the Swift package (debug)"
@@ -538,6 +543,24 @@ set -o pipefail
 swift Scripts/render-app-icon.swift
 git status --porcelain Apps/ReachyMini/Resources
 """
+
+# `simulator:*` is the iOS simulator; `sim-daemon` and `test:sim` are the *robot*
+# simulator, which is a different machine entirely. Slimming disables ~170 background
+# daemons in the simulator's own launchd database — persistent, per-simulator state that
+# nothing in this repository can hold, which is why applying it is a no-op you can re-run
+# (3.3 s when it already matches) rather than a one-off. Networking is untouched, so
+# discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected.
+[tasks."simulator:slim"]
+description = "Slim the pinned iOS simulator (dev profile locally, ci profile on CI)"
+run = "./Scripts/simslim.sh apply"
+
+[tasks."simulator:check"]
+description = "Report whether the pinned simulator is still slim, and what it costs"
+run = "./Scripts/simslim.sh check"
+
+[tasks."simulator:stock"]
+description = "Put the pinned iOS simulator back to stock"
+run = "./Scripts/simslim.sh off"
 
 [tasks.sim-daemon]
 description = "Run simulated Reachy Mini daemon (MuJoCo) reachable from LAN devices"
