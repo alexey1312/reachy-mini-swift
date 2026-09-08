@@ -40,20 +40,14 @@ print(matches[0]["udid"])
 
 phase "resolve udid"
 
+# Started and deliberately NOT waited on: the build below takes minutes and the
+# boot takes about ninety seconds, so waiting here spends that ninety seconds
+# rather than hiding it under work that has to happen anyway. Measured on CI —
+# `bootstatus` cost 95 s and the language pin another 87 s, because `simctl spawn`
+# against a still-booting simulator is slow in a way it never is locally. Three
+# minutes, on a step whose only other content is a six-minute compile.
 xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b
-phase "boot + bootstatus"
-
-# This is what replaces `-testLanguage en -testRegion US` on the xcodebuild test
-# line the XCUITest smoke used. Maestro has no equivalent flag for a device it did
-# not start itself, and the failure is not subtle once you see it and invisible
-# until you do: every selector in Apps/Maestro is visible English text, so a
-# simulator left in another language misses all of them and reports the assertion
-# as false rather than as untranslated. Measured on a simulator sitting at
-# `ru-KZ`, which is where this was found.
-xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array en
-xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string en_US
-phase "pin language"
+phase "boot (async)"
 
 if [ "$BUILD" = "1" ]; then
     # A concrete destination rather than `generic/platform=iOS Simulator`, which
@@ -68,6 +62,22 @@ if [ "$BUILD" = "1" ]; then
         2>&1 | xcsift
     phase "xcodebuild build"
 fi
+
+# Now collect the boot the build was running alongside. On CI this is where the
+# 95 s went; after a six-minute compile it should be near zero.
+xcrun simctl bootstatus "$UDID" -b
+phase "await boot"
+
+# This is what replaces `-testLanguage en -testRegion US` on the xcodebuild test
+# line the XCUITest smoke used. Maestro has no equivalent flag for a device it did
+# not start itself, and the failure is not subtle once you see it and invisible
+# until you do: every selector in Apps/Maestro is visible English text, so a
+# simulator left in another language misses all of them and reports the assertion
+# as false rather than as untranslated. Measured on a simulator sitting at
+# `ru-KZ`, which is where this was found.
+xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array en
+xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string en_US
+phase "pin language"
 
 [ -d "$APP" ] || {
     echo "$APP is missing — run without --no-build first." >&2

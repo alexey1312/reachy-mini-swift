@@ -264,6 +264,18 @@ replaced by those flows (ADR 0005). Four things about that are worth knowing bef
   `"--reachy-smoke": true` reaches argv verbatim and `ReachyMiniApp.swift`'s `arguments.contains("--reachy-smoke")`
   fires exactly as it did under XCUITest — no Swift change was needed. Written unquoted as `reachy-smoke: true` the
   app sees the bare word, the seam does not fire, and it starts Bonjour on a runner while the flow still passes.
+- **The simulator boots alongside the build, not before it, and that ordering is worth three minutes.** Waiting on
+  `simctl bootstatus` up front spends the boot; running it after `xcodebuild build` hides it under work that has to
+  happen anyway. Measured on CI: `bootstatus` cost **95 s** and the language pin another **87 s** when both ran
+  against a cold simulator, against ~0 s each once a six-minute compile had gone first — `simctl spawn` on a
+  still-booting device is slow in a way it never is locally. Maestro's own driver startup is a further **~51 s** on
+  CI (~21 s warm locally), and that one is a fixed tax: it is the difference between the `maestro (driver+flows)`
+  timing and the flow duration Maestro prints.
+- **`simslim` does not affect any of this — measured, not assumed.** Both tasks pass on a **170/170** fully slimmed
+  `iPhone 17 Pro`, at flow and driver timings indistinguishable from a stock one (13 s / 32–36 s either way). That is
+  consistent with what slimming leaves alone: the flows are HTTP and Bonjour, and the allowlist carries no
+  `mDNSResponder`, `configd` or `networkd`. A widget or Control Centre flow would be a different question, since
+  `widgets` disables `PosterBoard` and `chronod`.
 - **Selectors match text with no element-type filter.** `assertVisible: "Nearby"` is weaker than the
   `app.buttons["Nearby"]` it replaced, and there are **zero** `accessibilityIdentifier`s in the repository, so
   anything needing to disambiguate a repeated label has no way to. That is the ceiling on what the flow set can

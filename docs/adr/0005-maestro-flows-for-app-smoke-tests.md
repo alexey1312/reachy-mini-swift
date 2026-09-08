@@ -38,11 +38,12 @@ So nothing was committed until a throwaway spike answered it.
 
 |                                               |                                                                                                                          |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Driver attaches on iOS 27.0 / Xcode 27 beta 6 | **Yes.** On a stock simulator and on one 137/170 slimmed by `simslim` alike.                                             |
+| Driver attaches on iOS 27.0 / Xcode 27 beta 6 | **Yes.** On a stock simulator, and on one fully slimmed by `simslim` (170/170), at indistinguishable timings.            |
 | SwiftUI hierarchy resolves                    | **Yes.** Text nodes present, plus `selected` / `checked` / `enabled` / `focused`, which is what the tab assertions need. |
 | `--reachy-smoke` reaches argv                 | **Yes, unchanged.** See below.                                                                                           |
 | Stability                                     | **3 runs, 3 passes**, 33–34 s each.                                                                                      |
 | A flow re-run against the installed app       | **13 s**, against 9.9–10.7 min for the job it replaces.                                                                  |
+| Tier 2 against a live `sim-daemon`            | **3 runs, 3 passes**, 36–40 s.                                                                                           |
 
 Two things were found by running it that no amount of reading would have produced.
 
@@ -67,8 +68,9 @@ Replace the XCUITest bundle with Maestro flows in `Apps/Maestro`, one per tier, 
   had no Java at all; the CI images already ship Temurin, and `jdx/mise-action` caches installs.
 - `Scripts/maestro-sim.sh` resolves the simulator name to a UDID, boots it, pins its language, builds and installs.
   `test:smoke` builds; `test:flows` skips the build and is the fast loop the whole change exists for.
-- The CI job keeps its slot on pull requests and drops its `if:` so it also runs on pushes to main. Since this is now
-  the only job that launches the app binary, a pull request must not merge without it.
+- The CI job keeps its slot and its `pull_request` trigger. Pull requests here only ever target `main`, so gating the
+  PR is gating what reaches `main`; re-running it on the push would compile the same tree again for a second opinion
+  on it.
 
 ## What this gives up, stated plainly
 
@@ -82,6 +84,16 @@ the app draws covers the same ground less directly.
 
 **A toolchain that now includes a JVM.** ~450 MB across Temurin 21 and the 315 MB `maestro.zip`, in a Swift project.
 Both are disabled on a Linux checkout, where there is no simulator to drive.
+
+## What it costs on CI
+
+The first green run put the `smoke` job at **17m20s** and made it the run's critical path, where the XCUITest job
+it replaced measured 9.9–10.7 min and the critical path was `app-build` at 13.1 min. Instrumenting the step by
+phase found most of that was not Maestro: waiting on `simctl bootstatus` up front cost **95 s**, and pinning the
+language against a still-booting simulator another **87 s** — neither of which the XCUITest task ever paid, since
+it booted without waiting and passed `-testLanguage` as an xcodebuild flag. Booting alongside the build instead
+recovers that. What remains is Maestro's own driver startup, **~51 s** on CI against ~21 s warm locally, and that
+one is a fixed tax on every run.
 
 ## Consequences
 
