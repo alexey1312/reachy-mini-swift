@@ -249,7 +249,22 @@ Ordered by how close each sits to something the app already does.
 - **Foundation Models**: the `LanguageModel` / `LanguageModelExecutor` protocols make one session work against the
   on-device model, Private Cloud Compute, MLX and third-party providers, which turns the on-device-or-cloud question
   in #72 and #73 from an architectural choice into configuration. Evaluations and the token-count API are new.
-- **ARKit object tracking reaches iOS** with the visionOS API, so #77 is a shipped feature rather than a bet.
+- **ARKit object tracking reaches iOS**, so #77 is a shipped feature rather than a bet — but **not with the
+  visionOS API**, and that half of this line was wrong. `ObjectTrackingProvider` is absent from the iOS 27 SDK
+  altogether; what reaches iOS is the `.referenceobject` _format_, in two places. RealityKit anchors to one through
+  `AnchoringComponent.Target.referenceObject(from:)` (iOS 18) fed by `ObjectAnchoringSource(referenceObject: Data)`
+  — **iOS 27**, and the only new symbol the feature needs. The `init(_ url:)` and `init(name:in:)` spellings beside
+  it are `@available(iOS, unavailable)` and stay visionOS's, so the blob has to arrive as `Data`. ARKit itself reads
+  one through the iOS 12 `ARReferenceObject(archiveURL:)`, which the 27 header says now takes `.referenceobject` as
+  well as `.arobject`, and adds `ARWorldTrackingConfiguration.trackingObjects` and `ARReferenceObject.usdzFile`.
+  Every legacy affordance around it — `.arobject`, `rawFeaturePoints`, `resourceGroupName`, `exportObjectToURL:` —
+  is `API_DEPRECATED(…, ios(12.0, 27.0))`, and one session cannot mix the two formats. Read out of
+  `ARKit.framework/Headers/ARReferenceObject.h` and `RealityFoundation.swiftmodule/arm64e-apple-ios.swiftinterface`
+  in Xcode 27.0 Beta 6, not from a tutorial. That header is also where the tracking mode comes from:
+  `detectionObjects` for "objects that are mostly stationary", where "the system holds the pose stable in world
+  space, consuming less power", against `trackingObjects` for "moving or handheld" ones at full frame rate. A Reachy
+  Mini on a desk is the first, which is what makes `AnchoringComponent.TrackingMode.once` the default rather than
+  the saving.
 - `AsyncImage(request:)` with HTTP caching, for `HFAvatar` — the one network image in the app.
 - `@Environment(\.appearsActive)` for the inactive Mac window; a sidebar on iPhone for the five-tab shell
   (`.sidebarAdaptable` is already set, `Sources/ReachyUI/Shell/ReachyTabShell.swift:120`); the Now Playing framework

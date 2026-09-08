@@ -193,6 +193,13 @@ public struct URDFPose: Sendable, Equatable, Hashable {
 }
 
 public struct URDFColor: Sendable, Equatable, Hashable {
+    /// What a `<visual>` with no `<material>` is drawn in. URDF gives no default,
+    /// so this is a choice — and it lives here rather than beside either consumer
+    /// because `RobotSceneGraph` and `URDFDocument.flattenedVisuals()` must make
+    /// the same one: an export tinted differently from the twin drawn over it
+    /// would read as a lighting bug.
+    public static let unspecifiedVisual = URDFColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1)
+
     public let red, green, blue, alpha: Double
 
     public init(red: Double, green: Double, blue: Double, alpha: Double) {
