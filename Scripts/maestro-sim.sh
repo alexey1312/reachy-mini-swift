@@ -5,7 +5,11 @@
 # UDID with `$(…)` while still watching the build scroll past.
 #
 # Usage: Scripts/maestro-sim.sh [--no-build]
-#   REACHY_SMOKE_SIM   simulator name (default: iPhone 17 Pro)
+#   REACHY_SNAPSHOT_SIM  simulator name (default: iPhone 17 Pro) — the same variable
+#                        Scripts/simslim.sh and the two snapshot tasks read, deliberately.
+#                        There used to be a REACHY_SMOKE_SIM beside it with the same
+#                        default, which is why nothing ever broke: override one and the
+#                        slim step reconfigures one simulator while this tests another.
 #   REACHY_XCB_EXTRA   extra xcodebuild settings, as every other task honours
 set -euo pipefail
 exec 3>&1 1>&2
@@ -24,7 +28,7 @@ phase() {
 BUILD=1
 [ "${1:-}" = "--no-build" ] && BUILD=0
 
-SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
+SIM="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 APP="Apps/DerivedData/Build/Products/Debug-iphonesimulator/ReachyMini.app"
 
 # `maestro --device` takes a UDID, and a simulator booted by name is the one thing
@@ -40,6 +44,11 @@ print(matches[0]["udid"])
 
 phase "resolve udid"
 
+# On CI the slim step has usually booted this already — Scripts/simslim.sh drops
+# --preserve-boot-state on a runner exactly so this does not have to boot it again.
+# Both lines stay anyway: the step is best-effort (`|| echo ::warning::`), and nothing
+# slims a laptop before a run. Measured after slimming: 0 s here and 1 s to await.
+#
 # Started and deliberately NOT waited on: the build below takes minutes and the
 # boot takes about ninety seconds, so waiting here spends that ninety seconds
 # rather than hiding it under work that has to happen anyway. Measured on CI —

@@ -11,8 +11,9 @@ The development environment is installed **only** via:
 ./bootstrap.sh
 ```
 
-It installs all pinned tools (swiftformat, swiftlint, hk, dprint, actionlint, git-cliff, xcsift, tuist) through the
-self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githooks`).
+It installs all pinned tools (swiftformat, swiftlint, hk, dprint, actionlint, git-cliff, xcsift, tuist, simslim)
+through the self-contained `./bin/mise` binary, wires git hooks (`core.hooksPath .githooks`) and slims the iOS
+simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests' simulator is slimmed** below).
 
 - **Never** install tools globally (`brew install swiftlint`, `npm i -g`, etc.).
 - **Never** call tools bare (`swift build`, `swiftlint`) — always `./bin/mise run <task>` or `./bin/mise x -- <tool>`,
@@ -25,6 +26,11 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
   Find updates with `./bin/mise latest <tool>` — `mise outdated` reports nothing here, because an exact pin always
   matches its own request. `latest` also hides releases younger than `minimum_release_age` (a day-old `asc` 3.7.0
   read as 3.6.1, with the real answer only in `ls-remote`'s trailing warning); an exact pin installs one anyway.
+- **`mise lock` guesses a platform's asset by name, and for a tool that ships one it guesses wrong.** simslim
+  publishes a macos-arm64 tarball beside its Homebrew bottles, and a plain `./bin/mise lock` wrote the
+  `arm64_sonoma.bottle` — a Mach-O binary — into `platforms.linux-arm64`. Lock a single-platform tool with
+  `./bin/mise lock -p macos-arm64 <tool>` so the entry names only the platform it exists on, and disable it elsewhere
+  in `bootstrap.sh` (which is also what keeps `mise install` from failing the whole run on an Intel Mac).
 - A `github:` tool takes **`bin=`** to name a bare binary asset and `exe=` to name one inside an archive, and picking
   the wrong one fails late: `[exe=asc]` installs an unrunnable `asc_3.7.0_macOS` and only errors at "couldn't exec
   process". Prefire ships a tarball and so uses `exe`; `asc` ships the binary itself and uses `bin`.
@@ -134,6 +140,9 @@ self-contained `./bin/mise` binary and wires git hooks (`core.hooksPath .githook
 ./bin/mise run test:snapshots:record  # Re-record the reference images
 ./bin/mise run snapshots:build        # Compile previews + snapshot target, run nothing (CI's preview job)
 ./bin/mise run storybook      # Browsable catalogue of every preview, on a simulator
+./bin/mise run simulator:slim  # Slim the iOS simulator the tests run on (bootstrap.sh does this too)
+./bin/mise run simulator:check # Is it still slim, what does it cost, do widgets and App Intents still work
+./bin/mise run simulator:stock # Put it back to stock
 ```
 
 `build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it in a
@@ -271,6 +280,12 @@ replaced by those flows (ADR 0005). Four things about that are worth knowing bef
   still-booting device is slow in a way it never is locally. Maestro's own driver startup is a further **~51 s** on
   CI (~21 s warm locally), and that one is a fixed tax: it is the difference between the `maestro (driver+flows)`
   timing and the flow duration Maestro prints.
+- **The slim step and the flows share one simulator variable, and that is load-bearing.** `Scripts/simslim.sh` and
+  `Scripts/maestro-sim.sh` both resolve `REACHY_SNAPSHOT_SIM`. They briefly did not — the flows read a
+  `REACHY_SMOKE_SIM` with the same default — and a pair like that reads as working right up until somebody
+  overrides one, at which point CI slims one simulator and runs the flows on another, with nothing failing.
+  `simslim.sh` also drops `--preserve-boot-state` on a runner so the device it slimmed stays booted for the flows;
+  `maestro-sim.sh` still boots defensively, because the CI step is best-effort and nothing slims a laptop.
 - **`simslim` does not affect any of this — measured, not assumed.** Both tasks pass on a **170/170** fully slimmed
   `iPhone 17 Pro`, at flow and driver timings indistinguishable from a stock one (13 s / 32–36 s either way). That is
   consistent with what slimming leaves alone: the flows are HTTP and Bonjour, and the allowlist carries no
@@ -444,15 +459,63 @@ directory list `prefire playbook` is handed in `mise.toml`, which appears in **t
 `storybook`). Miss the first and the previews compile while generating no tests at all, which reads as everything
 passing; miss the last and the previews are simply absent from the storybook, with no error anywhere.
 
+**The simulator the tests run on is slimmed, and `bootstrap.sh` is what does it.** `simslim` is pinned in
+`mise.toml` like every other tool; `Scripts/simslim.sh` resolves the device the snapshot and smoke tasks name
+(`REACHY_SNAPSHOT_SIM` / `REACHY_SNAPSHOT_OS`) and applies one of the two profiles committed in `Scripts/simslim/`.
+Slimming writes `launchctl disable` entries into that simulator's own launchd database and reboots it. Measured on
+iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`) against **110 and 1.12 GB** on
+`dev.json`, and **71 and 583 MB** on `ci.json`.
+
+- **`dev.json` keeps `widgets` and `siri` because of what this app is, not out of caution.** The `widgets` category
+  disables `PosterBoard`, `chronod` and `liveactivitiesd`, and this repository ships a widget extension, a Live
+  Activity and nine Control Centre controls — none of which updates on a simulator without those three. App Intents
+  are executed by `siriactionsd` and indexed by `com.apple.linkd`, which sits in the `other` category and is
+  therefore named in `keep` rather than paid for by keeping all fourteen of them. Nothing _automated_ needs any of
+  it — the Live Activity previews are plain SwiftUI views the snapshot target renders in-process, and the smoke test
+  launches the app and walks tabs — so `ci.json` keeps nothing at all.
+- **It does not move a reference image, and that is measured rather than assumed.** The 470-test snapshot suite ran
+  stock and then fully slimmed with 0 failures both times and all 1880 reference PNGs byte-identical; the smoke run
+  passed slimmed at an unchanged 31.4 s. The plausible worry is timing — a preview holding an indeterminate
+  `ProgressView` captures at whatever phase it reached — and it does not materialise. Compare checksums either side
+  of a run to check this, not `git status`, which an uncommitted tree misreads.
+- **What it buys is memory, not speed.** In that same pair the second run dropped 617 s → 199 s purely because it
+  reused the first one's compile in the same DerivedData; the test phases were 119.5 s and 116.0 s.
+- **Applying it is a no-op when the state already matches** — 3.3 s, against 93 s to slim a stock device cold and
+  58 s to undo it (measured on a laptop; a runner is slower). That is what makes it safe to run from `bootstrap.sh`
+  every time and from CI on every job, rather than something to do once and remember.
+- **The state is per-simulator and resets to stock silently** — on `erase`, on delete-and-recreate, and on a device
+  from a new runtime, with nothing failing and no test going red. `mise run simulator:check` is what says so:
+  `verify` against the profile, then `doctor --requires widgets,siri`, then `measure`.
+- **Networking is untouched**, so discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected: the disable
+  list carries no `mDNSResponder`, `configd` or `networkd`, and `sharingd` is always left enabled.
+- **CI slims unconditionally, and that is a bet on where CI runs rather than a free win — the numbers are in the
+  comment above the smoke step.** `smoke` is the only job that boots a simulator, and `test:smoke` boots it _before_
+  xcodebuild compiles, so a stock one holds its 2.89 GB through the whole build on a three-core, 7 GiB runner. That
+  costs real time, and the pair that shows it is two runs of the same tree — **34147407915 with the step, 34148583326
+  without**: the smoke step alone was **5.0 min slim against 10.3 stock**, and 5.0 / 6.1 / 7.2 across three slimmed
+  runs against 10.1 / 10.2 / 10.3 / 10.9 / 10.9 / 12.5 across six stock ones — **4.7 min a run** on the means.
+  Reaching that state from scratch costs 5.9–6.2 min — ~2.7 the first boot this job pays anyway, ~3.4 the 170
+  `launchctl` transitions, all of which fail on pass 1 under iOS 27 and land on pass 2 — which is more than it gives
+  back: job totals **13.0 / 14.0 / 15.5 against 12.0 / 12.1 / 12.4 / 13.0 / 13.1 / 14.8**, **1.3 min a run worse** on
+  the means, and consistent enough across three slimmed runs not to be runner noise. The cost is per _machine_, not
+  per job: an ephemeral runner is a new machine every time, a self-hosted one keeps the overrides and gets the
+  laptop's 3.3 s no-op with the 4.7 min still won. This repository's CI is moving to a self-hosted Mac, which is what the default is for; until it moves,
+  the hosted runners pay that ~1.3 min. If that ever needs shrinking, the untried variant is a leaner profile — the
+  launchctl cost is per daemon, and `widgets` alone is 675 MB across three of them.
+- **Both CI and a laptop slim with `dev.json`, and that is not an oversight.** A self-hosted runner is somebody's Mac,
+  so a job that re-slimmed the shared device to `ci.json` would strip the widgets and App Intents they hand-test
+  between one run and the next. `ci.json` is for a simulator nothing else uses, and only `REACHY_SIMSLIM_PROFILE=ci`
+  selects it.
+
 **Four device/runtime identifiers are in play, and they deliberately do not match.** Changing one without the others
 either re-records everything or fails the run outright:
 
-| Identifier                     | Set in                               | What it is                                                                                           |
-| ------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `iPhone 17 Pro`                | `mise.toml`, `REACHY_SNAPSHOT_SIM`   | The simulator the tests execute on. Renders every image.                                             |
-| `iPhone18,1`                   | `.prefire.yml`, `simulator_device`   | The same machine as a model id. Prefire aborts on a mismatch.                                        |
-| `iPhone 16 Pro`, `iPad Pro 11` | `.prefire.yml`, `snapshot_devices`   | `ViewImageConfig`s — frame size and traits, and the filename suffixes. Not devices anything runs on. |
-| `27.0` / `27`                  | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                    |
+| Identifier                     | Set in                               | What it is                                                                                                                                                  |
+| ------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iPhone 17 Pro`                | `mise.toml`, `REACHY_SNAPSHOT_SIM`   | The simulator the tests execute on. Renders every image, runs every flow, and is the one `simslim` reconfigures — one variable across all four, on purpose. |
+| `iPhone18,1`                   | `.prefire.yml`, `simulator_device`   | The same machine as a model id. Prefire aborts on a mismatch.                                                                                               |
+| `iPhone 16 Pro`, `iPad Pro 11` | `.prefire.yml`, `snapshot_devices`   | `ViewImageConfig`s — frame size and traits, and the filename suffixes. Not devices anything runs on.                                                        |
+| `27.0` / `27`                  | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                                                                           |
 
 So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, at iPhone 16 Pro dimensions. A
 different iOS runtime renders text differently and every reference would have to be re-recorded.
