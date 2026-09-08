@@ -1,0 +1,46 @@
+# Tier 1, CI: launched frozen (`--reachy-smoke`, no Bonjour and no sockets) the
+# connect gate stands, both route segments answer, the Bluetooth way out is
+# offered, and the simulator is where the Developer disclosure puts it.
+#
+# Selectors are visible English text. The mise task pins the simulator's language
+# before it runs — an unpinned simulator renders these in whatever language it is
+# set to and every one of them misses.
+appId: com.alexey1312.ReachyMini
+tags:
+  - ci
+---
+- launchApp:
+    appId: com.alexey1312.ReachyMini
+    # Without this the app resumes wherever the last run left it.
+    clearState: true
+    arguments:
+      # Quoted, and boolean-valued, and both halves matter. Maestro prefixes a `-`
+      # to any key whose value is not a Boolean and which does not already carry
+      # one, then passes key and value to `simctl launch` as two argv entries
+      # (IOSLaunchArguments.kt). A Boolean value is passed through untouched and
+      # this key brings its own dashes, so argv gets `--reachy-smoke` verbatim and
+      # ReachyMiniApp.swift's `arguments.contains("--reachy-smoke")` fires.
+      # Written unquoted as `reachy-smoke: true` the app sees the bare word
+      # `reachy-smoke`, the seam does not fire, and it starts Bonjour on a runner.
+      "--reachy-smoke": true
+
+- assertVisible: "Nearby"
+# The address field is asserted on the `Nearby` segment rather than behind one of
+# its own — it moved under the robot list when the segments were shortened, which
+# is the sort of change only this flow and a reference image can see.
+- assertVisible: "host, host:port, or IP"
+- assertVisible: "Set up a new robot over Bluetooth"
+
+- tapOn: "Remote"
+- tapOn: "Nearby"
+
+# Below the fold on a phone: a row that exists but is not on screen takes a tap
+# nowhere, so it is scrolled into view first.
+- scrollUntilVisible:
+    element: "Developer"
+    direction: DOWN
+- tapOn: "Developer"
+# And the disclosure opens below the fold in turn.
+- scrollUntilVisible:
+    element: "Start the simulator"
+    direction: DOWN

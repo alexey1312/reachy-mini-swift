@@ -56,6 +56,19 @@ uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
 # is the only asset it publishes, so bootstrap.sh disables it everywhere else.
 "github:MobAI-App/simslim[exe=simslim]" = "0.8.0"
 
+# --- End-to-end flows ---
+# Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
+# Gradle distZip whose every entry sits under `maestro/`, and mise strips that single
+# top-level directory by itself — leaving `bin/maestro` beside the `lib/*.jar` its
+# launcher script resolves relative to itself. Naming either option, or `bin_path`,
+# disables that strip and separates the two.
+# The tag is `cli-<version>`, so that is what the pin says: `mise ls-remote maestro`
+# lists `cli-2.10.0`, not `2.10.0`.
+maestro = "cli-2.10.0" # End-to-end flows on a simulator (Apps/Maestro)
+# Maestro is a JVM application and this machine had no Java at all. Exact rather than
+# `21`, which is the fuzzy-selector shape that makes the next re-lock a wide diff.
+java = "temurin-21.0.12+101.0.LTS" # Maestro's runtime, nothing else uses it
+
 [tasks.build]
 description = "Build the Swift package (debug)"
 run = """
@@ -214,43 +227,88 @@ set -o pipefail
 swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
 """
 
-# Smoke tests boot the actual app binary on a simulator — the one wiring nothing
-# else exercises. No OS pin: unlike the snapshot suite these assert on structure,
-# not pixels, so whatever runtime the machine has is fine. Labels are matched in
-# English, hence the pinned test language (the snapshot suite's trade).
+# Flows drive the actual app binary on a simulator — the one wiring nothing else
+# exercises. Unlike the XCUITest they replaced, Maestro drives an *installed* app,
+# so this is a build and an install and a run rather than one `xcodebuild test`.
+# That split is the point: `test:flows` re-runs the same flows against the app
+# already on the simulator in about half a minute, where an edit to the old
+# SmokeTests.swift cost a Swift compile.
+# No OS pin on the destination: unlike the snapshot suite these assert on
+# structure, not pixels, so whatever runtime the machine has is fine. The
+# simulator's *language* is pinned instead, by Scripts/maestro-sim.sh, and that
+# one is not optional — see the comment there.
 [tasks."test:smoke"]
-description = "Launch the app on a simulator and smoke the connect gate (XCUITest)"
+description = "Launch the app on a simulator and smoke the connect gate (Maestro)"
 depends = ["project"]
 run = '''
-set -o pipefail
-SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
-xcrun simctl boot "$SIM" 2>/dev/null || true
-xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
-  -destination "platform=iOS Simulator,name=${SIM}" \
-  -derivedDataPath Apps/DerivedData \
-  -testLanguage en -testRegion US \
-  CODE_SIGNING_ALLOWED=NO \
-  -skipPackagePluginValidation -skipMacroValidation \
-  ${REACHY_XCB_EXTRA:-} \
-  2>&1 | xcsift
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh)"
+# Maestro writes the junit report but does not create its directory, and it fails
+# *after* reporting the flows green — so a missing directory reads as a passing
+# run that failed.
+mkdir -p Apps/DerivedData/MaestroReports
+# Deliberately not piped through xcsift, which parses xcodebuild diagnostics and
+# buffers until the run ends: Maestro's per-command progress is the only thing
+# that tells a slow driver handshake from a wedged one.
+# The flow directory is named explicitly — a bare `.` walks into Apps/DerivedData.
+# Timed, and the exit code preserved across the timing line: Maestro reports how
+# long the *flows* took, never how long its driver took to come up — and that
+# difference is the whole question when this step reads as one opaque number.
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  --exclude-tags daemon \
+  --format junit --output Apps/DerivedData/MaestroReports/flows.xml \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:smoke:sim"]
 description = "Smoke the whole user path against a running sim daemon (start with: mise run sim-daemon)"
 depends = ["project"]
 run = '''
-set -o pipefail
-SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
-xcrun simctl boot "$SIM" 2>/dev/null || true
-# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment.
-xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
-  -destination "platform=iOS Simulator,name=${SIM}" \
-  -derivedDataPath Apps/DerivedData \
-  -testLanguage en -testRegion US \
-  CODE_SIGNING_ALLOWED=NO \
-  TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
-  -skipPackagePluginValidation -skipMacroValidation \
-  2>&1 | xcsift
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh)"
+mkdir -p Apps/DerivedData/MaestroReports
+# No tag filter, so the `daemon`-tagged flow runs too. Its host arrives as a flow
+# variable rather than the TEST_RUNNER_ environment forwarding the XCUITest needed.
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  -e HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
+  --format junit --output Apps/DerivedData/MaestroReports/flows-sim.xml \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
+'''
+
+# The fast loop, and the reason Maestro is here at all: the flows re-run against
+# the app already installed, with no compile. Run `test:smoke` once, then this.
+[tasks."test:flows"]
+description = "Re-run the Maestro flows without rebuilding the app (fast loop)"
+run = '''
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh --no-build)"
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  --exclude-tags daemon \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:sim"]

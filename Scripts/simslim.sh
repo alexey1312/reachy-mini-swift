@@ -14,8 +14,11 @@ cd "$(dirname "$0")/.."
 
 PROFILE_DIR=Scripts/simslim
 
-# The simulator both the snapshot and the smoke tasks pin. Same defaults as mise.toml, so
-# overriding REACHY_SNAPSHOT_SIM for a run slims the machine that run will use.
+# The simulator the snapshot tasks, the smoke flows and Scripts/maestro-sim.sh all pin —
+# one variable across all four, so overriding REACHY_SNAPSHOT_SIM for a run slims the
+# machine that run will actually use. It has to stay one: a second name with the same
+# default reads as working right up until somebody overrides it, and then this slims one
+# simulator while the flows run on another.
 device_name="${REACHY_SNAPSHOT_SIM:-iPhone 17 Pro}"
 device_os="${REACHY_SNAPSHOT_OS:-27.0}"
 device_udid=""

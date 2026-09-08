@@ -283,10 +283,14 @@ jobs:
       - name: Compile previews and snapshot target
         run: mise run snapshots:build
 
-  # The one job that launches the app binary: XCUITest walks the connect gate on
-  # a simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  # The one job that launches the app binary: Maestro walks the connect gate on a
+  # simulator. Tier 2 (the sim-daemon path) needs the MuJoCo venv and stays local.
+  #
+  # `pull_request` only, like the other three heavy jobs: pull requests here only
+  # ever target main, so gating the PR is gating what reaches main, and re-running
+  # it on the push would compile the same tree twice for a second opinion on it.
   smoke:
-    name: Smoke (iOS Simulator)
+    name: Smoke (Maestro, iOS Simulator)
     runs-on: xcode-27
     if: github.event_name == 'pull_request'
     timeout-minutes: 60
@@ -330,3 +334,17 @@ jobs:
 
       - name: Smoke test
         run: mise run test:smoke
+
+      # Maestro writes a screenshot and the full view hierarchy for the failing
+      # step. That is new: a red XCUITest gave one log line, and these flows select
+      # by visible text, where seeing the screen is most of the diagnosis.
+      - name: Upload Maestro debug output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug
+          path: |
+            Apps/DerivedData/MaestroDebug
+            Apps/DerivedData/MaestroReports
+          retention-days: 7
+          if-no-files-found: ignore

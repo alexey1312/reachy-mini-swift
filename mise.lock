@@ -284,6 +284,77 @@ checksum = "sha256:ab0f65942c89c72b322c700bf427926f54db84fd2827121eab03287144d2e
 url = "https://github.com/jdx/hk/releases/download/v1.54.0/hk-x86_64-pc-windows-msvc.zip"
 url_api = "https://api.github.com/repos/jdx/hk/releases/assets/496037131"
 
+[[tools.java]]
+version = "temurin-21.0.12+101.0.LTS"
+backend = "core:java"
+
+[tools.java."platforms.linux-arm64"]
+checksum = "sha256:23e37e026f12f3e706f18938ff611db3032d075b09d0879a25d06718c773e223"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.linux-arm64-musl"]
+checksum = "sha256:8242627927adc90ac2561d0812dd39890ebc21ef09b550bc2e8b93640b8af4f8"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_alpine-linux_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.linux-x64"]
+checksum = "sha256:ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.linux-x64-musl"]
+checksum = "sha256:bd8824214e42b33333c7f55a039ea078ad6ea6be20d7c5b011c801fb2bdb44f0"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_alpine-linux_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.macos-arm64"]
+checksum = "sha256:3623232f33a9c3baadf304480b2535f9a3cba8a58d42ecbb438ba267315d9998"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.macos-x64"]
+checksum = "sha256:44db0f08196daf19a47f90d13388b0c943b67663cb537f998fe29e836fa842ce"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_mac_hotspot_21.0.12.1_1.tar.gz"
+
+[tools.java."platforms.windows-x64"]
+checksum = "sha256:f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e"
+url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip"
+
+[[tools.maestro]]
+version = "cli-2.10.0"
+backend = "github:mobile-dev-inc/maestro"
+
+[tools.maestro."platforms.linux-arm64"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.linux-arm64-musl"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.linux-x64"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.linux-x64-musl"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.macos-arm64"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.macos-x64"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
+[tools.maestro."platforms.windows-x64"]
+checksum = "sha256:29b675e10cc12080e445e9bfb2e2b4e4dfb9c0f2e30d5884120d258b5e1cd991"
+url = "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.10.0/maestro.zip"
+url_api = "https://api.github.com/repos/mobile-dev-inc/Maestro/releases/assets/538294003"
+
 [[tools.python]]
 version = "3.12.13"
 backend = "core:python"

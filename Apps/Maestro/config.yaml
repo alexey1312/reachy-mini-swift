@@ -1,0 +1,5 @@
+# The flow set. Maestro's own parser carries a @JsonAnySetter, so an unknown key
+# here is silently ignored rather than rejected — the same trap Apps/.prefire.yml
+# has with comment lines. Keep this file to keys that are known to be read.
+flows:
+  - "*.yaml"

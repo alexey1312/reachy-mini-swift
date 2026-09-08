@@ -127,8 +127,9 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
 ./bin/mise run share          # Upload a built app to tuist.dev Previews (share link)
 ./bin/mise run sim-daemon     # Simulated robot daemon (MuJoCo, LAN-reachable)
 ./bin/mise run test:sim       # Integration tests against a running sim-daemon
-./bin/mise run test:smoke     # XCUITest: boot the app on a simulator, walk the gate
+./bin/mise run test:smoke     # Maestro: build, install, walk the connect gate on a simulator
 ./bin/mise run test:smoke:sim # Same plus the full user path against a running sim-daemon
+./bin/mise run test:flows     # Re-run the flows against the installed app, no compile (13 s)
 ./bin/mise run release:ios    # Archive Release and upload to TestFlight (docs/release.md)
 ./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run asc -- ...     # App Store Connect CLI with the release key loaded
@@ -252,11 +253,54 @@ requires explicit module build`, and an archive that takes twice as long as it s
 `Scripts/check-appintents-metadata.sh` against `$CI_ARCHIVE_PATH`: every other artifact path already did, and this is
 the one that ships to a public TestFlight.
 `test:filter` matches type names (`RobotSessionAudioTests`), not `@Suite` display names.
-`Apps/ReachyMiniUITests` is the one XCTest bundle in the repository — XCUITest has no swift-testing form. Its
-queries go by visible label under `-testLanguage en`, the same trade the snapshot suite makes; Tier 2
-(`test:smoke:sim`) is gated on `REACHY_SMOKE_HOST` exactly as `test:sim` is on `REACHY_SIM_HOST`, so a plain run
-skips it silently. Tuist folds a `.uiTests` target into its host's scheme rather than generating one of its own —
-there is no `ReachyMiniUITests` scheme, both smoke tasks test the `ReachyMini` scheme.
+**The app binary is driven by Maestro flows in `Apps/Maestro`, and there is no XCTest bundle in this repository at
+all** — every suite is swift-testing, and the one XCUITest bundle that used to sit at `Apps/ReachyMiniUITests` was
+replaced by those flows (ADR 0005). Four things about that are worth knowing before touching them.
+
+- **Maestro drives an _installed_ app, so a run is a build and an install and a run**, not one `xcodebuild test`.
+  That split is the whole point: `test:flows` re-runs the flows against the app already on the simulator in
+  **13 s** where an edit to the old `SmokeTests.swift` cost a full Swift compile. `test:smoke` does the build first.
+  All three go through `Scripts/maestro-sim.sh`, which resolves the simulator name to the UDID `maestro --device`
+  needs — a simulator booted by name is the one thing `simctl` will not hand back by name.
+- **The simulator's language is pinned by `simctl`, and that replaces `-testLanguage en -testRegion US`.** Maestro
+  has no equivalent flag for a device it did not start itself. Every selector in the flows is visible English text,
+  so a simulator sitting in another language misses all of them — and reports each one as an assertion that is
+  false, never as an untranslated string. Found on a machine whose `iPhone 17 Pro` was at `ru-KZ`, where the
+  screenshot came back in Russian and read as a broken selector.
+- **`launchApp: arguments:` is a key/value map and the quoting is load-bearing.** Maestro prefixes a `-` to any key
+  whose value is not a Boolean and which does not already carry one, then passes key and value to `simctl launch`
+  as two argv entries (`IOSLaunchArguments.kt`). A Boolean value is passed through untouched, so
+  `"--reachy-smoke": true` reaches argv verbatim and `ReachyMiniApp.swift`'s `arguments.contains("--reachy-smoke")`
+  fires exactly as it did under XCUITest — no Swift change was needed. Written unquoted as `reachy-smoke: true` the
+  app sees the bare word, the seam does not fire, and it starts Bonjour on a runner while the flow still passes.
+- **The simulator boots alongside the build, not before it, and that ordering is worth three minutes.** Waiting on
+  `simctl bootstatus` up front spends the boot; running it after `xcodebuild build` hides it under work that has to
+  happen anyway. Measured on CI: `bootstatus` cost **95 s** and the language pin another **87 s** when both ran
+  against a cold simulator, against ~0 s each once a six-minute compile had gone first — `simctl spawn` on a
+  still-booting device is slow in a way it never is locally. Maestro's own driver startup is a further **~51 s** on
+  CI (~21 s warm locally), and that one is a fixed tax: it is the difference between the `maestro (driver+flows)`
+  timing and the flow duration Maestro prints.
+- **The slim step and the flows share one simulator variable, and that is load-bearing.** `Scripts/simslim.sh` and
+  `Scripts/maestro-sim.sh` both resolve `REACHY_SNAPSHOT_SIM`. They briefly did not — the flows read a
+  `REACHY_SMOKE_SIM` with the same default — and a pair like that reads as working right up until somebody
+  overrides one, at which point CI slims one simulator and runs the flows on another, with nothing failing.
+  `simslim.sh` also drops `--preserve-boot-state` on a runner so the device it slimmed stays booted for the flows;
+  `maestro-sim.sh` still boots defensively, because the CI step is best-effort and nothing slims a laptop.
+- **`simslim` does not affect any of this — measured, not assumed.** Both tasks pass on a **170/170** fully slimmed
+  `iPhone 17 Pro`, at flow and driver timings indistinguishable from a stock one (13 s / 32–36 s either way). That is
+  consistent with what slimming leaves alone: the flows are HTTP and Bonjour, and the allowlist carries no
+  `mDNSResponder`, `configd` or `networkd`. A widget or Control Centre flow would be a different question, since
+  `widgets` disables `PosterBoard` and `chronod`.
+- **Selectors match text with no element-type filter.** `assertVisible: "Nearby"` is weaker than the
+  `app.buttons["Nearby"]` it replaced, and there are **zero** `accessibilityIdentifier`s in the repository, so
+  anything needing to disambiguate a repeated label has no way to. That is the ceiling on what the flow set can
+  assert until identifiers land, and it is why the set is deliberately small.
+
+Tier 2 (`test:smoke:sim`) is tagged `daemon` and excluded from `test:smoke` by tag, the way `test:sim` is gated on
+`REACHY_SIM_HOST` — a plain run skips it. Its host arrives as a flow variable (`-e HOST=…`), not through the
+`TEST_RUNNER_` environment forwarding the XCUITest needed. `Apps/Maestro/config.yaml` is parsed with a
+`@JsonAnySetter`, so an **unknown key there is silently ignored** — the same trap `Apps/.prefire.yml` has with
+comments.
 `SimulatorIntegrationTests` is gated on `REACHY_SIM_HOST`, so plain `test` **skips it silently and reports green** —
 run `test:sim` against a live `sim-daemon` to exercise it.
 `swift test --skip-build` runs the previously built binary: rebuild with `swift build --build-tests` after editing a
@@ -466,12 +510,12 @@ iOS 27.0 / `iPhone 17 Pro`: stock is 294 processes and 2.89 GB (`phys_footprint`
 **Four device/runtime identifiers are in play, and they deliberately do not match.** Changing one without the others
 either re-records everything or fails the run outright:
 
-| Identifier                     | Set in                               | What it is                                                                                           |
-| ------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `iPhone 17 Pro`                | `mise.toml`, `REACHY_SNAPSHOT_SIM`   | The simulator the tests execute on. Renders every image.                                             |
-| `iPhone18,1`                   | `.prefire.yml`, `simulator_device`   | The same machine as a model id. Prefire aborts on a mismatch.                                        |
-| `iPhone 16 Pro`, `iPad Pro 11` | `.prefire.yml`, `snapshot_devices`   | `ViewImageConfig`s — frame size and traits, and the filename suffixes. Not devices anything runs on. |
-| `27.0` / `27`                  | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                    |
+| Identifier                     | Set in                               | What it is                                                                                                                                                  |
+| ------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `iPhone 17 Pro`                | `mise.toml`, `REACHY_SNAPSHOT_SIM`   | The simulator the tests execute on. Renders every image, runs every flow, and is the one `simslim` reconfigures — one variable across all four, on purpose. |
+| `iPhone18,1`                   | `.prefire.yml`, `simulator_device`   | The same machine as a model id. Prefire aborts on a mismatch.                                                                                               |
+| `iPhone 16 Pro`, `iPad Pro 11` | `.prefire.yml`, `snapshot_devices`   | `ViewImageConfig`s — frame size and traits, and the filename suffixes. Not devices anything runs on.                                                        |
+| `27.0` / `27`                  | `REACHY_SNAPSHOT_OS` / `required_os` | Full runtime for the destination; major only for Prefire's check.                                                                                           |
 
 So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, at iPhone 16 Pro dimensions. A
 different iOS runtime renders text differently and every reference would have to be re-recorded.
