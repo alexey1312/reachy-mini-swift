@@ -1,0 +1,53 @@
+iOS приложение все ни как не может пройти ревью
+Hello,
+
+Thank you for your resubmission, but we need additional information before we can continue our review.
+
+Please reply to this message in App Store Connect with detailed answers to the questions below.
+
+Review Environment
+Submission ID: 2b27f1e4-9f5e-4f50-803e-f14fe3ca48dc
+Review date: September 08, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 0.5.0 (37)
+
+Guideline 2.1 - Information Needed
+
+We need a demo video that demonstrates the current version, 0.5.0, in use on a physical iOS device.
+
+The provided demo video must show the following features and functionality in the app: 
+
+- All the CallKit services supported in the app.
+
+The demo video must also: 
+
+- Show the app running on a physical iOS device, not on a simulator. A screen recorder can be used to capture footage of the app in use.
+- Clearly document all relevant app features, services, and user permission requests.
+
+Next Steps
+
+- Provide a link to the demo video in the Notes Field on the App Review Information section of your the app’s page in App Store Connect and reply to this message. Note that if the app can only be reviewed with a demo video, updated demo videos will need to be provided for every app submission.
+- If there are no changes and the video remains the same as previous versions of the app, use the Notes field of the App Review Information section in App Store Connect to confirm that the video remains valid for all storefronts.
+
+Resources
+
+To learn more about providing information in App Store Connect, see App Store Connect Help.
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.
+
+Test on the latest betas
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
+
+Что делаем? Может врошлых сессиях вспомни
+
+---
+
+<task-notification>
+<task-id>bkzf63la1</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/7453eab5-088d-4180-9629-ebe65cd41cc7/tasks/bkzf63la1.output</output-file>
+<status>completed</status>
+<summary>Background command "List App Store versions" completed (exit code 0)</summary>
+</task-notification>
