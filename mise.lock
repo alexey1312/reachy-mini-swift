@@ -206,6 +206,16 @@ url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183
 version = "0.8.0"
 backend = "github:MobAI-App/simslim"
 
+[tools."github:MobAI-App/simslim"."platforms.linux-arm64"]
+checksum = "sha256:1abacb775020fa51d5c905616e071f57a5ff89cdad08ff3652c037ca74481dc8"
+url = "https://github.com/MobAI-App/simslim/releases/download/v0.8.0/simslim-0.8.0.arm64_sonoma.bottle.tar.gz"
+url_api = "https://api.github.com/repos/MobAI-App/simslim/releases/assets/538466698"
+
+[tools."github:MobAI-App/simslim"."platforms.linux-arm64-musl"]
+checksum = "sha256:1abacb775020fa51d5c905616e071f57a5ff89cdad08ff3652c037ca74481dc8"
+url = "https://github.com/MobAI-App/simslim/releases/download/v0.8.0/simslim-0.8.0.arm64_sonoma.bottle.tar.gz"
+url_api = "https://api.github.com/repos/MobAI-App/simslim/releases/assets/538466698"
+
 [tools."github:MobAI-App/simslim"."platforms.macos-arm64"]
 checksum = "sha256:c7d33ba033488521eb42ec2057c3a069b13b6551c9ebfe4455128befe2ad9b19"
 url = "https://github.com/MobAI-App/simslim/releases/download/v0.8.0/simslim-v0.8.0-macos-arm64.tar.gz"
