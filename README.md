@@ -22,6 +22,8 @@ The app's own page — what it does, screenshots, privacy and support — is at
 **[alexey1312.github.io/reachy-mini-swift](https://alexey1312.github.io/reachy-mini-swift/)**. This README is the
 developer side of the same project.
 
+**Project page:** [blog.kakoulin.com/apps/reachy-mini-swift](https://blog.kakoulin.com/apps/reachy-mini-swift)
+
 > [!NOTE]
 > Unofficial project, not affiliated with Pollen Robotics. This is **not a fork** of the official
 > [desktop app](https://github.com/pollen-robotics/reachy-mini-desktop-app) — it is an independent Swift client for
