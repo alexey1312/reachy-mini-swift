@@ -101,14 +101,13 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
   missing session invisible: nothing fails, the data just never arrives. Check for `is_ci: true` after changing
   anything here — the CLI's own `build list` decoder is broken in 4.203.1 and errors on a 200 response, so read the
   JSON out of `~/.local/state/tuist/sessions/*/logs.txt`.
-- `Package.resolved` **oscillates between the two build systems, and neither is wrong.** `xcodebuild` resolves the
-  whole Tuist workspace and writes back to the root package's file, adding five pins (Prefire, swift-snapshot-testing,
-  swift-syntax, swift-custom-dump, xctest-dynamic-overlay); `swift build` / `swift test` see only the root package and
-  strip them again. Merging a branch that predates them drops them silently too — git sees a clean delete on one side.
-  Commit the 25-pin version (run `mise run project` or any snapshot task last), never hand-edit it, and expect the
-  file to show as modified after a plain `mise run test`. `mise run lint` fails when the copy at `HEAD` has lost the
-  workspace pins — it reads the commit rather than the working tree, precisely because the tree legitimately
-  oscillates.
+- **`Package.swift` declares Prefire and swift-snapshot-testing, and no target there uses them.** Only
+  `Apps/Project.swift` links them. Without the declaration `swift build` and Dependabot resolved the root package
+  alone and dropped five pins from `Package.resolved` (Prefire, swift-snapshot-testing, swift-syntax,
+  swift-custom-dump, xctest-dynamic-overlay) that `xcodebuild` then wrote back. Every Dependabot PR failed the pin
+  check that way. The cost is one `dependency 'swift-snapshot-testing' is not used by any target` warning. Keep the
+  requirements in the two manifests equal; `mise run lint` checks Prefire's, and `.github/dependabot.yml` ignores
+  Prefire because it cannot edit `mise.toml` and `Project.swift` in the same PR.
 
 ## Quick Reference
 

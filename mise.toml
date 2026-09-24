@@ -453,17 +453,17 @@ if [ -n "$DRIFT" ]; then
   exit 1
 fi
 # The forked PreviewTests.stencil is only valid against one Prefire, which is why the
-# package requirement is .exact — the CLI in [tools] has to move in lockstep with it.
+# package requirement is .exact — the CLI in [tools] and both manifests move in lockstep.
 PREFIRE_CLI="$(sed -nE 's|^"github:BarredEwe/Prefire\[exe=prefire\]" = "([0-9.]+)".*|\1|p' mise.toml)"
 PREFIRE_PKG="$(sed -nE 's|.*BarredEwe/Prefire", requirement: \.exact\("([0-9.]+)"\).*|\1|p' Apps/Project.swift)"
-if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ]; then
-  echo "mise.toml pins prefire '$PREFIRE_CLI' but Apps/Project.swift pins '$PREFIRE_PKG' — bump both together." >&2
+PREFIRE_ROOT="$(sed -nE 's|.*BarredEwe/Prefire", exact: "([0-9.]+)".*|\1|p' Package.swift)"
+if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ] || [ "$PREFIRE_CLI" != "$PREFIRE_ROOT" ]; then
+  echo "mise.toml pins prefire '$PREFIRE_CLI' , Apps/Project.swift '$PREFIRE_PKG', Package.swift '$PREFIRE_ROOT' — bump all three together." >&2
   exit 1
 fi
-# xcodebuild resolves the whole Tuist workspace into Package.resolved; a plain
-# swift build/test strips those pins again and a merge can drop them silently.
-# The committed file is what has to carry them (the working tree legitimately
-# oscillates), so the check reads HEAD.
+# Package.swift declares the workspace-only packages so SwiftPM keeps their pins; a
+# branch that predates that, or a hand-edited file, can still drop them. The check
+# reads HEAD because the committed file is the one that ships.
 for PIN in prefire swift-snapshot-testing; do
   if ! git show HEAD:Package.resolved | grep -q "\"$PIN\""; then
     echo "Package.resolved at HEAD lost the Xcode-workspace pin '$PIN' — run 'mise run project' (or any snapshot task) last and commit the 25-pin version." >&2

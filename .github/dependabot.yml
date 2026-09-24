@@ -24,6 +24,9 @@ updates:
       day: monday
     commit-message:
       prefix: chore(deps)
+    ignore:
+      # Pinned in lockstep with mise.toml and Apps/Project.swift, which Dependabot cannot edit.
+      - dependency-name: "github.com/barredewe/prefire"
     groups:
       swift-openapi:
         patterns: ["swift-openapi-*"]
