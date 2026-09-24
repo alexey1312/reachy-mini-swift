@@ -10,9 +10,10 @@ let project = Project(
     packages: [
         // Local ReachyKit SPM package at the repo root
         .package(path: ".."),
-        // Prefire renders SwiftUI previews as snapshots and as a browsable playbook. It is
-        // declared here rather than in Package.swift because its generated tests and its
+        // Prefire renders SwiftUI previews as snapshots and as a browsable playbook. Its
+        // products are linked here and not in Package.swift because its generated tests and its
         // PlaybookView both call UIKit unconditionally — the root package still builds for macOS.
+        // Package.swift declares both packages only to pin them; keep the requirements equal.
         // Exact, not `upToNextMajor`: `ReachyUISnapshotTests/PreviewTests.stencil` is a fork of
         // this version's built-in test template, and a floated minor would render it against a
         // changed set of Stencil arguments.
