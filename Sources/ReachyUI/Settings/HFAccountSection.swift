@@ -44,6 +44,7 @@ struct HFAccountSection: View {
                     .foregroundStyle(Tone.danger.style)
             }
             signInControls
+            deleteAccountLink
         } header: {
             Text(.reachy("Hugging Face"))
         } footer: {
@@ -189,6 +190,21 @@ struct HFAccountSection: View {
                     Task { await model.signInWithPastedToken() }
                 }
                 .disabled(model.pastedToken.trimmingCharacters(in: .whitespaces).isEmpty || model.isBusy)
+            }
+        }
+    }
+
+    /// The account belongs to Hugging Face, not to this app — there is nothing here
+    /// to delete but the token. App Review asks for the deletion path anyway
+    /// (5.1.1(v)), and a direct link to the page that carries it is what the
+    /// guideline accepts when the account lives on somebody else's site.
+    @ViewBuilder
+    private var deleteAccountLink: some View {
+        if case .signedIn = model.account.state,
+           let url = URL(string: "https://huggingface.co/settings/account")
+        {
+            Link(destination: url) {
+                Label(.reachy("Delete your Hugging Face account"), systemImage: "arrow.up.forward.square")
             }
         }
     }
