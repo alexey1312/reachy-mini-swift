@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M3P0JET1GB99GJWG2P058F0S",
+  "strategy": "manual-commit",
+  "branch": "docs/ios-on-the-app-store",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "docs/index.html",
+    "docs/support.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 10796,
+    "cache_read_tokens": 4427172,
+    "output_tokens": 5867,
+    "api_call_count": 11
+  }
+}
