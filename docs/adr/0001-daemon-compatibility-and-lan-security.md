@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-03
 - Amended: 2026-08-04 — "Decision: recovering from an unsupported daemon"
+- Amended: 2026-09-30 — the tested baseline moves apart from the minimum
 
 ## Context
 
@@ -12,7 +13,10 @@ The daemon exposes motion commands over plaintext HTTP/WebSocket and has no auth
 
 ## Decision: compatibility
 
-- Daemon 1.9.0 is both the minimum supported and tested baseline for this client.
+- Daemon 1.9.0 is the minimum supported version.
+  The tested baseline is `DaemonCompatibilityPolicy.testedVersion` — 1.11.0 at the 2026-09-30 amendment —
+  and is raised whenever a release has been verified against it;
+  the minimum moves only by a decision of its own.
 - Handshake reads status/version before identity or any robot command.
 - A parseable 1.x version below 1.9.0, or any different major version, is rejected with an actionable error.
 - A newer 1.x version is allowed with a persistent compatibility warning. Unknown JSON fields remain tolerated.

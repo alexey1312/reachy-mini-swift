@@ -452,8 +452,13 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     touches `app_manager`, so an app left running has its backend disappear underneath it. Same shape as the
     `reset-apps` guard: the client owns it, and `RobotSession.powerOff` stops the app first.
 - No MJPEG endpoint exists. Camera is WebRTC-only (signaling `ws://<host>:8443`, GStreamer webrtcsink, single H.264
-  Constrained Baseline 3.1 stream, Opus audio, STUN `stun.l.google.com:19302`).
-- Daemon 1.9.0 is the minimum and tested API baseline. Enforce
+  stream, Opus audio, STUN `stun.l.google.com:19302`).
+  Through 1.10.0 that stream was pinned to Constrained Baseline 3.1 at a fixed 5 Mbps.
+  From 1.11.0, on an image whose GStreamer allows it, webrtcsink drives `v4l2h264enc` itself (upstream #1392):
+  the Constrained Baseline caps filter survives only on the fallback path,
+  and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
+  The client sets no codec preference and takes whatever H.264 the offer carries.
+- Daemon 1.9.0 is the minimum API version and 1.11.0 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a

@@ -114,6 +114,9 @@ public struct CentralRobotStatusProxy: Sendable, Equatable, Decodable {
         case notAuthenticated
         case tokenInvalid
         case unreachable
+        /// Daemon 1.11.0 validates the central URL it would send the token to, and
+        /// refuses to proxy at all when that URL is not HTTPS.
+        case invalidConfiguration
         case http(Int)
         case unknown(String)
 
@@ -123,6 +126,7 @@ public struct CentralRobotStatusProxy: Sendable, Equatable, Decodable {
             case "not_authenticated": self = .notAuthenticated
             case "token_invalid": self = .tokenInvalid
             case "unreachable": self = .unreachable
+            case "invalid_configuration": self = .invalidConfiguration
             default:
                 if raw.hasPrefix("http_"), let code = Int(raw.dropFirst("http_".count)) {
                     self = .http(code)

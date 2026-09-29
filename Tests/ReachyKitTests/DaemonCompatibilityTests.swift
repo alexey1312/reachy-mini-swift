@@ -5,13 +5,16 @@ import Testing
 struct DaemonCompatibilityTests {
     @Test("tested baseline is supported")
     func baseline() {
-        #expect(DaemonCompatibilityPolicy.evaluate("1.10.0") == .supported)
-        #expect(DaemonCompatibilityPolicy.evaluate("v1.10.0") == .supported)
+        #expect(DaemonCompatibilityPolicy.evaluate("1.11.0") == .supported)
+        #expect(DaemonCompatibilityPolicy.evaluate("v1.11.0") == .supported)
     }
 
     /// A daemon between the minimum and the tested baseline is supported outright,
     /// not warned about — the warning is for versions this client has never seen.
-    @Test("daemons between the minimum and the baseline are supported", arguments: ["1.9.0", "1.9.5"])
+    @Test(
+        "daemons between the minimum and the baseline are supported",
+        arguments: ["1.9.0", "1.9.5", "1.10.0", "1.10.5"]
+    )
     func withinRange(version: String) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .supported)
     }
@@ -24,7 +27,7 @@ struct DaemonCompatibilityTests {
         ))
     }
 
-    @Test("newer compatible versions connect with a warning", arguments: ["1.10.1", "1.11.0"])
+    @Test("newer compatible versions connect with a warning", arguments: ["1.11.1", "1.12.0"])
     func newer(version: String) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .untestedNewer(
             reported: version,
@@ -36,7 +39,7 @@ struct DaemonCompatibilityTests {
     /// and the patch arrives glued to its suffix. An RC carries the API of the release
     /// it precedes, so it answers as that release does.
     @Test("PEP 440 pre-releases read as the release they precede", arguments: [
-        "1.10.0rc5", "1.10.0a1", "1.10.0b2", "1.10.0.dev3", "1.10.0+local", "v1.10.0rc5",
+        "1.10.0rc5", "1.10.0a1", "1.10.0b2", "1.10.0.dev3", "1.10.0+local", "v1.10.0rc5", "1.11.0rc1",
     ])
     func preRelease(version: String) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .supported)

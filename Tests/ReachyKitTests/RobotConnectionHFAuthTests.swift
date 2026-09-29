@@ -188,6 +188,30 @@ struct RobotConnectionHFAuthTests {
         #expect(proxy.robots.isEmpty)
     }
 
+    /// Every reason means "unknown", so a new one must decode rather than fail the
+    /// whole answer — `invalid_configuration` arrived in 1.11.0 unannounced.
+    @Test("every reason the proxy gives decodes, including ones this client never saw", arguments: [
+        ("not_authenticated", CentralRobotStatusProxy.Reason.notAuthenticated),
+        ("token_invalid", .tokenInvalid),
+        ("unreachable", .unreachable),
+        ("invalid_configuration", .invalidConfiguration),
+        ("http_502", .http(502)),
+        ("http_oops", .unknown("http_oops")),
+        ("central_on_fire", .unknown("central_on_fire")),
+    ])
+    func decodesEveryReason(raw: String, expected: CentralRobotStatusProxy.Reason) async throws {
+        let session = makeSession([
+            "/api/hf-auth/central-robot-status": .init(
+                statusCode: 200,
+                json: #"{"available": false, "robots": [], "reason": "\#(raw)"}"#
+            ),
+        ])
+
+        let proxy = try await makeConnection(session).centralRobotStatus()
+
+        #expect(proxy.reason == expected)
+    }
+
     @Test("central's robot list comes through with the keys that identify a robot")
     func decodesProxiedRobots() async throws {
         let session = makeSession([

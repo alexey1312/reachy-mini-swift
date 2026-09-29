@@ -24,11 +24,14 @@ public enum DaemonCompatibility: Equatable, Sendable {
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
 public enum DaemonCompatibilityPolicy {
     public static let minimumVersion = "1.9.0"
-    /// Raised to 1.10.0 against a Wireless unit on that daemon. The spec diff was
-    /// additive but for one rename: `DoAInfo` became `DoaSnapshot` with the same two
-    /// fields, so no generated type any caller names actually moved. `/api/state/imu`
-    /// and `FullState.imu` are new, and rule 3 already covers an unread field.
-    public static let testedVersion = "1.10.0"
+    /// Raised to 1.11.0, whose only API change is the IMU on REST: `/api/state/imu`,
+    /// `with_imu` and `FullState.imu`. The committed spec already carried all three —
+    /// it was taken from `main` before 1.11.0 was cut, which is why the route reads as
+    /// a 1.10.0 one in older notes. Everything else in the release is behaviour: H.264
+    /// handed to `webrtcsink` with adaptive bitrate, a TURN default that resolves again,
+    /// and central/TURN endpoints that must be HTTPS and refuse redirects — none of
+    /// which reaches a request this client sends.
+    public static let testedVersion = "1.11.0"
 
     /// Whether the daemon is *known* to be older than `floor`.
     ///

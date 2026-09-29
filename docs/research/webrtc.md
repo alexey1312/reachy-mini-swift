@@ -16,6 +16,9 @@ Probed against the simulated daemon v1.9.0 (`mise run sim-daemon`), 2026-08-03.
 - `producers` is empty in the sim until media is acquired (`POST /api/media/acquire`; camera specs name is `mujoco`).
 - Upstream client reference: `src/hooks/media/useWebRTCStream.ts` (STUN `stun.l.google.com:19302`, single H.264
   Constrained Baseline 3.1 stream + Opus).
+  Daemon 1.11.0 loosened that on new robot images:
+  webrtcsink drives the hardware encoder directly, the Constrained Baseline caps filter is gone from that path,
+  and the bitrate adapts instead of sitting at 5 Mbps (upstream #1392).
 
 ## Phase 2 implications
 
