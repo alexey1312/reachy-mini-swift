@@ -241,6 +241,10 @@ Ordered by how close each sits to something the app already does.
 - **Live Activities**: `supplementalActivityFamilies([.small])` puts an activity on Apple Watch and the CarPlay
   dashboard **without a watchOS app**, which covers much of #75 from inside #61; a landscape Dynamic Island
   (`isDynamicIslandLimitedInWidth`); StandBy.
+  **Adopted on 2026-09-30** — and not an iOS 27 API after all:
+  the SDK marks `supplementalActivityFamilies`, `ActivityFamily` and `\.activityFamily` iOS 18.0,
+  this app's floor, so it needed no availability check.
+  The running-app card draws a `.small` layout there, without its Stop.
 - **App Intents**: `LongRunningIntent`, `CancellableIntent`, `ExecutionTargets`, `EntityCollection`,
   `SyncableEntity`, `RelevantEntities`, `@UnionValue`, and **`AppIntentsTesting`**, which drives intents through the
   real system paths. Nine controls plus Siri, Spotlight and Handoff are covered only indirectly today. **Schemas are

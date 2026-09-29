@@ -21,6 +21,8 @@ enum RunningAppActivityPreviewSize {
     static let expanded = CGSize(width: 360, height: 64)
     static let compact = CGSize(width: 44, height: 36)
     static let minimal = CGSize(width: 36, height: 36)
+    /// The Smart Stack's small activity, sized off a 45 mm watch face.
+    static let small = CGSize(width: 176, height: 72)
 }
 
 func runningAppActivityPreviewCard(
@@ -72,6 +74,7 @@ private func runningAppActivityPreviewSize(
     case .compactLeading, .compactTrailing, .expandedTrailing: RunningAppActivityPreviewSize.compact
     case .minimal: RunningAppActivityPreviewSize.minimal
     case .expandedLeading, .expandedBottom: RunningAppActivityPreviewSize.expanded
+    case .small: RunningAppActivityPreviewSize.small
     }
 }
 
@@ -181,5 +184,22 @@ extension RunningAppActivityContent {
     VStack(alignment: .leading) {
         runningAppActivityPreviewCard(.preview("Running"), layout: .expandedLeading)
         runningAppActivityPreviewCard(.preview("Running"), layout: .expandedBottom)
+    }
+}
+
+// The Apple Watch Smart Stack and the CarPlay dashboard. No Stop, running or
+// failed — see `RunningAppActivityLayout.small`.
+#Preview("Activity — Smart Stack", traits: .sizeThatFitsLayout) {
+    VStack(alignment: .leading) {
+        runningAppActivityPreviewCard(.preview("Running"), layout: .small)
+        runningAppActivityPreviewCard(
+            .preview(
+                "Process exited with code 1",
+                symbol: "exclamationmark.triangle.fill",
+                isFailed: true,
+                canStop: false
+            ),
+            layout: .small
+        )
     }
 }

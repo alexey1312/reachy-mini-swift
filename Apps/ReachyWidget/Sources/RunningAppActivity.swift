@@ -7,7 +7,9 @@
     import SwiftUI
     import WidgetKit
 
-    /// The running-app card, in the four presentations ActivityKit asks for.
+    /// The running-app card, in the four presentations ActivityKit asks for — and a
+    /// fifth, the `.small` family the Apple Watch Smart Stack and the CarPlay
+    /// dashboard draw, which puts the card on a watch with no watchOS app at all.
     ///
     /// iOS only, and not by preference: the macOS SDK ships ActivityKit for Mac
     /// Catalyst alone, and this app's Mac target is native. So **only
@@ -22,13 +24,17 @@
     struct RunningAppActivity: Widget {
         var body: some WidgetConfiguration {
             ActivityConfiguration(for: RunningAppActivityAttributes.self) { context in
-                view(context, layout: .lockScreen)
-                    .reachyTheme(ThemeStore(defaults: KnownRobots.defaults).theme)
-                    // Every pixel the Stop button does not claim opens the app at the
-                    // running-app page — which is where a robot the intent cannot
-                    // reach over the LAN is actually dealt with, and where the whole
-                    // crash output is readable.
-                    .widgetURL(ReachyDeepLink.runningApp.url)
+                // The Lock Screen closure is also what the watch and CarPlay draw,
+                // at a size of their own; the family is the only thing that says which.
+                FamilyLayout { layout in
+                    view(context, layout: layout)
+                }
+                .reachyTheme(ThemeStore(defaults: KnownRobots.defaults).theme)
+                // Every pixel the Stop button does not claim opens the app at the
+                // running-app page — which is where a robot the intent cannot
+                // reach over the LAN is actually dealt with, and where the whole
+                // crash output is readable.
+                .widgetURL(ReachyDeepLink.runningApp.url)
             } dynamicIsland: { context in
                 DynamicIsland {
                     DynamicIslandExpandedRegion(.leading) {
@@ -50,6 +56,7 @@
                 .widgetURL(ReachyDeepLink.runningApp.url)
                 .keylineTint(context.state.isFailed ? .red : nil)
             }
+            .supplementalActivityFamilies([.small])
         }
 
         /// One builder for all seven slots, so a change to how the card is fed cannot
@@ -69,6 +76,17 @@
                 layout: layout
             ) {
                 AnyView(stop(context))
+            }
+        }
+
+        /// The one reader of `\.activityFamily`, so `RunningAppActivityView` keeps taking
+        /// its layout as an argument rather than reading it from the environment.
+        private struct FamilyLayout<Content: View>: View {
+            @Environment(\.activityFamily) private var family
+            let content: (RunningAppActivityLayout) -> Content
+
+            var body: some View {
+                content(family == .small ? .small : .lockScreen)
             }
         }
 

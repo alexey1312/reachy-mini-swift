@@ -534,7 +534,8 @@ Two are adopted, both in the **app target**: `SearchRobotAppsIntent` (`.system.s
   really did is `nm …/ReachyWidget.appex/ReachyWidget.debug.dylib | grep RunningAppActivity`, which is silent on a
   macOS build.
 - **What no reference image can prove**, and it is most of the surface: the Lock Screen's real height against the
-  160 pt truncation point, every Dynamic Island presentation, StandBy, the Watch and CarPlay, whether `staleDate`
+  160 pt truncation point, every Dynamic Island presentation, StandBy, the Watch and CarPlay (the `.small`
+  layout has a reference, but at a size chosen for it, not measured), whether `staleDate`
   flips when claimed, and that the system ends a card at eight hours. The previews render `RunningAppActivityView`
   directly, never through ActivityKit — the same blind spot `supportedFamilies` already has.
 
@@ -622,3 +623,7 @@ and note first what it deliberately does _not_ say:
 `docs/research/ios-27.md` §3 records `supplementalActivityFamilies([.small])`, which puts the **existing**
 running-app card on Apple Watch and the CarPlay dashboard with no watchOS app at all. That is more surface for a
 card that already earns its place, and neither refusal here touches it.
+It has shipped since: `RunningAppActivity` declares the family,
+a `FamilyLayout` wrapper reads `\.activityFamily` so the view still takes its layout as an argument,
+and `.small` is the lock-screen strip without its Stop —
+whether a button's intent reaches the phone from a watch with no app is a device question nobody has answered.

@@ -21,11 +21,18 @@ public enum RunningAppActivityLayout: Sendable {
     case expandedLeading
     case expandedTrailing
     case expandedBottom
+    /// `ActivityFamily.small`: the Apple Watch Smart Stack and the CarPlay
+    /// dashboard, which draw the Lock Screen closure at a size of their own. The
+    /// lock-screen strip without its Stop — whether a button's intent reaches the
+    /// phone from a watch that has no app is unmeasured, and a button that might do
+    /// nothing is worse than none.
+    case small
 }
 
 /// The Dynamic Island's slots are much smaller than any tile elsewhere, and 20 pt is
-/// a one-off of this component rather than a role: both users of it are the view's
-/// own slots, which is one consumer and not two (root rule 10).
+/// a one-off of this component rather than a role: every user of it is one of the
+/// view's own slots — the island's and the watch's — which is one consumer and not
+/// several (root rule 10).
 ///
 /// File-scoped rather than a `static let` on the view, which a generic type cannot
 /// have.
@@ -74,6 +81,7 @@ public struct RunningAppActivityView<Stop: View>: View {
         case .expandedLeading: expandedLeading
         case .expandedTrailing: glyph
         case .expandedBottom: expandedBottom
+        case .small: small
         }
     }
 
@@ -148,6 +156,24 @@ public struct RunningAppActivityView<Stop: View>: View {
                 font: Typography.status,
                 lineLimit: 2
             )
+        }
+    }
+
+    /// Title and state beside the artwork, and nothing else: on a watch face the
+    /// robot's name is a second line the state needs more.
+    private var small: some View {
+        HStack(spacing: Space.sm) {
+            AppArtworkTile(artwork: artwork, size: islandArtwork)
+            // The same 1 pt pair as the lock screen's title and caption.
+            // swiftlint:disable:next raw_spacing
+            VStack(alignment: .leading, spacing: 1) {
+                Text(app.appTitle)
+                    .font(Typography.rowTitleCompact)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                caption
+            }
+            Spacer(minLength: 0)
         }
     }
 
