@@ -564,16 +564,22 @@ So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, a
 different iOS runtime renders text differently and every reference would have to be re-recorded.
 **Adding a size to `snapshot_devices` costs +816 references and roughly +100 MB of LFS**, one per preview per
 appearance, so weigh that before a third entry (#114 measured it and decided against).
-**Its position in the list used to be load-bearing, and that was a bug, now fixed.**
-The stencil renders one preview instance once per entry, reassigning `snapshot.device` between renders,
-and three previews kept their seeded state only on the **first** render —
-`Device check — robots found`, `Device check — permission denied` and `Controller — recording` —
-because `DeviceCheckView` stopped its browser and `ControllerScreen` ended the take in `onDisappear`.
+**Its position in the list used to be load-bearing, and it no longer is — fixed twice over.**
+`PrefireSnapshot.init` evaluates the preview body once and keeps the view,
+and the stencil used to build one and render it for every entry and both appearances,
+so all four captures shared the models that body built, and a teardown in the first reached the other three.
+`Device check — robots found`, `Device check — permission denied` and `Controller — recording`
+kept their seeded state only in the **first** capture,
+because `DeviceCheckView` stopped its browser and `ControllerScreen` ended the take in `onDisappear` —
+the `iPad Pro 11` reference for "robots found" read "No robots found".
 Both teardowns now sit behind the preview switch (`browsesLiveNetwork`, `reachyPreviewMode`),
-and re-recording moved the later captures while the first of each stayed byte-identical,
-so a new size may go anywhere in the list.
-A reference that reads one state on its first capture and another on the rest is the next such teardown —
-see "One preview body, one model, four captures" in `Sources/ReachyUI/AGENTS.md`.
+which fixes those two screens,
+and the stencil now builds the `PrefireSnapshot` inside its loop, so every capture renders a preview of its own,
+which fixes the class.
+Each was measured without the other: either one alone re-recorded the same nine references, byte for byte,
+with the first capture of each unchanged.
+So a new size may go anywhere in the list — by construction, not by actually reordering it.
+See "Each capture builds its own preview" in `Sources/ReachyUI/AGENTS.md`.
 **`required_os` is compiled into the generated tests, not read at run time.** Editing `.prefire.yml` without
 rebuilding the snapshot target leaves the old value in `…PreviewsTests.generated.swift`, where it is a `fatalError`
 and not a failed assertion — `Switch to iOS 26 for these tests`. Reached through `record`, which deletes every PNG

@@ -876,15 +876,23 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   hand the view a model that is already in its end state (`AudioSettingsModel.preview()`, `RobotSession.preview()`).
 - Model preview factories live **in the model's own file** under `#if DEBUG`, not in `Previews/`: they write members
   that are `private` to that file, and `@testable` does not reach `private`.
-- **One preview body, one model, four captures — so a teardown side effect leaks between them.** Prefire evaluates the
-  body once and snapshots the resulting view per device and appearance, mounting and unmounting it each time; the model
-  the body built is shared across all four. Anything in `onDisappear` that mutates it therefore corrupts capture two
-  onwards while capture one still passes, which is the tell: a single preview failing on three of its four references
-  with the first byte-identical is a state-leaking teardown, not a rendering change. Measured on
-  `FloatingViewport.onDisappear` adopting a pending `settling`,
+- **Each capture builds its own preview now, and for a long time it did not.**
+  `PrefireSnapshot.init` evaluates the preview body once and keeps the view,
+  and the stencil used to build one and render it per device and appearance,
+  so the models the body built were shared across all four captures.
+  Anything in `onDisappear` that mutated them corrupted capture two onwards while capture one still passed —
+  a single preview failing on three of its four references with the first byte-identical
+  is a state-leaking teardown, not a rendering change.
+  Measured on `FloatingViewport.onDisappear` adopting a pending `settling`,
   and again on `DeviceCheckView` stopping its browser and `ControllerScreen` ending the seeded take.
-  Put such an effect behind `reachyPreviewMode` — the same
-  key `.task` work uses, and for the same reason: a snapshot has to render the state it was handed.
+  `PreviewTests.stencil` now builds the `PrefireSnapshot` inside its loop, which ends the class for every preview.
+  - **Still put such an effect behind `reachyPreviewMode`** — the same key `.task` work uses, and for the same
+    reason: a snapshot has to render the state it was handed.
+    Within one capture the view is still mounted twice —
+    `loadViewWithPreferences` renders it once in a throwaway window to read the preferences,
+    and the image is taken from a second render of the same value —
+    so a teardown can in principle still run before the image is taken.
+    No preview has been seen to leak through that one, which is all that can be said for it.
 - Screens take their model through an initialiser with a default (`init(session:model:)`), so production call sites
   are unchanged and previews inject a frozen one.
 - A defaulted argument whose value is `@MainActor` (`= DeviceCheckModel()`, `= .preview()`) compiles in the SwiftPM targets
@@ -1230,8 +1238,9 @@ a `refresh`-shaped method.
 
 - **A stub gate that disagreed with the seeded phase.** `LogExplanationModel.preview` used to inject
   `availability: { .available }` and then seed `phase = .unavailable(…)`. `LogConsoleScreen` refreshes the gate from
-  a `.task`, and **Prefire renders one instance twice — light, then dark** — so the light capture was taken before
-  that effect and the dark one after it. The result was eighteen dark references showing an Explain button that the
+  a `.task`, and **the stencil then rendered one instance for every capture — light, then dark** (it builds one per
+  capture now; see the previews section) — so the light capture was taken before that effect and the dark one after
+  it. The result was eighteen dark references showing an Explain button that the
   matching light references did not, from the same preview. The factory now derives the gate from the phase, and
   `previewPhasesSurviveARefresh` fails if that is ever undone.
 - **The sheet's own `.task` running over the seeded summary.** `LogExplanationSheet` starts the explanation on
