@@ -75,11 +75,19 @@ public enum ReachyQuickAction: String, CaseIterable, Sendable {
     #endif
 }
 
-/// Where a tapped quick action waits for the interface to notice it.
+/// Where a tapped quick action waits for the interface to notice it — and, on a
+/// cold launch, for the robot to connect.
 ///
 /// UIKit builds the scene delegate that receives the tap, so there is no
 /// initialiser to inject anything through and `shared` is what the delegate can
 /// reach. The type is ordinary all the same — tests build their own.
+///
+/// **A command waits, but not for long.** A cold launch opens on the gate, so the
+/// tap arrives before any robot is connected; dropping it there made the menu do
+/// nothing from a closed app, which is when it is most used. Waiting for ever is
+/// the opposite mistake: "Power off" firing on a connection made ten minutes later,
+/// to a robot somebody chose for another reason, is a command nobody gave. So a
+/// command expires `lifetime` after the tap, and an expired one is dropped unseen.
 @MainActor
 @Observable
 public final class QuickActionInbox {
@@ -89,14 +97,26 @@ public final class QuickActionInbox {
     public struct Pending: Equatable, Sendable {
         public let action: ReachyQuickAction
         let token: Int
+        let receivedAt: ContinuousClock.Instant
     }
 
     public static let shared = QuickActionInbox()
 
     public private(set) var pending: Pending?
     private var issued = 0
+    private let lifetime: Duration
+    private let now: @MainActor () -> ContinuousClock.Instant
 
-    public init() {}
+    /// `lifetime` defaults to long enough for the automatic reconnect a cold launch
+    /// makes to the last robot, and short enough that a robot picked by hand
+    /// afterwards is a separate decision.
+    public init(
+        lifetime: Duration = .seconds(30),
+        now: @escaping @MainActor () -> ContinuousClock.Instant = { ContinuousClock.now }
+    ) {
+        self.lifetime = lifetime
+        self.now = now
+    }
 
     /// `false` for an identifier this app does not own, which is also the answer
     /// UIKit wants back from `performActionFor`.
@@ -104,14 +124,25 @@ public final class QuickActionInbox {
     public func receive(type: String) -> Bool {
         guard let action = ReachyQuickAction(rawValue: type) else { return false }
         issued += 1
-        pending = Pending(action: action, token: issued)
+        pending = Pending(action: action, token: issued, receivedAt: now())
         return true
+    }
+
+    /// The command still waiting, without taking it — or nil, and the command
+    /// dropped, once it has outlived `lifetime`.
+    func peek() -> ReachyQuickAction? {
+        guard let pending else { return nil }
+        guard now() - pending.receivedAt <= lifetime else {
+            self.pending = nil
+            return nil
+        }
+        return pending.action
     }
 
     /// Reading it is taking it: a command must run once, and the tab change behind
     /// it is not worth repeating on the next unrelated update.
     func take() -> ReachyQuickAction? {
         defer { pending = nil }
-        return pending?.action
+        return peek()
     }
 }

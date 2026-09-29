@@ -144,9 +144,11 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   - `QuickActionInbox` has a `shared` because UIKit builds the scene delegate that fills it and there is no
     initialiser to inject through. Its `Pending` carries a monotonic token: SwiftUI notices a _change_, so two
     identical taps have to arrive as two values or the second never runs.
-  - A tapped command **selects the Robot tab and runs only against a connected session**. On a cold launch that
-    means it is dropped — the gate is up and the tab was the default anyway. Queueing it until the session settles
-    is a change to the one guard in `RootLifecycle.runQuickAction`.
+  - A tapped command **selects the Robot tab and runs only against a connected session**.
+    On a cold launch the gate is up, so the command waits in the inbox —
+    `runQuickAction` peeks rather than takes — and runs when the session connects (`quickActionTrigger` carries the connection).
+    It expires 30 s after the tap: long enough for the automatic reconnect to the last robot,
+    short enough that "Power off" never lands on a robot connected by hand much later.
   - The delegate itself is `Apps/ReachyMini/Sources/QuickActionSceneDelegate.swift`, the only UIKit in the app
     target. Overriding the scene configuration does **not** cost SwiftUI its window — verified by installing on a
     booted simulator and screenshotting, which is the only thing that can say so.

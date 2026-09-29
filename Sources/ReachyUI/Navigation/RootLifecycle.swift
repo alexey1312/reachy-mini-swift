@@ -62,8 +62,10 @@ struct RootLifecycle: ViewModifier {
                 await sceneChanged()
             }
             // `initial: true` because a cold launch fills the inbox in
-            // `scene(_:willConnectTo:)`, before this body has ever run.
-            .onChange(of: quickActions.pending, initial: true) { _, _ in
+            // `scene(_:willConnectTo:)`, before this body has ever run — and the
+            // connection is in the trigger because that command arrived before any
+            // robot did, and runs when one connects if it has not expired meanwhile.
+            .onChange(of: quickActionTrigger, initial: true) { _, _ in
                 guard !previewMode else { return }
                 runQuickAction()
             }
@@ -227,6 +229,15 @@ struct RootLifecycle: ViewModifier {
         let isActive: Bool
     }
 
+    private struct QuickActionTrigger: Equatable {
+        let pending: QuickActionInbox.Pending?
+        let isConnected: Bool
+    }
+
+    private var quickActionTrigger: QuickActionTrigger {
+        QuickActionTrigger(pending: quickActions.pending, isConnected: isConnected)
+    }
+
     private var entityIndexTrigger: EntityIndexTrigger {
         EntityIndexTrigger(robotID: connectedRobotID, isActive: scenePhase == .active)
     }
@@ -317,17 +328,24 @@ struct RootLifecycle: ViewModifier {
     /// A quick action lands on the Robot tab either way, because that is where the
     /// transition and any failure are shown.
     ///
-    /// **It only runs against a robot already connected**, which on a cold launch
-    /// is none: the app opens on the gate, the command is dropped, and the tab it
-    /// selected is the one it would have opened on anyway. Queueing it until the
-    /// session settles is a change to this one guard, and worth making only if the
-    /// warm case — the app still resident, which on iOS is most of the time —
-    /// turns out not to cover it.
+    /// **It runs only against a connected robot, and waits for one.** On a cold
+    /// launch the app opens on the gate, so the command stays in the inbox — it is
+    /// peeked, not taken — until the session connects, which calls this again
+    /// through `quickActionTrigger`. The inbox expires it (`QuickActionInbox`), so a robot
+    /// connected much later never receives a command tapped for another moment.
     private func runQuickAction() {
-        guard let action = quickActions.take() else { return }
+        guard quickActions.peek() != nil else { return }
         router.tab = .robot
-        guard case .connected = session.phase else { return }
+        guard isConnected, let action = quickActions.take() else { return }
         Task { await action.perform(on: session) }
+    }
+
+    private var isConnected: Bool {
+        if case .connected = session.phase {
+            true
+        } else {
+            false
+        }
     }
 }
 
