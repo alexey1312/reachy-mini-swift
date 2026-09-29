@@ -219,6 +219,36 @@ struct ReachyThemeTests {
     }
 }
 
+@Suite("Twin shell tint")
+struct ShellTintTests {
+    /// The fallback is the one theme that must leave the robot alone: everybody who
+    /// never opened Appearance keeps the factory white, and so does every reference.
+    @Test("only the fallback leaves the shell unpainted", arguments: ReachyTheme.allCases)
+    func onlyFallbackIsUnpainted(theme: ReachyTheme) {
+        #expect((theme.shellTint == nil) == (theme == .fallback))
+    }
+
+    @Test("every painted theme paints a different colour")
+    func tintsAreDistinct() {
+        let tints = ReachyTheme.allCases.compactMap(\.shellTint)
+        #expect(Set(tints).count == tints.count)
+    }
+
+    /// The shell has to stay the light plastic of the robot. The grey prints and
+    /// servos top out at 0.212 (`arducam`, the antenna holders) and the Stewart balls
+    /// sit at 0.187, so 0.55 keeps a clear step above all of them; the starting
+    /// values span 0.575 (indigo) to 0.768 (bronze).
+    ///
+    /// What this does **not** cover: the steel-blue parts are light too — the rods
+    /// 0.696, the bearing 0.726, the antenna interfaces 0.529 — and a tint separates
+    /// from those by hue rather than lightness, which is a device judgement.
+    @Test("every shell tint stays light", arguments: ReachyTheme.allCases)
+    func tintStaysLight(theme: ReachyTheme) {
+        guard let tint = theme.shellTint else { return }
+        #expect(Colorimetry.relativeLuminance(tint) >= 0.55, "\(theme.rawValue) is too dark for the shell")
+    }
+}
+
 private let repoRoot = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // ReachyDesignTests
     .deletingLastPathComponent() // Tests

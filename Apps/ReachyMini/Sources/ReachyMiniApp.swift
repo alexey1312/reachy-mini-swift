@@ -29,7 +29,7 @@ struct ReachyMiniApp: App {
             let mirror = CloudSettingsMirror(
                 defaults: KnownRobots.defaults,
                 cloud: NSUbiquitousKeyValueStore.default,
-                keys: [KnownRobotStore.knownRobotsKey, ThemeStore.key],
+                keys: [KnownRobotStore.knownRobotsKey, ThemeStore.key, TwinPaint.key],
                 onDidApplyExternalChange: {
                     // The widget reads the same suite in its own process; a theme or robot
                     // that arrived from another device needs the same nudge the picker gives.

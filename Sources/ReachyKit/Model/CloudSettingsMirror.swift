@@ -138,8 +138,8 @@ public final class CloudSettingsMirror {
         }
     }
 
-    /// Both synced values bridge to `NSObject` (`Data`, `String`), and `isEqual` is what
-    /// plist types compare by.
+    /// Every synced value bridges to `NSObject` (`Data`, `String`, and the paint switch's
+    /// `Bool` as `NSNumber`), and `isEqual` is what plist types compare by.
     private func isEqual(_ lhs: Any?, _ rhs: Any?) -> Bool {
         switch (lhs, rhs) {
         case (nil, nil):

@@ -3,10 +3,25 @@ import Foundation
 @testable import ReachyScene
 import Testing
 
-/// Serves a one-link robot and counts how often the description was fetched.
-private final class SceneStubClient: RobotAPIClient, @unchecked Sendable {
+/// Serves a one-link robot — or the description it was handed — and counts how
+/// often the description was fetched. Every mesh it serves is the same triangle.
+/// Shared with `RobotShellTintTests`, which needs a shell mesh in the description.
+final class SceneStubClient: RobotAPIClient, @unchecked Sendable {
+    static let oneLink = """
+    <robot name="stub">
+      <link name="base">
+        <visual><geometry><mesh filename="package://assets/base.stl"/></geometry></visual>
+      </link>
+    </robot>
+    """
+
+    private let description: String
     private let lock = NSLock()
     private var _urdfRequests = 0
+
+    init(urdf: String = SceneStubClient.oneLink) {
+        description = urdf
+    }
 
     var urdfRequests: Int {
         lock.withLock { _urdfRequests }
@@ -14,13 +29,7 @@ private final class SceneStubClient: RobotAPIClient, @unchecked Sendable {
 
     func urdf() async throws -> String {
         lock.withLock { _urdfRequests += 1 }
-        return """
-        <robot name="stub">
-          <link name="base">
-            <visual><geometry><mesh filename="package://assets/base.stl"/></geometry></visual>
-          </link>
-        </robot>
-        """
+        return description
     }
 
     func stlAsset(named _: String) async throws -> Data {

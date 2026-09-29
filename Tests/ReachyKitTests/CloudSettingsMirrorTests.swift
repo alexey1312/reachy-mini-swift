@@ -202,4 +202,28 @@ struct CloudSettingsMirrorTests {
         #expect(arrived.first?.name == "reachy_mini")
         withExtendedLifetime(mirrorA) {}
     }
+
+    /// The twin's paint switch is the first `Bool` through the mirror, and `false` is the
+    /// value that matters — an absent key already reads as on. It bridges to `NSNumber`,
+    /// which `isEqual` compares by value, so the receiving side's pull finds equality and
+    /// pushes nothing back.
+    @Test("a Bool crosses between two suites without an echo")
+    func boolRoundTrips() throws {
+        let deviceA = try makeDefaults()
+        let deviceB = try makeDefaults()
+        let cloud = RecordingUbiquitousStore()
+        let mirrorA = CloudSettingsMirror(defaults: deviceA, cloud: cloud, keys: [key])
+        let mirrorB = CloudSettingsMirror(defaults: deviceB, cloud: cloud, keys: [key])
+        mirrorA.start()
+        mirrorB.start()
+
+        deviceA.set(false, forKey: key)
+        #expect(cloud.object(forKey: key) as? Bool == false)
+        cloud.clearLog()
+        cloud.simulateExternalChange(of: [key])
+
+        #expect(deviceB.object(forKey: key) as? Bool == false)
+        #expect(cloud.setLog.isEmpty)
+        withExtendedLifetime((mirrorA, mirrorB)) {}
+    }
 }

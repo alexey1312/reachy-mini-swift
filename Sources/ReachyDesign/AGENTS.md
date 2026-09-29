@@ -12,7 +12,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
 | `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
 | `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
-| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, and the `Color(hex:)` the picker draws its tiles with |
+| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, `shellTint`, and the `Color(hex:)` that paints a tile |
 | `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
 | `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
 | `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
@@ -96,6 +96,20 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   `ReachyTheme.alternateIconName`, the `.icon` directory, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in
   `Apps/Project.swift` — and `ThemeIconNameTests` is the only thing that checks, because a mismatch surfaces as a
   failed `setAlternateIconName` on a device and nowhere earlier.
+- **A theme also paints the 3D twin's shell, through `ReachyTheme.shellTint` — deliberately not a `Palette` field.**
+  `Palette` has hand-kept copies in both theme scripts, and neither has any use for a shell,
+  so a fifth field would be a third place to keep in step for nothing.
+  It is one colour for both appearances, because it is the colour of an object under the scene's lights,
+  not of the interface.
+  The fallback is `nil` — the description's own white — so nobody who never picked a theme sees the robot change.
+  The starting values are each theme's `gradientTop` blended 40 % toward white,
+  0.575 (indigo) to 0.768 (bronze) in relative luminance;
+  `ShellTintTests` holds them at ≥ 0.55,
+  which clears every grey print and servo in the description (0.212 at most) by a wide step.
+  **It does not clear the steel-blue parts**: the rods are 0.696, the bearing 0.726,
+  so a tint separates from those by hue, and that — like the final values under `RobotSceneLighting` — is a device
+  judgement rather than a number a test can hold.
+  This module still reads no robot: `ReachyUI`'s `TwinPaint` turns the value into the scene's colour.
 - **There is no `AppIcon.appiconset`, and adding one back does nothing.** A `.icon` shadows a same-named catalogue:
   measured under Xcode 26.4.1, the catalogue contributed **zero** renditions while the `.icon` contributed 18, and
   renaming it to `AppIconLegacy` brought it back as an ordinary asset. iOS 18–25 is served by the back-deployment

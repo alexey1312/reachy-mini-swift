@@ -21,6 +21,17 @@ import SwiftUI
     .reachyTheme(.rose)
 }
 
+// The paint switched off — the one state of the section the theme gallery cannot
+// reach, since every sample there leaves it on. `.teal` for the reason the refusal
+// uses `.rose`: `Appearance — teal` writes the same theme into the shared suite.
+#Preview("Appearance — robot unpainted") {
+    Form {
+        AppearanceSection.preview(.teal, paintsTwin: false)
+    }
+    .formStyle(.grouped)
+    .reachyTheme(.teal)
+}
+
 #Preview("Appearance — graphite") { themedSample(.graphite) }
 #Preview("Appearance — bronze") { themedSample(.bronze) }
 #Preview("Appearance — teal") { themedSample(.teal) }
