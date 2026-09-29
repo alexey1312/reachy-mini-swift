@@ -396,17 +396,24 @@ They are wired now; the entries are here because each failure reads as something
   the scanner binary (it executes fine from either path) and was not identified; the shared-cache experiment is a
   dead end, not an unfinished idea. Probe readiness on `/api/daemon/status` — **there is no `/api/status`**, so a
   poll for it reports a healthy daemon as down.
-  **On 1.10.0 every start takes about five minutes and the WebRTC leg needs the open internet.** GStreamer's
-  external plugin scanner reports "External plugin loader failed" and the registry is scanned in-process instead;
-  1.10.0 carries four gstreamer wheels rather than one, so that scan is minutes of `dlopen` and the daemon binds
-  :8000 only at the end of it. Nothing caches it either: the second start costs the same as the first, measured
-  twice. Wait it out rather than
-  concluding the daemon is wedged: `sample <pid>` shows `gst_registry_scan_plugin_file`, which is work, not a hang. Separately, `test:sim`'s WebRTC case
-  ("negotiates up to the robot's SDP offer") times out at 60 s wherever **`turn.fastrtc.org`** does not resolve:
-  1.10.0 fetches short-lived Cloudflare TURN credentials from it before registering a producer, logs
-  `Failed to fetch TURN credentials`, and the listener waits for an offer that never comes. The other seven cases
-  pass. That is the daemon reaching the internet, not our client — the tell `mise.toml` names beside
-  `GST_PLUGIN_SCANNER`, `No caps found for stream audio_0`, is absent.
+  **On 1.11.0 only the first start after a fresh venv is slow, and `test:sim`'s WebRTC case still times out here —
+  for a different reason than it did on 1.10.0.** Measured on 2026-09-30.
+  The first start logged "External plugin loader failed" once and bound :8000 about eight and a half minutes later:
+  GStreamer scans its registry in-process, and `sample <pid>` shows `gst_registry_scan_plugin_file`, which is work,
+  not a hang.
+  The second start logged no loader warning and bound in about five seconds,
+  so the registry is cached now — on 1.10.0 every start cost the same five minutes, measured twice.
+  TURN works again: 1.11.0 fetches its credentials from the fastrtc proxy Space rather than the dead
+  `turn.fastrtc.org`, and logs `Refreshed 6 TURN server(s)` where 1.10.0 logged `Failed to fetch TURN credentials`.
+  That was the old explanation for the WebRTC case timing out at 60 s,
+  and it is not the whole one: with TURN fixed the case still times out, and the other seven still pass.
+  On the machine it was measured on, `reachymini_webrtc_sender` fails at `GstOsxAudioSrc` with
+  `streaming stopped, reason not-negotiated (-4)`, so no producer ever registers on :8443 —
+  and that Mac's default input is `Jump Desktop Microphone`, a virtual eight-channel device.
+  The likely cause is that device; switching the input to confirm it was not tried.
+  Check `system_profiler SPAudioDataType` for the default input before blaming the client or the daemon,
+  and note that the tell `mise.toml` names beside `GST_PLUGIN_SCANNER`, `No caps found for stream audio_0`,
+  is absent here too.
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both
