@@ -22,39 +22,55 @@ git config core.hooksPath .githooks 2>/dev/null || true
 [tools]
 # --- Swift Development ---
 # Swift itself is managed by swiftly via .swift-version, not by mise.
-swiftformat = "0.62.1" # Swift code formatting
-swiftlint = "0.65.0"   # Swift linting
-xcsift = "1.4.1"       # xcodebuild/swift output filtering
-tuist = "4.203.1"      # Xcode project generation (Apps/)
+swiftformat = "0.63.0" # Swift code formatting
+swiftlint = "0.65.1"   # Swift linting
+xcsift = "1.5.0"       # xcodebuild/swift output filtering
+tuist = "4.209.0"      # Xcode project generation (Apps/)
+# 4.209.0 asks tuist.dev for the new `KURA` cache backend, and the first machine to ask an account
+# that has none provisioned gets `{"endpoints":[],"provisioning":true}` from
+# `/api/cache/endpoints` — which the CLI reports as a fatal `No cache endpoints are available.`
+# and generation dies. The request is what starts the provisioning, so **retry**: the second run
+# succeeded 40 seconds later. It only bites a machine with a tuist.dev session, which is why a
+# laptop without one and CI (`TUIST_CACHE_ENABLED=false`) never see it, and why it reads as the
+# version bump having broken generation. `TUIST_CACHE_ENABLED=false mise run project` is the
+# escape hatch if it ever persists.
 
 # --- Documentation & Formatting ---
-dprint = "0.55.2" # Markdown formatting
+dprint = "0.57.4" # Markdown formatting
 
 # --- Snapshots & Storybook ---
 # The release ships a single lowercase `prefire` binary, which the backend cannot guess from the
 # repository name — hence the explicit exe option.
+# Held at 5.7.0 deliberately, and a bump is a migration rather than a version change:
+# `Apps/ReachyUISnapshotTests/PreviewTests.stencil` is a fork of *this version's* built-in
+# template, and 5.9.0 renamed the runtime API underneath it — `snapshotDevice()` became
+# `snapshotDeviceConfig()`, `checkEnvironments()` + `UIView.setAnimationsEnabled(false)` became
+# `prepareEnvironment()`, and `PrefireSnapshot` gained `fixedLayoutSize`. So the fork does not
+# compile against it, and re-forking moves the rendering path, which means re-recording ~1100
+# references. Diff `PrefireExecutable/Sources/PrefireCore/Templates/PreviewTestsTemplate.swift`
+# between the two tags before attempting it.
 "github:BarredEwe/Prefire[exe=prefire]" = "5.7.0"
-git-lfs = "3.7.1" # Snapshot reference images
+git-lfs = "3.8.0" # Snapshot reference images
 
 # --- Git & CI ---
-hk = "1.54.0"         # Git hooks manager (version must match hk.pkl package URI)
+hk = "2.4.0"         # Git hooks manager (version must match hk.pkl package URI)
 actionlint = "1.7.12" # GitHub Actions linting
-git-cliff = "2.13.1"  # Changelog generation
+git-cliff = "2.14.2"  # Changelog generation
 
 # --- Release ---
 # The release ships a bare binary rather than an archive, and that decides the option:
 # `bin` renames a single downloaded file, `exe` (used for Prefire above) only renames one
 # extracted from an archive and here leaves an unrunnable `asc_<version>_macOS`.
-"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "3.7.0" # App Store Connect API client
+"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.7.0" # App Store Connect API client
 
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
-uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
+uv = "0.12.19"   # installs into that venv as APFS clones — see sim-daemon
 # Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
 # rather than left to a global `brew install` because CI and a fresh clone have no brew
 # copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
 # is the only asset it publishes, so bootstrap.sh disables it everywhere else.
-"github:MobAI-App/simslim[exe=simslim]" = "0.8.0"
+"github:MobAI-App/simslim[exe=simslim]" = "0.11.0"
 
 # --- End-to-end flows ---
 # Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
