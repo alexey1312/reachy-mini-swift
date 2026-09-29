@@ -12,7 +12,10 @@ struct DeviceCheckView: View {
     @State private var model: DeviceCheckModel
     @State private var discovery: RobotBrowser
     /// Its own switch beside `\.reachyPreviewMode`: a preview hands in a seeded browser and
-    /// must not also start Bonjour, and this screen predates the shared key.
+    /// must neither start Bonjour nor stop it, and this screen predates the shared key.
+    /// Stopping is the half that bit: `stop()` empties the browser, and the snapshot
+    /// stencil captures one preview four times off one model, so every capture after
+    /// the first read "No robots found".
     private let browsesLiveNetwork: Bool
 
     /// `nil` defaults rather than `DeviceCheckModel()`: a default argument is evaluated in a nonisolated
@@ -35,7 +38,10 @@ struct DeviceCheckView: View {
             guard browsesLiveNetwork else { return }
             discovery.start()
         }
-        .onDisappear { discovery.stop() }
+        .onDisappear {
+            guard browsesLiveNetwork else { return }
+            discovery.stop()
+        }
     }
 
     private var discoverySection: some View {

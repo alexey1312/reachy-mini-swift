@@ -133,8 +133,12 @@ struct ControllerScreen: View {
         .onDisappear {
             // A take that outlived the screen has nothing sampling it, so it would
             // save whatever it happened to hold — end it here rather than keep a
-            // stopwatch running over a driver nobody is driving.
-            recorder.endRecording(named: Self.defaultName(for: recorder.recordings.count))
+            // stopwatch running over a driver nobody is driving. Not in a preview:
+            // the stencil captures one model four times, and ending the seeded take
+            // after the first capture emptied the other three.
+            if !previewMode {
+                recorder.endRecording(named: Self.defaultName(for: recorder.recordings.count))
+            }
             driver.stop()
         }
     }

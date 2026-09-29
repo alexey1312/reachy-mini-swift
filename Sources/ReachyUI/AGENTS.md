@@ -876,7 +876,9 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   the body built is shared across all four. Anything in `onDisappear` that mutates it therefore corrupts capture two
   onwards while capture one still passes, which is the tell: a single preview failing on three of its four references
   with the first byte-identical is a state-leaking teardown, not a rendering change. Measured on
-  `FloatingViewport.onDisappear` adopting a pending `settling`. Put such an effect behind `reachyPreviewMode` — the same
+  `FloatingViewport.onDisappear` adopting a pending `settling`,
+  and again on `DeviceCheckView` stopping its browser and `ControllerScreen` ending the seeded take.
+  Put such an effect behind `reachyPreviewMode` — the same
   key `.task` work uses, and for the same reason: a snapshot has to render the state it was handed.
 - Screens take their model through an initialiser with a default (`init(session:model:)`), so production call sites
   are unchanged and previews inject a frozen one.

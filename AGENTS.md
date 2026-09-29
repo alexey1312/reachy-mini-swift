@@ -564,13 +564,16 @@ So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, a
 different iOS runtime renders text differently and every reference would have to be re-recorded.
 **Adding a size to `snapshot_devices` costs +816 references and roughly +100 MB of LFS**, one per preview per
 appearance, so weigh that before a third entry (#114 measured it and decided against).
-**Its position in the list is also load-bearing, and it is a bug that it is.** The stencil renders one preview
-instance once per entry, reassigning `snapshot.device` between renders, and three previews keep their seeded state
-only on the **first** render — `Device check — robots found`, `Device check — permission denied` and
-`Controller — recording`. The `iPad Pro 11` reference for "robots found" therefore reads "No robots found" today,
-and a trial entry placed at the head of the list moved the content onto it and emptied the iPhone 16 Pro one. So a
-new size goes **last**, where every existing reference stays byte-identical — measured, twice. Fixing the previews
-is its own task.
+**Its position in the list used to be load-bearing, and that was a bug, now fixed.**
+The stencil renders one preview instance once per entry, reassigning `snapshot.device` between renders,
+and three previews kept their seeded state only on the **first** render —
+`Device check — robots found`, `Device check — permission denied` and `Controller — recording` —
+because `DeviceCheckView` stopped its browser and `ControllerScreen` ended the take in `onDisappear`.
+Both teardowns now sit behind the preview switch (`browsesLiveNetwork`, `reachyPreviewMode`),
+and re-recording moved the later captures while the first of each stayed byte-identical,
+so a new size may go anywhere in the list.
+A reference that reads one state on its first capture and another on the rest is the next such teardown —
+see "One preview body, one model, four captures" in `Sources/ReachyUI/AGENTS.md`.
 **`required_os` is compiled into the generated tests, not read at run time.** Editing `.prefire.yml` without
 rebuilding the snapshot target leaves the old value in `…PreviewsTests.generated.swift`, where it is a `fatalError`
 and not a failed assertion — `Switch to iOS 26 for these tests`. Reached through `record`, which deletes every PNG
