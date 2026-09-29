@@ -147,7 +147,7 @@ This is the measured form of the tooling-matrix gap in §2.
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | `UIApplicationSceneManifest`                        | the app does not launch                                                                     | declared, `Apps/Project.swift:132` (#95) |
 | `UIDesignRequiresCompatibility` ignored             | Liquid Glass is mandatory and its appearance changed                                        | accepted; drives the re-recording        |
-| Resizability turns on when built against the 27 SDK | iPhone apps resize on iPad and in iPhone Mirroring                                          | **open**, see §2                         |
+| Resizability turns on when built against the 27 SDK | iPhone apps resize on iPad and in iPhone Mirroring                                          | measured, costs nothing — §2.1           |
 | `@State` is a macro (TN3211)                        | lazy initialisation, back-deployed to iOS 17; breaks a default plus an assignment in `init` | audited, #95                             |
 | Deployment target below 15.0                        | an error, not a warning                                                                     | clear: iOS 18.0 / macOS 15.0             |
 

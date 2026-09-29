@@ -76,8 +76,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
       sidebar sends the viewport back to the Live tab, which is a crossing of exactly the kind above. It is one
       deliberate action instead of every tab switch, and it animates nothing, so it has not been seen to fail — but
       it is the place to look if the symptom ever comes back.
-    - **The Live tab therefore draws the controls on a sidebar**, not the picture: `ControllerScreen` inline, or
-      `ControlsUnavailableView` where `canTeleoperate` is false (the relay carries no `ws/set_target`). Its
+    - **The Live tab therefore draws the controls on a sidebar**, not the picture: `ControllerScreen` inline,
+      over the relay as much as on the LAN — `RemoteRobotConnection` has been a `TeleopClient` since #8,
+      so the "no controls" view that once stood beside it was unreachable and is gone. Its
       `Controller` toolbar link is hidden there — pushing it would put a second `TeleopDriver` over the first. This is
       also the one arrangement in the app where the controls and the live view are on screen together: pushed as a
       screen, that `Form` covers a stream that goes on running behind it, which it did on every platform for as long
@@ -697,9 +698,11 @@ Start.
   rather than copied, and it is what keeps Start from reading as a button that did nothing.
   **The three states are captured** (`App detail — robot asleep`, `— robot backend stopped`, `— waking up to
   start`), and they had to be pointed at `RobotApp.previewConversation`: `previewCatalogue[0]` and
-  `previewInstalled[0]` carry different `spaceID`s, so `matches(installed:)` never joins them and every existing
-  `App detail — installed` reference is in fact a picture of the _not_ installed state, Start included. Fixing that
-  fixture would move references belonging to other screens; use an app that is installed in its own right instead.
+  `previewInstalled[0]` carry different `spaceID`s, so `matches(installed:)` never joins them.
+  `App detail — installed` was a picture of the _not_ installed state for that reason until #119
+  gave it an installed list of its own (`.preview(name: "reachy-mini-dance", installed: true)`),
+  which is the pattern to copy: seed an app that is installed in its own right,
+  because fixing the shared fixture would move references belonging to other screens.
 
 ## An app's own settings
 

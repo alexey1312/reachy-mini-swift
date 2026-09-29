@@ -15,9 +15,9 @@ import SwiftUI
 //
 // **On iPad that includes the `tab: .live` captures, and they no longer show a viewport at all.** A
 // sidebar keeps the picture in the column for the whole connection — one host, because two was what
-// let a second `RealityView` steal the robot — so the Live tab there draws the controller instead, or
-// `ControlsUnavailableView` where the connection cannot drive the robot. Both are captured in place
-// rather than standalone, which is also the whole of `LiveUnavailableView`'s cover.
+// let a second `RealityView` steal the robot — so the Live tab there draws the controller instead,
+// over the relay as much as on the LAN. It is captured in place rather than standalone, which is also
+// the whole of `LiveUnavailableView`'s cover.
 
 #Preview("Root — idle") {
     PreviewScene.root(.preview(phase: .idle, status: nil, address: nil))

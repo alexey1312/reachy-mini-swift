@@ -126,16 +126,17 @@ struct LiveTab: View {
                 // window holds the viewport. Drawing anything live here would be
                 // the second `RealityView` the whole design exists to prevent.
                 Color.clear
-            } else if session.canTeleoperate {
+            } else {
                 // **The column has the picture for as long as this connection lasts,
                 // so this tab is where the robot is driven from rather than watched.**
                 // It is the one arrangement in the app where the controls and the live
                 // view are on screen together: pushed as a screen, this `Form` covers a
                 // stream that goes on running behind it, which it did on every platform
-                // for as long as it shipped.
+                // for as long as it shipped. Every client this app connects with can
+                // drive the robot — the relay too, since #8 — so there is no "no
+                // controls" branch; a client that could not would land on the screen's
+                // own setup error, which says so.
                 ControllerScreen(session: session, standDown: presence.teleopStandDown(session: session))
-            } else {
-                ControlsUnavailableView()
             }
         } else {
             // Pinned to the top: the banner is the tab's only content, and a lone

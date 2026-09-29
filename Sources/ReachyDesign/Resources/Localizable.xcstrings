@@ -8643,35 +8643,6 @@
         }
       }
     },
-    "No controls": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Steuerung"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin controles"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun contrôle"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нет элементов управления"
-          }
-        }
-      }
-    },
     "No live view": {
       "extractionState": "manual",
       "localizations": {
@@ -17339,35 +17310,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отсюда это нельзя отменить. Сначала скачайте копию, если она может понадобиться."
-          }
-        }
-      }
-    },
-    "This connection cannot drive the robot. The live view is in the column.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Über diese Verbindung lässt sich der Roboter nicht steuern. Die Live-Ansicht ist in der Spalte."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta conexión no permite manejar el robot. La vista en directo está en la columna."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette connexion ne permet pas de piloter le robot. La vue en direct est dans la colonne."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Через это подключение управлять роботом нельзя. Прямой просмотр — в колонке."
           }
         }
       }
