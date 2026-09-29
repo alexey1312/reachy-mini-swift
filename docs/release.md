@@ -368,21 +368,41 @@ The two sizes worth filling are the ones the section offers:
 | `IMESSAGE_APP_IPHONE_65`         | 1242x2688 (or 1284x2778) |
 | `IMESSAGE_APP_IPAD_PRO_3GEN_129` | 2048x2732 (or 2064x2752) |
 
+The capture is a Maestro flow — `Apps/Maestro/screenshots/messages-stage.yaml`,
+which stages the system Messages app and stops.
+It runs through the same `Scripts/maestro-sim.sh` every other flow does,
+so the simulator is resolved, booted, built for, **pinned to English** and installed
+exactly as the smoke run leaves it.
+That last part is not a nicety:
+a capture of Messages in the wrong language
+ships to App Store Connect looking like a screenshot of somebody else's app.
+
+`REACHY_SNAPSHOT_SIM` chooses the device, so the two rows are two runs:
+
 ```bash
-mise run screenshots:capture   # drive Messages on a simulator, photograph it
+REACHY_SNAPSHOT_SIM="iPhone 17 Pro Max" mise run screenshots:capture
+REACHY_SNAPSHOT_SIM="iPad Pro 13-inch (M5)" mise run screenshots:capture
 mise run screenshots:store     # render the artboards to exact pixel sizes
 mise run asc -- screenshots upload --app 6799644194 --version 0.6.0 \
   --device-type IMESSAGE_APP_IPHONE_65 --path screenshots/store
 ```
 
-Two things to know before shooting. The `iPad Pro 13-inch (M5)` simulator is
-natively 2064x2752, which is an accepted iPad size with no resampling at all —
-whereas **no iOS 27 simulator is a 6.5" iPhone**, so that frame has to be composed to
-size whatever else happens. And the simulator will not show you the pack: its
-`stickerd` does not surface third-party packs in either the "+" drawer or the
-Stickers browser, even though `pluginkit -mAvv -p com.apple.message-payload-provider`
-lists the extension correctly. Confirm the drawer on hardware through
-`mise run device` before submitting.
+`screenshots:capture` passes `--no-build` by default,
+because the app is normally already installed from a smoke or device run
+and the compile is the whole cost;
+`REACHY_SHOT_BUILD=1` forces it to build.
+
+Two things to know before shooting.
+The `iPad Pro 13-inch (M5)` simulator is natively 2064x2752,
+which is an accepted iPad size with no resampling at all —
+whereas **no iOS 27 simulator is a 6.5" iPhone**,
+so that frame has to be composed to size whatever else happens.
+And the simulator will not show you the pack:
+its `stickerd` surfaces no third-party pack
+in either the "+" drawer or the Stickers browser,
+even though `pluginkit -mAvv -p com.apple.message-payload-provider`
+lists the extension with the right SDK, display name and parent.
+Confirm the drawer on hardware through `mise run device` before submitting.
 
 ## The public beta
 

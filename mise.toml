@@ -666,7 +666,15 @@ mkdir -p "$OUT"
 # language, install. Pinning matters here for the same reason it does for the
 # flows and for one more: a capture of Messages in the wrong language ships to
 # App Store Connect looking like a screenshot of somebody else's app.
-UDID="$(Scripts/maestro-sim.sh "${REACHY_SHOT_BUILD:---no-build}")"
+# `--no-build` by default: the app is normally already installed from a smoke or
+# device run, and the compile is the whole cost. REACHY_SHOT_BUILD=1 forces it.
+# Spelled as an if rather than an array, because /bin/bash here is 3.2 and an
+# empty "${arr[@]}" is an unbound-variable error under `set -u` in that shell.
+if [ -n "${REACHY_SHOT_BUILD:-}" ]; then
+  UDID="$(Scripts/maestro-sim.sh)"
+else
+  UDID="$(Scripts/maestro-sim.sh --no-build)"
+fi
 # Named explicitly rather than left to Apps/Maestro's `*.yaml` glob: these flows
 # stage a screen and stop, so they must not join the smoke run. The subdirectory
 # is what keeps them out of it, and the `screenshots` tag is the second lock.
@@ -675,13 +683,19 @@ maestro --device "$UDID" test \
   Apps/Maestro/screenshots
 # Maestro's own takeScreenshot writes a scaled PNG; simctl writes the device's
 # native pixels, which is what App Store Connect measures.
-NAME="$(xcrun simctl list devices -j | python3 -c "
-import json,sys
-d=json.load(sys.stdin)['devices']
-print(next(x['name'] for v in d.values() for x in v if x['udid']==sys.argv[1]))
-" "$UDID" | tr ' ' '-')"
-xcrun simctl io "$UDID" screenshot "$OUT/$NAME.png"
-echo "wrote $OUT/$NAME.png"
+#
+# Named by *family* rather than by device, because that is the name the artboards
+# reference — `screenshots:store` copies `capture-iphone.png` and `capture-ipad.png`
+# in beside the HTML, and a file named after the simulator would land as neither.
+FAMILY="$(xcrun simctl list devices -j | python3 -c "
+import json, sys
+groups = json.load(sys.stdin)['devices']
+name = next(d['name'] for g in groups.values() for d in g if d['udid'] == sys.argv[1])
+print('ipad' if 'iPad' in name else 'iphone')
+" "$UDID")"
+xcrun simctl io "$UDID" screenshot "$OUT/capture-$FAMILY.png"
+sips -g pixelWidth -g pixelHeight "$OUT/capture-$FAMILY.png" | tail -2 | tr -d ' \n'
+echo "  -> $OUT/capture-$FAMILY.png"
 '''
 
 [tasks."stickers:build"]

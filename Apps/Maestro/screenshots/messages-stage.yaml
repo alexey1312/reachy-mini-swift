@@ -28,13 +28,24 @@ tags:
 # than by index, so a reordered list does not silently photograph the wrong one.
 - tapOn: "+1 (888) 555-1212"
 
-# A first run offers the QuickPath tutorial over the keyboard, and dismissing it
-# is also what puts the keyboard away — which is the clean stage we are after.
+# A first run offers the QuickPath tutorial over the keyboard. It is only ever
+# shown once per simulator, so this step fires on a fresh machine and never again.
 - runFlow:
     when:
       visible: "Continue"
     commands:
       - tapOn: "Continue"
+
+# **The keyboard stays up, and the artboards are cropped for that.** Three ways to
+# put it away were tried and none works here: `hideKeyboard` fails outright on iPad
+# ("the app uses a custom input or doesn't expose a standard dismiss action"),
+# reports success on iPhone and leaves it standing, and a tap in the empty
+# transcript does not move it either, because the compose field keeps focus.
+#
+# So the contract is the crop instead. `iphone-3-inplace.html` shows the top 1694
+# of the capture's 2698 scaled pixels, which ends 39 px above the keyboard's top
+# edge and well below the compose row. That margin is the thing to re-check if this
+# capture is ever reframed — not the keyboard.
 
 # The compose row is the one thing every artboard relies on being in frame.
 - assertVisible: "iMessage"
