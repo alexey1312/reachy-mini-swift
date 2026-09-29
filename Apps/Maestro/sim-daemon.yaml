@@ -43,12 +43,13 @@ env:
       - inputText: ${HOST}
       - tapOn: "Connect"
 
-# Waited on "Moves" rather than "Robot": the Robot tab's label is not what the
-# accessibility tree exposes for it — its `figure.wave` icon reads as "Taxi" — and
-# the bare word "Robot" also appears as a Settings section header, so it can match
+# Waited on "Moves" rather than "Robot": the bare word "Robot" also appears as a
+# Settings section header and as the Robot screen's own section, so it can match
 # while the gate is still up. Maestro matches text with no element-type filter,
 # which is what makes that a real risk here where `app.tabBars.buttons["Robot"]`
-# could not have gone wrong.
+# could not have gone wrong. The tab itself does read "Robot": `maestro hierarchy`
+# on iOS 27.0 shows the button labelled "Robot" with `figure.wave` as its id, and
+# no "Taxi" anywhere — an earlier note here said otherwise and did not reproduce.
 #
 # The ceiling is 180 s against the XCUITest's 90. Measured: on a machine also
 # running the MuJoCo daemon and the Maestro driver, the handshake finished — all
@@ -76,4 +77,10 @@ env:
 - tapOn: "Live"
 - assertVisible:
     text: "Live"
+    selected: true
+# Last, and tapped from a tab that shows no other "Robot": `selected: true` is what
+# separates the tab from the Robot screen's section header once it is open.
+- tapOn: "Robot"
+- assertVisible:
+    text: "Robot"
     selected: true
