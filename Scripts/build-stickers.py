@@ -311,7 +311,12 @@ def main() -> None:
             sticker.mkdir()
             if spec["animated"]:
                 payload, fps, colors = build_animated(ffmpeg, ART / "animated" / animation, name)
-                filename = f"{name}.apng"
+                # `.png`, not `.apng`, and the difference is a rejected upload rather than taste.
+                # An APNG *is* a PNG — same signature, with acTL/fcTL/fdAT as ancillary chunks a
+                # plain decoder skips — but App Store Connect validates the sticker's extension
+                # against `jpg, jpeg, gif, png` and rejects `apng` for every file in the pack.
+                # Xcode, actool and Messages all accept the animation under a `.png` name.
+                filename = f"{name}.png"
                 label = f"{described}, {motion}"
                 note = f"{len(payload) / 1024:6.1f} KB  {fps} fps  {colors} colours"
             else:

@@ -62,6 +62,51 @@ these stickers are die-cut with an anti-aliased white outline that would fringe.
 limit — which is why this one generator is Python and not another
 `Scripts/render-*.swift`.
 
+## The animated stickers are named `.png`, and `.apng` is a rejected upload
+
+Every animated payload is written as `<name>.png`.
+That is not sloppiness about the format:
+an APNG _is_ a PNG —
+same `89 50 4E 47` signature, with `acTL`, `fcTL` and `fdAT` as ancillary chunks
+that a plain decoder skips —
+and `file` reports ours as `PNG image data, 408 x 408, 8-bit colormap`.
+
+The extension matters because **App Store Connect validates it and `apng` is not on
+the list**.
+Nothing local catches this.
+`actool` compiles the catalogue,
+the extension builds,
+the archive signs,
+Messages renders the animation —
+and then every sticker in the pack is rejected at upload, one error each:
+
+```
+File 'ReachyMini.app/PlugIns/ReachyStickers.appex/ReachyMini.stickerpack/farmer.apng'
+has invalid extension for a 'Sticker' file. Supplied 'apng'.
+Should be one of 'jpg, jpeg, gif, png'.
+```
+
+So the generator names them `.png` and the comment at that line says why.
+Do not "fix" it back to the more descriptive extension.
+
+**Renaming them is not enough on its own, because `actool` does not prune.**
+A build over an existing `Apps/DerivedData` leaves the previously emitted
+`<name>.apng` sitting in the product beside the new `<name>.png`,
+and ships **both** — 32 files where the catalogue holds 16.
+The build is green, the count in `Info.plist` is right at 16,
+and the upload is rejected exactly as before.
+Check the bundle rather than the catalogue after any rename here:
+
+```bash
+ls Apps/DerivedData/Build/Products/*-iphoneos/ReachyStickers.appex/ReachyMini.stickerpack
+```
+
+Deleting that `.appex`, its `PlugIns` copy inside `ReachyMini.app`
+and the target's `*.build` intermediates is enough;
+a full clean is not needed.
+For an archive the stale copies live under
+`Build/Intermediates.noindex/ArchiveIntermediates/` instead.
+
 ## Two spellings of the catalogue, and only one works
 
 It is `Stickers.xcassets` — a plain asset catalogue holding a `.stickerpack` — which

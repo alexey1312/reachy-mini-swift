@@ -337,19 +337,86 @@ declaration is private and cannot be checked this way.
 
 ## The sticker pack
 
-**Nothing here ships until Pollen Robotics answer in writing.** The sixteen
-characters are their "Reachies" artwork, and `art/stickers/README.md` says so; the
-App Store is public distribution, and a Guideline 5.2.1 rejection or an IP complaint
-lands on this listing rather than on the pack alone. Build it, run it, look at it —
-but hold `release:ios`, `metadata push`, `screenshots upload` and any submission
-until permission exists. Ask through Pollen's Discord or huggingface.co/pollen-robotics.
+**The artwork is Apache-2.0, and the repository it comes from looks unlicensed.**
+The sixteen characters are Pollen Robotics' "Reachies",
+published under the Apache License 2.0
+in `pollen-robotics/reachy-mini-desktop-app` under `src/assets/reachies/original/`
+at 1024x1024 — ours are downscales of those, verified against `f520136ffe9b`.
+The trap is that GitHub reports that repository as having **no licence**:
+its licence file is spelled `LICENCE`, which GitHub's classifier does not recognise,
+so `gh repo view --json licenseInfo` answers `NONE`
+and the API's `.tree` listing is the only way to find it.
+Reading that as "all rights reserved" is what put this work behind
+a permission gate it never needed.
+
+Apache-2.0 permits the redistribution and the derivative works this pack is,
+commercially, so **no permission has to be waited for**.
+Two obligations follow instead.
+Section 4 wants a copy of the licence carried with the distribution,
+the attribution notices kept, and the modifications stated —
+`art/stickers/LICENSE-Apache-2.0.txt` and the provenance section of
+`art/stickers/README.md` are what satisfy that,
+and they name the downscale, the SVG render and the APNG re-encoding.
+Upstream ships no `NOTICE`, so nothing further propagates.
+Section 6 grants no trademark rights,
+and "Reachy" and "Reachy Mini" are Pollen's marks —
+that is the residual Guideline 5.2.1 exposure,
+and it is a trademark question rather than a copyright one.
+The listing already describes the app as unofficial.
+
+**Two things ship this pack without looking like shipping.**
+Merging the branch is one.
+The Xcode Cloud workflow `TestFlight (Public)`
+(`8B1DB81C-E3EB-48BC-B73B-763F9D431AB6`) is enabled
+with a `branchStartCondition` of `main`,
+so a merge archives iOS and hands it to a **public** TestFlight
+with nobody having run a release command.
+Pushing the branch at all is the other:
+`alexey1312/reachy-mini-swift` is a public repository
+and the branch adds thirty-five files under `art/stickers/`,
+so the push publishes the artwork on github.com
+before any store is involved.
+Both are read out of the account rather than assumed —
+`asc xcode-cloud workflows list --app 6799644194` prints the trigger,
+`gh repo view --json visibility` prints the other half.
+Both are worth knowing before the first push, whatever the licence position.
 
 Beyond that gate the pack costs the release almost nothing:
 
-- **A new App ID**, `com.alexey1312.ReachyMini.Stickers`, registered by the first
-  signed build with `-allowProvisioningUpdates`. Unlike the widget it needs **no**
-  manual Signing & Capabilities step — a codeless sticker pack shares no state, so
-  there is no App Group on it.
+- **A new App ID**, `com.alexey1312.ReachyMini.Stickers`,
+  and it needs a one-time step through Xcode
+  exactly as the widget's App Group did —
+  for an unrelated reason, and the failure arrives four minutes later than it should.
+  `-allowProvisioningUpdates` on a command line **cannot** create it:
+  the accounts live in Xcode.app, so xcodebuild answers `No Accounts`.
+  The archive still succeeds, which is what hides it.
+  For the archive Xcode falls back to the team wildcard profile
+  `iOS Team Provisioning Profile: *`,
+  whose `application-identifier` is `J52C3SB8K5.*` and which therefore matches
+  any bundle id (measured on a command-line archive — read the embedded profile
+  with `security cms -D -i` if this needs checking again).
+  `check-appintents-metadata.sh` then passes over that archive too.
+  Only `-exportArchive` asks for an App Store profile, and there is none:
+
+  ```
+  exportArchive No Accounts
+  exportArchive No profiles for 'com.alexey1312.ReachyMini.Stickers' were found
+  ```
+
+  So the sticker pack needs its App ID and its distribution profile created once —
+  by opening the project in Xcode and letting Signing & Capabilities do it,
+  or through `asc bundle-ids create` plus `asc profiles create`,
+  which needs the API key to hold the Admin role
+  (see the note in `Scripts/release-env.sh` about what a lesser key cannot do).
+  The tell that it worked is a third `iOS Team Store Provisioning Profile:`
+  under `~/Library/Developer/Xcode/UserData/Provisioning Profiles/` —
+  the app and the widget already have theirs, which is what proves
+  the local export path is otherwise sound.
+  **`asc profiles list` is not where to look**:
+  it does not report Xcode-managed profiles,
+  so it shows only the macOS one and reads as though iOS had never been signed here.
+  A codeless sticker pack shares no state,
+  so unlike the widget it carries no App Group — that part was never the problem.
 - **iOS only.** The extension is embedded with an `.ios` platform condition, so the
   macOS archive never sees it and the notary never has to. Do not remove that
   condition; `docs/release.md`'s notarization note explains what it costs.
@@ -464,7 +531,7 @@ Everything after `--` goes to `asc`:
 ```bash
 mise run asc -- apps list
 mise run asc -- builds list --app 6799644194   # did the TestFlight upload land?
-mise run asc -- testflight beta-groups list --app 6799644194
+mise run asc -- testflight groups list --app 6799644194
 ```
 
 `asc` resolves a stored profile before the environment, so an `asc auth login`

@@ -407,6 +407,35 @@
         }
       }
     },
+    "Acknowledgements": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danksagungen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agradecimientos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remerciements"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Благодарности"
+          }
+        }
+      }
+    },
     "Actions": {
       "extractionState": "manual",
       "localizations": {
@@ -19576,6 +19605,35 @@
         }
       }
     },
+    "Apache License 2.0": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apache License 2.0"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apache License 2.0"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apache License 2.0"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apache License 2.0"
+          }
+        }
+      }
+    },
     "Clear the transcript?": {
       "extractionState": "manual",
       "localizations": {
@@ -20877,6 +20935,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запуск Reachy Mini"
+          }
+        }
+      }
+    },
+    "Sticker artwork: “Reachies” by Pollen Robotics, used under the Apache License 2.0 and modified — resized and animated for Messages. Reachy and Reachy Mini are their trademarks; this app is unofficial.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sticker-Grafiken: „Reachies“ von Pollen Robotics, verwendet unter der Apache License 2.0 und verändert – für Nachrichten skaliert und animiert. Reachy und Reachy Mini sind ihre Marken; diese App ist inoffiziell."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ilustraciones de los stickers: «Reachies» de Pollen Robotics, usadas bajo la Apache License 2.0 y modificadas: redimensionadas y animadas para Mensajes. Reachy y Reachy Mini son sus marcas comerciales; esta app no es oficial."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illustrations des autocollants : « Reachies » de Pollen Robotics, utilisées sous Apache License 2.0 et modifiées — redimensionnées et animées pour Messages. Reachy et Reachy Mini sont leurs marques ; cette app n’est pas officielle."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Иллюстрации стикеров — «Reachies» компании Pollen Robotics, использованы по лицензии Apache License 2.0 и изменены: уменьшены и анимированы для Сообщений. Reachy и Reachy Mini — их товарные знаки; приложение неофициальное."
           }
         }
       }
