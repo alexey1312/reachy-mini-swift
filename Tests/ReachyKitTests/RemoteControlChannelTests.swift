@@ -237,20 +237,22 @@ struct RemoteControlChannelTests {
         #expect(object?["volume"] as? Double == 42)
     }
 
-    /// Daemon 1.10.0 answers `get_imu` with the same `imu_data` frame the robot also
-    /// publishes on its own, so a `type` stopped being proof that nobody asked.
-    @Test("a reply that names a type answers the command waiting on it")
-    func matchesByReplyType() async throws {
+    /// The robot publishes `imu_data` at 50 Hz, and `get_imu` is the command that
+    /// asks for one. The broadcast must not answer it: the real reply echoes the
+    /// command and carries `imu: null` when there is no reading, which a broadcast
+    /// can never say — so a broadcast answering would turn "none" into a stale value.
+    @Test("a broadcast of the same reading does not answer the command")
+    func broadcastDoesNotAnswerACommand() async throws {
         let (control, fake) = channel()
 
-        async let reply: Data = control.perform("get_imu", correlation: .typed("imu_data"))
+        async let reply: Data = control.perform("get_imu")
         await waitUntil("the command is on the wire") { !fake.sent.isEmpty }
-        // Routing is by `type` alone, so the frame carries nothing else: what the
-        // payload decodes into is `RemoteRobotConnection`'s business, not this one's.
         fake.emit(#"{"type":"imu_data","temperature":30}"#)
+        fake.emit(#"{"command":"get_imu","imu":null}"#)
 
-        let payload = try await reply
-        #expect(!payload.isEmpty)
+        let object = try await JSONSerialization.jsonObject(with: reply) as? [String: Any]
+        #expect(object?["command"] as? String == "get_imu")
+        #expect(object?["imu"] is NSNull)
     }
 
     /// And everything else keeps going to subscribers: the type-matched path may

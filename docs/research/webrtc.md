@@ -69,6 +69,15 @@ Two findings that came out of the same session and are worth keeping:
 - `imu_data` arrives **unsolicited** at 50 Hz, so a reply naming a `type` is indistinguishable from
   a broadcast. That is the live evidence behind `RemoteControlChannel.Correlation.typed`, which was
   written from the sources alone.
+  **Corrected on 2026-09-30, and the correlation is gone:**
+  `get_imu` is not answered with an `imu_data` frame at all.
+  `process_command` replies `{"command": "get_imu", "imu": {…} | null}` —
+  the reading nested, its `type` dropped, `null` where there is none —
+  and upstream's own `test_get_imu_with_reading` / `test_get_imu_without_imu` pin that shape.
+  A `type`-matched wait was therefore always answered by the next broadcast, never by the reply,
+  and a robot with no reading timed out instead of saying so.
+  The client now waits on the echoed command.
 - `GET /api/state/imu` answers **404** on that robot despite being in the committed spec. The
   client treats an absent reading as "no IMU" rather than as a failure, so the State screen's
   Motion section simply does not appear there.
+  The route is a 1.11.0 one (upstream #1341); the spec had been taken from `main` before that release.

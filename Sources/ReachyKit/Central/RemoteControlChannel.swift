@@ -55,12 +55,6 @@ public actor RemoteControlChannel {
         /// motor-mode commands answer under `motor_mode`, so they serialise
         /// against each other — which is correct, since nothing tells them apart.
         case replyKey(String)
-        /// The reply names a `type`, the way a broadcast does. Daemon 1.10.0
-        /// answers `get_imu` with `ImuDataMsg`, which is also what the robot
-        /// publishes unasked — so the same frame serves both, and the first one to
-        /// arrive answers the question. Only for replies that really are a reading
-        /// rather than an acknowledgement.
-        case typed(String)
     }
 
     public enum Failure: Error, Equatable, Sendable {
@@ -140,7 +134,6 @@ public actor RemoteControlChannel {
         let token = switch correlation {
         case .echoedCommand: command
         case let .replyKey(key): key
-        case let .typed(type): type
         }
         await takeTurn(for: token)
         defer { yieldTurn(for: token) }
@@ -220,9 +213,9 @@ public actor RemoteControlChannel {
     ///
     /// The robot broadcasts things nobody asked for — joint positions at 50 Hz,
     /// journal lines, update progress — and every one of them names a `type`, which
-    /// is what subscribes to them here. A `type` does not mean "nobody asked",
-    /// though: see ``Correlation/typed(_:)``, which claims a frame a caller is
-    /// waiting for before the rest reach here.
+    /// is what subscribes to them here. No reply names one: a command's answer
+    /// echoes the command or carries a key of its own, so a typed frame is always
+    /// a broadcast and never claimed by a caller.
     ///
     /// The stream ends when the channel does, so a console reading it learns that
     /// the session is over rather than sitting frozen with no explanation.
@@ -332,13 +325,10 @@ public actor RemoteControlChannel {
         case .rpcUnattributable:
             Self.log.error("json-rpc frame carrying neither an id nor a method")
         case let .typed(type):
-            // Both, and in this order. Daemon 1.10.0 answers `get_imu` with the very
-            // frame the robot also publishes unasked, so claiming it for the caller
-            // alone starved anyone reading the broadcast — see `Correlation.typed`.
+            // A frame naming a `type` is a broadcast and never a reply: `get_imu`
+            // once looked like the exception, but it echoes its command and nests
+            // the reading, and the `imu_data` it resembles is the 50 Hz stream.
             yield(data, toListenersOf: type)
-            if waiting[type] != nil {
-                resume(type, with: .success(data))
-            }
         case let .command(command):
             resume(command, with: .success(data))
         case let .keyed(keys):

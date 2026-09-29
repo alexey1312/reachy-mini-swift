@@ -120,7 +120,9 @@ public extension RobotSession {
     func imuReading() async throws -> RobotIMUReading? {
         guard let client else { throw ReachyKitError.notConnected }
         // `get_imu` is a 1.10.0 command on the relay, and asking an older daemon
-        // for it costs the reply budget on every pull-to-refresh.
+        // for it costs the reply budget on every pull-to-refresh. The REST route
+        // is 1.11.0; a LAN daemon without it answers 404, which the connection
+        // itself reads as "no reading", so it needs no floor of its own here.
         guard !predatesRelayCommands else { return nil }
         return try await client.imuReading()
     }
