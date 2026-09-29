@@ -3423,6 +3423,35 @@
         }
       }
     },
+    "Delete your Hugging Face account": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face-Konto löschen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar tu cuenta de Hugging Face"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer votre compte Hugging Face"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить аккаунт Hugging Face"
+          }
+        }
+      }
+    },
     "Deletes every Wi-Fi network the robot has saved, except its own hotspot. Every password has to be entered again.": {
       "extractionState": "manual",
       "localizations": {
