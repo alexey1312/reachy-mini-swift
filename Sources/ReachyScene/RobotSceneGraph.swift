@@ -1,12 +1,15 @@
 import Foundation
+import os
 import ReachyKit
 import RealityKit
 import simd
 
 /// The robot as a RealityKit entity tree, with a fast path for re-posing it.
 ///
-/// Built once from the URDF; after that only transforms change. Meshes and
-/// materials are never rebuilt, which is what makes a 20 Hz update cheap.
+/// Built once from the URDF; after that only transforms change on the 20 Hz path,
+/// which is what makes it cheap. Meshes are never rebuilt, and the one material
+/// change there is — the shell's tint — happens when the theme changes, never per
+/// frame.
 @MainActor
 public final class RobotSceneGraph {
     /// Carries the URDF's Z-up convention into RealityKit's Y-up world.
@@ -14,6 +17,16 @@ public final class RobotSceneGraph {
 
     private var linkEntities: [String: Entity] = [:]
     private var articulations: [Articulation] = []
+    /// The shell's entities, each with the materials the description gave it, so
+    /// painting back to `nil` restores rather than derives them a second time.
+    private(set) var shellParts: [ShellPart] = []
+    /// What the shell is painted now; `nil` is the description's own colours.
+    public private(set) var shellTint: URDFColor?
+
+    struct ShellPart {
+        let entity: ModelEntity
+        let original: [any Material]
+    }
 
     /// One movable joint, with its fixed frame pre-split so posing is a single
     /// quaternion multiply.
@@ -34,6 +47,8 @@ public final class RobotSceneGraph {
     /// head is then left wherever the tree puts it.
     private let geometry: StewartGeometry?
 
+    private nonisolated static let log = Logger(subsystem: "com.alexey1312.ReachyMini", category: "RobotSceneGraph")
+
     public init(urdf: URDFDocument, meshes: [String: MeshResource], geometry: StewartGeometry?) {
         self.geometry = geometry
         root.name = "robot"
@@ -41,6 +56,21 @@ public final class RobotSceneGraph {
         let base = buildLink(named: urdf.rootLinkName, urdf: urdf, meshes: meshes)
         baseEntity = base
         root.addChild(base)
+        if shellParts.isEmpty {
+            Self.log.debug("No shell meshes in this description; a theme will leave its colours alone")
+        }
+    }
+
+    /// Paints the shell (`RobotShell`), or puts back the description's own colours
+    /// for `nil`. Only the base colour changes — the material is otherwise the one
+    /// every visual is built with. Idempotent, and a no-op for a description with no
+    /// shell in it.
+    public func applyShellTint(_ color: URDFColor?) {
+        guard color != shellTint else { return }
+        shellTint = color
+        for part in shellParts {
+            part.entity.model?.materials = color.map { [Self.material($0)] } ?? part.original
+        }
     }
 
     /// Places the head straight from the daemon's pose.
@@ -133,8 +163,19 @@ public final class RobotSceneGraph {
     ) -> ModelEntity? {
         guard case let .mesh(filename, _) = visual.geometry,
               let mesh = meshes[filename] else { return nil }
-        let color = visual.color ?? .unspecifiedVisual
-        let material = SimpleMaterial(
+        let material = Self.material(visual.color ?? .unspecifiedVisual)
+        let model = ModelEntity(mesh: mesh, materials: [material])
+        model.transform = Transform(matrix: simd_float4x4(visual.origin.matrix))
+        if RobotShell.contains(meshFilename: filename) {
+            shellParts.append(ShellPart(entity: model, original: [material]))
+        }
+        return model
+    }
+
+    /// The one recipe for a visual's material, shared by the build and the tint so
+    /// a painted shell differs from a factory one in colour and nothing else.
+    private static func material(_ color: URDFColor) -> SimpleMaterial {
+        SimpleMaterial(
             color: .init(
                 red: CGFloat(color.red),
                 green: CGFloat(color.green),
@@ -144,9 +185,6 @@ public final class RobotSceneGraph {
             roughness: 0.45,
             isMetallic: false
         )
-        let model = ModelEntity(mesh: mesh, materials: [material])
-        model.transform = Transform(matrix: simd_float4x4(visual.origin.matrix))
-        return model
     }
 }
 

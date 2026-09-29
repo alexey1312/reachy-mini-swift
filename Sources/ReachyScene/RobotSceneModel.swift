@@ -36,6 +36,17 @@ public final class RobotSceneModel {
     /// Off shows the raw tree with every wrist at zero — useful for seeing what
     /// the solver is contributing.
     public var solvesPassiveJoints = true
+    /// The colour the shell is painted, `nil` for the description's own. Held here
+    /// rather than by a view so it survives the 3D/camera switch and the move
+    /// between hosts, and so a value set while the meshes are still loading is
+    /// waiting for the graph the moment `build` makes one. This module knows no
+    /// themes; `ReachyUI` decides the colour.
+    public var shellTint: URDFColor? {
+        didSet {
+            guard shellTint != oldValue else { return }
+            graph?.applyShellTint(shellTint)
+        }
+    }
 
     /// `nil` for an inert model — what a preview injects, and what any session
     /// without a live stream would get. `startStreaming()` is the only thing that
@@ -172,6 +183,9 @@ public final class RobotSceneModel {
         solver = stewart.map(PassiveJointSolver.init)
         platform = stewart.map(StewartIK.init)
         let graph = RobotSceneGraph(urdf: geometry.urdf, meshes: meshes, geometry: stewart)
+        // Before `.ready`, so the first frame that shows the robot is already painted
+        // rather than white for a frame and then repainted.
+        graph.applyShellTint(shellTint)
         // A rebuild replaces the robot rather than stacking a second one on the
         // same container (the lighting rig stays — it is added once, in init).
         self.graph?.root.removeFromParent()

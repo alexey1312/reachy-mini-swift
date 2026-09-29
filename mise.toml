@@ -24,7 +24,7 @@ git config core.hooksPath .githooks 2>/dev/null || true
 # Swift itself is managed by swiftly via .swift-version, not by mise.
 swiftformat = "0.63.0" # Swift code formatting
 swiftlint = "0.65.1"   # Swift linting
-xcsift = "1.5.0"       # xcodebuild/swift output filtering
+xcsift = "1.5.1"       # xcodebuild/swift output filtering
 tuist = "4.209.0"      # Xcode project generation (Apps/)
 # 4.209.0 asks tuist.dev for the new `KURA` cache backend, and the first machine to ask an account
 # that has none provisioned gets `{"endpoints":[],"provisioning":true}` from

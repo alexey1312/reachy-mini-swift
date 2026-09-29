@@ -10,6 +10,8 @@ import WidgetKit
 /// an icon change on macOS, where there is none.
 struct AppearanceSection: View {
     @AppStorage(ThemeStore.key) private var rawTheme: String = ReachyTheme.fallback.rawValue
+    /// Read by `SceneViewport` from the same suite; see `TwinPaint`.
+    @AppStorage(TwinPaint.key) private var paintsTwin = TwinPaint.defaultValue
 
     /// Injectable so a preview can show a theme both applied and selected.
     /// `.reachyTheme(_:)` only sets the environment value and the tint — it never
@@ -30,6 +32,7 @@ struct AppearanceSection: View {
             ThemeStore.key,
             store: defaults
         )
+        _paintsTwin = AppStorage(wrappedValue: TwinPaint.defaultValue, TwinPaint.key, store: defaults)
         _iconChangeFailed = State(initialValue: iconChangeFailed)
     }
 
@@ -51,9 +54,35 @@ struct AppearanceSection: View {
             // below); without this an outer tile's ring is sliced flat against the
             // row's edge.
             .padding(.horizontal, Space.xs)
+            Toggle(.reachy("Paint the 3D robot"), isOn: $paintsTwin)
         } header: {
             Text(.reachy("Appearance"))
         } footer: {
+            footer
+        }
+    }
+
+    /// A `VStack` rather than two `Text`s, because a `Section` handed a bare pair
+    /// renders only the first — the trap `NotificationsSection` records too.
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            // Says what a theme reaches, because the robot is the one thing a reader
+            // might expect it to repaint and cannot: the daemon has no colour to set.
+            #if os(macOS)
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "Changes the accent colour and the colour of the 3D robot. The robot on your desk stays as it is."
+                    )
+                )
+            #else
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "Changes the accent colour, the app icon and the colour of the 3D robot. The robot on your desk stays as it is."
+                    )
+                )
+            #endif
             if iconChangeFailed {
                 Text(.reachy("The app icon didn't change."))
                     .foregroundStyle(Tone.danger.style)
@@ -115,9 +144,14 @@ struct AppearanceSection: View {
         /// cannot prove. Same suite `KnownRobotsModel.preview` and
         /// `FloatingViewportPreferences.preview` already share, under a key neither
         /// of them touches.
-        static func preview(_ theme: ReachyTheme, iconChangeFailed: Bool = false) -> AppearanceSection {
+        static func preview(
+            _ theme: ReachyTheme,
+            iconChangeFailed: Bool = false,
+            paintsTwin: Bool = TwinPaint.defaultValue
+        ) -> AppearanceSection {
             let defaults = UserDefaults(suiteName: "ReachyUI.previews") ?? .standard
             ThemeStore(defaults: defaults).theme = theme
+            defaults.set(paintsTwin, forKey: TwinPaint.key)
             return AppearanceSection(defaults: defaults, iconChangeFailed: iconChangeFailed)
         }
     }

@@ -1,4 +1,5 @@
 import ReachyDesign
+import ReachyKit
 import ReachyScene
 import SwiftUI
 
@@ -17,10 +18,39 @@ struct SceneViewport: View {
     /// Travels beside `makeTeleop` and is `nil` in the same places.
     var standDown: TeleopStandDown?
 
+    /// The theme paints the robot's shell; `TwinPaint` says in what, and whether.
+    @Environment(\.reachyTheme) private var theme
+    @AppStorage(TwinPaint.key) private var paintsTwin = TwinPaint.defaultValue
+
+    /// `defaults` is injectable for the reason `AppearanceSection`'s is.
+    init(
+        model: RobotSceneModel,
+        makeTeleop: TeleopFactory? = nil,
+        standDown: TeleopStandDown? = nil,
+        defaults: UserDefaults = KnownRobots.defaults
+    ) {
+        self.model = model
+        self.makeTeleop = makeTeleop
+        self.standDown = standDown
+        _paintsTwin = AppStorage(wrappedValue: TwinPaint.defaultValue, TwinPaint.key, store: defaults)
+    }
+
     var body: some View {
         RobotSceneView(model: model)
             .overlay(alignment: .center) { status }
             .overlay(alignment: .bottomTrailing) { teleopControls }
+            // Keyed on the model as well as the colour: `ViewportModel` builds a new
+            // `RobotSceneModel` per connection and can hand it to this same view, and
+            // a colour that has not changed would otherwise never reach the new one.
+            // `initial:` rather than `.task`, because it runs as the view appears
+            // instead of a hop later — usually before the meshes are even down.
+            .onChange(of: ShellPaint(model: ObjectIdentifier(model), color: shellColor), initial: true) { _, paint in
+                model.shellTint = paint.color
+            }
+    }
+
+    private var shellColor: URDFColor? {
+        TwinPaint.shellColor(for: theme, paints: paintsTwin)
     }
 
     /// Gated on `.ready` for the reason the camera gates on `.streaming`: until the
@@ -64,6 +94,12 @@ struct SceneViewport: View {
             )
         }
     }
+}
+
+/// What the scene's paint depends on, as one value `onChange` can compare.
+private struct ShellPaint: Equatable {
+    let model: ObjectIdentifier
+    let color: URDFColor?
 }
 
 /// Lives beside the viewport switcher rather than inside the scene, so the

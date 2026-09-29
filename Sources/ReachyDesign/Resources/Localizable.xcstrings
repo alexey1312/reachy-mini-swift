@@ -1915,6 +1915,64 @@
         }
       }
     },
+    "Changes the accent colour and the colour of the 3D robot. The robot on your desk stays as it is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ändert die Akzentfarbe und die Farbe des 3D-Roboters. Der Roboter auf deinem Schreibtisch bleibt, wie er ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia el color de acento y el color del robot 3D. El robot de tu escritorio se queda como está."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change la couleur d'accentuation et la couleur du robot 3D. Le robot sur votre bureau reste tel quel."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меняет цвет акцента и цвет 3D-робота. Робот на вашем столе остаётся прежним."
+          }
+        }
+      }
+    },
+    "Changes the accent colour, the app icon and the colour of the 3D robot. The robot on your desk stays as it is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ändert die Akzentfarbe, das App-Symbol und die Farbe des 3D-Roboters. Der Roboter auf deinem Schreibtisch bleibt, wie er ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia el color de acento, el icono de la app y el color del robot 3D. El robot de tu escritorio se queda como está."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change la couleur d'accentuation, l'icône de l'app et la couleur du robot 3D. Le robot sur votre bureau reste tel quel."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Меняет цвет акцента, значок приложения и цвет 3D-робота. Робот на вашем столе остаётся прежним."
+          }
+        }
+      }
+    },
     "Check": {
       "extractionState": "manual",
       "localizations": {
@@ -9973,6 +10031,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Другая сеть…"
+          }
+        }
+      }
+    },
+    "Paint the 3D robot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3D-Roboter einfärben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pintar el robot 3D"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peindre le robot 3D"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Красить 3D-робота"
           }
         }
       }

@@ -900,6 +900,11 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   missing one: it reads as coverage and passes any change.
 - **`SceneViewport.ready` is captured only with the simulator joystick.** RealityKit itself is blank headless; the
   image covers the controls, while `ViewportModelTests.onlyTheSimulatorDrivesItsScene` covers the source gate.
+- **The theme's paint on the robot has no reference either, for the same reason.**
+  A painted `SceneViewport.ready` would capture the same blank frame as an unpainted one,
+  so a scene preview per theme would read as cover and prove nothing.
+  `RobotShellTintTests` reads the colour off the materials instead,
+  `TwinPaintTests` covers the mapping, and `Appearance — robot unpainted` covers the switch.
 - **Not covered either, and measured rather than assumed: a `confirmationDialog`.** It presents in a context of its
   own that captures as nothing. Recorded twice for `RobotScreen`'s power-off dialog — once with a running app and
   once without, which change the sentence in it — the two references came out **byte-identical**, and identical to
@@ -1066,6 +1071,28 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   no reference image holds — `robotWidgetPreviewTransition` already covers the rendered pending state, so the drawn
   content is unchanged by this. It is a device check: begin a cold start from the Robot tab and watch the Lock
   Screen.
+
+## The twin's paint
+
+`TwinPaint.swift`, read by `SceneViewport` and written by `AppearanceSection`'s switch.
+The theme paints the 3D robot's shell as well as the accent and the icon;
+the switch (on by default) turns that off for whoever watches the twin as an exact mirror of the robot on their desk.
+`ReachyScene` knows no themes and `ReachyDesign` knows no robot, so this is the one place that sees both.
+
+- **`SceneViewport` is the first reader of `\.reachyTheme` in the tree.**
+  Everything else takes the theme through `.tint`.
+  It pushes the colour with `onChange(initial: true)` keyed on the colour _and_ `ObjectIdentifier(model)`:
+  `ViewportModel` builds a new `RobotSceneModel` per connection and can hand it to the same view,
+  and a colour that has not changed would otherwise never reach the new model.
+  `initial:` rather than `.task` because it runs as the view appears rather than a hop later;
+  a colour that still beats the meshes waits in the model, which applies it before `.ready`.
+- **The key is `ReachyUI.paintsTwin`, in the App Group suite, and it is mirrored to iCloud beside the theme**
+  (`CloudSettingsMirror` in `ReachyMiniApp`), so a theme and its paint arrive on another device together.
+  It lives here rather than beside `ThemeStore` because the widget draws no robot —
+  the reason `JobNotificationSettings` lives here too.
+- **The floating viewport is iPhone only.** On macOS the scene is in the Live tab or the `.inspector` column,
+  both inside the one `WindowGroup` that already applies `reachyThemeFromSettings()`,
+  so there is no second window whose root could miss the theme.
 
 ## Job notifications
 

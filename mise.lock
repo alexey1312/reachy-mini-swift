@@ -523,20 +523,20 @@ url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/587159002"
 provenance = "github-attestations"
 
 [[tools.xcsift]]
-version = "1.5.0"
+version = "1.5.1"
 backend = "github:ldomaradzki/xcsift"
 
 [tools.xcsift."platforms.linux-x64"]
-checksum = "sha256:62e2250b2cdcff684e8a9cbcaa7bb4226f0b3a50e78aaa78785f9d5c738abdae"
-url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.0/xcsift-v1.5.0-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/559656764"
+checksum = "sha256:5e903ce8c5bfa569465cf5659e836686574ee15e3608a5689c3727ab9994306e"
+url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.1/xcsift-v1.5.1-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/597999877"
 
 [tools.xcsift."platforms.linux-x64-musl"]
-checksum = "sha256:62e2250b2cdcff684e8a9cbcaa7bb4226f0b3a50e78aaa78785f9d5c738abdae"
-url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.0/xcsift-v1.5.0-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/559656764"
+checksum = "sha256:5e903ce8c5bfa569465cf5659e836686574ee15e3608a5689c3727ab9994306e"
+url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.1/xcsift-v1.5.1-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/597999877"
 
 [tools.xcsift."platforms.macos-arm64"]
-checksum = "sha256:cd34da90715d79a1b743a6d74b609a3b40dc7cde3c0d707ca4a11d218e952a3a"
-url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.0/xcsift-v1.5.0-macos-arm64.tar.gz"
-url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/559656761"
+checksum = "sha256:5ea6c5befad58f881896e4fd1479b3727db0f5d43829e77666b54b0508efa989"
+url = "https://github.com/ldomaradzki/xcsift/releases/download/v1.5.1/xcsift-v1.5.1-macos-arm64.tar.gz"
+url_api = "https://api.github.com/repos/ldomaradzki/xcsift/releases/assets/597999876"

@@ -70,3 +70,37 @@ would reopen it. The USD scene such an experiment trains from is `mise run geome
   `RobotSceneLightingTests` pins _what_, and a test of the notification in between would be a test of
   `NotificationCenter`. Reading `light.shadow` back is misleading — the component is the only honest signal,
   which the rig's own test already records.
+
+## The shell tint
+
+`RobotShell.swift`, plus `RobotSceneGraph.applyShellTint(_:)` and `RobotSceneModel.shellTint`.
+The theme paints the robot's printed white shell;
+this module paints whatever `URDFColor` it is handed and knows no themes —
+`ReachyUI`'s `TwinPaint` maps a `ReachyTheme` onto a colour,
+and `ReachyScene` still does not import `ReachyDesign`.
+
+- **The shell is found by mesh file, not by colour.**
+  `RobotShell.meshFilenames` names five parts — body top and bottom, head front and back, the microphone cover —
+  matched on the last path component while the graph is built.
+  "White" is a property of one description:
+  a revision with a grey shell, or a white part that is not shell, would repaint the wrong thing silently.
+  A description naming none of the five draws in its own colours,
+  with one `debug` line from the module's only `Logger` (`RobotSceneGraph`).
+- **The antenna housings are the same white plastic and are left white on purpose** —
+  a product decision (2026-09-29), not a gap in the list.
+  `neck_reference_3dprint` is 0.9 grey and inside the head, so it is not shell either.
+- **Only the base colour changes.**
+  The build and the tint share `RobotSceneGraph.material(_:)`,
+  so roughness and metalness cannot drift between a painted shell and a factory one;
+  `nil` restores the materials the build made rather than deriving them again,
+  which is what keeps the fallback theme pixel-identical to an unpainted robot.
+- **It is never on the 20 Hz path.** `apply(_:)` changes transforms only;
+  the tint changes when the theme or the switch does, and a repeat of the applied value is a no-op.
+- **The model holds the value, not a view**, so it survives the 3D/camera switch and the move between hosts.
+  A value set while the meshes are still loading waits for the graph:
+  `build(_:)` applies it before `phase = .ready`,
+  so the first frame showing the robot is already painted rather than white for a frame.
+  `RobotShellTintTests` pins that path by setting the tint before `start()`,
+  where the `didSet` has no graph to reach and the build is the only thing that can paint.
+- **Read the colour off the material**, as the tests do, not off `shellTint`:
+  the component is what the frame is drawn from, the same rule the lighting rig's shadow test records.

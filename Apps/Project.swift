@@ -29,7 +29,7 @@ let project = Project(
         base: [
             // Beta: the first tag is 0.1.0, and the tag and the shipped version
             // have to be the same number to be worth reading.
-            "MARKETING_VERSION": "0.6.0",
+            "MARKETING_VERSION": "0.6.1",
             "CURRENT_PROJECT_VERSION": "1",
         ],
         configurations: [
