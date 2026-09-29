@@ -164,7 +164,10 @@ public final class RobotSession {
     /// feature. Write only through `report(_:)`, and only from
     /// `RobotSession+Power` and `RobotSession+Connect`.
     public internal(set) var robotError: String?
-    public internal(set) var compatibilityWarning: String?
+    /// What the handshake concluded about the daemon's version. Kept as the verdict
+    /// rather than as a sentence: `ReachyKit` links no string catalogue, so the
+    /// words are the screen's to choose (`DaemonCompatibilityCaption`).
+    public internal(set) var compatibility: DaemonCompatibility?
     /// Answered by the handshake, not by the version string: `/api/daemon/robot-name`
     /// postdates 1.9.0, and the name field is greyed out rather than left to fail on save.
     public internal(set) var supportsRename = true
@@ -307,7 +310,7 @@ public final class RobotSession {
         client = nil
         link = .none
         lastStatus = nil
-        compatibilityWarning = nil
+        compatibility = nil
         supportsRename = true
         moveActivity = nil
         powerTransition = nil

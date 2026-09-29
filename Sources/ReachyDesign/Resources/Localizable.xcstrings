@@ -21055,6 +21055,35 @@
         }
       }
     },
+    "Tested with": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getestet mit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probada con"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testée avec"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверено на"
+          }
+        }
+      }
+    },
     "The robot took too long to start.": {
       "extractionState": "manual",
       "localizations": {
@@ -21080,6 +21109,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот запускался слишком долго."
+          }
+        }
+      }
+    },
+    "This robot didn't report a software version this app can read. Some features may not work.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Roboter hat keine Softwareversion gemeldet, die diese App lesen kann. Einige Funktionen funktionieren möglicherweise nicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este robot no ha indicado una versión del software que esta app pueda leer. Es posible que algunas funciones no estén disponibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce robot n'a pas indiqué de version du logiciel que cette app sache lire. Certaines fonctions pourraient ne pas marcher."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот не сообщил версию ПО, понятную этому приложению. Некоторые функции могут не работать."
+          }
+        }
+      }
+    },
+    "This robot's software is newer than this app was tested with. Some features may not work.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Software dieses Roboters ist neuer als die Version, mit der diese App getestet wurde. Einige Funktionen funktionieren möglicherweise nicht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software de este robot es más reciente que la versión con la que se probó esta app. Es posible que algunas funciones no estén disponibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel de ce robot est plus récent que la version avec laquelle cette app a été testée. Certaines fonctions pourraient ne pas marcher."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО этого робота новее версии, с которой проверялось это приложение. Некоторые функции могут не работать."
           }
         }
       }

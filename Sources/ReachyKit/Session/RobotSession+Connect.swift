@@ -87,7 +87,7 @@ public extension RobotSession {
             // stepper is mounted then, so the rest of the surface stays unreachable.
             self.client = client
             lastStatus = handshake.status
-            compatibilityWarning = handshake.compatibility.warningMessage
+            compatibility = handshake.compatibility
             // A property of the daemon, not of how it was reached. The relay's
             // handshake reports false because no HTTP route answers there, and
             // daemon 1.10.0 put `set_robot_name` on the data channel — so the

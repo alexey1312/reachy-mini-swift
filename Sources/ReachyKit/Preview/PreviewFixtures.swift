@@ -305,7 +305,7 @@
             link: Link? = nil,
             error: String? = nil,
             powerTransition: PowerTransition? = nil,
-            compatibilityWarning: String? = nil,
+            compatibility: DaemonCompatibility? = nil,
             moveActivity: MoveActivity? = nil,
             // The dock is mounted on the root, so every root preview needs a way to
             // reach a state that otherwise requires an app running on a real robot.
@@ -328,7 +328,7 @@
             session.link = link ?? address.map(RobotSession.Link.lan) ?? .none
             session.robotError = error
             session.powerTransition = powerTransition
-            session.compatibilityWarning = compatibilityWarning
+            session.compatibility = compatibility
             session.moveActivity = moveActivity
             session.runningApp = runningApp
             session.automaticConnectionAllowed = automaticConnectionAllowed

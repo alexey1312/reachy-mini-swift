@@ -29,10 +29,13 @@ struct RobotScreen: View {
             statusSection
             controlSection
             identitySection
-            if let warning = session.compatibilityWarning {
+            if let warning = DaemonCompatibilityCaption.warning(for: session.compatibility) {
                 Section {
-                    Label(warning, systemImage: "exclamationmark.triangle")
+                    Label(warning.message, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(Tone.warning.style)
+                    if let tested = warning.testedVersion {
+                        LabeledContent(.reachy("Tested with"), value: tested)
+                    }
                 }
             }
             if let error = session.robotError {

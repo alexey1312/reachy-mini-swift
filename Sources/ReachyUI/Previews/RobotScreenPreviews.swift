@@ -23,7 +23,12 @@ import SwiftUI
 }
 
 #Preview("Robot — compatibility warning") {
-    PreviewScene.robotScreen(.preview(compatibilityWarning: "Daemon 1.10.0 is newer than the tested baseline 1.9.0."))
+    // The robot's own version is the Software version row above the warning, so the
+    // two are seeded together or the screen contradicts itself.
+    PreviewScene.robotScreen(.preview(
+        phase: .connected(RobotIdentity(hardwareID: "hw-preview", name: "Reachy Mini", daemonVersion: "1.12.0")),
+        compatibility: .untestedNewer(reported: "1.12.0", tested: "1.11.0")
+    ))
 }
 
 #Preview("Robot — error") {

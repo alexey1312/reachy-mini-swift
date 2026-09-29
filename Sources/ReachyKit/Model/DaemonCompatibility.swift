@@ -6,19 +6,6 @@ public enum DaemonCompatibility: Equatable, Sendable {
     case untestedNewer(reported: String, tested: String)
     case unknown(reported: String?)
     case unsupported(reported: String, minimum: String)
-
-    public var warningMessage: String? {
-        switch self {
-        case .supported:
-            nil
-        case let .untestedNewer(reported, tested):
-            "Daemon \(reported) is newer than the tested baseline \(tested); optional features may be unavailable."
-        case let .unknown(reported):
-            "Daemon version \(reported ?? "was not reported") could not be verified; compatibility is limited."
-        case let .unsupported(reported, minimum):
-            "Daemon \(reported) is unsupported; version \(minimum) is required."
-        }
-    }
 }
 
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
