@@ -23,6 +23,8 @@ struct ReachyMiniApp: App {
         // from this app: an Xcode install registers the shortcuts itself, which is
         // how the gap stayed invisible on every development build.
         ReachyShortcuts.updateAppShortcutParameters()
+        // Before launch finishes, or a tap that launched the app is never delivered.
+        JobNotificationResponder.install()
         // Skipped in the smoke run, off the same argument `reachyPreviewMode` below reads:
         // a UI test must not pull the developer's iCloud state into its fixture.
         if !ProcessInfo.processInfo.arguments.contains("--reachy-smoke") {

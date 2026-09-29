@@ -211,7 +211,8 @@ final class AppInstallModel {
                 subject: app.name
             ),
             robotName: session.connectedIdentity?.name,
-            subjectTitle: app.title
+            subjectTitle: app.title,
+            subjectID: app.id
         )
         pending = notice
         notify(.started(notice, at: Date()))

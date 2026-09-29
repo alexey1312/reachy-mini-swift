@@ -52,6 +52,8 @@ final class ReachyRouter {
         // someone who asked for one would look for it anyway.
         case .apps, .runningApp:
             tab = .apps
+        case .settings:
+            tab = .settings
         }
     }
 }

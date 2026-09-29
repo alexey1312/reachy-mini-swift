@@ -1,5 +1,6 @@
 import Foundation
 import ReachyDesign
+import ReachyKit
 
 /// Every decision a job notification makes, as a pure reducer.
 ///
@@ -13,7 +14,8 @@ import ReachyDesign
 /// > identifier, so a rule that calls it is a rule that *crashes* the suite rather
 /// > than one that fails it.
 ///
-/// So every rule lives here, over Foundation and `ReachyDesign` alone, and the one
+/// So every rule lives here, over Foundation, `ReachyDesign` and `ReachyKit`'s plain
+/// values (the deep link a tap opens), and the one
 /// thing this cannot know — whether the reader is looking at the app right now —
 /// arrives as a fact the controller sets.
 ///
@@ -76,11 +78,16 @@ struct JobNotificationPlan: Equatable, Sendable {
         var robotName: String?
         /// The app's title. `nil` for a system update.
         var subjectTitle: String?
+        /// The app's `RobotApp.id` — its Space id where it has one — which is what the
+        /// Apps tab finds a row by. Not `key.subject`: that is the daemon's `name`,
+        /// and a catalogue row is not looked up by it. `nil` for a system update.
+        var subjectID: String?
 
-        init(key: Key, robotName: String? = nil, subjectTitle: String? = nil) {
+        init(key: Key, robotName: String? = nil, subjectTitle: String? = nil, subjectID: String? = nil) {
             self.key = key
             self.robotName = robotName
             self.subjectTitle = subjectTitle
+            self.subjectID = subjectID
         }
     }
 
@@ -110,6 +117,8 @@ struct JobNotificationPlan: Equatable, Sendable {
         var threadIdentifier: String
         var title: String
         var body: String
+        /// Where a tap on it goes: the job it was about.
+        var link: ReachyDeepLink.Target
     }
 
     enum Event: Equatable, Sendable {
@@ -170,8 +179,21 @@ struct JobNotificationPlan: Equatable, Sendable {
             identifier: "\(notice.key.identifier)#\(Int(date.timeIntervalSince1970 * 1000))",
             threadIdentifier: notice.key.threadIdentifier,
             title: copy.title,
-            body: copy.body
+            body: copy.body,
+            link: Self.link(for: notice)
         ))]
+    }
+
+    /// The screen that shows the job's outcome. A removal is included with the
+    /// other app jobs on purpose: a successful one is never announced, so the removal
+    /// that posts is a failed one, and that app still has a row to open.
+    static func link(for notice: Notice) -> ReachyDeepLink.Target {
+        switch notice.key.kind {
+        case .systemUpdate:
+            ReachyDeepLink.Target(destination: .settings)
+        case .appInstall, .appUpdate, .appRemove:
+            ReachyDeepLink.Target(destination: .apps, identifier: notice.subjectID)
+        }
     }
 
     /// The policy table. `nil` is silence, and every `nil` below is a decision.

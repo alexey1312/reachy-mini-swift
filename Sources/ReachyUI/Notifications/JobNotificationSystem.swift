@@ -40,6 +40,7 @@ enum JobNotificationSystem {
         content.threadIdentifier = request.threadIdentifier
         content.sound = .default
         content.interruptionLevel = .active
+        content.userInfo = JobNotificationLink.userInfo(for: request.link)
         // `trigger: nil` delivers immediately. A failed add is not worth *showing* —
         // the job's own screen already says what happened, and the notification was
         // only ever the copy for someone who is not looking at it — but it is worth

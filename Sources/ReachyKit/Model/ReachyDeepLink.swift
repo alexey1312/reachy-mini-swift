@@ -16,6 +16,9 @@ public enum ReachyDeepLink: String, CaseIterable, Sendable {
     /// which is case-insensitive and normalised as such; a raw value that survives
     /// that normalisation is one that carries no case to lose.
     case runningApp = "running-app"
+    /// The Settings tab, where the robot's software update lives — which is what a
+    /// finished system update's notification opens.
+    case settings
 
     public static let scheme = "reachy-mini-swift"
 

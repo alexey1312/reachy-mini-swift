@@ -1146,12 +1146,19 @@ the switch (on by default) turns that off for whoever watches the twin as an exa
 - **Zero capability changes.** No usage string, no background mode, no `aps-environment`, no `.timeSensitive` (which
   would need its own entitlement and a review justification for a finished install). `Apps/Project.swift`'s comment
   about declaring no push entitlement stays true, and a reviewer will look for exactly that.
-- **No `UNUserNotificationCenterDelegate`, and it is not an omission.** Three layers already say the same thing: the
-  plan refuses while `isForeground`; both platforms suppress foreground alerts by default when no delegate implements
-  `willPresent`; and a delegate written only to `return []` would cost an `NSApplicationDelegateAdaptor` on macOS,
-  which this app does not have. A pleasant consequence worth writing down because it reads as an accident: on macOS a
-  visible-but-not-key window reports `.inactive`, so a reader with the app open behind Xcode **does** get told.
-  Routing a _tap_ is what a delegate would be for, and that is a follow-up rather than this issue.
+- **A tap opens the job, through the app's own deep link.** Each `Request` carries a `ReachyDeepLink.Target` —
+  Settings for a system update, the app's row (by `RobotApp.id`, not the daemon's `name`) for the app jobs —
+  and `JobNotificationSystem` stores it in `userInfo`.
+  `JobNotificationResponder` is the `UNUserNotificationCenterDelegate`, and on a tap it _opens_ that URL
+  rather than routing anything itself, so the tap reaches `RootLifecycle`'s `onOpenURL` like a widget's link does,
+  and a tap that launches the app is held until a scene takes it.
+  It is installed from `App.init`, which runs before launch finishes, so macOS needed no
+  `NSApplicationDelegateAdaptor` after all — that cost was the reason this used to be deferred.
+  `willPresent` returns `[]`, which is what having no delegate meant: the plan already refuses while
+  `isForeground`, and foreground presentation stays off. A consequence worth writing down because it reads as an
+  accident: on macOS a visible-but-not-key window reports `.inactive`, so a reader with the app open behind Xcode
+  **does** get told. `JobNotificationLink` reads back only this app's own destinations, never the OAuth callback that
+  shares the scheme.
 - **The fourth `PermissionKind` is not a device permission**, and the enum's doc comment says why at length — it
   gates no hardware and blocks nothing, and exists only so the Settings toggle cannot silently do nothing. It is also
   the one row with no matching usage string in `Apps/Project.swift`: the system writes that prompt's text.
