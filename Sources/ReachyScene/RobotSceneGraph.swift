@@ -133,7 +133,7 @@ public final class RobotSceneGraph {
     ) -> ModelEntity? {
         guard case let .mesh(filename, _) = visual.geometry,
               let mesh = meshes[filename] else { return nil }
-        let color = visual.color ?? URDFColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1)
+        let color = visual.color ?? .unspecifiedVisual
         let material = SimpleMaterial(
             color: .init(
                 red: CGFloat(color.red),

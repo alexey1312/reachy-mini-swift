@@ -1,0 +1,6 @@
+{
+  "name": "reachy-ci",
+  "description": "For a simulator nothing else uses: keeps nothing at all, because the one CI job that boots one launches the app and walks tabs. Nothing selects this by itself — REACHY_SIMSLIM_PROFILE=ci does. A self-hosted runner shares its simulators with whoever uses that Mac, so ci.yml slims with dev.json instead.",
+  "except": [],
+  "keep": []
+}

@@ -27,10 +27,14 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.7.0"),
         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.0"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.1.0"),
-        .package(url: "https://github.com/stasel/WebRTC.git", from: "150.0.0"),
+        .package(url: "https://github.com/stasel/WebRTC.git", from: "153.0.0"),
         // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
         // rather than the `from:` every other dependency here uses.
         .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
+        // No target here uses these two; `Apps/Project.swift` does. Declared so SwiftPM (and
+        // Dependabot) pin the same 25 packages Xcode does instead of dropping five of them.
+        .package(url: "https://github.com/BarredEwe/Prefire", exact: "5.7.0"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.19.4"),
     ],
     targets: [
         // This app's own Hugging Face session — sign-in, token custody, renewal.
@@ -140,6 +144,16 @@ let package = Package(
         // Not a product: stubs for the test targets only, in a plain target because
         // one test target cannot import another's sources.
         .target(name: "ReachyTestSupport"),
+        // Also not a product, and not shipped at all: it writes the USD scene an
+        // object tracker is trained from (#77), out of the description and meshes
+        // `ReachySimulator` already carries. An executable rather than a
+        // `Scripts/*.swift` because a script cannot link a target — `URDFParser`
+        // and `STLDecoder` would have to be copied, and a robot exported by a
+        // second decoder is one that can drift from the robot on screen.
+        .executableTarget(
+            name: "ReachyGeometryExport",
+            dependencies: ["ReachyKit", "ReachySimulator"]
+        ),
         .testTarget(
             name: "ReachyDesignTests",
             dependencies: ["ReachyDesign"]
@@ -164,7 +178,11 @@ let package = Package(
         ),
         .testTarget(
             name: "ReachySceneTests",
-            dependencies: ["ReachyScene", "ReachyKit"]
+            // `ReachySimulator` for its bundled description alone, the reason
+            // `ReachyKitTests` takes it: the property `URDFFlatteningTests` holds is
+            // about the *real* robot's 162 visuals composing identically two ways,
+            // and a synthetic fixture cannot fail the way a 41-mesh chain can.
+            dependencies: ["ReachyScene", "ReachyKit", "ReachySimulator"]
         ),
         .testTarget(
             name: "ReachySimulatorTests",

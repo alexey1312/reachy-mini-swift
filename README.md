@@ -9,7 +9,7 @@ run in simulation — or no robot at all, with the simulator the app carries its
 <br clear="left" />
 
 [![CI](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml)
-[![Mac App Store](https://img.shields.io/itunes/v/6799644194?label=Mac%20App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
+[![App Store](https://img.shields.io/itunes/v/6799644194?label=App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
 [![TestFlight](https://img.shields.io/badge/TestFlight-public%20beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/CGjefT9a)
 
 <p align="center">
@@ -21,6 +21,8 @@ run in simulation — or no robot at all, with the simulator the app carries its
 The app's own page — what it does, screenshots, privacy and support — is at
 **[alexey1312.github.io/reachy-mini-swift](https://alexey1312.github.io/reachy-mini-swift/)**. This README is the
 developer side of the same project.
+
+**Project page:** [blog.kakoulin.com/apps/reachy-mini-swift](https://blog.kakoulin.com/apps/reachy-mini-swift)
 
 > [!NOTE]
 > Unofficial project, not affiliated with Pollen Robotics. This is **not a fork** of the official
@@ -54,15 +56,15 @@ developer side of the same project.
 
 <p align="center">
   <a href="https://apps.apple.com/app/hey-reachy/id6799644194">
-    <img src="https://img.shields.io/badge/Download%20on%20the%20Mac%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the Mac App Store" />
+    <img src="https://img.shields.io/badge/Download%20on%20the%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
   </a>
   <a href="https://testflight.apple.com/join/CGjefT9a">
     <img src="https://img.shields.io/badge/Join%20the%20public%20beta%20on%20TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Join the public beta on TestFlight" />
   </a>
 </p>
 
-The Mac version is on the App Store. iPhone and iPad are in review, and until they land the TestFlight link is the
-way in — one link for all three. Minimum iOS 18 and macOS 15. Each
+iPhone, iPad and Mac are all on the App Store, under one purchase. The TestFlight link carries the public beta, which
+runs ahead of the release. Minimum iOS 18 and macOS 15. Each
 [release](https://github.com/alexey1312/reachy-mini-swift/releases) also carries a notarized Mac zip, signed with a
 Developer ID.
 
@@ -155,6 +157,11 @@ Two different things, and which one you want depends on what you are working on:
   reference images, stored in Git LFS. The approach is [ADR 0002](docs/adr/0002-preview-driven-snapshot-testing.md).
 - `./bin/mise run storybook` — the same previews as a browsable catalogue on a simulator.
 - `./bin/mise run test:sim` — integration tests against a running `sim-daemon`; the plain `test` run skips them.
+- `./bin/mise run test:smoke` — the app itself, built and installed on a simulator, walked end to end by the
+  [Maestro](https://github.com/mobile-dev-inc/maestro) flows in `Apps/Maestro`. The reasoning, and what it gives up
+  against the XCUITest suite it replaced, is [ADR 0005](docs/adr/0005-maestro-flows-for-app-smoke-tests.md).
+  `test:flows` re-runs those flows against the installed app without recompiling; `test:smoke:sim` adds the full
+  user path against a running `sim-daemon`.
 
 ## Compatibility and network security
 

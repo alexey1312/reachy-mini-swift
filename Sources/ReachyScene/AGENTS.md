@@ -46,8 +46,13 @@ ever sends the robot a command.
 ## Heat
 
 `SceneThermalPolicy.swift`, plus `RobotSceneLighting.setShadowsEnabled(_:in:)` and a watch in
-`RobotSceneModel.start()`. Taken out of #77, whose tracking half is untouched — the thermal response is
-worth having on its own and depends on nothing.
+`RobotSceneModel.start()`. Taken out of #77, which is closed `wontfix`: the thermal response was worth
+having on its own and depended on nothing, while the tracking half was investigated and parked. That
+issue's closing comment is where the SDK symbols live — `ObjectTrackingProvider` is absent from iOS
+altogether, and the route is RealityKit's `AnchoringComponent` fed by
+`ObjectAnchoringSource(referenceObject:)` — along with the measurements and the one experiment that
+would reopen it. The USD scene such an experiment trains from is `mise run geometry:usdz`; the root
+`AGENTS.md` carries its three traps.
 
 - **The rig had no mutation path at all before this.** `makeRig()` runs once from `init` and returns a
   detached entity, which was added and forgotten; that is what made a thermal response impossible rather
@@ -58,6 +63,9 @@ worth having on its own and depends on nothing.
 - **Shadows are what is given up, and there is nothing else to give.** There is **no level of detail here at
   all**: every one of the ~41 STL meshes is built at full resolution, so "step down the LOD" is a system to
   write rather than a knob to turn. Adding one under cover of a thermal fix would be the wrong shape.
+  **With #77 closed that system has no issue holding it**, which does not change the answer: there is
+  still nothing here asking for one, and the next thing that does should say what it needs before it is
+  built.
 - The rule is tested and the wiring is not, deliberately: `SceneThermalPolicy` pins _when_,
   `RobotSceneLightingTests` pins _what_, and a test of the notification in between would be a test of
   `NotificationCenter`. Reading `light.shadow` back is misleading — the component is the only honest signal,

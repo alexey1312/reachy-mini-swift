@@ -1,0 +1,6 @@
+{
+  "name": "reachy-dev",
+  "description": "Local machines. Everything off except the two categories this app's own extensions live in: widgets/Live Activities/Control Centre, and App Intents. linkd is kept out of a disabled category because it is what indexes App Intents for Shortcuts and Spotlight.",
+  "except": ["widgets", "siri"],
+  "keep": ["com.apple.linkd"]
+}

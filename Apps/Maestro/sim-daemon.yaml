@@ -1,0 +1,79 @@
+# Tier 2, local: the whole user path against a live simulated daemon — reaching the
+# connected five-tab shell and tapping through every tab. Tagged `daemon` and
+# excluded from `test:smoke` by tag, the way SimulatorIntegrationTests is gated on
+# REACHY_SIM_HOST: a plain run skips it, `mise run test:smoke:sim` provides the host.
+#
+# Launched WITHOUT `--reachy-smoke`, so Bonjour and the sockets are live.
+#
+# The typed address is a fallback here rather than the path, and that is a real
+# difference from the XCUITest this replaced. `sim-daemon` runs on the same machine
+# as the simulator and advertises `_reachy-mini._tcp`, so the app frequently finds
+# and connects to it on its own before a flow can type anything — the root then
+# swaps the gate for the shell, taking any presented sheet with it. A flow that
+# insisted on typing would be racing discovery and would fail whenever discovery
+# won. What is asserted instead is the thing that matters: against a live daemon the
+# app reaches the connected shell, and every tab selects.
+appId: com.alexey1312.ReachyMini
+tags:
+  - daemon
+env:
+  # Overridden by `maestro test -e HOST=…`; the default keeps the flow parseable
+  # when `test:flows` filters it out by tag rather than by variable.
+  HOST: 127.0.0.1:8000
+---
+- launchApp:
+    appId: com.alexey1312.ReachyMini
+
+# If the gate is still up, drive it. If discovery already won, this whole block is
+# skipped and the shell is waited for below.
+- runFlow:
+    when:
+      visible: "host, host:port, or IP"
+    commands:
+      # iOS asks for Local Network the moment the sweep starts. `simctl privacy` has
+      # no local-network service, so it cannot be pre-granted — the alert has to be
+      # answered if it comes, and it does not come once the simulator has been asked.
+      - runFlow:
+          when:
+            visible: "Allow"
+          commands:
+            - tapOn: "Allow"
+      - tapOn: "host, host:port, or IP"
+      - eraseText
+      - inputText: ${HOST}
+      - tapOn: "Connect"
+
+# Waited on "Moves" rather than "Robot": the Robot tab's label is not what the
+# accessibility tree exposes for it — its `figure.wave` icon reads as "Taxi" — and
+# the bare word "Robot" also appears as a Settings section header, so it can match
+# while the gate is still up. Maestro matches text with no element-type filter,
+# which is what makes that a real risk here where `app.tabBars.buttons["Robot"]`
+# could not have gone wrong.
+#
+# The ceiling is 180 s against the XCUITest's 90. Measured: on a machine also
+# running the MuJoCo daemon and the Maestro driver, the handshake finished — all
+# three checks green — and the shell still had not mounted at 90 s.
+- extendedWaitUntil:
+    visible: "Moves"
+    timeout: 180000
+
+- tapOn: "Live"
+- assertVisible:
+    text: "Live"
+    selected: true
+- tapOn: "Moves"
+- assertVisible:
+    text: "Moves"
+    selected: true
+- tapOn: "Apps"
+- assertVisible:
+    text: "Apps"
+    selected: true
+- tapOn: "Settings"
+- assertVisible:
+    text: "Settings"
+    selected: true
+- tapOn: "Live"
+- assertVisible:
+    text: "Live"
+    selected: true

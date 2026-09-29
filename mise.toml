@@ -50,6 +50,24 @@ git-cliff = "2.13.1"  # Changelog generation
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
 uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
+# Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
+# rather than left to a global `brew install` because CI and a fresh clone have no brew
+# copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
+# is the only asset it publishes, so bootstrap.sh disables it everywhere else.
+"github:MobAI-App/simslim[exe=simslim]" = "0.8.0"
+
+# --- End-to-end flows ---
+# Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
+# Gradle distZip whose every entry sits under `maestro/`, and mise strips that single
+# top-level directory by itself — leaving `bin/maestro` beside the `lib/*.jar` its
+# launcher script resolves relative to itself. Naming either option, or `bin_path`,
+# disables that strip and separates the two.
+# The tag is `cli-<version>`, so that is what the pin says: `mise ls-remote maestro`
+# lists `cli-2.10.0`, not `2.10.0`.
+maestro = "cli-2.10.0" # End-to-end flows on a simulator (Apps/Maestro)
+# Maestro is a JVM application and this machine had no Java at all. Exact rather than
+# `21`, which is the fuzzy-selector shape that makes the next re-lock a wide diff.
+java = "temurin-21.0.12+101.0.LTS" # Maestro's runtime, nothing else uses it
 
 [tasks.build]
 description = "Build the Swift package (debug)"
@@ -209,46 +227,94 @@ set -o pipefail
 swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
 """
 
-# Smoke tests boot the actual app binary on a simulator — the one wiring nothing
-# else exercises. No OS pin: unlike the snapshot suite these assert on structure,
-# not pixels, so whatever runtime the machine has is fine. Labels are matched in
-# English, hence the pinned test language (the snapshot suite's trade).
+# Flows drive the actual app binary on a simulator — the one wiring nothing else
+# exercises. Unlike the XCUITest they replaced, Maestro drives an *installed* app,
+# so this is a build and an install and a run rather than one `xcodebuild test`.
+# That split is the point: `test:flows` re-runs the same flows against the app
+# already on the simulator in about half a minute, where an edit to the old
+# SmokeTests.swift cost a Swift compile.
+# No OS pin on the destination: unlike the snapshot suite these assert on
+# structure, not pixels, so whatever runtime the machine has is fine. The
+# simulator's *language* is pinned instead, by Scripts/maestro-sim.sh, and that
+# one is not optional — see the comment there.
 [tasks."test:smoke"]
-description = "Launch the app on a simulator and smoke the connect gate (XCUITest)"
+description = "Launch the app on a simulator and smoke the connect gate (Maestro)"
 depends = ["project"]
 run = '''
-set -o pipefail
-SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
-xcrun simctl boot "$SIM" 2>/dev/null || true
-xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
-  -destination "platform=iOS Simulator,name=${SIM}" \
-  -derivedDataPath Apps/DerivedData \
-  -testLanguage en -testRegion US \
-  CODE_SIGNING_ALLOWED=NO \
-  -skipPackagePluginValidation -skipMacroValidation \
-  ${REACHY_XCB_EXTRA:-} \
-  2>&1 | xcsift
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh)"
+# Maestro writes the junit report but does not create its directory, and it fails
+# *after* reporting the flows green — so a missing directory reads as a passing
+# run that failed.
+mkdir -p Apps/DerivedData/MaestroReports
+# Deliberately not piped through xcsift, which parses xcodebuild diagnostics and
+# buffers until the run ends: Maestro's per-command progress is the only thing
+# that tells a slow driver handshake from a wedged one.
+# The flow directory is named explicitly — a bare `.` walks into Apps/DerivedData.
+# Timed, and the exit code preserved across the timing line: Maestro reports how
+# long the *flows* took, never how long its driver took to come up — and that
+# difference is the whole question when this step reads as one opaque number.
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  --exclude-tags daemon,screenshots \
+  --format junit --output Apps/DerivedData/MaestroReports/flows.xml \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:smoke:sim"]
 description = "Smoke the whole user path against a running sim daemon (start with: mise run sim-daemon)"
 depends = ["project"]
 run = '''
-set -o pipefail
-SIM="${REACHY_SMOKE_SIM:-iPhone 17 Pro}"
-xcrun simctl boot "$SIM" 2>/dev/null || true
-# TEST_RUNNER_ forwards the variable into the XCUITest runner's environment, but
-# only when it is xcodebuild's own environment — passed as a trailing
-# `TEST_RUNNER_X=y` build setting it is silently ignored, the runner sees nothing,
-# and the test skips itself while the run still reports TEST SUCCEEDED.
-export TEST_RUNNER_REACHY_SMOKE_HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}"
-xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
-  -destination "platform=iOS Simulator,name=${SIM}" \
-  -derivedDataPath Apps/DerivedData \
-  -testLanguage en -testRegion US \
-  CODE_SIGNING_ALLOWED=NO \
-  -skipPackagePluginValidation -skipMacroValidation \
-  2>&1 | xcsift
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh)"
+mkdir -p Apps/DerivedData/MaestroReports
+# `screenshots` is excluded everywhere the smoke flows run: those flows stage a
+# screen for a capture and assert nothing, so a smoke run that picked one up would
+# report a pass for having opened Messages. Apps/Maestro/config.yaml's `*.yaml`
+# glob should not reach their subdirectory in the first place — this is the lock
+# that does not depend on that being true.
+# Otherwise no tag filter, so the `daemon`-tagged flow runs too. Its host arrives as a flow
+# variable rather than the TEST_RUNNER_ environment forwarding the XCUITest needed.
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  --exclude-tags screenshots \
+  -e HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
+  --format junit --output Apps/DerivedData/MaestroReports/flows-sim.xml \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
+'''
+
+# The fast loop, and the reason Maestro is here at all: the flows re-run against
+# the app already installed, with no compile. Run `test:smoke` once, then this.
+[tasks."test:flows"]
+description = "Re-run the Maestro flows without rebuilding the app (fast loop)"
+run = '''
+#!/bin/bash
+set -euo pipefail
+UDID="$(Scripts/maestro-sim.sh --no-build)"
+_m0=$(date +%s)
+set +e
+maestro --device "$UDID" test \
+  --exclude-tags daemon,screenshots \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro
+_rc=$?
+set -e
+printf 'timing  %-24s %5ds\n' "maestro (driver+flows)" "$(($(date +%s) - _m0))"
+exit $_rc
 '''
 
 [tasks."test:sim"]
@@ -363,6 +429,10 @@ xcrun simctl install "$SIM" Apps/DerivedData/Build/Products/Debug-iphonesimulato
 xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 '''
 
+[tasks."geometry:usdz"]
+description = "Export the robot's USDZ for Create ML object-tracking training (#77)"
+run = "Scripts/export-robot-usdz.sh"
+
 [tasks.lint]
 description = "Run SwiftLint, actionlint, the catalogue check, and the version lockstep checks"
 # The shebang is not decoration: mise runs an inline task with `sh -c`, which on macOS is
@@ -389,24 +459,24 @@ if [ -n "$DRIFT" ]; then
   exit 1
 fi
 # The forked PreviewTests.stencil is only valid against one Prefire, which is why the
-# package requirement is .exact — the CLI in [tools] has to move in lockstep with it.
+# package requirement is .exact — the CLI in [tools] and both manifests move in lockstep.
 PREFIRE_CLI="$(sed -nE 's|^"github:BarredEwe/Prefire\[exe=prefire\]" = "([0-9.]+)".*|\1|p' mise.toml)"
 PREFIRE_PKG="$(sed -nE 's|.*BarredEwe/Prefire", requirement: \.exact\("([0-9.]+)"\).*|\1|p' Apps/Project.swift)"
-if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ]; then
-  echo "mise.toml pins prefire '$PREFIRE_CLI' but Apps/Project.swift pins '$PREFIRE_PKG' — bump both together." >&2
+PREFIRE_ROOT="$(sed -nE 's|.*BarredEwe/Prefire", exact: "([0-9.]+)".*|\1|p' Package.swift)"
+if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ] || [ "$PREFIRE_CLI" != "$PREFIRE_ROOT" ]; then
+  echo "mise.toml pins prefire '$PREFIRE_CLI' , Apps/Project.swift '$PREFIRE_PKG', Package.swift '$PREFIRE_ROOT' — bump all three together." >&2
   exit 1
 fi
-# xcodebuild resolves the whole Tuist workspace into Package.resolved; a plain
-# swift build/test strips those pins again and a merge can drop them silently.
-# The committed file is what has to carry them (the working tree legitimately
-# oscillates), so the check reads HEAD.
+# Package.swift declares the workspace-only packages so SwiftPM keeps their pins; a
+# branch that predates that, or a hand-edited file, can still drop them. The check
+# reads HEAD because the committed file is the one that ships.
 for PIN in prefire swift-snapshot-testing; do
   if ! git show HEAD:Package.resolved | grep -q "\"$PIN\""; then
     echo "Package.resolved at HEAD lost the Xcode-workspace pin '$PIN' — run 'mise run project' (or any snapshot task) last and commit the 25-pin version." >&2
     exit 1
   fi
 done
-PATHS="Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
+PATHS="Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
 # xcsift is an Xcode-output filter and ships for macOS only, so a Linux checkout has
 # swiftlint but not the pipe to read it through. Raw output is no loss here — AGENTS.md
 # already says to rerun the tool directly when xcsift truncates a long run.
@@ -542,6 +612,24 @@ swift Scripts/render-app-icon.swift
 git status --porcelain Apps/ReachyMini/Resources
 """
 
+# `simulator:*` is the iOS simulator; `sim-daemon` and `test:sim` are the *robot*
+# simulator, which is a different machine entirely. Slimming disables ~170 background
+# daemons in the simulator's own launchd database — persistent, per-simulator state that
+# nothing in this repository can hold, which is why applying it is a no-op you can re-run
+# (3.3 s when it already matches) rather than a one-off. Networking is untouched, so
+# discovery, the daemon's HTTP/WebSocket API and WebRTC are unaffected.
+[tasks."simulator:slim"]
+description = "Slim the pinned iOS simulator (dev profile locally, ci profile on CI)"
+run = "./Scripts/simslim.sh apply"
+
+[tasks."simulator:check"]
+description = "Report whether the pinned simulator is still slim, and what it costs"
+run = "./Scripts/simslim.sh check"
+
+[tasks."simulator:stock"]
+description = "Put the pinned iOS simulator back to stock"
+run = "./Scripts/simslim.sh off"
+
 [tasks."screenshots:store"]
 description = "Render the App Store artboards to exact iMessage screenshot sizes"
 run = """
@@ -569,31 +657,32 @@ done
 [tasks."screenshots:capture"]
 description = "Drive Messages on a simulator and photograph it for the store listing"
 depends = ["project"]
-run = """
+run = '''
 #!/bin/bash
 set -euo pipefail
-SIM="${REACHY_SHOT_SIM:-iPhone 17 Pro Max}"
 OUT="${REACHY_SHOT_DIR:-screenshots/raw}"
 mkdir -p "$OUT"
-UDID="$(xcrun simctl list devices available -j | python3 -c "
-import json,sys,os
+# The same preparation every Maestro run gets — resolve, boot, build, pin the
+# language, install. Pinning matters here for the same reason it does for the
+# flows and for one more: a capture of Messages in the wrong language ships to
+# App Store Connect looking like a screenshot of somebody else's app.
+UDID="$(Scripts/maestro-sim.sh "${REACHY_SHOT_BUILD:---no-build}")"
+# Named explicitly rather than left to Apps/Maestro's `*.yaml` glob: these flows
+# stage a screen and stop, so they must not join the smoke run. The subdirectory
+# is what keeps them out of it, and the `screenshots` tag is the second lock.
+maestro --device "$UDID" test \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro/screenshots
+# Maestro's own takeScreenshot writes a scaled PNG; simctl writes the device's
+# native pixels, which is what App Store Connect measures.
+NAME="$(xcrun simctl list devices -j | python3 -c "
+import json,sys
 d=json.load(sys.stdin)['devices']
-print(next(x['udid'] for v in d.values() for x in v if x['name']==os.environ['SIM']))
-")"
-xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl install "$UDID" Apps/DerivedData/Build/Products/Debug-iphonesimulator/ReachyMini.app
-# TEST_RUNNER_ only reaches the XCUITest runner through xcodebuild's OWN environment;
-# as a trailing `TEST_RUNNER_X=y` build setting it is silently dropped and the test
-# skips itself while the run still reports TEST SUCCEEDED.
-export TEST_RUNNER_REACHY_CAPTURE=1
-xcodebuild test -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
-  -destination "id=$UDID" -derivedDataPath Apps/DerivedData \
-  -only-testing:ReachyMiniUITests/StickerCaptureTests \
-  -testLanguage en -testRegion US CODE_SIGNING_ALLOWED=NO \
-  -skipPackagePluginValidation -skipMacroValidation 2>&1 | xcsift
-xcrun simctl io "$UDID" screenshot "$OUT/$(echo "$SIM" | tr ' ' '-').png"
-echo "wrote $OUT/$(echo "$SIM" | tr ' ' '-').png"
-"""
+print(next(x['name'] for v in d.values() for x in v if x['udid']==sys.argv[1]))
+" "$UDID" | tr ' ' '-')"
+xcrun simctl io "$UDID" screenshot "$OUT/$NAME.png"
+echo "wrote $OUT/$NAME.png"
+'''
 
 [tasks."stickers:build"]
 description = "Regenerate the iMessage sticker catalogue from art/stickers"
