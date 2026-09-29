@@ -25,12 +25,14 @@ struct ManualAddressSection: View {
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
             #endif
+                .accessibilityIdentifier(.connectAddress)
             Button(.reachy("Connect")) {
                 guard let address else { return }
                 connect(address)
             }
             .reachyButton(.standard)
             .disabled(address == nil)
+            .accessibilityIdentifier(.connectSubmit)
         } footer: {
             VStack(alignment: .leading, spacing: Space.sm) {
                 // The one thing a typed address cannot tell you it got wrong. A Lite

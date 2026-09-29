@@ -28,7 +28,8 @@ env:
 # skipped and the shell is waited for below.
 - runFlow:
     when:
-      visible: "host, host:port, or IP"
+      visible:
+        id: "connect.address"
     commands:
       # iOS asks for Local Network the moment the sweep starts. `simctl privacy` has
       # no local-network service, so it cannot be pre-granted — the alert has to be
@@ -38,10 +39,14 @@ env:
             visible: "Allow"
           commands:
             - tapOn: "Allow"
-      - tapOn: "host, host:port, or IP"
+      - tapOn:
+          id: "connect.address"
       - eraseText
       - inputText: ${HOST}
-      - tapOn: "Connect"
+      # By identifier: the screen's own title is also "Connect", and a text
+      # selector matches both (measured with `maestro hierarchy`).
+      - tapOn:
+          id: "connect.submit"
 
 # Waited on "Moves" rather than "Robot": the bare word "Robot" also appears as a
 # Settings section header and as the Robot screen's own section, so it can match
@@ -50,6 +55,10 @@ env:
 # could not have gone wrong. The tab itself does read "Robot": `maestro hierarchy`
 # on iOS 27.0 shows the button labelled "Robot" with `figure.wave` as its id, and
 # no "Taxi" anywhere — an earlier note here said otherwise and did not reproduce.
+#
+# The tabs are selected by text because nothing else reaches them: SwiftUI's
+# `TabContent.accessibilityIdentifier` does not land on the tab bar button — the
+# id above is the symbol's name, not ours. See AccessibilityID.swift.
 #
 # The ceiling is 180 s against the XCUITest's 90. Measured: on a machine also
 # running the MuJoCo daemon and the Maestro driver, the handshake finished — all

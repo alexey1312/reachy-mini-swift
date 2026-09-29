@@ -294,10 +294,21 @@ replaced by those flows (ADR 0005). Four things about that are worth knowing bef
   consistent with what slimming leaves alone: the flows are HTTP and Bonjour, and the allowlist carries no
   `mDNSResponder`, `configd` or `networkd`. A widget or Control Centre flow would be a different question, since
   `widgets` disables `PosterBoard` and `chronod`.
-- **Selectors match text with no element-type filter.** `assertVisible: "Nearby"` is weaker than the
-  `app.buttons["Nearby"]` it replaced, and there are **zero** `accessibilityIdentifier`s in the repository, so
-  anything needing to disambiguate a repeated label has no way to. That is the ceiling on what the flow set can
-  assert until identifiers land, and it is why the set is deliberately small.
+- **A control is selected by identifier; what has none is still selected by text, with no element-type filter.**
+  `AccessibilityID` (`Sources/ReachyUI/AccessibilityID.swift`) names the connect gate's five controls,
+  the flows select them with `id:`,
+  and `MaestroFlowIdentifierTests` fails when the YAML and the enum disagree in either direction.
+  The ambiguity it settled was real: the screen's title is also "Connect", so `tapOn: "Connect"` matched two elements.
+  Three things about placing one, each measured with `maestro hierarchy`:
+  - **An identifier on a container reaches every element inside it and overrides theirs.**
+    On a `DisclosureGroup` it relabelled `Start the simulator` as `connect.developer`,
+    so the Developer one sits on the group's `Label` instead,
+    where it only spreads across that one row.
+  - **A tab bar button cannot carry one.** `TabContent.accessibilityIdentifier` exists and does not reach the button:
+    the only identifier that surfaces there is the SF Symbol's name (`figure.wave` on the Robot tab), never ours.
+    So tabs and segments are still matched by visible English text,
+    the language pin stays, and `assertVisible: "Nearby"` is still weaker than the `app.buttons["Nearby"]` it replaced.
+  - **An identifier does not change a pixel**, so adding one moves no reference image.
 
 Tier 2 (`test:smoke:sim`) is tagged `daemon` and excluded from `test:smoke` by tag, the way `test:sim` is gated on
 `REACHY_SIM_HOST` — a plain run skips it. Its host arrives as a flow variable (`-e HOST=…`), not through the
