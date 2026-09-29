@@ -1,0 +1,51 @@
+# Stages the system Messages app for an App Store capture, and stops there.
+#
+# It asserts almost nothing on purpose: the deliverable is the pixels `simctl io
+# screenshot` takes afterwards, not a verdict. What it has to get right is the
+# state — an English Messages sitting in a conversation with the transcript
+# empty, which is the stage the artboards composite stickers onto.
+#
+# It lives in this subdirectory rather than beside connect-gate.yaml because
+# Apps/Maestro/config.yaml globs `*.yaml`, which does not cross a directory
+# separator — so `mise run test:smoke` cannot pick this up and hang waiting for a
+# screen nothing asserts on. The `screenshots` tag is the second lock, for a day
+# when that glob grows a `**`.
+#
+# The pack itself will not appear here, and that is the simulator rather than us:
+# its `stickerd` surfaces no third-party pack in either the "+" drawer or the
+# Stickers keyboard, while
+# `xcrun simctl spawn <udid> pluginkit -mAvv -p com.apple.message-payload-provider`
+# lists the extension with the right SDK. Confirm the drawer on hardware.
+appId: com.apple.MobileSMS
+tags:
+  - screenshots
+---
+# No clearState: the seeded conversations are the stage, and clearing takes them.
+- launchApp:
+    appId: com.apple.MobileSMS
+
+# Both seeded threads are empty; either will do. Named by its visible text rather
+# than by index, so a reordered list does not silently photograph the wrong one.
+- tapOn: "+1 (888) 555-1212"
+
+# A first run offers the QuickPath tutorial over the keyboard. It is only ever
+# shown once per simulator, so this step fires on a fresh machine and never again.
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+
+# **The keyboard stays up, and the artboards are cropped for that.** Three ways to
+# put it away were tried and none works here: `hideKeyboard` fails outright on iPad
+# ("the app uses a custom input or doesn't expose a standard dismiss action"),
+# reports success on iPhone and leaves it standing, and a tap in the empty
+# transcript does not move it either, because the compose field keeps focus.
+#
+# So the contract is the crop instead. `iphone-3-inplace.html` shows the top 1694
+# of the capture's 2698 scaled pixels, which ends 39 px above the keyboard's top
+# edge and well below the compose row. That margin is the thing to re-check if this
+# capture is ever reframed — not the keyboard.
+
+# The compose row is the one thing every artboard relies on being in frame.
+- assertVisible: "iMessage"

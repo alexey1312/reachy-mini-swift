@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1242">
+<title>Hey Reachy stickers — in place</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+  .board{position:relative;width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+
+  .head{position:absolute;top:216px;left:96px;width:1050px;}
+  .eyebrow{
+    font-size:36px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:#7A8698;margin-bottom:30px;
+  }
+  h1{font-size:90px;font-weight:700;letter-spacing:-.025em;line-height:1.08;}
+  .sub{font-size:51px;font-weight:400;line-height:1.42;color:#6B7686;margin-top:36px;max-width:980px;}
+
+  /* Real Messages capture: 1320x2868 (a 440pt screen) fitted to the 414pt board
+     width, so every margin inside it stays proportional. Scale 0.94091.
+     Vertical crop shows capture y 0-1800: through the compose row, above the
+     keyboard panel that starts at y 1815. 1800 x 0.94091 = 1694. */
+  .screen{
+    position:absolute;left:0;top:994px;width:1242px;height:1694px;
+    overflow:hidden;border-radius:104px 104px 0 0;background:#FFFFFF;
+  }
+  .screen .cap{position:absolute;left:0;top:0;width:1242px;height:2698px;}
+  .screen::after{
+    content:"";position:absolute;inset:0;border:3px solid rgba(20,24,31,.09);
+    border-bottom:none;border-radius:104px 104px 0 0;pointer-events:none;
+  }
+
+  /* Bubbles drawn into the capture's empty transcript, at the capture's own
+     effective scale (2.82x) and lined up with its compose row inset of 52px. */
+  .b{
+    position:absolute;max-width:880px;padding:20px 37px;border-radius:51px;
+    font-size:48px;line-height:1.30;letter-spacing:-.01em;
+  }
+  .in{background:#E9E9EB;color:#14181F;left:52px;}
+  .out{background:#248BF5;color:#FFFFFF;right:52px;}
+
+  .peel{position:absolute;filter:drop-shadow(0 9px 18px rgba(20,24,31,.20));}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <div class="eyebrow">Hey Reachy for iOS</div>
+    <h1>Hey Reachy stickers,<br>right in Messages</h1>
+    <p class="sub">An iMessage app, so the pack is one tap from the thread you are already in.</p>
+  </div>
+
+  <div class="screen">
+    <img class="cap" src="capture-iphone.png" alt="A Messages conversation on iPhone">
+
+    <div class="b in"  style="top:730px;">so what is actually in the pack</div>
+    <div class="b out" style="top:862px;">sixteen Reachys</div>
+    <div class="b in"  style="top:1122px;">the astronaut is the good one</div>
+
+    <img class="peel" src="stickers/magician.png" alt="Reachy the magician, peeled onto the message"
+         style="left:570px;top:832px;width:282px;height:282px;transform:rotate(-12deg);">
+    <img class="peel" src="stickers/astronaut.png" alt="Reachy the astronaut, sent on its own"
+         style="left:834px;top:1100px;width:356px;height:356px;transform:rotate(-6deg);">
+    <img class="peel" src="stickers/hacker.png" alt="Reachy the hacker, peeled onto the message"
+         style="left:470px;top:1202px;width:248px;height:248px;transform:rotate(9deg);">
+  </div>
+
+</div>
+</body>
+</html>

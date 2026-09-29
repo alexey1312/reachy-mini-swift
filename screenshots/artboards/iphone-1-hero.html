@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1242">
+<title>Hey Reachy stickers — hero</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+
+  .board{
+    position:relative;width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;
+    display:flex;flex-direction:column;justify-content:space-between;
+    padding:168px 0 150px 0;
+  }
+
+  .head{padding:0 96px;}
+  .eyebrow{
+    font-size:36px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:#7A8698;margin-bottom:30px;
+  }
+  h1{font-size:90px;font-weight:700;letter-spacing:-.025em;line-height:1.08;}
+  .sub{
+    font-size:51px;font-weight:400;line-height:1.42;color:#6B7686;
+    margin-top:36px;max-width:1000px;
+  }
+
+  .grid{display:flex;flex-direction:column;gap:40px;}
+  .row{display:flex;justify-content:center;gap:36px;}
+  .row.a{margin-left:-26px;}
+  .row.b{margin-left:26px;}
+  .row img{width:264px;height:264px;}
+
+  .r1{transform:rotate(-4deg);}
+  .r2{transform:rotate(3deg);}
+  .r3{transform:rotate(-2deg);}
+  .r4{transform:rotate(5deg);}
+  .r5{transform:rotate(2deg);}
+  .r6{transform:rotate(-5deg);}
+  .r7{transform:rotate(4deg);}
+  .r8{transform:rotate(-3deg);}
+
+  .foot{padding:0 96px;display:flex;align-items:center;gap:36px;}
+  .chip{
+    width:84px;height:84px;border-radius:22px;flex:none;
+    background:linear-gradient(180deg,#B3BCCA 0%,#9AA6B8 17%,#3E4757 83%,#353C4A 100%);
+  }
+  .foot p{font-size:45px;line-height:1.35;color:#6B7686;}
+  .foot strong{color:#3E4757;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <div class="eyebrow">iMessage sticker pack</div>
+    <h1>Sixteen Reachys for<br>your conversations</h1>
+    <p class="sub">One desk robot, sixteen jobs, every one of them moving.</p>
+  </div>
+
+  <div class="grid">
+    <div class="row a">
+      <img class="r1" src="stickers/astronaut.png" alt="Reachy as an astronaut">
+      <img class="r2" src="stickers/cowboy.png" alt="Reachy as a cowboy">
+      <img class="r3" src="stickers/doctor.png" alt="Reachy as a doctor">
+      <img class="r4" src="stickers/jazzman.png" alt="Reachy as a jazz musician">
+    </div>
+    <div class="row b">
+      <img class="r5" src="stickers/builder.png" alt="Reachy as a builder">
+      <img class="r6" src="stickers/explorer.png" alt="Reachy as an explorer">
+      <img class="r7" src="stickers/magician.png" alt="Reachy as a magician">
+      <img class="r8" src="stickers/rich.png" alt="Reachy in a top hat">
+    </div>
+    <div class="row a">
+      <img class="r3" src="stickers/captain.png" alt="Reachy as a sea captain">
+      <img class="r5" src="stickers/farmer.png" alt="Reachy as a farmer">
+      <img class="r2" src="stickers/plumber.png" alt="Reachy as a plumber">
+      <img class="r6" src="stickers/student.png" alt="Reachy as a student">
+    </div>
+    <div class="row b">
+      <img class="r7" src="stickers/cooking-chief.png" alt="Reachy as a chef">
+      <img class="r1" src="stickers/fisherman.png" alt="Reachy as a fisherman">
+      <img class="r4" src="stickers/hacker.png" alt="Reachy as a hacker">
+      <img class="r8" src="stickers/update-box.png" alt="Reachy in a shipping box">
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="chip"></div>
+    <p>One pack inside <strong>Hey Reachy</strong> —<br>sixteen animated characters.</p>
+  </div>
+
+</div>
+</body>
+</html>

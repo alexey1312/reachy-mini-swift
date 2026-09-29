@@ -335,6 +335,142 @@ one `asc` command to revert. Their public halves are readable without a session:
 `contentAdvisoryRating`, `advisories` and `genres`; the content-rights
 declaration is private and cannot be checked this way.
 
+## The sticker pack
+
+**The artwork is Apache-2.0, and the repository it comes from looks unlicensed.**
+The sixteen characters are Pollen Robotics' "Reachies",
+published under the Apache License 2.0
+in `pollen-robotics/reachy-mini-desktop-app` under `src/assets/reachies/original/`
+at 1024x1024 — ours are downscales of those, verified against `f520136ffe9b`.
+The trap is that GitHub reports that repository as having **no licence**:
+its licence file is spelled `LICENCE`, which GitHub's classifier does not recognise,
+so `gh repo view --json licenseInfo` answers `NONE`
+and the API's `.tree` listing is the only way to find it.
+Reading that as "all rights reserved" is what put this work behind
+a permission gate it never needed.
+
+Apache-2.0 permits the redistribution and the derivative works this pack is,
+commercially, so **no permission has to be waited for**.
+Two obligations follow instead.
+Section 4 wants a copy of the licence carried with the distribution,
+the attribution notices kept, and the modifications stated —
+`art/stickers/LICENSE-Apache-2.0.txt` and the provenance section of
+`art/stickers/README.md` are what satisfy that,
+and they name the downscale, the SVG render and the APNG re-encoding.
+Upstream ships no `NOTICE`, so nothing further propagates.
+Section 6 grants no trademark rights,
+and "Reachy" and "Reachy Mini" are Pollen's marks —
+that is the residual Guideline 5.2.1 exposure,
+and it is a trademark question rather than a copyright one.
+The listing already describes the app as unofficial.
+
+**Two things ship this pack without looking like shipping.**
+Merging the branch is one.
+The Xcode Cloud workflow `TestFlight (Public)`
+(`8B1DB81C-E3EB-48BC-B73B-763F9D431AB6`) is enabled
+with a `branchStartCondition` of `main`,
+so a merge archives iOS and hands it to a **public** TestFlight
+with nobody having run a release command.
+Pushing the branch at all is the other:
+`alexey1312/reachy-mini-swift` is a public repository
+and the branch adds thirty-five files under `art/stickers/`,
+so the push publishes the artwork on github.com
+before any store is involved.
+Both are read out of the account rather than assumed —
+`asc xcode-cloud workflows list --app 6799644194` prints the trigger,
+`gh repo view --json visibility` prints the other half.
+Both are worth knowing before the first push, whatever the licence position.
+
+Beyond that gate the pack costs the release almost nothing:
+
+- **A new App ID**, `com.alexey1312.ReachyMini.Stickers`,
+  and it needs a one-time step through Xcode
+  exactly as the widget's App Group did —
+  for an unrelated reason, and the failure arrives four minutes later than it should.
+  `-allowProvisioningUpdates` on a command line **cannot** create it:
+  the accounts live in Xcode.app, so xcodebuild answers `No Accounts`.
+  The archive still succeeds, which is what hides it.
+  For the archive Xcode falls back to the team wildcard profile
+  `iOS Team Provisioning Profile: *`,
+  whose `application-identifier` is `J52C3SB8K5.*` and which therefore matches
+  any bundle id (measured on a command-line archive — read the embedded profile
+  with `security cms -D -i` if this needs checking again).
+  `check-appintents-metadata.sh` then passes over that archive too.
+  Only `-exportArchive` asks for an App Store profile, and there is none:
+
+  ```
+  exportArchive No Accounts
+  exportArchive No profiles for 'com.alexey1312.ReachyMini.Stickers' were found
+  ```
+
+  So the sticker pack needs its App ID and its distribution profile created once —
+  by opening the project in Xcode and letting Signing & Capabilities do it,
+  or through `asc bundle-ids create` plus `asc profiles create`,
+  which needs the API key to hold the Admin role
+  (see the note in `Scripts/release-env.sh` about what a lesser key cannot do).
+  The tell that it worked is a third `iOS Team Store Provisioning Profile:`
+  under `~/Library/Developer/Xcode/UserData/Provisioning Profiles/` —
+  the app and the widget already have theirs, which is what proves
+  the local export path is otherwise sound.
+  **`asc profiles list` is not where to look**:
+  it does not report Xcode-managed profiles,
+  so it shows only the macOS one and reads as though iOS had never been signed here.
+  A codeless sticker pack shares no state,
+  so unlike the widget it carries no App Group — that part was never the problem.
+- **iOS only.** The extension is embedded with an `.ios` platform condition, so the
+  macOS archive never sees it and the notary never has to. Do not remove that
+  condition; `docs/release.md`'s notarization note explains what it costs.
+- **One extension, and there cannot be two.** iOS allows a single
+  `com.apple.message-payload-provider` per app, rejected at _install_ time rather
+  than at build time. See `Apps/ReachyStickers/AGENTS.md`.
+
+### iMessage screenshots
+
+App Store Connect keeps a separate screenshot row for the Messages extension, and
+`asc metadata push` never touches it — screenshots are their own command family.
+The two sizes worth filling are the ones the section offers:
+
+| Device type                      | Pixels                   |
+| -------------------------------- | ------------------------ |
+| `IMESSAGE_APP_IPHONE_65`         | 1242x2688 (or 1284x2778) |
+| `IMESSAGE_APP_IPAD_PRO_3GEN_129` | 2048x2732 (or 2064x2752) |
+
+The capture is a Maestro flow — `Apps/Maestro/screenshots/messages-stage.yaml`,
+which stages the system Messages app and stops.
+It runs through the same `Scripts/maestro-sim.sh` every other flow does,
+so the simulator is resolved, booted, built for, **pinned to English** and installed
+exactly as the smoke run leaves it.
+That last part is not a nicety:
+a capture of Messages in the wrong language
+ships to App Store Connect looking like a screenshot of somebody else's app.
+
+`REACHY_SNAPSHOT_SIM` chooses the device, so the two rows are two runs:
+
+```bash
+REACHY_SNAPSHOT_SIM="iPhone 17 Pro Max" mise run screenshots:capture
+REACHY_SNAPSHOT_SIM="iPad Pro 13-inch (M5)" mise run screenshots:capture
+mise run screenshots:store     # render the artboards to exact pixel sizes
+mise run asc -- screenshots upload --app 6799644194 --version 0.6.0 \
+  --device-type IMESSAGE_APP_IPHONE_65 --path screenshots/store
+```
+
+`screenshots:capture` passes `--no-build` by default,
+because the app is normally already installed from a smoke or device run
+and the compile is the whole cost;
+`REACHY_SHOT_BUILD=1` forces it to build.
+
+Two things to know before shooting.
+The `iPad Pro 13-inch (M5)` simulator is natively 2064x2752,
+which is an accepted iPad size with no resampling at all —
+whereas **no iOS 27 simulator is a 6.5" iPhone**,
+so that frame has to be composed to size whatever else happens.
+And the simulator will not show you the pack:
+its `stickerd` surfaces no third-party pack
+in either the "+" drawer or the Stickers browser,
+even though `pluginkit -mAvv -p com.apple.message-payload-provider`
+lists the extension with the right SDK, display name and parent.
+Confirm the drawer on hardware through `mise run device` before submitting.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,
@@ -395,7 +531,7 @@ Everything after `--` goes to `asc`:
 ```bash
 mise run asc -- apps list
 mise run asc -- builds list --app 6799644194   # did the TestFlight upload land?
-mise run asc -- testflight beta-groups list --app 6799644194
+mise run asc -- testflight groups list --app 6799644194
 ```
 
 `asc` resolves a stored profile before the environment, so an `asc auth login`

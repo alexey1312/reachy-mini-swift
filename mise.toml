@@ -22,39 +22,55 @@ git config core.hooksPath .githooks 2>/dev/null || true
 [tools]
 # --- Swift Development ---
 # Swift itself is managed by swiftly via .swift-version, not by mise.
-swiftformat = "0.62.1" # Swift code formatting
-swiftlint = "0.65.0"   # Swift linting
-xcsift = "1.4.1"       # xcodebuild/swift output filtering
-tuist = "4.203.1"      # Xcode project generation (Apps/)
+swiftformat = "0.63.0" # Swift code formatting
+swiftlint = "0.65.1"   # Swift linting
+xcsift = "1.5.0"       # xcodebuild/swift output filtering
+tuist = "4.209.0"      # Xcode project generation (Apps/)
+# 4.209.0 asks tuist.dev for the new `KURA` cache backend, and the first machine to ask an account
+# that has none provisioned gets `{"endpoints":[],"provisioning":true}` from
+# `/api/cache/endpoints` — which the CLI reports as a fatal `No cache endpoints are available.`
+# and generation dies. The request is what starts the provisioning, so **retry**: the second run
+# succeeded 40 seconds later. It only bites a machine with a tuist.dev session, which is why a
+# laptop without one and CI (`TUIST_CACHE_ENABLED=false`) never see it, and why it reads as the
+# version bump having broken generation. `TUIST_CACHE_ENABLED=false mise run project` is the
+# escape hatch if it ever persists.
 
 # --- Documentation & Formatting ---
-dprint = "0.55.2" # Markdown formatting
+dprint = "0.57.4" # Markdown formatting
 
 # --- Snapshots & Storybook ---
 # The release ships a single lowercase `prefire` binary, which the backend cannot guess from the
 # repository name — hence the explicit exe option.
+# Held at 5.7.0 deliberately, and a bump is a migration rather than a version change:
+# `Apps/ReachyUISnapshotTests/PreviewTests.stencil` is a fork of *this version's* built-in
+# template, and 5.9.0 renamed the runtime API underneath it — `snapshotDevice()` became
+# `snapshotDeviceConfig()`, `checkEnvironments()` + `UIView.setAnimationsEnabled(false)` became
+# `prepareEnvironment()`, and `PrefireSnapshot` gained `fixedLayoutSize`. So the fork does not
+# compile against it, and re-forking moves the rendering path, which means re-recording ~1100
+# references. Diff `PrefireExecutable/Sources/PrefireCore/Templates/PreviewTestsTemplate.swift`
+# between the two tags before attempting it.
 "github:BarredEwe/Prefire[exe=prefire]" = "5.7.0"
-git-lfs = "3.7.1" # Snapshot reference images
+git-lfs = "3.8.0" # Snapshot reference images
 
 # --- Git & CI ---
-hk = "1.54.0"         # Git hooks manager (version must match hk.pkl package URI)
+hk = "2.4.0"         # Git hooks manager (version must match hk.pkl package URI)
 actionlint = "1.7.12" # GitHub Actions linting
-git-cliff = "2.13.1"  # Changelog generation
+git-cliff = "2.14.2"  # Changelog generation
 
 # --- Release ---
 # The release ships a bare binary rather than an archive, and that decides the option:
 # `bin` renames a single downloaded file, `exe` (used for Prefire above) only renames one
 # extracted from an archive and here leaves an unrunnable `asc_<version>_macOS`.
-"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "3.7.0" # App Store Connect API client
+"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.7.0" # App Store Connect API client
 
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
-uv = "0.12.1"   # installs into that venv as APFS clones — see sim-daemon
+uv = "0.12.19"   # installs into that venv as APFS clones — see sim-daemon
 # Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
 # rather than left to a global `brew install` because CI and a fresh clone have no brew
 # copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
 # is the only asset it publishes, so bootstrap.sh disables it everywhere else.
-"github:MobAI-App/simslim[exe=simslim]" = "0.8.0"
+"github:MobAI-App/simslim[exe=simslim]" = "0.11.0"
 
 # --- End-to-end flows ---
 # Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
@@ -258,7 +274,7 @@ mkdir -p Apps/DerivedData/MaestroReports
 _m0=$(date +%s)
 set +e
 maestro --device "$UDID" test \
-  --exclude-tags daemon \
+  --exclude-tags daemon,screenshots \
   --format junit --output Apps/DerivedData/MaestroReports/flows.xml \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
   Apps/Maestro
@@ -276,11 +292,17 @@ run = '''
 set -euo pipefail
 UDID="$(Scripts/maestro-sim.sh)"
 mkdir -p Apps/DerivedData/MaestroReports
-# No tag filter, so the `daemon`-tagged flow runs too. Its host arrives as a flow
+# `screenshots` is excluded everywhere the smoke flows run: those flows stage a
+# screen for a capture and assert nothing, so a smoke run that picked one up would
+# report a pass for having opened Messages. Apps/Maestro/config.yaml's `*.yaml`
+# glob should not reach their subdirectory in the first place — this is the lock
+# that does not depend on that being true.
+# Otherwise no tag filter, so the `daemon`-tagged flow runs too. Its host arrives as a flow
 # variable rather than the TEST_RUNNER_ environment forwarding the XCUITest needed.
 _m0=$(date +%s)
 set +e
 maestro --device "$UDID" test \
+  --exclude-tags screenshots \
   -e HOST="${REACHY_SMOKE_HOST:-127.0.0.1:8000}" \
   --format junit --output Apps/DerivedData/MaestroReports/flows-sim.xml \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
@@ -302,7 +324,7 @@ UDID="$(Scripts/maestro-sim.sh --no-build)"
 _m0=$(date +%s)
 set +e
 maestro --device "$UDID" test \
-  --exclude-tags daemon \
+  --exclude-tags daemon,screenshots \
   --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
   Apps/Maestro
 _rc=$?
@@ -470,7 +492,7 @@ for PIN in prefire swift-snapshot-testing; do
     exit 1
   fi
 done
-PATHS="Sources Tests Apps/ReachyMini Apps/ReachyMiniUITests Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
+PATHS="Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
 # xcsift is an Xcode-output filter and ships for macOS only, so a Linux checkout has
 # swiftlint but not the pipe to read it through. Raw output is no loss here — AGENTS.md
 # already says to rerun the tool directly when xcsift truncates a long run.
@@ -623,6 +645,84 @@ run = "./Scripts/simslim.sh check"
 [tasks."simulator:stock"]
 description = "Put the pinned iOS simulator back to stock"
 run = "./Scripts/simslim.sh off"
+
+[tasks."screenshots:store"]
+description = "Render the App Store artboards to exact iMessage screenshot sizes"
+run = """
+#!/bin/bash
+set -euo pipefail
+IN="${REACHY_SHOT_HTML:-screenshots/artboards}"
+OUT="${REACHY_SHOT_OUT:-screenshots/store}"
+# The artboards reference their images by relative path, and WKWebView is only
+# given read access to the artboard directory — so the stickers and the simulator
+# captures are assembled beside the HTML rather than referenced where they live.
+# From the stills rather than the shipped APNGs: an animation's first frame is a
+# rest pose, and some of them start from nothing — `magician-pop` appears out of
+# thin air, so its frame zero is an almost empty picture.
+mkdir -p "$IN/stickers"
+cp -f art/stickers/*.png "$IN/stickers/"
+for f in screenshots/raw/capture-*.png; do [ -e "$f" ] && cp -f "$f" "$IN/"; done
+swift Scripts/render-store-screenshots.swift "$IN" "$OUT"
+# The sizes are the whole point, so they are asserted rather than trusted.
+for f in "$OUT"/*.png; do
+  sips -g pixelWidth -g pixelHeight "$f" | tail -2 | tr -d ' \n' | sed "s|^|$(basename "$f") |"
+  echo
+done
+"""
+
+[tasks."screenshots:capture"]
+description = "Drive Messages on a simulator and photograph it for the store listing"
+depends = ["project"]
+run = '''
+#!/bin/bash
+set -euo pipefail
+OUT="${REACHY_SHOT_DIR:-screenshots/raw}"
+mkdir -p "$OUT"
+# The same preparation every Maestro run gets — resolve, boot, build, pin the
+# language, install. Pinning matters here for the same reason it does for the
+# flows and for one more: a capture of Messages in the wrong language ships to
+# App Store Connect looking like a screenshot of somebody else's app.
+# `--no-build` by default: the app is normally already installed from a smoke or
+# device run, and the compile is the whole cost. REACHY_SHOT_BUILD=1 forces it.
+# Spelled as an if rather than an array, because /bin/bash here is 3.2 and an
+# empty "${arr[@]}" is an unbound-variable error under `set -u` in that shell.
+if [ -n "${REACHY_SHOT_BUILD:-}" ]; then
+  UDID="$(Scripts/maestro-sim.sh)"
+else
+  UDID="$(Scripts/maestro-sim.sh --no-build)"
+fi
+# Named explicitly rather than left to Apps/Maestro's `*.yaml` glob: these flows
+# stage a screen and stop, so they must not join the smoke run. The subdirectory
+# is what keeps them out of it, and the `screenshots` tag is the second lock.
+maestro --device "$UDID" test \
+  --debug-output Apps/DerivedData/MaestroDebug --flatten-debug-output \
+  Apps/Maestro/screenshots
+# Maestro's own takeScreenshot writes a scaled PNG; simctl writes the device's
+# native pixels, which is what App Store Connect measures.
+#
+# Named by *family* rather than by device, because that is the name the artboards
+# reference — `screenshots:store` copies `capture-iphone.png` and `capture-ipad.png`
+# in beside the HTML, and a file named after the simulator would land as neither.
+FAMILY="$(xcrun simctl list devices -j | python3 -c "
+import json, sys
+groups = json.load(sys.stdin)['devices']
+name = next(d['name'] for g in groups.values() for d in g if d['udid'] == sys.argv[1])
+print('ipad' if 'iPad' in name else 'iphone')
+" "$UDID")"
+xcrun simctl io "$UDID" screenshot "$OUT/capture-$FAMILY.png"
+sips -g pixelWidth -g pixelHeight "$OUT/capture-$FAMILY.png" | tail -2 | tr -d ' \n'
+echo "  -> $OUT/capture-$FAMILY.png"
+'''
+
+[tasks."stickers:build"]
+description = "Regenerate the iMessage sticker catalogue from art/stickers"
+run = """
+#!/bin/bash
+set -euo pipefail
+uv run --quiet --with-requirements Scripts/stickers-requirements.txt \
+  python Scripts/build-stickers.py
+git status --porcelain Apps/ReachyStickers
+"""
 
 [tasks.sim-daemon]
 description = "Run simulated Reachy Mini daemon (MuJoCo) reachable from LAN devices"

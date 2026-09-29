@@ -42,3 +42,13 @@ __pycache__/
 
 # App Store Connect CLI run artifacts
 .asc/
+
+# Store screenshots. The artboards under `screenshots/artboards/*.html` are the
+# design and stay tracked; everything around them is regenerable — the rendered
+# PNGs live in App Store Connect, the simulator captures come from
+# `screenshots:capture`, and the sticker copies are assembled by
+# `screenshots:store` out of the catalogue.
+screenshots/store/
+screenshots/raw/
+screenshots/artboards/stickers/
+screenshots/artboards/capture-*.png

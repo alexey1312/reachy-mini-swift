@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=2048">
+<title>Hey Reachy stickers — iPad drawer</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:2048px;height:2732px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+  .board{position:relative;width:2048px;height:2732px;overflow:hidden;background:#F1F3F6;}
+
+  .head{position:absolute;top:200px;left:160px;width:1728px;}
+  .eyebrow{
+    font-size:32px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:#7A8698;margin-bottom:28px;
+  }
+  h1{font-size:112px;font-weight:700;letter-spacing:-.028em;line-height:1.08;}
+  .sub{font-size:56px;font-weight:400;line-height:1.40;color:#6B7686;margin-top:40px;}
+
+  .drawer{
+    position:absolute;left:160px;top:700px;width:1728px;height:2032px;
+    background:#FFFFFF;border:2px solid #E4E7EC;border-bottom:none;
+    border-radius:96px 96px 0 0;overflow:hidden;
+  }
+  .grab{
+    position:absolute;left:798px;top:44px;width:132px;height:12px;
+    border-radius:6px;background:#D6DAE1;
+  }
+
+  .bar{
+    position:absolute;left:56px;top:104px;width:1616px;height:116px;
+    display:flex;align-items:center;gap:32px;
+  }
+  .bar .chip{
+    width:96px;height:96px;border-radius:24px;flex:none;
+    background:linear-gradient(180deg,#B3BCCA 0%,#9AA6B8 17%,#3E4757 83%,#353C4A 100%);
+  }
+  .bar .name{font-size:44px;font-weight:600;letter-spacing:-.01em;line-height:1.2;}
+  .bar .meta{font-size:32px;font-weight:400;color:#6B7686;line-height:1.2;margin-top:8px;}
+
+  .sgrid{
+    position:absolute;left:56px;top:280px;width:1616px;
+    display:flex;flex-wrap:wrap;gap:56px 48px;
+  }
+  .sgrid img{width:368px;height:368px;}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <div class="eyebrow">One pack, sixteen characters</div>
+    <h1>Pick a Reachy for the moment</h1>
+    <p class="sub">The whole cast on one screen, every one of them animated.</p>
+  </div>
+
+  <div class="drawer">
+    <div class="grab"></div>
+
+    <div class="bar">
+      <div class="chip"></div>
+      <div>
+        <div class="name">Hey Reachy</div>
+        <div class="meta">Sixteen animated characters</div>
+      </div>
+    </div>
+
+    <div class="sgrid">
+      <img src="stickers/astronaut.png" alt="Reachy as an astronaut">
+      <img src="stickers/builder.png" alt="Reachy as a builder">
+      <img src="stickers/captain.png" alt="Reachy as a sea captain">
+      <img src="stickers/cooking-chief.png" alt="Reachy as a chef">
+      <img src="stickers/cowboy.png" alt="Reachy as a cowboy">
+      <img src="stickers/doctor.png" alt="Reachy as a doctor">
+      <img src="stickers/explorer.png" alt="Reachy as an explorer">
+      <img src="stickers/farmer.png" alt="Reachy as a farmer">
+      <img src="stickers/fisherman.png" alt="Reachy as a fisherman">
+      <img src="stickers/hacker.png" alt="Reachy as a hacker">
+      <img src="stickers/jazzman.png" alt="Reachy as a jazz musician">
+      <img src="stickers/magician.png" alt="Reachy as a magician">
+      <img src="stickers/plumber.png" alt="Reachy as a plumber">
+      <img src="stickers/rich.png" alt="Reachy in a top hat">
+      <img src="stickers/student.png" alt="Reachy as a student">
+      <img src="stickers/update-box.png" alt="Reachy in a shipping box">
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

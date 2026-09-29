@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=2048">
+<title>Hey Reachy stickers — iPad conversation</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:2048px;height:2732px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+  .board{position:relative;width:2048px;height:2732px;overflow:hidden;background:#F1F3F6;}
+
+  .head{position:absolute;top:240px;left:160px;width:1728px;}
+  h1{font-size:112px;font-weight:700;letter-spacing:-.028em;line-height:1.08;}
+  .sub{font-size:56px;font-weight:400;line-height:1.40;color:#6B7686;margin-top:40px;}
+
+  /* Real Messages split view: 2064x2752, shown 1:1 with 8px trimmed each side.
+     Vertical crop shows capture y 0-1930 — through the compose row, stopping
+     just above the keyboard, which starts at y 1937. */
+  .screen{
+    position:absolute;left:0;top:802px;width:2048px;height:1930px;
+    overflow:hidden;border-radius:72px 72px 0 0;background:#FFFFFF;
+  }
+  .screen .cap{position:absolute;left:-8px;top:0;width:2064px;height:2752px;}
+  .screen::after{
+    content:"";position:absolute;inset:0;border:2px solid rgba(20,24,31,.09);
+    border-bottom:none;border-radius:72px 72px 0 0;pointer-events:none;
+  }
+
+  /* Bubbles laid into the conversation pane. The pane starts at artboard x 740;
+     the capture's own compose row sits 47px inside it, so bubbles line up at 788. */
+  .b{
+    position:absolute;max-width:900px;padding:14px 26px;border-radius:36px;
+    font-size:34px;line-height:1.30;letter-spacing:-.005em;
+  }
+  .in{background:#E9E9EB;color:#14181F;left:788px;}
+  .out{background:#248BF5;color:#FFFFFF;right:46px;}
+
+  .peel{position:absolute;filter:drop-shadow(0 8px 16px rgba(20,24,31,.20));}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <h1>Drop one into the thread</h1>
+    <p class="sub">Stickers peel onto the bubble, at whatever angle you leave them.</p>
+  </div>
+
+  <div class="screen">
+    <img class="cap" src="capture-ipad.png" alt="A Messages conversation on iPad">
+
+    <div class="b in"  style="top:840px;">so the update has the stickers</div>
+    <div class="b out" style="top:938px;">sixteen, and they all move</div>
+    <div class="b in"  style="top:1128px;">ok which one is that</div>
+    <div class="b out" style="top:1226px;">the magician</div>
+    <div class="b in"  style="top:1386px;">send the cowboy</div>
+
+    <img class="peel" src="stickers/hacker.png" alt="Reachy the hacker, peeled onto the message"
+         style="left:1180px;top:892px;width:200px;height:200px;transform:rotate(9deg);">
+    <img class="peel" src="stickers/magician.png" alt="Reachy the magician, peeled onto the message"
+         style="left:1580px;top:1198px;width:220px;height:220px;transform:rotate(-12deg);">
+    <img class="peel" src="stickers/cowboy.png" alt="Reachy the cowboy, sent on its own"
+         style="left:1722px;top:1468px;width:280px;height:280px;transform:rotate(-6deg);">
+  </div>
+
+</div>
+</body>
+</html>

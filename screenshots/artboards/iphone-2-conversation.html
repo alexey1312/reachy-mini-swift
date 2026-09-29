@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1242">
+<title>Hey Reachy stickers — in a conversation</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+  body{
+    font-family:-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:#14181F;
+  }
+  img{display:block;}
+  .board{position:relative;width:1242px;height:2688px;overflow:hidden;background:#F1F3F6;}
+
+  .head{position:absolute;top:216px;left:96px;width:1050px;}
+  h1{font-size:90px;font-weight:700;letter-spacing:-.025em;line-height:1.08;}
+  .sub{font-size:51px;font-weight:400;line-height:1.42;color:#6B7686;margin-top:36px;max-width:960px;}
+
+  /* the transcript stage */
+  .thread{
+    position:absolute;left:0;top:900px;width:1242px;height:1788px;
+    background:#FFFFFF;border-radius:108px 108px 0 0;overflow:hidden;
+  }
+  .thread::after{
+    content:"";position:absolute;inset:0;border:3px solid rgba(20,24,31,.07);
+    border-bottom:none;border-radius:108px 108px 0 0;pointer-events:none;
+  }
+
+  /* bubbles — 17pt type, 18pt radius, 16pt side inset, at 3x */
+  .b{
+    position:absolute;max-width:900px;padding:21px 39px;border-radius:54px;
+    font-size:51px;line-height:1.30;letter-spacing:-.01em;
+  }
+  .in{background:#E9E9EB;color:#14181F;left:48px;}
+  .out{background:#248BF5;color:#FFFFFF;right:48px;}
+
+  .peel{position:absolute;filter:drop-shadow(0 9px 18px rgba(20,24,31,.20));}
+
+  /* compose row */
+  .compose{position:absolute;left:0;bottom:0;width:1242px;height:216px;display:flex;align-items:center;padding:0 48px;gap:36px;}
+  .plus{position:relative;width:99px;height:99px;border-radius:50%;background:#F0F0F3;flex:none;}
+  .plus i,.plus b{position:absolute;left:50%;top:50%;background:#5F6572;border-radius:3px;}
+  .plus i{width:42px;height:6px;margin:-3px 0 0 -21px;}
+  .plus b{width:6px;height:42px;margin:-21px 0 0 -3px;}
+  .field{
+    flex:1;height:105px;border-radius:53px;border:3px solid #E4E6EB;background:#FCFCFD;
+    display:flex;align-items:center;padding:0 42px;font-size:48px;color:#AEB2BB;letter-spacing:-.01em;
+  }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <div class="head">
+    <h1>Peel one on<br>and send it</h1>
+    <p class="sub">Stickers land on the bubble, at whatever angle you drop them.</p>
+  </div>
+
+  <div class="thread">
+
+    <div class="b in"  style="top:220px;">did the sticker pack land yet</div>
+    <div class="b out" style="top:358px;">sixteen of them</div>
+    <div class="b in"  style="top:640px;">ok which one is that</div>
+    <div class="b out" style="top:778px;">the magician</div>
+    <div class="b in"  style="top:1060px;">send the astronaut</div>
+
+    <img class="peel" src="stickers/magician.png" alt="Reachy the magician, peeled onto the message"
+         style="left:600px;top:330px;width:300px;height:300px;transform:rotate(-13deg);">
+    <img class="peel" src="stickers/plumber.png" alt="Reachy the plumber, peeled onto the message"
+         style="left:360px;top:694px;width:264px;height:264px;transform:rotate(10deg);">
+    <img class="peel" src="stickers/astronaut.png" alt="Reachy the astronaut, sent on its own"
+         style="left:774px;top:1150px;width:372px;height:372px;transform:rotate(-6deg);">
+
+    <div class="compose">
+      <div class="plus"><i></i><b></b></div>
+      <div class="field">iMessage</div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

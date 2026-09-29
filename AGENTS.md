@@ -143,6 +143,9 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
 ./bin/mise run simulator:slim  # Slim the iOS simulator the tests run on (bootstrap.sh does this too)
 ./bin/mise run simulator:check # Is it still slim, what does it cost, do widgets and App Intents still work
 ./bin/mise run simulator:stock # Put it back to stock
+./bin/mise run stickers:build  # Regenerate the iMessage sticker catalogue from art/stickers
+./bin/mise run screenshots:capture # Stage Messages on a simulator and photograph it
+./bin/mise run screenshots:store   # Render the App Store artboards to exact pixel sizes
 ```
 
 `build` / `test` are SwiftPM only — they never compile `Apps/ReachyMini`. Use `build:app` for that; CI runs it in a
@@ -736,7 +739,13 @@ Consult `.claude/rules/` when working in the matching area:
 
 Per-target notes live beside the code:
 `Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI}/AGENTS.md`
-(`CLAUDE.md` is a symlink to it). **`ReachyMedia/AGENTS.md` owns the audio-session handover and the
+and `Apps/ReachyStickers/AGENTS.md`
+(`CLAUDE.md` is a symlink to it).
+**`Apps/ReachyStickers/AGENTS.md` owns the iMessage sticker pack** —
+Apple's 500 KB per-sticker ceiling and what actually buys the margin back,
+the two catalogue spellings of which Tuist silently drops one,
+and why there is one Messages extension and there cannot be two.
+Read it before touching `art/stickers`, the generator, or the pack's target. **`ReachyMedia/AGENTS.md` owns the audio-session handover and the
 LiveCommunicationKit call framing (#78)** — read it before touching `AVAudioSession`, `RTCAudioSession`
 or anything named `Call*`. **`ReachyDesign/AGENTS.md` is the design system's entire rulebook** — the tokens,
 the `SurfaceRole` facade, the four things glass does headless, what a dark reference proves and what it does not, and

@@ -44,6 +44,9 @@ struct SettingsScreen: View {
             NotificationsSection()
             privacySection
             AdvancedSettingsSection(session: session)
+            // Last, and about neither the robot nor the app's behaviour: it is the
+            // attribution Apache-2.0 asks for. See AcknowledgementsSection.
+            AcknowledgementsSection()
         }
         .formStyle(.grouped)
         .readablePage()

@@ -21,6 +21,19 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The attribution section on its own.
+    ///
+    /// Captured here rather than through `SettingsScreen` for the same reason the
+    /// Advanced group is: it is the last section of a long form and sits below the
+    /// fold on both snapshot devices, so it would appear in no reference at all.
+    static func acknowledgements() -> some View {
+        Form {
+            AcknowledgementsSection()
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     /// The Advanced group on its own, open.
     ///
     /// Captured here rather than through `SettingsScreen`, where it sits below the
