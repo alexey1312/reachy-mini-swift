@@ -18,10 +18,10 @@ fastest route is usually an issue rather than an email.
   camera, no app store and no Wi-Fi behind it. There is still no account to create.
 - **Daemon 1.9.0 or newer.** Newer 1.x daemons connect with a compatibility warning; older or different-major versions
   are refused before any command is sent.
-- **iOS 18 or macOS 15.** The Mac version is on the
-  [App Store](https://apps.apple.com/app/hey-reachy/id6799644194) and also ships as a notarized zip on every
-  [release](https://github.com/alexey1312/reachy-mini-swift/releases). iPhone and iPad are in review; until they land,
-  one [TestFlight link](https://testflight.apple.com/join/CGjefT9a) covers all three.
+- **iOS 18 or macOS 15.** iPhone, iPad and Mac are all on the
+  [App Store](https://apps.apple.com/app/hey-reachy/id6799644194), under one purchase, and the Mac also ships as a
+  notarized zip on every [release](https://github.com/alexey1312/reachy-mini-swift/releases). One
+  [TestFlight link](https://testflight.apple.com/join/CGjefT9a) carries the public beta for all three.
 
 ## Getting help
 

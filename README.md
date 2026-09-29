@@ -9,7 +9,7 @@ run in simulation — or no robot at all, with the simulator the app carries its
 <br clear="left" />
 
 [![CI](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/alexey1312/reachy-mini-swift/actions/workflows/ci.yml)
-[![Mac App Store](https://img.shields.io/itunes/v/6799644194?label=Mac%20App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
+[![App Store](https://img.shields.io/itunes/v/6799644194?label=App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
 [![TestFlight](https://img.shields.io/badge/TestFlight-public%20beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/CGjefT9a)
 
 <p align="center">
@@ -56,15 +56,15 @@ developer side of the same project.
 
 <p align="center">
   <a href="https://apps.apple.com/app/hey-reachy/id6799644194">
-    <img src="https://img.shields.io/badge/Download%20on%20the%20Mac%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the Mac App Store" />
+    <img src="https://img.shields.io/badge/Download%20on%20the%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
   </a>
   <a href="https://testflight.apple.com/join/CGjefT9a">
     <img src="https://img.shields.io/badge/Join%20the%20public%20beta%20on%20TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Join the public beta on TestFlight" />
   </a>
 </p>
 
-The Mac version is on the App Store. iPhone and iPad are in review, and until they land the TestFlight link is the
-way in — one link for all three. Minimum iOS 18 and macOS 15. Each
+iPhone, iPad and Mac are all on the App Store, under one purchase. The TestFlight link carries the public beta, which
+runs ahead of the release. Minimum iOS 18 and macOS 15. Each
 [release](https://github.com/alexey1312/reachy-mini-swift/releases) also carries a notarized Mac zip, signed with a
 Developer ID.
 
