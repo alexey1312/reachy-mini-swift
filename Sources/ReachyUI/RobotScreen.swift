@@ -27,8 +27,9 @@ struct RobotScreen: View {
     var body: some View {
         Form {
             statusSection
-            controlSection
-            identitySection
+            // Under the status rather than at the foot of the form: it qualifies
+            // everything below it, and at the foot it sat past the fold on every
+            // device — the reference captured for it never showed it.
             if let warning = DaemonCompatibilityCaption.warning(for: session.compatibility) {
                 Section {
                     Label(warning.message, systemImage: "exclamationmark.triangle")
@@ -38,6 +39,8 @@ struct RobotScreen: View {
                     }
                 }
             }
+            controlSection
+            identitySection
             if let error = session.robotError {
                 // No retry beside it: the Link row above reconnects on its own, and a
                 // second button here would race the sweep it reports on.
