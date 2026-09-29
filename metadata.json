@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M3P0AWWJM6HPP5RHGFBNHKMS",
+  "strategy": "manual-commit",
+  "branch": "feat/hf-account-deletion-link",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-linking-failed-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-linking-failed-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-linking-failed-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-linking-failed-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-relay-unavailable-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-relay-unavailable-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-relay-unavailable-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-relay-unavailable-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-robot-linked-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-robot-linked-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-robot-linked-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-robot-linked-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-signed-in-robot-not-linked-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-signed-in-robot-not-linked-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-signed-in-robot-not-linked-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/HF-signed-in-robot-not-linked-iPhone-16-Pro.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/Hugging-Face-robot-over-the-relay-iPad-Pro-11-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/Hugging-Face-robot-over-the-relay-iPad-Pro-11.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/Hugging-Face-robot-over-the-relay-iPhone-16-Pro-dark.1.png",
+    "Apps/ReachyUISnapshotTests/__Snapshots__/HFAccountPreviewsTests.generated/Hugging-Face-robot-over-the-relay-iPhone-16-Pro.1.png",
+    "Sources/ReachyDesign/Resources/Localizable.xcstrings",
+    "Sources/ReachyUI/Settings/HFAccountSection.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 8290,
+    "cache_read_tokens": 1456388,
+    "output_tokens": 5089,
+    "api_call_count": 11
+  }
+}
