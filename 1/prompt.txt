@@ -1,0 +1,293 @@
+Можешь проверить в TestFlight какая версия? Нам надо бы туда релизную, найти не могу
+
+---
+
+Странно, я посмтавил данную версию, включил робота, камеру а в истоии взонков ничего
+
+---
+
+Проблема другая, у робота теперь стоит демон новой версии, а мы его поддержку добавили в поздих вресиях прилажки
+И я нормально не могу кроботу больше подключиться
+Каежтся придется выкатывать сарзу послдению доступную версию
+
+---
+
+<task-notification>
+<task-id>b6q8jzchx</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/b6q8jzchx.output</output-file>
+<status>completed</status>
+<summary>Background command "Archive iOS Release and upload to TestFlight" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Сделал
+
+---
+
+<task-notification>
+<task-id>b6msmj287</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/b6msmj287.output</output-file>
+<status>completed</status>
+<summary>Background command "Archive iOS Release and upload to TestFlight with Xcode 27.1" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b0fuqj31n</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/b0fuqj31n.output</output-file>
+<status>completed</status>
+<summary>Background command "Upload the ipa to App Store Connect" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b8n667y1c</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/b8n667y1c.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for build processing to finish" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+заменяй билд на 203 в ревью
+Жду когда выгрузиться, скачай в TestFlight и запишу видео
+
+---
+
+<task-notification>
+<task-id>bmg4atw0g</task-id>
+<tool-use-id>toolu_01NJE6wSuvrMDDjwDWsm3j7r</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bmg4atw0g.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for build 203 to appear in App Store Connect" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<pasted_content id="e71a">
+Unable to Add for Review
+
+The items below are required to start the review process:
+
+New apps and app updates must be built with the latest public (GM) versions of Xcode, and the iOS, macOS, watchOS, and tvOS SDKs. Apps built with beta versions aren't allowed. Learn More
+This build is using a beta version of Xcode and can’t be submitted. Make sure you’re using the latest version of Xcode or the latest seed release found on the releases tab in News and Updates
+</pasted_content id="e71a">
+
+Блин
+
+---
+
+Если мы сейчас накатим релизынй xcode 27? А видео оставим
+
+
+<pasted_content id="e71a">
+/Users/aleksei/Downloads/IMG_6276.MOV
+</pasted_content id="e71a">
+
+Это ок будет?
+
+---
+
+Качаю xcode 27
+
+---
+
+<pasted_content id="e71a">
+End из системного UI
+</pasted_content id="e71a">
+
+ - проблема в том что его нет в системном UI, то есть видно что звонок идет, на остнове что-то есть но он не раскрывается в привычном виде
+Когда делали мы так и не разобрались
+
+---
+
+То что цены вдины - это просто виджеты конвертер валюты
+
+---
+
+Я думаю это тоже не пробема
+
+---
+
+Xcode 27 скачен и активен
+
+---
+
+<task-notification>
+<task-id>bf223t9kg</task-id>
+<tool-use-id>toolu_01BeCKgwDDS91m1Btq7F5E1x</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bf223t9kg.output</output-file>
+<status>completed</status>
+<summary>Background command "Archive and export build 204 with Xcode 27 GM" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>b77c89bp3</task-id>
+<tool-use-id>toolu_01VKoKWTw56mWhS5DAa5rwiV</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/b77c89bp3.output</output-file>
+<status>completed</status>
+<summary>Background command "Upload build 204 to App Store Connect" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bll7q0oc3</task-id>
+<tool-use-id>toolu_01RvQLaHnL2VwMVo1FjuZjRP</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bll7q0oc3.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for build 204 to finish processing" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+прицепи 204 к версии и добавь в TestFlight
+
+---
+
+204 ок, приложена, подгтовь текст ответа (notes тоже надо?)
+
+---
+
+/Users/aleksei/Downloads/IMG_6285.MOV
+Готово
+
+---
+
+В репо не будем добавлять!
+
+---
+
+В репо не будем добавлять!
+
+---
+
+[Image #2]
+Я сам приклвадю файл? Видео мы ведь не размещаем для всех? Сохрани 
+
+<pasted_content id="e71a">
+Hey-Reachy-0.5.0-demo.mp4
+</pasted_content id="e71a">
+
+ в donwloads я приложу
+
+---
+
+Вроде все, статус измненился
+
+---
+
+<pasted_content id="e71a">
+AppleToday 12:48 PM
+Hello,
+
+Thank you for your resubmission. Upon further review, we identified additional issues that need your attention. See below for more information.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.  
+
+Review Environment
+Submission ID: 2b27f1e4-9f5e-4f50-803e-f14fe3ca48dc
+Review date: September 23, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 0.5.0 (204)
+
+Guideline 5.1.1(v) - Data Collection and Storage
+
+Issue Description
+
+The app supports account creation but does not include an option to initiate account deletion. Apps that support account creation must also offer account deletion to give users more control of the data they've shared while using an app.
+
+Follow these requirements when updating an app to support account deletion:
+
+- Only offering to temporarily deactivate or disable an account is insufficient.
+- If users need to visit a website to finish deleting their account, include a link directly to the website page where they can complete the process.
+- Apps may include confirmation steps to prevent users from accidentally deleting their account. However, only apps in highly-regulated industries may require users to use customer service resources, such as making a phone call or sending an email, to complete account deletion.
+
+Next Steps
+
+Update the app to support account deletion. Once account deletion has been added, or if it is already in place, reply to this message with a screen recording captured on a physical device that demonstrates:
+
+- Creating a new account or signing in with the demo account
+- Navigating to the account deletion option
+- The complete account deletion flow from initiation to confirmation
+
+Include the recording in the Notes field of the App Review Information section in App Store Connect for future submissions.
+
+If the app is unable to offer account deletion or needs to provide additional customer service flows to facilitate and confirm account deletion, either because the app operates in a highly-regulated industry or for some other reason, reply to App Review in App Store Connect and provide additional information or documentation. For questions regarding legal obligations, check with legal counsel.
+
+Resources
+
+Review frequently asked questions and learn more about the account deletion requirements.
+
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.
+</pasted_content id="e71a">
+
+---
+
+[Image #5]
+
+---
+
+<task-notification>
+<task-id>bwuc1la3w</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bwuc1la3w.output</output-file>
+<status>completed</status>
+<summary>Background command "Compare snapshot references after the UI change" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>byz6agkn3</task-id>
+<tool-use-id>toolu_012aF3KcdZ7NQu12vZHKrVav</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/byz6agkn3.output</output-file>
+<status>completed</status>
+<summary>Background command "Re-record snapshot references" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bc4m3s1v8</task-id>
+<tool-use-id>toolu_01FJ5eH8uyTq135hhXz5Jf5c</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bc4m3s1v8.output</output-file>
+<status>completed</status>
+<summary>Background command "Archive and export build 205" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bijnh45m7</task-id>
+<tool-use-id>toolu_01EuSShXoids2GA8AKttPxvQ</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bijnh45m7.output</output-file>
+<status>completed</status>
+<summary>Background command "Upload build 205" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>bvbixvyfu</task-id>
+<tool-use-id>toolu_0156aCnCy1GBEarTmbaJyQBY</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-aleksei-Developer-reachy-mini-desktop-app-swift/d84a62c5-54d2-4b2f-b9be-3a84ac3dae2c/tasks/bvbixvyfu.output</output-file>
+<status>completed</status>
+<summary>Background command "Wait for build 205 to process" completed (exit code 0)</summary>
+</task-notification>
+
+---
+
+Отрпавил - ждем
