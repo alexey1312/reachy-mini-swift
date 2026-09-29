@@ -52,7 +52,14 @@ public final class JobNotificationResponder: NSObject, UNUserNotificationCenterD
         #if os(iOS)
             UIApplication.shared.open(url)
         #elseif os(macOS)
-            NSWorkspace.shared.open(url)
+            // This copy of the app rather than whichever one LaunchServices would pick
+            // for the scheme: a Mac that has run a Debug build from DerivedData and has
+            // a release in /Applications registers the scheme twice.
+            NSWorkspace.shared.open(
+                [url],
+                withApplicationAt: Bundle.main.bundleURL,
+                configuration: NSWorkspace.OpenConfiguration()
+            )
         #endif
     }
 }
