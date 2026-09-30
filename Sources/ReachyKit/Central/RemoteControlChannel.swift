@@ -100,6 +100,7 @@ public actor RemoteControlChannel {
     /// within a type so two consumers of the same stream can come and go
     /// independently.
     private var listeners: [String: [UUID: AsyncStream<Data>.Continuation]] = [:]
+    private var reassembler = DataChannelReassembler()
 
     public init(
         channel: any RemoteDataChannel,
@@ -298,6 +299,7 @@ public actor RemoteControlChannel {
     /// its whole deadline.
     private func endReading() {
         reader = nil
+        reassembler.reset()
         failAll(with: .closed)
         let open = listeners.values.flatMap(\.values)
         listeners = [:]
@@ -324,6 +326,12 @@ public actor RemoteControlChannel {
             yield(data, toListenersOf: method)
         case .rpcUnattributable:
             Self.log.error("json-rpc frame carrying neither an id nor a method")
+        case .typed(DataChannelReassembler.frameType):
+            // One slice of a message too large for one frame; the whole of it is
+            // routed afresh, as if it had arrived in one piece.
+            if let whole = reassembler.accept(data) {
+                deliver(whole)
+            }
         case let .typed(type):
             // A frame naming a `type` is a broadcast and never a reply: `get_imu`
             // once looked like the exception, but it echoes its command and nests
