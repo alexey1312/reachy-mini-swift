@@ -103,6 +103,40 @@ struct RobotShutdownTests {
         #expect(client.calls.contains(.stopDaemon(gotoSleep: true)))
     }
 
+    /// An intent has nobody to ask, and the daemon only hears the antenna touch
+    /// that starts a startup app while its backend runs — so the robot is put to
+    /// sleep and the backend stays up, as Pollen's own power button does.
+    @Test("a robot with a startup app is only put to sleep")
+    func sleepsARobotWithAStartupApp() async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+        client.startupAppName = "dance_party"
+
+        try await shutdown(client).perform()
+
+        #expect(client.calls == [
+            .daemonStatus,
+            .currentAppStatus,
+            .stopCurrentApp,
+            .currentAppStatus,
+            .gotoSleep,
+            .setMotorMode(.disabled),
+        ])
+    }
+
+    /// Nothing is left listening on a backend that is already down, and a sleep
+    /// there would be refused.
+    @Test("a startup app on a stopped backend is torn down as before")
+    func stoppedBackendIsStillShutDown() async throws {
+        let client = StubAppsClient()
+        client.startupAppName = "dance_party"
+        client.isBackendRunning = false
+
+        try await shutdown(client).perform()
+
+        #expect(client.calls == [.daemonStatus, .currentAppStatus, .stopDaemon(gotoSleep: true)])
+    }
+
     @Test("a daemon that refuses the shutdown is reported")
     func reportsARefusedShutdown() async throws {
         let client = StubAppsClient()

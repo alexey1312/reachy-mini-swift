@@ -83,6 +83,11 @@ public extension RobotSession {
     /// shown again. `startBackend()` is therefore *not* the way up from here: it
     /// guards on `.connecting(.backendUnavailable(…))`, which only a fresh connect
     /// reaches. `wake()` is, because it starts a stopped backend itself.
+    ///
+    /// **This is the teardown, unconditionally.** With an app set to start on
+    /// wake-up it also switches off the antenna touch that starts it, which is why
+    /// a caller that cannot ask first goes through `powerOff(_:)` and a
+    /// ``PowerOffPlan`` instead.
     func powerOff() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
@@ -101,6 +106,26 @@ public extension RobotSession {
         }
         if await !waitForDaemonStopped(client: client) {
             robotError = "Robot backend did not stop within \(configuration.daemonStopTimeout)."
+        }
+    }
+
+    /// What powering this robot off should be right now, read from the robot
+    /// rather than off `lastStatus` — ``PowerOffPlan/read(from:)`` says why each
+    /// failure lands where it does.
+    func powerOffPlan() async -> PowerOffPlan {
+        guard let client else { return .stopBackend }
+        return await PowerOffPlan.read(from: client)
+    }
+
+    /// Power off from a door with nobody to ask which kind: the Home Screen menu.
+    ///
+    /// The Robot screen asks instead, and calls `sleep()` or `powerOff()` by name —
+    /// so `powerOff()` stays the teardown it always was, and only a caller that
+    /// cannot put the choice to anyone takes the plan's word for it.
+    func powerOff(_ plan: PowerOffPlan) async {
+        switch plan {
+        case .stopBackend: await powerOff()
+        case .sleep: await sleep()
         }
     }
 }

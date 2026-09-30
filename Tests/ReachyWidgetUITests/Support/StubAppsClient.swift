@@ -37,6 +37,9 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
     var moveNeverFinishes = false
     var stopAppFails = false
     var stopDaemonFails = false
+    /// The app set to start on wake-up. Read without being recorded, so every
+    /// call sequence written before powering off consulted it keeps its shape.
+    var startupAppName: String?
     /// Readings after a stop that still name the app as holding the robot — what
     /// the real route does, since it answers 200 and clears its own slot several
     /// awaits later. `Int.max` is the app that never lets go.
@@ -114,6 +117,10 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
             }
             return Self.status(name: "dance_party", state: "stopping")
         }
+    }
+
+    func startupApp() async throws -> String? {
+        startupAppName
     }
 
     func startApp(named name: String) async throws -> RobotAppStatus {

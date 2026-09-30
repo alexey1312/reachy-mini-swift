@@ -243,10 +243,16 @@ public struct SleepRobotIntent: AppIntent {
 /// nowhere to ask from — Siri and the Home Screen menu both run this with no
 /// screen of their own — and the daemon's own HTTP server survives the teardown,
 /// so waking up is the way back and nothing has to be reconnected.
+///
+/// Having nobody to ask is also why it takes `PowerOffPlan`'s word where the
+/// screen puts a choice: with an app set to start on wake-up, the robot is only
+/// put to sleep, because the teardown would switch off the antenna touch that
+/// starts that app (`RobotShutdown`).
 public struct PowerOffRobotIntent: AppIntent {
     public static let title: LocalizedStringResource = "Power Reachy Mini off"
     public static let description = IntentDescription(
-        "Stops the running app, puts the robot to sleep and shuts its backend down. Waking up brings it back."
+        // swiftlint:disable:next line_length
+        "Stops the running app, puts the robot to sleep and shuts its backend down — or, with an app set to start on wake-up, leaves it asleep so an antenna touch can still start that app. Waking up brings it back."
     )
 
     @Parameter(title: "Robot")

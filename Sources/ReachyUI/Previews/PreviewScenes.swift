@@ -28,9 +28,16 @@ enum PreviewScene {
     /// `health` defaults to nil so every preview written before the state screen
     /// existed still parks this one where it did — `RobotScreen` then builds its own,
     /// which decides only whether the State row is offered.
-    static func robotScreen(_ session: RobotSession, health: RobotHealthModel? = nil) -> some View {
+    ///
+    /// `powerOff` is how a preview reaches a robot with a startup app: the screen
+    /// reads it from the daemon on appearance, which a preview skips.
+    static func robotScreen(
+        _ session: RobotSession,
+        health: RobotHealthModel? = nil,
+        powerOff: RobotPowerOffModel? = nil
+    ) -> some View {
         NavigationHost {
-            RobotScreen(session: session, health: health)
+            RobotScreen(session: session, health: health, powerOff: powerOff)
         }
         .preview()
     }

@@ -512,6 +512,10 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   - **The other two computed defaults were checked and deliberately left alone.** `ReachyTabShell.presence`
     (`PresenceModel()`) and `RobotScreen.powerOff` (`RobotPowerOffModel()`) construct a fresh model and read nothing,
     so lazy construction is strictly cheaper and observably identical.
+    `RobotScreen.powerOff` has since moved into `init`, beside `health`,
+    so a preview can hand it a startup app the screen would otherwise read from the daemon;
+    its default is `nil`, resolved to a model that reads nothing, so the reasoning holds —
+    and `nil` rather than `RobotPowerOffModel()` because a main-actor default fails the `Apps/` build.
   - **Nothing pins any of this, and no test could.** `@State` initialisation order is not reachable from a unit test,
     and the banner has no reference image. This entry is the cover.
 - **The UIScene launch requirement is declared in `Apps/Project.swift` and belongs to `QuickActionSceneDelegate`.**
@@ -927,6 +931,10 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   The rule that leaves behind: a dialog's _copy_ is model logic, and belongs in a model test
   (`RobotPowerOffModelTests` asserts which app gets named); the screen behind it is what a reference is for.
   `MaintenanceCard` never had one of these either, which now reads as the same finding made silently.
+  The startup-app branch (#152) follows the same split:
+  the model owns the plan, the choices and the message, and the tests assert them;
+  what a reference can hold is the section footer, which names the antenna's cost before the tap —
+  `Robot — startup app set`.
 - **`CameraViewport` in `.streaming` used to be on that list and is not any more.** The reasoning was that the video
   is a Metal-backed `RTCMTLVideoView` and captures as an empty rectangle — true, and beside the point once the phase
   grew chrome of its own. The joystick and the return-to-neutral button draw over that empty rectangle perfectly

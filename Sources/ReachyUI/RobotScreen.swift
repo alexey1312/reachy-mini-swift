@@ -13,15 +13,22 @@ import SwiftUI
 struct RobotScreen: View {
     let session: RobotSession
 
-    @State private var powerOff = RobotPowerOffModel()
+    @State private var powerOff: RobotPowerOffModel
     /// Built once the robot has an identity to key its Keychain items by, not in
     /// `init`: this screen is rebuilt on every status poll, and each rebuild would
     /// otherwise construct an `SSHFileSystem` for `@State` to throw away.
     @State private var health: RobotHealthModel?
 
-    init(session: RobotSession, health: RobotHealthModel? = nil) {
+    @Environment(\.reachyPreviewMode) private var previewMode
+
+    init(
+        session: RobotSession,
+        health: RobotHealthModel? = nil,
+        powerOff: RobotPowerOffModel? = nil
+    ) {
         self.session = session
         _health = State(initialValue: health)
+        _powerOff = State(initialValue: powerOff ?? RobotPowerOffModel())
     }
 
     var body: some View {
@@ -69,6 +76,12 @@ struct RobotScreen: View {
             return session.robotError == nil ? .success : .error
         }
         .task { prepareHealth() }
+        // On every appearance, so a startup app switched on in the Apps tab is
+        // known by the time the reader comes back here to power off.
+        .task(id: identity?.deduplicationKey) {
+            guard !previewMode else { return }
+            await powerOff.refresh(session)
+        }
         // Kept warm from here rather than from the screen, and it costs nothing:
         // the status is polled whether or not anyone is looking at the loop. So the
         // sparkline is already a line when the screen opens, instead of taking
@@ -246,11 +259,25 @@ struct RobotScreen: View {
             isPresented: $powerOff.isConfirming,
             titleVisibility: .visible
         ) {
-            Button(.reachy("Power the robot off"), role: .destructive) {
-                Task { await powerOff.perform(session) }
+            // With an app set to start on wake-up, the teardown is the second
+            // choice rather than the only one: it also switches off the antenna
+            // touch that starts that app (`PowerOffPlan`).
+            if powerOff.offersSleep(session) {
+                Button(.reachy("Go to sleep")) {
+                    Task { await session.sleep() }
+                }
+            }
+            if case .sleep = powerOff.plan(session) {
+                Button(.reachy("Power off anyway"), role: .destructive) {
+                    Task { await powerOff.perform(session) }
+                }
+            } else {
+                Button(.reachy("Power the robot off"), role: .destructive) {
+                    Task { await powerOff.perform(session) }
+                }
             }
         } message: {
-            Text(powerOffConfirmation)
+            Text(verbatim: powerOff.confirmationMessage(session))
         }
     }
 
@@ -298,16 +325,15 @@ struct RobotScreen: View {
             // A relay session cannot reach `/api/daemon/stop`, and bringing the
             // backend back needs this Wi-Fi — so the greyed-out button says which.
             .reachy("Powering off needs the robot's own network.")
+        } else if case .sleep = powerOff.plan(session) {
+            // Said before the tap as well as in the dialog: the antenna is the one
+            // cost of powering off that nothing else on this screen hints at.
+            .reachy(
+                // swiftlint:disable:next line_length
+                "Powering off stops the camera, the motors and the state stream, and touching an antenna no longer starts the app set to start on wake-up. Wake up brings both back."
+            )
         } else {
             .reachy("Powering off stops the camera, the motors and the state stream. Wake up brings it back.")
-        }
-    }
-
-    private var powerOffConfirmation: LocalizedStringResource {
-        if let app = powerOff.runningApp(session) {
-            .reachy("\(app.title) stops first, then the robot goes to sleep and its motors and camera shut down.")
-        } else {
-            .reachy("The robot goes to sleep first, then its motors and camera shut down.")
         }
     }
 

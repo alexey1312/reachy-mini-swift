@@ -50,13 +50,20 @@ import SwiftUI
     PreviewScene.robotScreen(.preview(powerTransition: .stoppingBackend))
 }
 
+// An app set to start on wake-up changes what powering off costs: the daemon only
+// hears the antenna touch that starts it while the backend runs (`PowerOffPlan`).
+// The footer says so before the tap, and this is the reference for it.
+#Preview("Robot — startup app set") {
+    PreviewScene.robotScreen(.preview(), powerOff: RobotPowerOffModel(startupApp: "reachy_mini_dance"))
+}
+
 // Not covered, deliberately: the power-off `confirmationDialog`. It presents in a
 // context of its own that renders as nothing headless — recorded once with and
 // once without a running app, the two references came out **byte-identical** and
 // identical to this screen without a dialog at all, so neither could tell the
 // sentence apart. That sentence is the whole point of the dialog, and it is
-// asserted where it can be: `RobotPowerOffModelTests` names the running app
-// without rendering anything.
+// asserted where it can be: `RobotPowerOffModelTests` names the running app, and
+// says which choices a startup app adds, without rendering anything.
 
 // Every identity field is optional and the daemon may report none of them; the screen falls back
 // to em dashes and drops the links whose transport it does not have.

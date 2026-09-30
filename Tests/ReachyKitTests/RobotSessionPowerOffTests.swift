@@ -11,6 +11,8 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
     enum Step: Equatable {
         case stopApp
         case stopDaemon(gotoSleep: Bool)
+        case gotoSleep
+        case setMotorMode(Components.Schemas.MotorControlMode)
     }
 
     private let lock = NSLock()
@@ -26,15 +28,20 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
     private let stoppingReads: Int
     private var remainingStoppingReads = 0
     private var appHeldTheRobotAtStop = false
+    /// The app set to start on wake-up, which the daemon only starts from an
+    /// antenna touch while its backend runs.
+    private let startup: String?
 
     init(
         running: RobotAppStatus? = nil,
         stopsOnRequest: Bool = true,
         stopFailure: (any Error)? = nil,
         appStopFailure: (any Error)? = nil,
-        stoppingReads: Int = 0
+        stoppingReads: Int = 0,
+        startup: String? = nil
     ) {
         runningStatus = running
+        self.startup = startup
         self.stopsOnRequest = stopsOnRequest
         self.stopFailure = stopFailure
         self.appStopFailure = appStopFailure
@@ -81,7 +88,16 @@ private final class PowerOffClient: RobotAPIClient, RobotAppsClient, @unchecked 
     }
 
     func gotoSleep() async throws -> String {
-        "sleep-uuid"
+        lock.withLock { steps.append(.gotoSleep) }
+        return "sleep-uuid"
+    }
+
+    func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws {
+        lock.withLock { steps.append(.setMotorMode(mode)) }
+    }
+
+    func startupApp() async throws -> String? {
+        startup
     }
 
     func stopDaemon(gotoSleep: Bool) async throws {
@@ -209,6 +225,42 @@ struct RobotSessionPowerOffTests {
         await session.powerOff()
         #expect(client.recordedSteps == [.stopDaemon(gotoSleep: true)])
         #expect(session.robotError?.contains("did not stop") == true)
+        session.disconnect()
+    }
+
+    /// The daemon only hears the antenna touch that starts a startup app while
+    /// its backend runs, so a door with nobody to ask leaves the backend up and
+    /// only puts the robot to sleep — Pollen's own power button does the same.
+    @Test("an unattended power off only puts a robot with a startup app to sleep")
+    func unattendedPowerOffKeepsTheBackendForAStartupApp() async {
+        let client = PowerOffClient(running: .preview(.running), startup: "dance")
+        let session = await connected(client)
+        try? await session.refreshCurrentApp()
+        await session.powerOff(session.powerOffPlan())
+        #expect(client.recordedSteps == [.stopApp, .gotoSleep, .setMotorMode(.disabled)])
+        #expect(session.isBackendRunning)
+        #expect(session.robotError == nil)
+        #expect(session.powerTransition == nil)
+        session.disconnect()
+    }
+
+    @Test("an unattended power off without a startup app is the teardown")
+    func unattendedPowerOffWithoutAStartupAppStops() async {
+        let client = PowerOffClient()
+        let session = await connected(client)
+        await session.powerOff(session.powerOffPlan())
+        #expect(client.recordedSteps == [.stopDaemon(gotoSleep: true)])
+        session.disconnect()
+    }
+
+    /// The Robot screen offers the teardown as a second choice and calls this by
+    /// name, so it must not second-guess the choice it was given.
+    @Test("powerOff() stays the teardown with a startup app set")
+    func explicitPowerOffIgnoresTheStartupApp() async {
+        let client = PowerOffClient(startup: "dance")
+        let session = await connected(client)
+        await session.powerOff()
+        #expect(client.recordedSteps == [.stopDaemon(gotoSleep: true)])
         session.disconnect()
     }
 
