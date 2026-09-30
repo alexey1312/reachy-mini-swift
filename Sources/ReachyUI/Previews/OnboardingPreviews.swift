@@ -72,6 +72,24 @@ import SwiftUI
 
 // MARK: - Network
 
+// Daemon 1.10.0 onwards names the robot over Bluetooth, straight after the PIN.
+#Preview("Onboarding — name typed") {
+    PreviewScene.onboarding(.preview(step: .name, nameInput: "Kitchen Reachy"))
+}
+
+// A 1.9.x robot echoes `SET_NAME`, so the name has to wait for Settings.
+#Preview("Onboarding — name unsupported") {
+    PreviewScene.onboarding(.preview(step: .name, nameInput: "Kitchen Reachy", nameIsUnsupported: true))
+}
+
+#Preview("Onboarding — name refused") {
+    PreviewScene.onboarding(.preview(
+        step: .name,
+        errorMessage: "The robot did not accept that name. Use 1 to 64 characters.",
+        nameInput: "Kitchen Reachy"
+    ))
+}
+
 #Preview("Onboarding — network list") {
     PreviewScene.onboarding(.preview(
         step: .network,

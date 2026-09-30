@@ -21315,6 +21315,151 @@
           }
         }
       }
+    },
+    "Name your robot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib deinem Roboter einen Namen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponle nombre a tu robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nommez votre robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назовите робота"
+          }
+        }
+      }
+    },
+    "The name shows in this app, on your network and for remote access. You can change it later in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name erscheint in dieser App, in deinem Netzwerk und beim Fernzugriff. Du kannst ihn später in den Einstellungen ändern."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El nombre aparece en esta app, en tu red y en el acceso remoto. Puedes cambiarlo más tarde en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nom apparaît dans cette app, sur votre réseau et pour l'accès à distance. Vous pourrez le modifier plus tard dans les Réglages."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя видно в этом приложении, в вашей сети и при удалённом доступе. Его можно изменить позже в настройках."
+          }
+        }
+      }
+    },
+    "This robot's software is too old to be named over Bluetooth. Rename it in Settings once it is on your network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Software dieses Roboters ist zu alt, um ihn über Bluetooth zu benennen. Benenne ihn in den Einstellungen um, sobald er in deinem Netzwerk ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software de este robot es demasiado antiguo para ponerle nombre por Bluetooth. Cámbiale el nombre en Ajustes cuando esté en tu red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel de ce robot est trop ancien pour le nommer via Bluetooth. Renommez-le dans les Réglages une fois qu'il sera sur votre réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО этого робота слишком старое, чтобы задать имя по Bluetooth. Переименуйте его в настройках, когда он подключится к вашей сети."
+          }
+        }
+      }
+    },
+    "Use this name": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Namen verwenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar este nombre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser ce nom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать это имя"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überspringen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

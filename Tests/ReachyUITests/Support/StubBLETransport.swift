@@ -36,6 +36,9 @@ final class StubBLETransport: BLETransport, @unchecked Sendable {
     /// Makes this many reads fail the way a robot whose `journalctl` has exited does.
     /// It answers again once `JOURNAL_START` has respawned it.
     var journalStopsAfter: Int?
+    /// A daemon 1.10.0 robot, which answers `SET_NAME`. Left false, it echoes the
+    /// command back the way a 1.9.x robot does.
+    var namesItself = false
 
     init(
         hardwareID: String = "a1b2c3d4e5f60718",
@@ -148,6 +151,9 @@ final class StubBLETransport: BLETransport, @unchecked Sendable {
         }
         if command == "WIFI_SCAN" {
             return scanReply
+        }
+        if namesItself, let name = command.dropPrefixIfPresent("SET_NAME ") {
+            return "OK: Named \(name)"
         }
         if let journal = journalReply(to: command) {
             return journal

@@ -7,9 +7,10 @@ import Foundation
 /// string. So SSIDs, robot names and JSON survive verbatim even though the verb does
 /// not have to be typed exactly.
 ///
-/// This is the whole set the robot answers. Renaming is deliberately absent: the dispatch
-/// in `bluetooth_service.py` has no `SET_NAME` branch and falls through to `ECHO:`, so a
-/// rename only works over HTTP, once the robot is on a network.
+/// This is the whole set the robot answers. `setName` is the one a 1.9.x robot does not:
+/// its dispatch in `bluetooth_service.py` has no `SET_NAME` branch and falls through to
+/// `ECHO:`, which is how a caller tells the two apart. From 1.10.0 it proxies to
+/// `POST /api/daemon/robot-name` and applies the name live.
 public enum BLECommand: Equatable, Sendable {
     case ping
     case status
@@ -22,6 +23,8 @@ public enum BLECommand: Equatable, Sendable {
     case updateCheck
     case updateStart
     case updateInfo(jobID: String)
+    /// `SET_NAME`, daemon 1.10.0. Everything after the verb is the name, spaces included.
+    case setName(String)
     case journalStart
     case journalRead
     case journalStop
@@ -41,6 +44,7 @@ public enum BLECommand: Equatable, Sendable {
         case .updateCheck: "UPDATE_CHECK"
         case .updateStart: "UPDATE_START"
         case let .updateInfo(jobID): "UPDATE_INFO \(jobID)"
+        case let .setName(name): "SET_NAME \(name)"
         case .journalStart: "JOURNAL_START"
         case .journalRead: "JOURNAL_READ"
         case .journalStop: "JOURNAL_STOP"
@@ -64,7 +68,7 @@ public enum BLECommand: Equatable, Sendable {
     public var needsSession: Bool {
         switch self {
         case .wifiScan, .wifiConnectSealed, .wifiForget,
-             .updateCheck, .updateStart, .updateInfo, .runScript:
+             .updateCheck, .updateStart, .updateInfo, .setName, .runScript:
             true
         case .ping, .status, .authenticate, .wifiStatus, .wifiKeyExchange,
              .journalStart, .journalRead, .journalStop:
@@ -79,7 +83,7 @@ public enum BLECommand: Equatable, Sendable {
         switch self {
         case .wifiScan: .seconds(30)
         case .updateCheck, .updateStart, .updateInfo: .seconds(40)
-        case .wifiConnectSealed, .wifiForget, .wifiStatus, .wifiKeyExchange: .seconds(20)
+        case .wifiConnectSealed, .wifiForget, .wifiStatus, .wifiKeyExchange, .setName: .seconds(20)
         default: .seconds(5)
         }
     }

@@ -21,13 +21,15 @@ struct OnboardingOutcome: Equatable, Sendable {
 @MainActor
 @Observable
 final class OnboardingModel {
-    /// No naming step: daemon 1.9.0's Bluetooth service has no `SET_NAME` branch and
-    /// echoes the command back, so a robot can only be renamed over HTTP — which is
-    /// exactly what the settings screen already does, once it is on the network.
+    /// The naming step comes straight after the PIN, while the robot's 300-second
+    /// session is fresh: `SET_NAME` needs it, and a reader who lingers over the Wi-Fi
+    /// password could otherwise outlast it. Daemon 1.9.0 has no `SET_NAME` and echoes
+    /// it back, so on such a robot the step says the name has to wait for Settings.
     enum Step: Hashable {
         case welcome
         case scan
         case pin
+        case name
         case network
         case joining
         case handoff
@@ -53,6 +55,10 @@ final class OnboardingModel {
     private(set) var lockoutSeconds: Int?
 
     var pinInput = ""
+    var nameInput = ""
+    /// The robot echoed `SET_NAME`: a 1.9.x robot, which can be named only over the
+    /// network, once it is on one.
+    private(set) var nameIsUnsupported = false
     var manualSSID = ""
     var password = ""
     /// Nil means the "Other network…" row. It is a required part of the screen rather
@@ -103,6 +109,15 @@ final class OnboardingModel {
         !isBusy && lockoutSeconds == nil && pinInput.count == BLEPinSession.length
     }
 
+    /// The daemon's own bounds on a name (`RobotNameRequest`, 1 to 64 characters).
+    var canSubmitName: Bool {
+        !isBusy && (1 ... 64).contains(trimmedName.count)
+    }
+
+    private var trimmedName: String {
+        nameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var canJoin: Bool {
         !isBusy && !ssid.isEmpty && !password.isEmpty
     }
@@ -111,7 +126,7 @@ final class OnboardingModel {
     /// way to the robot there is nothing to return to.
     var canGoBack: Bool {
         switch step {
-        case .scan, .pin, .network: true
+        case .scan, .pin, .name, .network: true
         case .welcome, .joining, .handoff: false
         }
     }
@@ -157,12 +172,42 @@ final class OnboardingModel {
         defer { isBusy = false }
         if await session.authenticate(pinInput) {
             pinInput = ""
-            step = .network
-            await loadNetworks()
+            step = .name
         } else {
             errorMessage = session.lastError
             startLockoutCountdown()
         }
+    }
+
+    /// Names the robot over Bluetooth. A robot that echoes the command back stays on
+    /// this step and says why, rather than moving on as if the name had been taken.
+    func submitName() async {
+        guard let session, canSubmitName else { return }
+        isBusy = true
+        errorMessage = nil
+        defer { isBusy = false }
+        do {
+            switch try await session.rename(to: trimmedName) {
+            case .named:
+                await proceedToNetwork()
+            case .unsupported:
+                nameIsUnsupported = true
+            }
+        } catch {
+            errorMessage = Self.describe(error)
+        }
+    }
+
+    /// The name is optional: the robot keeps the one it has, and Settings renames it
+    /// later over the network.
+    func skipName() async {
+        await proceedToNetwork()
+    }
+
+    private func proceedToNetwork() async {
+        errorMessage = nil
+        step = .network
+        await loadNetworks()
     }
 
     /// A failed scan is not a dead end — the manual row covers every network the robot
@@ -246,8 +291,11 @@ final class OnboardingModel {
             session?.disconnect()
             step = .scan
             retryScan()
-        case .network:
+        case .name:
+            errorMessage = nil
             step = .pin
+        case .network:
+            step = .name
         case .welcome, .joining, .handoff:
             break
         }
@@ -299,6 +347,8 @@ final class OnboardingModel {
             joinState: JoinState = .working,
             lockoutSeconds: Int? = nil,
             pinInput: String = "",
+            nameInput: String = "",
+            nameIsUnsupported: Bool = false,
             selectedSSID: String? = nil,
             manualSSID: String = "",
             password: String = ""
@@ -311,6 +361,8 @@ final class OnboardingModel {
             model.joinState = joinState
             model.lockoutSeconds = lockoutSeconds
             model.pinInput = pinInput
+            model.nameInput = nameInput
+            model.nameIsUnsupported = nameIsUnsupported
             model.selectedSSID = selectedSSID
             model.manualSSID = manualSSID
             model.password = password

@@ -239,10 +239,12 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   power live here because they have no screen of their own — they are the state of the robot rather than of a
   feature. Everything else belongs to the model behind the screen that asked;
   `RobotSessionErrorOwnershipTests` is what holds the line.
-- `BLECommand` is the whole set the robot answers — anything else comes back as `ECHO:`. Renaming is **not** in it:
-  daemon 1.9.0's dispatch has no `SET_NAME` branch, and it does not mount `POST /api/daemon/robot-name` either — that
-  route postdates the release, so on 1.9.0 a robot cannot be renamed at all. `handshake` probes the route and reports
-  `supportsRename`; the field is greyed out rather than left to 404 on save.
+- `BLECommand` is the whole set the robot answers — anything else comes back as `ECHO:`. On daemon 1.9.0 that
+  includes `SET_NAME`: its dispatch has no such branch, and it does not mount `POST /api/daemon/robot-name` either —
+  that route postdates the release, so on 1.9.0 a robot cannot be renamed at all. `handshake` probes the route and
+  reports `supportsRename`; the field is greyed out rather than left to 404 on save.
+  1.10.0 adds both (#1298), and `BLELink.rename(to:)` reads the echo as `.unsupported` rather than as a failure —
+  it is the only way to tell the two apart before the robot is on a network, which is where onboarding names it.
 - **The conversation surface is one capability with two arms, and the LAN one multiplexes.**
   `ConversationClient`/`ConversationChannel` (`Session/`) is the capability — conforming _is_ it, the
   `DaemonLogClient` shape — with `ConversationRPCClient` dialling the app's own port and

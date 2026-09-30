@@ -21,6 +21,9 @@ public enum BLECommandError: Error, Equatable, Sendable {
     case daemonUnreachable
     case invalidPayload
     case other(String)
+    /// `SET_NAME` was refused by the daemon's own validation (its 422): empty, or over
+    /// 64 characters. Appended, so the cases before it keep their numbers.
+    case invalidName
 
     /// The reply is a bare string with no code, so matching is on the text the robot
     /// actually emits.
@@ -28,19 +31,28 @@ public enum BLECommandError: Error, Equatable, Sendable {
         if let seconds = lockoutSeconds(in: message) {
             return .lockedOut(seconds: seconds)
         }
-        return switch message {
-        case "Not connected. Please authenticate first.": .notAuthenticated
-        case "Incorrect PIN": .incorrectPIN
-        case "Bad credentials (wrong PIN?)": .badCredentials
-        case "Busy": .busy
-        case "Unknown ssid": .unknownSSID
-        case "Cannot forget hotspot": .cannotForgetHotspot
-        case "Daemon unreachable": .daemonUnreachable
-        case let text where text.hasPrefix("Invalid payload"), let text where text.hasPrefix("Missing field"):
-            .invalidPayload
-        case let text: .other(text)
+        if let known = exactReplies[message] {
+            return known
         }
+        if message.hasPrefix("Invalid payload") || message.hasPrefix("Missing field") {
+            return .invalidPayload
+        }
+        return .other(message)
     }
+
+    /// The replies the robot words the same way every time. A table rather than a
+    /// `switch`, which crossed SwiftLint's complexity limit at the tenth string.
+    private static let exactReplies: [String: BLECommandError] = [
+        "Not connected. Please authenticate first.": .notAuthenticated,
+        "Incorrect PIN": .incorrectPIN,
+        "Bad credentials (wrong PIN?)": .badCredentials,
+        "Busy": .busy,
+        "Unknown ssid": .unknownSSID,
+        "Cannot forget hotspot": .cannotForgetHotspot,
+        "Daemon unreachable": .daemonUnreachable,
+        "Invalid name": .invalidName,
+        "Missing name": .invalidName,
+    ]
 
     /// `Too many attempts. Try again in 40s.`
     private static func lockoutSeconds(in message: String) -> Int? {
@@ -63,6 +75,7 @@ extension BLECommandError: LocalizedError {
         case .daemonUnreachable: "The robot's software isn't responding."
         case .invalidPayload: "The robot rejected the request as malformed."
         case let .other(text): text
+        case .invalidName: "The robot did not accept that name. Use 1 to 64 characters."
         }
     }
 }
