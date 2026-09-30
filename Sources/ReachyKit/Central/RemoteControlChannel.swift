@@ -57,31 +57,6 @@ public actor RemoteControlChannel {
         case replyKey(String)
     }
 
-    public enum Failure: Error, Equatable, Sendable {
-        /// The robot answered, and said no. The text is its own.
-        case robot(String)
-        /// Nothing came back in time. Nothing on this channel promises a deadline,
-        /// so one is imposed here — a caller left awaiting forever is worse off
-        /// than one told the robot went quiet.
-        case timedOut
-        case closed
-        /// A JSON-RPC refusal, with the two fields a caller can branch on.
-        ///
-        /// **Appended, and it has to be**: `NSError` numbers a bridged case by its
-        /// declaration index, so inserting this beside ``robot(_:)`` where it reads
-        /// better would renumber ``closed`` — which the notes record as "error 2".
-        ///
-        /// Separate from ``robot(_:)`` rather than a payload on it because the two
-        /// answer different questions. `robot` carries the `{"error": "…"}` string
-        /// the `{type, command}` protocol uses, which has no code and never had one.
-        /// This one carries JSON-RPC's, and the code is the whole point: `-32601`
-        /// means the app's build has no such method and the control should go,
-        /// while `-32000` with `not_running` means the app is gone — two different
-        /// screens that were previously one string. ``errorDescription`` composes
-        /// that same string, so nothing a user reads changes.
-        case rpc(code: Int, message: String, reason: String?)
-    }
-
     /// Not `private`: ``nextRPCID()`` lives beside the calls that spend it.
     var lastRPCID = 0
     private let channel: any RemoteDataChannel
@@ -100,6 +75,7 @@ public actor RemoteControlChannel {
     /// within a type so two consumers of the same stream can come and go
     /// independently.
     private var listeners: [String: [UUID: AsyncStream<Data>.Continuation]] = [:]
+    private var reassembler = DataChannelReassembler()
 
     public init(
         channel: any RemoteDataChannel,
@@ -118,7 +94,12 @@ public actor RemoteControlChannel {
     /// the peer under a session that has been up for hours, and the command after
     /// it sits out a whole negotiation again.
     private var currentTimeout: Duration {
-        channel.isOpen ? timeout : openingTimeout
+        isChannelOpen ? timeout : openingTimeout
+    }
+
+    /// Not `private`: the JSON-RPC path asks it before probing a silent relay.
+    var isChannelOpen: Bool {
+        channel.isOpen
     }
 
     deinit { reader?.cancel() }
@@ -298,6 +279,7 @@ public actor RemoteControlChannel {
     /// its whole deadline.
     private func endReading() {
         reader = nil
+        reassembler.reset()
         failAll(with: .closed)
         let open = listeners.values.flatMap(\.values)
         listeners = [:]
@@ -324,6 +306,12 @@ public actor RemoteControlChannel {
             yield(data, toListenersOf: method)
         case .rpcUnattributable:
             Self.log.error("json-rpc frame carrying neither an id nor a method")
+        case .typed(DataChannelReassembler.frameType):
+            // One slice of a message too large for one frame; the whole of it is
+            // routed afresh, as if it had arrived in one piece.
+            if let whole = reassembler.accept(data) {
+                deliver(whole)
+            }
         case let .typed(type):
             // A frame naming a `type` is a broadcast and never a reply: `get_imu`
             // once looked like the exception, but it echoes its command and nests

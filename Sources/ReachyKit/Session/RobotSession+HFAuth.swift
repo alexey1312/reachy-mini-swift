@@ -63,6 +63,42 @@ public extension RobotSession {
         hfAccountCache = nil
     }
 
+    /// Whether the robot can sign itself in with a device code — the routes arrived
+    /// in 1.10.0. Withheld on evidence, like `predatesRelayCommands`: a version this
+    /// client cannot read leaves it offered, and a 404 is still handled.
+    var offersDeviceLogin: Bool {
+        canLinkHuggingFace && !DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
+    }
+
+    /// Whether this robot runs a daemon that signed every robot out once on its way
+    /// there: 1.12 moved to its own credential store with no migration
+    /// (pollen-robotics/reachy_mini#1367), so a robot linked on 1.11 reads as
+    /// unlinked after the update and drops off central until it is linked again on
+    /// the local network. Only on evidence — the hint names a version.
+    var signedRobotsOutOnUpdate: Bool {
+        DaemonCompatibilityPolicy.isKnownAtLeast("1.12.0", reported: lastStatus?.version)
+    }
+
+    func startRobotDeviceLogin() async throws -> RobotDeviceLogin {
+        try await withHFAuthClient { try await $0.startDeviceLogin() }
+    }
+
+    /// One reading of a device-code sign-in. An approval also fills the account
+    /// cache, since the reading already names the account.
+    func robotDeviceLoginStatus(_ login: RobotDeviceLogin) async throws -> RobotDeviceLoginStatus {
+        let status = try await withHFAuthClient { try await $0.deviceLoginStatus(sessionID: login.sessionID) }
+        if case let .authorized(username) = status {
+            hfAccountCache = HFAuthStatus(isLoggedIn: true, username: username)
+        }
+        return status
+    }
+
+    /// Best effort: an abandoned code expires on the robot by itself within its
+    /// `expiresIn`, so a cancel that fails leaves nothing behind that matters.
+    func cancelRobotDeviceLogin(_ login: RobotDeviceLogin) async {
+        try? await withHFAuthClient { try await $0.cancelDeviceLogin(sessionID: login.sessionID) }
+    }
+
     func relayStatus() async throws -> RelayStatus {
         try await withHFAuthClient { try await $0.relayStatus() }
     }

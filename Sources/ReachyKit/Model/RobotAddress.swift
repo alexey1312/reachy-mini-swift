@@ -8,8 +8,20 @@ public struct RobotAddress: Hashable, Sendable, Codable {
     public static let defaultPort = 8000
 
     public init(host: String, port: Int = RobotAddress.defaultPort) {
-        self.host = host
+        self.host = Self.requestHost(host)
         self.port = port
+    }
+
+    /// The host as it may appear in a request's `Host` header.
+    ///
+    /// A fully qualified name's trailing dot (`reachy-mini.local.`) resolves the same
+    /// as the name without it, but the daemon's local-network guard
+    /// (pollen-robotics/reachy_mini#1423) accepts a name only when it *ends* in
+    /// `.local`, so the dot alone turns a working address into a 400. Applied in the
+    /// initialiser and again when a URL is built, because a stored address decodes
+    /// without passing through here.
+    static func requestHost(_ host: String) -> String {
+        host.count > 1 && host.hasSuffix(".") ? String(host.dropLast()) : host
     }
 
     /// Parses user input: `host`, `host:port`, `[v6]`, `[v6]:port`, or bare IPv6.
@@ -76,6 +88,7 @@ public struct RobotAddress: Hashable, Sendable, Codable {
     /// Foundation's `URLComponents` rejects bare IPv6 literals in `host` — they must be
     /// pre-bracketed by the caller (upstream issue #269 was exactly this class of bug).
     private func url(scheme: String, path: String, queryItems: [URLQueryItem] = []) -> URL? {
+        let host = Self.requestHost(host)
         guard !host.isEmpty else { return nil }
         var components = URLComponents()
         components.scheme = scheme

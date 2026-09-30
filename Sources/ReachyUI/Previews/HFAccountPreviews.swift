@@ -65,3 +65,30 @@ import SwiftUI
 #Preview("Hugging Face — robot over the relay") {
     PreviewScene.hfAccountOverTheRelay()
 }
+
+// Daemon 1.10.0 onwards: the robot signs itself in and the card shows the code it
+// is waiting on. No token crosses the local network, so the footer says so.
+#Preview("HF — robot waiting on a code") {
+    PreviewScene.hfAccount(
+        deviceLogin: RobotDeviceLogin(
+            sessionID: "9f2c",
+            userCode: "WDJB-MJHT",
+            verificationURI: URL(string: "https://huggingface.co/device")!
+        )
+    )
+}
+
+// Daemon 1.12 moved to a credential store of its own with no migration, so a robot
+// linked before the update reads as unlinked after it (pollen-robotics/reachy_mini#1367).
+#Preview("HF — robot signed out by 1.12") {
+    PreviewScene.hfAccount(daemonVersion: "1.12.0")
+}
+
+// Before 1.10.0 there is no device code: the robot can only be handed a copy of this
+// app's token, which needs a sign-in here and says the hop is unencrypted.
+#Preview("HF — robot on 1.9, token copy") {
+    PreviewScene.hfAccount(
+        model: .preview(state: .signedIn(username: "alexey1312")),
+        daemonVersion: "1.9.0"
+    )
+}

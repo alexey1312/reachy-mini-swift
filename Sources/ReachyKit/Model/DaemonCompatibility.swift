@@ -35,6 +35,18 @@ public enum DaemonCompatibilityPolicy {
         return current < parsedFloor
     }
 
+    /// Whether the daemon is *known* to be at `floor` or newer — the mirror of
+    /// ``isKnownOlder(than:reported:)``, for a message that names a version and so
+    /// must not be shown on a guess.
+    public static func isKnownAtLeast(_ floor: String, reported: String?) -> Bool {
+        guard let parsedFloor = SemanticVersion(floor) else {
+            assertionFailure("unreadable version floor: \(floor)")
+            return false
+        }
+        guard let reported, let current = SemanticVersion(reported) else { return false }
+        return current >= parsedFloor
+    }
+
     public static func evaluate(_ reported: String?) -> DaemonCompatibility {
         guard let reported, let current = SemanticVersion(reported),
               let minimum = SemanticVersion(minimumVersion),

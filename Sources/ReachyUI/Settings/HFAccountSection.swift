@@ -21,6 +21,7 @@ struct HFAccountSection: View {
     @State private var confirmingUnlink = false
     @State private var confirmingSignOut = false
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.openURL) private var openURL
 
     /// `@MainActor` because `RobotHFLinkModel` is: a defaulted argument whose value
     /// is main-actor-isolated compiles in the SwiftPM targets and not in the `Apps/`
@@ -241,9 +242,34 @@ struct HFAccountSection: View {
                     .font(Typography.status)
                     .foregroundStyle(Tone.danger.style)
             }
+            if session.signedRobotsOutOnUpdate, robotLink.robotAccount?.isLoggedIn == false {
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "Robot software 1.12 signs every robot out of Hugging Face once. If remote access stopped after the update, link this robot again."
+                    )
+                )
+                .font(Typography.status)
+                .foregroundStyle(Tone.warning.style)
+            }
             if robotLink.isLinked {
                 Button(.reachy("Unlink this robot"), role: .destructive) {
                     confirmingUnlink = true
+                }
+                .disabled(robotLink.isLinking)
+            } else if let login = robotLink.deviceLogin {
+                deviceCodeRows(login)
+            } else if session.offersDeviceLogin {
+                // No sign-in needed here: the person approves the robot in a browser,
+                // with whichever account the robot should hold.
+                Button {
+                    robotLink.beginDeviceLogin(session: session) { openURL($0) }
+                } label: {
+                    if robotLink.isLinking {
+                        ProgressView()
+                    } else {
+                        Label(.reachy("Link this robot"), systemImage: "link")
+                    }
                 }
                 .disabled(robotLink.isLinking)
             } else if case .signedIn = model.account.state {
@@ -261,6 +287,45 @@ struct HFAccountSection: View {
         } header: {
             Text(.reachy("Robot account"))
         } footer: {
+            robotFooter
+        }
+        .task {
+            guard !previewMode else { return }
+            await robotLink.load(session: session)
+        }
+    }
+
+    /// The code the robot is waiting on, and the two ways out of waiting.
+    @ViewBuilder
+    private func deviceCodeRows(_ login: RobotDeviceLogin) -> some View {
+        LabeledContent(.reachy("Code")) {
+            Text(login.userCode)
+                .font(Typography.console)
+                .textSelection(.enabled)
+        }
+        Label {
+            Text(.reachy("Waiting for you to approve the robot on huggingface.co…"))
+        } icon: {
+            ProgressView()
+        }
+        Button {
+            openURL(login.approvalURL)
+        } label: {
+            Label(.reachy("Open huggingface.co"), systemImage: "arrow.up.forward.square")
+        }
+        Button(.reachy("Cancel"), role: .cancel) { robotLink.cancelDeviceLogin() }
+    }
+
+    @ViewBuilder
+    private var robotFooter: some View {
+        if session.offersDeviceLogin {
+            Text(
+                .reachy(
+                    // swiftlint:disable:next line_length
+                    "The robot signs in to Hugging Face itself: you approve a code in your browser, and no token crosses the local network."
+                )
+            )
+        } else {
             // The LAN hop is plain HTTP and unauthenticated (ADR 0001). Saying so
             // is the honest alternative to implying a security this transport does
             // not have.
@@ -270,10 +335,6 @@ struct HFAccountSection: View {
                     "Linking copies your token to the robot over the local network, which is not encrypted. Do it on a network you trust."
                 )
             )
-        }
-        .task {
-            guard !previewMode else { return }
-            await robotLink.load(session: session)
         }
     }
 }

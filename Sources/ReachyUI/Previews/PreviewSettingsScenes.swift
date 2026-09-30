@@ -121,11 +121,17 @@ extension PreviewScene {
         model: HFSignInModel? = nil,
         robotAccount: HFAuthStatus? = nil,
         relay: RelayStatus? = nil,
-        linkError: String? = nil
+        linkError: String? = nil,
+        deviceLogin: RobotDeviceLogin? = nil,
+        // The daemon's version decides which way the robot links — a device code
+        // from 1.10.0, a copied token before — and whether 1.12's one-time sign-out
+        // is worth mentioning. Nil is a version this client cannot read.
+        daemonVersion: String? = nil
     ) -> some View {
         Form {
             HFAccountSection(
                 session: .preview(
+                    status: .preview(version: daemonVersion),
                     client: PreviewHFRobotClient(
                         account: robotAccount ?? HFAuthStatus(isLoggedIn: false),
                         relay: relay ?? RelayStatus(state: .stopped, isConnected: false)
@@ -136,7 +142,8 @@ extension PreviewScene {
                     robotAccount: robotAccount ?? HFAuthStatus(isLoggedIn: false),
                     relay: relay
                         ?? RelayStatus(state: .stopped, message: "Relay not initialized", isConnected: false),
-                    linkError: linkError
+                    linkError: linkError,
+                    deviceLogin: deviceLogin
                 )
             )
         }

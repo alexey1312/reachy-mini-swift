@@ -48,4 +48,31 @@ extension RobotConnection: HFAuthClient {
     public func centralRobotStatus() async throws -> CentralRobotStatusProxy {
         try await hubJSON(path: "/api/hf-auth/central-robot-status")
     }
+
+    public func startDeviceLogin() async throws -> RobotDeviceLogin {
+        try await hubJSON(method: "POST", path: "/api/hf-auth/oauth/device/start")
+    }
+
+    public func deviceLoginStatus(sessionID: String) async throws -> RobotDeviceLoginStatus {
+        try await hubJSON(path: "/api/hf-auth/oauth/device/status/\(Self.pathComponent(sessionID))")
+    }
+
+    /// 404 for a session the daemon has already dropped, which is the outcome a
+    /// cancel wanted anyway.
+    public func cancelDeviceLogin(sessionID: String) async throws {
+        do {
+            _ = try await hubData(
+                method: "DELETE",
+                path: "/api/hf-auth/oauth/device/session/\(Self.pathComponent(sessionID))"
+            )
+        } catch let error as ReachyKitError where error.statusCode == 404 {
+            return
+        }
+    }
+
+    /// The daemon's ids are hex, but an id is still the robot's text and ends up in
+    /// a path.
+    private static func pathComponent(_ id: String) -> String {
+        id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(["/"])) ?? id
+    }
 }

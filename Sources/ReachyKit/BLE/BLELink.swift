@@ -163,6 +163,28 @@ public final class BLELink {
         }
     }
 
+    /// What a rename over Bluetooth came to.
+    public enum RenameOutcome: Equatable, Sendable {
+        /// The name the robot now reports, which the daemon applies live — status,
+        /// central and mDNS — without a restart.
+        case named(String)
+        /// A 1.9.x robot, which echoes `SET_NAME` back. It can be renamed over the
+        /// network once it is on one, and not before.
+        case unsupported
+    }
+
+    /// Names the robot over Bluetooth (`SET_NAME`, daemon 1.10.0). Needs the PIN
+    /// session, like every command the robot proxies to its daemon.
+    public func rename(to name: String) async throws -> RenameOutcome {
+        let reply = try await pump.send(.setName(name))
+        if case .echo = reply {
+            return .unsupported
+        }
+        // `OK: Named <name>` — the name as the robot stored it.
+        let text = try reply.value()
+        return .named(text.hasPrefix("Named ") ? String(text.dropFirst("Named ".count)) : name)
+    }
+
     /// Seals the password, hands it over, and waits for the robot to report itself on
     /// the network. Throwing here means the robot refused the payload; a robot that
     /// simply never joined comes back as `.gaveUp`.

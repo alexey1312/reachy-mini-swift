@@ -101,6 +101,17 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// Appended, like every case since ``daemonLogsUnavailable``.
     case audioLevelsUnavailable
 
+    /// The daemon refused the name this app reached it by. Its local-network guard
+    /// (pollen-robotics/reachy_mini#1423) accepts a `Host` that is an IP literal,
+    /// `localhost` or a `.local` name, and answers 400 to anything else — a bare
+    /// `reachy-mini`, a Tailscale `*.ts.net`, a router's `.home`. Named rather than
+    /// left as a 400, because the way out is typing a different address, not
+    /// retrying this one. Appended, like every case since ``daemonLogsUnavailable``.
+    case untrustedHost(host: String)
+
+    /// The `detail` that guard answers with, verbatim.
+    static let untrustedHostDetail = "Untrusted Host header"
+
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
     /// `detail` is defaulted so the callers that have no body in hand are
@@ -132,6 +143,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
         switch self {
         case let .daemonRejected(statusCode): statusCode
         case let .daemonRefused(statusCode, _): statusCode
+        case .untrustedHost: 400
         // Spelled out rather than `default`, so a later case carrying a status code
         // is a compile error here instead of quietly reporting nil.
         case .invalidAddress, .notConnected, .unsupportedDaemonVersion,
@@ -202,6 +214,8 @@ extension ReachyKitError: LocalizedError {
             "The conversation cannot be reached over this connection"
         case .audioLevelsUnavailable:
             "The robot's audio cannot be reached over this connection"
+        case let .untrustedHost(host):
+            "The robot does not answer to “\(host)” — connect with its IP address or its .local name"
         case let .soundTooLarge(bytes, limit):
             """
             \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \

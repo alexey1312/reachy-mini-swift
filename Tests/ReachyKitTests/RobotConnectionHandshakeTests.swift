@@ -83,6 +83,34 @@ struct RobotConnectionHandshakeTests {
         #expect(handshake.identity.deduplicationKey == "reachy_mini")
     }
 
+    /// The daemon's local-network guard (reachy_mini#1423) refuses any `Host` that is
+    /// not an IP, `localhost` or a `.local` name. A bare "HTTP 400" gives the reader
+    /// nothing to do; the named case tells them to type a different address.
+    @Test("a daemon that refuses the host it was reached by says so by name")
+    func namesAnUntrustedHost() async throws {
+        let connection = try RobotConnection(
+            address: RobotAddress(host: "reachy-mini"),
+            session: StubURLProtocol.makeSession([
+                "/api/daemon/status": .init(statusCode: 400, json: #"{"detail": "Untrusted Host header"}"#),
+            ])
+        )
+
+        await #expect(throws: ReachyKitError.untrustedHost(host: "reachy-mini")) {
+            _ = try await connection.handshake()
+        }
+    }
+
+    @Test("any other 400 stays a plain refusal")
+    func leavesOtherRefusalsAlone() async throws {
+        let connection = try makeConnection([
+            "/api/daemon/status": .init(statusCode: 400, json: #"{"detail": "Something else"}"#),
+        ])
+
+        await #expect(throws: ReachyKitError.daemonRejected(statusCode: 400)) {
+            _ = try await connection.handshake()
+        }
+    }
+
     @Test("a stub keyed with a query wins over the bare path")
     func narrowerQueryKeyWins() async throws {
         let session = StubURLProtocol.makeSession([

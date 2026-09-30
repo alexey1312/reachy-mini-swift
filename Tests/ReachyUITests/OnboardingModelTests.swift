@@ -42,6 +42,7 @@ struct OnboardingModelTests {
         await model.connect(to: UUID())
         model.pinInput = transport.pin
         await model.submitPIN()
+        await model.skipName()
         return model
     }
 
@@ -74,7 +75,22 @@ struct OnboardingModelTests {
         #expect(model.errorMessage != nil)
     }
 
-    @Test("the right code opens the network step and asks the robot what it can see")
+    /// The name comes while the PIN session is fresh — `SET_NAME` needs it, and the
+    /// Wi-Fi step can outlast it.
+    @Test("the right code opens the naming step")
+    func namesStraightAfterUnlocking() async {
+        let transport = StubBLETransport()
+        let model = makeModel(transport)
+        model.beginScan()
+        await model.connect(to: UUID())
+        model.pinInput = transport.pin
+
+        await model.submitPIN()
+
+        #expect(model.step == .name)
+    }
+
+    @Test("skipping the name opens the network step and asks the robot what it can see")
     func loadsNetworksAfterUnlocking() async {
         let transport = StubBLETransport()
 
@@ -83,6 +99,63 @@ struct OnboardingModelTests {
         #expect(model.step == .network)
         #expect(model.networks == ["Home", "Cafe"])
         #expect(model.selectedSSID == "Home")
+    }
+
+    @Test("a name the robot takes moves on to the network")
+    func namesTheRobot() async {
+        let transport = StubBLETransport()
+        transport.namesItself = true
+        let model = makeModel(transport)
+        model.beginScan()
+        await model.connect(to: UUID())
+        model.pinInput = transport.pin
+        await model.submitPIN()
+
+        model.nameInput = "  kitchen reachy "
+        await model.submitName()
+
+        #expect(transport.writtenCommands.contains("SET_NAME kitchen reachy"))
+        #expect(model.step == .network)
+        #expect(model.errorMessage == nil)
+    }
+
+    /// A 1.9.x robot echoes `SET_NAME`. Moving on as if the name had been taken would
+    /// leave the reader looking for a robot under a name it never got.
+    @Test("a robot that cannot be named over Bluetooth stays on the step and says so")
+    func olderRobotSaysSo() async {
+        let transport = StubBLETransport()
+        let model = makeModel(transport)
+        model.beginScan()
+        await model.connect(to: UUID())
+        model.pinInput = transport.pin
+        await model.submitPIN()
+
+        model.nameInput = "kitchen"
+        await model.submitName()
+
+        #expect(model.step == .name)
+        #expect(model.nameIsUnsupported)
+
+        await model.skipName()
+
+        #expect(model.step == .network)
+    }
+
+    @Test("a name the daemon would refuse is not sent", arguments: ["", "   ", String(repeating: "r", count: 65)])
+    func refusesAnImpossibleName(name: String) async {
+        let transport = StubBLETransport()
+        transport.namesItself = true
+        let model = makeModel(transport)
+        model.beginScan()
+        await model.connect(to: UUID())
+        model.pinInput = transport.pin
+        await model.submitPIN()
+
+        model.nameInput = name
+
+        #expect(!model.canSubmitName)
+        await model.submitName()
+        #expect(!transport.writtenCommands.contains { $0.hasPrefix("SET_NAME") })
     }
 
     @Test("\"Other network…\" sends the name that was typed, not one off the truncated list")

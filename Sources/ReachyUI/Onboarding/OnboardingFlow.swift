@@ -2,7 +2,7 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// First-run setup over Bluetooth: Welcome → Scan → PIN → Network → Joining → Handoff.
+/// First-run setup over Bluetooth: Welcome → Scan → PIN → Name → Network → Joining → Handoff.
 ///
 /// A sheet rather than a navigation route, because it owns a radio link that has to come
 /// down however the user leaves — and because it is never something the app waits on.
@@ -48,6 +48,8 @@ struct OnboardingFlow: View {
             OnboardingScanStep(model: model)
         case .pin:
             OnboardingPINStep(model: model)
+        case .name:
+            OnboardingNameStep(model: model)
         case .network:
             OnboardingNetworkStep(model: model)
         case .joining:

@@ -40,6 +40,11 @@ public protocol HFAuthClient: RobotUnlinkClient {
     func refreshRelay() async throws -> RelayRefresh
     /// Central's robot list, fetched by the robot with its own token.
     func centralRobotStatus() async throws -> CentralRobotStatusProxy
+    /// Starts a device-code sign-in on the robot. A daemon before 1.10.0 does not
+    /// mount the route and answers 404.
+    func startDeviceLogin() async throws -> RobotDeviceLogin
+    func deviceLoginStatus(sessionID: String) async throws -> RobotDeviceLoginStatus
+    func cancelDeviceLogin(sessionID: String) async throws
 }
 
 /// Defaults keep test doubles focused on the behaviour they exercise.
@@ -63,6 +68,18 @@ public extension HFAuthClient {
     }
 
     func centralRobotStatus() async throws -> CentralRobotStatusProxy {
+        throw URLError(.unsupportedURL)
+    }
+
+    func startDeviceLogin() async throws -> RobotDeviceLogin {
+        throw URLError(.unsupportedURL)
+    }
+
+    func deviceLoginStatus(sessionID _: String) async throws -> RobotDeviceLoginStatus {
+        throw URLError(.unsupportedURL)
+    }
+
+    func cancelDeviceLogin(sessionID _: String) async throws {
         throw URLError(.unsupportedURL)
     }
 }

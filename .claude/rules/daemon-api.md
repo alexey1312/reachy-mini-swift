@@ -108,6 +108,22 @@ this app keeps its own in the Keychain (ADR 0003).
   so it cannot be reused by a client with a custom scheme.
 - Daemon 1.9.0 does not mount `hf-auth/oauth/device/*` even though the committed spec has it (see the spec-ahead-of-
   firmware trap above).
+  1.10.0 does (#1223):
+  `POST /oauth/device/start` → `{status: "pending", session_id, user_code, verification_uri,
+  verification_uri_complete, interval, expires_in}`;
+  `GET /oauth/device/status/{id}` → `status` of `pending | authorized | expired | error | cancelled`,
+  with `username` once authorized and `message` on the two failures, and `expired` for an id it no longer knows;
+  `DELETE /oauth/device/session/{id}` → 404 for an unknown one.
+  No redirect URI is involved, so it works however the robot is addressed,
+  and the robot polls Hugging Face itself and keeps a **refresh-capable** token —
+  unlike `save-token`, which stores whatever access token it is handed and nothing to renew it with.
+  The first poll that reads `authorized` also starts the central relay on a robot that booted with no token.
+- **Daemon 1.12 relinks every robot once** (#1367, merged 2026-09-30, unreleased at the time of writing).
+  The daemon moves to its own credential store, `reachy_mini_daemon_credentials.json`,
+  with "intentionally no migration": a robot linked on 1.11 reads `is_logged_in: false` after the update,
+  drops off central, and must be linked again over the LAN.
+  It also stops reading `HF_TOKEN` and `hf auth login`.
+  The routes and their shapes do not change.
 
 ## Bluetooth service
 
@@ -118,10 +134,21 @@ most questions in a glance.
   Every recovery script ends with `systemctl restart reachy-mini-daemon`, so the Bluetooth link survives all of them —
   including `SOFTWARE_RESET`, which erases `/venvs` while the service sits outside it. `PING` therefore proves the
   robot is there, never that a reset finished.
-- The commands are exactly `PING`, `STATUS`, `JOURNAL_{START,READ,STOP}`, `PIN_*`, `UPDATE_{CHECK,START,INFO}`,
-  `WIFI_{KEYEX,STATUS,SCAN,CONNECT_ENC,FORGET}`, `CMD_*`. Anything else falls through to `ECHO:`. **There is no
-  `SET_NAME`** — renaming is `POST /api/daemon/robot-name`, which 1.9.0 does not mount either, so such a robot cannot
-  be renamed at all: its name is whatever `--robot-name` the daemon was started with (default `reachy_mini`).
+- On 1.9.0 the commands are exactly `PING`, `STATUS`, `JOURNAL_{START,READ,STOP}`, `PIN_*`,
+  `UPDATE_{CHECK,START,INFO}`, `WIFI_{KEYEX,STATUS,SCAN,CONNECT_ENC,FORGET}`, `CMD_*`.
+  Anything else falls through to `ECHO:`, and that echo is how a client tells an older robot apart.
+  1.9.0 has **no `SET_NAME`** — renaming is `POST /api/daemon/robot-name`, which 1.9.0 does not mount either, so such
+  a robot cannot be renamed at all: its name is whatever `--robot-name` the daemon was started with (default
+  `reachy_mini`).
+- **1.10.0 adds two** (#1298, #1368), both present in 1.11.0.
+  `SET_NAME <name>` needs the PIN session, acks `OK: working` and delivers the real answer on the response
+  notification — `OK: Named <name>`, `ERROR: Invalid name` (the route's 422), `ERROR: Set name failed` or
+  `ERROR: Daemon unreachable` — by proxying to `POST /api/daemon/robot-name`, which applies the name live
+  (status, central and mDNS) without a restart.
+  `UPDATE_CHECK PRE` and `UPDATE_START PRE` opt into release candidates; a robot that predates the argument echoes
+  the whole command back, which means "retry without `PRE`".
+  There is no Bluetooth `PLAY`, `PLAY_SOUND` or `SLEEP` in any released or `main` daemon — #1219 proposed them and
+  was closed.
 - The PIN is the last five characters of the Pollen audio device's USB serial (`38fb:1001`, read from
   `/sys/bus/usb/devices/*/serial`), compared verbatim: not necessarily digits, never case-folded. Do not uppercase the
   input field. Upstream states that serial is printed on the robot — it is **not** a separate code, and no route
@@ -129,6 +156,11 @@ most questions in a glance.
 - `CMD_*` clears the robot's own auth flag in a `finally`, so the PIN is needed again after every script — whether it
   succeeded or not. Its handler also returns `None` on success, so the reply encoder crashes and the GATT write
   reports an error for a script that ran perfectly.
+- The PIN opens a session of `SESSION_TTL_S = 300` s for everything that answers `ERROR: Not connected. Please
+  authenticate first.` without one.
+  **Daemon `main` binds that session to the Bluetooth connection that entered the PIN** (GHSA-993g-hgjh-whmf, merged
+  2026-09-30): any disconnect clears it, and `CMD_*` must come from the same device.
+  So a client that reconnects must ask for the PIN again rather than assume the five minutes are still running.
 - `_read_journal` returns `buffer[:480]` and **deletes what it returned**. One BLE read carries ~182 bytes, so the
   remainder of every large chunk is lost for good, and a line is regularly cut in half — `BLEJournalReader` carries the
   tail. The LAN journal is the authoritative one; say so in any UI that shows this.
@@ -351,6 +383,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     `"last_alive": null, "ready": false` for the entire life of a perfectly healthy robot, and a "last seen 3 s ago"
     row built on it reads as a robot that has never answered. Readiness is `state == .running`, which is what
     `DaemonStatus.isBackendRunning` uses.
+    **1.10.0 makes both live** (#1280, "publish live robot backend status"): `get_status()` now copies `ready` and
+    `last_alive` onto the status it returns (`backend/robot/backend.py:346` in 1.11.0).
+    Readiness stays `state == .running` all the same, because the minimum is still 1.9.0.
   - **There is no CPU, memory, temperature or disk anywhere in the API.** `psutil` is a daemon dependency and is
     used only to manage processes (`apps/manager.py`) and to list network interfaces (`daemon/utils.py`); no route
     reports any of it. Those come from `/proc` and `/sys` over SSH — `ReachySSH/SystemMetricsReader` — which is
@@ -422,7 +457,12 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   shaking at vertical", and `RobotConnection.zeroAntennas` is the one copy of it. A `goto` issued after
   `stop-current-app` has answered is safe — that route is synchronous, so its 200 lands past the daemon's own
   attempt — and upstream `de6902d8b` adds a debounced `goto_sleep` 1.5 s after the app lock frees, which a robot on
-  a newer daemon would run *alongside* the client's parking. Re-check this the next time the robot is updated.
+  a newer daemon would run *alongside* the client's parking.
+  **Re-checked against 1.11.0, and it is there** (#1294, #1311): when the app slot frees, `request_idle_reset()` waits
+  `IDLE_RESET_DEBOUNCE_S = 1.5` s (`IDLE_RESET_HANDOFF_GRACE_S = 15.0` when a successor is expected), then runs
+  `reset_to_sleep()`, which ends with the motors **disabled** (`backend/abstract.py:3073` onwards).
+  It leaves alone a robot that is already limp *and* at the sleep pose, and a new owner cancels it inside the window.
+  So on 1.10+ the client's `goto` to zero is overtaken by the daemon's sleep — tracked in #154.
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.
@@ -497,4 +537,6 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     `{"applied": false}`, and `verify: false` does not help because the write is what fails. It reads as success,
     because a readback of an unchanged register answers correctly. Measured register by register on firmware
     2.1.2 — every integer refused, every float took. `MicrophoneProfileTests` holds the constraint.
+    Daemon `main` casts before packing (#1395, merged after v1.11.0), so integer registers become writable in 1.12.
+    Keep the constraint until the minimum reaches that release.
   - A write is global and outlives the session that made it. Whether it outlives a reboot is untested.

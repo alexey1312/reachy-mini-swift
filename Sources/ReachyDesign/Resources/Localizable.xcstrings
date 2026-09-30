@@ -21141,6 +21141,325 @@
           }
         }
       }
+    },
+    "Robot software 1.12 signs every robot out of Hugging Face once. If remote access stopped after the update, link this robot again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Roboter-Software 1.12 meldet jeden Roboter einmal bei Hugging Face ab. Wenn der Fernzugriff nach dem Update nicht mehr funktioniert, verknüpfe diesen Roboter erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software del robot 1.12 cierra una vez la sesión de Hugging Face de todos los robots. Si el acceso remoto dejó de funcionar tras la actualización, vuelve a vincular este robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel du robot 1.12 déconnecte une fois chaque robot de Hugging Face. Si l'accès à distance ne fonctionne plus depuis la mise à jour, associez de nouveau ce robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО робота 1.12 однократно выходит из Hugging Face на каждом роботе. Если после обновления пропал удалённый доступ, привяжите этого робота заново."
+          }
+        }
+      }
+    },
+    "Waiting for you to approve the robot on huggingface.co…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warte darauf, dass du den Roboter auf huggingface.co bestätigst…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando a que apruebes el robot en huggingface.co…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de votre validation du robot sur huggingface.co…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ждём, пока вы подтвердите робота на huggingface.co…"
+          }
+        }
+      }
+    },
+    "Open huggingface.co": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "huggingface.co öffnen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir huggingface.co"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir huggingface.co"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть huggingface.co"
+          }
+        }
+      }
+    },
+    "The robot signs in to Hugging Face itself: you approve a code in your browser, and no token crosses the local network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter meldet sich selbst bei Hugging Face an: Du bestätigst einen Code im Browser, und kein Token wird über das lokale Netzwerk übertragen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot inicia sesión en Hugging Face por sí mismo: apruebas un código en tu navegador y ningún token pasa por la red local."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot se connecte lui-même à Hugging Face : vous validez un code dans votre navigateur, et aucun jeton ne transite par le réseau local."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот сам входит в Hugging Face: вы подтверждаете код в браузере, и токен не передаётся по локальной сети."
+          }
+        }
+      }
+    },
+    "Hugging Face did not sign the robot in.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face hat den Roboter nicht angemeldet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face no inició la sesión del robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face n'a pas connecté le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face не выполнил вход для робота."
+          }
+        }
+      }
+    },
+    "The code expired before it was approved. Link the robot again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Code ist abgelaufen, bevor er bestätigt wurde. Verknüpfe den Roboter erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El código caducó antes de ser aprobado. Vuelve a vincular el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le code a expiré avant d'être validé. Associez de nouveau le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок действия кода истёк до подтверждения. Привяжите робота ещё раз."
+          }
+        }
+      }
+    },
+    "Name your robot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib deinem Roboter einen Namen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponle nombre a tu robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nommez votre robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назовите робота"
+          }
+        }
+      }
+    },
+    "The name shows in this app, on your network and for remote access. You can change it later in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name erscheint in dieser App, in deinem Netzwerk und beim Fernzugriff. Du kannst ihn später in den Einstellungen ändern."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El nombre aparece en esta app, en tu red y en el acceso remoto. Puedes cambiarlo más tarde en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le nom apparaît dans cette app, sur votre réseau et pour l'accès à distance. Vous pourrez le modifier plus tard dans les Réglages."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя видно в этом приложении, в вашей сети и при удалённом доступе. Его можно изменить позже в настройках."
+          }
+        }
+      }
+    },
+    "This robot's software is too old to be named over Bluetooth. Rename it in Settings once it is on your network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Software dieses Roboters ist zu alt, um ihn über Bluetooth zu benennen. Benenne ihn in den Einstellungen um, sobald er in deinem Netzwerk ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software de este robot es demasiado antiguo para ponerle nombre por Bluetooth. Cámbiale el nombre en Ajustes cuando esté en tu red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel de ce robot est trop ancien pour le nommer via Bluetooth. Renommez-le dans les Réglages une fois qu'il sera sur votre réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО этого робота слишком старое, чтобы задать имя по Bluetooth. Переименуйте его в настройках, когда он подключится к вашей сети."
+          }
+        }
+      }
+    },
+    "Use this name": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Namen verwenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar este nombre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser ce nom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать это имя"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überspringen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
