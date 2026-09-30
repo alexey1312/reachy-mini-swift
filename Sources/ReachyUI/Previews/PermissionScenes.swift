@@ -17,6 +17,7 @@ extension PreviewScene {
         bluetooth: PermissionState = .granted,
         localNetwork: PermissionState = .granted,
         microphone: PermissionState = .granted,
+        speechRecognition: PermissionState = .granted,
         notifications: PermissionState = .granted,
         availability: BLEAvailability? = nil
     ) -> some View {
@@ -26,6 +27,7 @@ extension PreviewScene {
                     bluetooth: bluetooth,
                     localNetwork: localNetwork,
                     microphone: microphone,
+                    speechRecognition: speechRecognition,
                     notifications: notifications,
                     availability: availability
                 )

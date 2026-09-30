@@ -8,14 +8,15 @@ import SwiftUI
     PreviewScene.permissions()
 }
 
-// The first run: four rows, four ways to ask. Bluetooth, the microphone and
-// notifications say "not asked yet"; the local network says "not known yet", because
-// its probe cannot tell the two apart.
+// The first run: five rows, five ways to ask. Bluetooth, the microphone, speech
+// recognition and notifications say "not asked yet"; the local network says "not known
+// yet", because its probe cannot tell the two apart.
 #Preview("Privacy — nothing asked yet") {
     PreviewScene.permissions(
         bluetooth: .undetermined,
         localNetwork: .undetermined,
         microphone: .undetermined,
+        speechRecognition: .undetermined,
         notifications: .undetermined
     )
 }
@@ -44,6 +45,12 @@ import SwiftUI
     PreviewScene.permissions(localNetwork: .denied)
 }
 
+// Talking to Reachy from this device needs this as well as the microphone: the words
+// are transcribed here and only the text reaches the robot.
+#Preview("Privacy — speech recognition denied") {
+    PreviewScene.permissions(speechRecognition: .denied)
+}
+
 // Screen Time or an MDM profile. Deliberately not worded as a refusal: the Settings
 // toggle is there and this user cannot move it.
 #Preview("Privacy — microphone restricted") {
@@ -62,6 +69,7 @@ import SwiftUI
         bluetooth: .denied,
         localNetwork: .denied,
         microphone: .denied,
+        speechRecognition: .denied,
         notifications: .denied
     )
 }

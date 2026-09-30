@@ -133,6 +133,77 @@ import SwiftUI
     PreviewScene.conversation(.preview(entries: ConversationModel.previewTypedExchange, turn: .ready))
 }
 
+// Talking from this device, held. The state line is the take's rather than the turn's —
+// this device's level and the words so far — and the robot's microphone reads off,
+// because a take mutes it so the robot does not hear the room as well.
+#Preview("Conversation — talking from this device") {
+    PreviewScene.conversation(
+        .preview(
+            entries: ConversationModel.previewExchange,
+            turn: .listening,
+            isMicrophoneMuted: true,
+            dictation: .recording(heard: "What's on the bookshelf", isLatched: false),
+            dictationLevel: ConversationLevel(role: .user, rms: 0.55)
+        )
+    )
+}
+
+// A tap started it, so the next tap sends — the one state whose button is an arrow.
+#Preview("Conversation — talking from this device, tap to send") {
+    PreviewScene.conversation(
+        .preview(
+            entries: ConversationModel.previewExchange,
+            turn: .listening,
+            isMicrophoneMuted: true,
+            dictation: .recording(heard: "", isLatched: true)
+        )
+    )
+}
+
+#Preview("Conversation — opening this device's microphone") {
+    PreviewScene.conversation(
+        .preview(entries: ConversationModel.previewExchange, turn: .ready, dictation: .preparing)
+    )
+}
+
+#Preview("Conversation — sending what this device heard") {
+    PreviewScene.conversation(
+        .preview(
+            entries: ConversationModel.previewExchange,
+            turn: .listening,
+            isMicrophoneMuted: true,
+            dictation: .sending(heard: "What's on the bookshelf?")
+        )
+    )
+}
+
+// A dictated row and the answer it drew. Filled like a typed one — the robot received
+// text either way — with a waveform where the typed row has a keyboard.
+#Preview("Conversation — dictated and answered") {
+    PreviewScene.conversation(.preview(entries: ConversationModel.previewDictatedExchange, turn: .ready))
+}
+
+// Silence is not a failure, and it still has to say that nothing went.
+#Preview("Conversation — nothing heard") {
+    PreviewScene.conversation(
+        .preview(entries: ConversationModel.previewExchange, turn: .ready, dictationNotice: .nothingHeard)
+    )
+}
+
+// A refusal that can be undone carries the way to undo it.
+#Preview("Conversation — speech recognition not allowed") {
+    PreviewScene.conversation(
+        .preview(entries: ConversationModel.previewExchange, turn: .ready, dictationRefusal: .speech(.denied))
+    )
+}
+
+// And one that cannot, from here: no Settings button, because the fix is to end a call.
+#Preview("Conversation — a call has the microphone") {
+    PreviewScene.conversation(
+        .preview(entries: ConversationModel.previewExchange, turn: .ready, dictationRefusal: .callInProgress)
+    )
+}
+
 #Preview("Conversation — a command was refused") {
     PreviewScene.conversation(
         .preview(
