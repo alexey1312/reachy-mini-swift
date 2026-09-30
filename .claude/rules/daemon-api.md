@@ -238,6 +238,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and the sent text never comes back. Anything naming this feature has to say "give Reachy something to respond to",
   never "have Reachy say…" — the same honesty test #121 applied to the `phone` App Intents schema. It also barges
   in, clearing whatever is queued for the speaker.
+  It is also the only way this device's microphone reaches the app:
+  the app hears the robot's microphone and nothing else, and `conversation.mic` is mute/unmute only,
+  so "Talk from this device" transcribes on the phone and sends the words through `say`.
 - **The backend takes up to 90 seconds to come up**, and `loop_unavailable` is the documented reason meaning
   "Reachy is still starting up". The app's own web client retries it every 2 s against a 90 s deadline
   (`static/js/api.js:untilReady`). A client that treats the first failure as fatal is wrong; a transport that
@@ -479,6 +482,10 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   microphone sensitivity *is* its input level. Wrapped as `AudioLevel`.
   - **`POST /api/volume/set` plays a test sound on every accepted call** (it is in the route's own description).
     Send it once a slider gesture ends, never on each change, or the robot beeps continuously.
+    **And while an app is playing audio, that call can silence it** —
+    reachy_mini #1319 (open, reported on 1.9.0; the fix is #1325, also open):
+    every later app playback is mute until the daemon restarts, with nothing in any log.
+    The Speaker slider in `AudioSettingsSection` sends exactly this call.
   - Out-of-range values come back as 422, so both setters map `.unprocessableContent` explicitly.
   - On `sim-daemon` these routes drive the **host Mac's own** speaker and mic (`platform: Darwin`), not a robot.
     Note the level before testing and restore it after.
@@ -487,6 +494,11 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     cannot play one source louder than another, and a call that drowns out the robot's own sounds is a source
     level rather than a limiter. `CameraSession.micVolume` is the only control over it. See
     `docs/research/audio.md` for the measurements.
+    Since 1.10.0 every speaker path does run one `speaker_eq` bin —
+    `equalizer-10bands` into an `audiodynamic` hard clamp at 0.9 (#1267) —
+    but it is identical on the call, `play_sound` and app paths and level-neutral by design,
+    so it changes none of the above.
+    It is also why the conversation app sounds quieter than a call: it plays its model's audio unscaled.
 - **The audio board's own DSP is `GET /api/audio/config/parameter/{name}` and `POST /api/audio/config/apply`.**
   An XMOS XVF3800 with four microphones, whose gain control, limiter, noise-suppression floors and echo canceller
   are named registers; `media/audio_control_utils.py` in the daemon holds the map. This is where noise suppression
@@ -498,3 +510,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     because a readback of an unchanged register answers correctly. Measured register by register on firmware
     2.1.2 — every integer refused, every float took. `MicrophoneProfileTests` holds the constraint.
   - A write is global and outlives the session that made it. Whether it outlives a reboot is untested.
+  - **A robot app may write the board itself, and the conversation app does at every start**
+    (`audio/startup_config.py`: `PP_AGCMAXGAIN` 10, `PP_MIN_NS`/`PP_MIN_NN` 0.8, `PP_NLATTENONOFF` 0, and three more).
+    So a `MicrophoneProfile` applied before it starts is mostly overwritten, and the Hearing picker then matches none.
+    The table is in `docs/research/audio.md`.

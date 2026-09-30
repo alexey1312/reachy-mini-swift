@@ -163,6 +163,8 @@ robot has none. The daemon adds no software gain to any playback path and its mi
 is applied in `attachMicTrack` as well as in the setter, because a renegotiation builds a new
 `RTCAudioSource` and the old one's gain goes with it. Measurements, and why the two sources differ
 by 10–17 dB in the first place, are in `docs/research/audio.md`.
+The speaker EQ the daemon has run on every path since 1.10.0 does not change this:
+it is level-neutral, the same on a call as on an app, and ends in a clamp that clips rather than lifts.
 
 Known edge, accepted: if the system never delivers `didDeactivate` after a call (not observed,
 but the contract does not promise ordering), the owner stays `.call` and a later
