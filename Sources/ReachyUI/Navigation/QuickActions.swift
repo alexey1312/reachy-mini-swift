@@ -32,7 +32,9 @@ public enum ReachyQuickAction: String, CaseIterable, Sendable {
         switch self {
         case .wake: await session.wake()
         case .sleep: await session.sleep()
-        case .powerOff: await session.powerOff()
+        // The menu cannot ask which kind of power off, so it takes the plan's
+        // word: a robot with an app set to start on wake-up only goes to sleep.
+        case .powerOff: await session.powerOff(session.powerOffPlan())
         }
     }
 

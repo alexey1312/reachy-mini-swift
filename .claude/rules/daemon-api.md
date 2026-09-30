@@ -491,6 +491,23 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   - **It does not stop the running app.** `Daemon.stop` closes the JSON-RPC relay and the media server and never
     touches `app_manager`, so an app left running has its backend disappear underneath it. Same shape as the
     `reset-apps` guard: the client owns it, and `RobotSession.powerOff` stops the app first.
+  - **It switches off the startup app's antenna touch (#152).**
+    Since 1.9 the daemon starts the app set with `PUT /apps/startup-app` when an antenna is touched,
+    and the watcher that notices reads the antennas through the backend:
+    it lives on `app.state`, survives the stop, and idles while `daemon.backend is None`
+    (`daemon/app/startup_app.py:237`), which is what `Daemon.stop` leaves behind (`daemon/daemon.py:604`).
+    Read in 1.11.0, and `main` is unchanged.
+    A sleeping robot still hears the touch — `wake_or_start_startup_app_if_idle` enables the motors, wakes it and
+    starts the app — and a restarted backend hears it again, since the watcher was never cancelled.
+    What `daemon/start` does **not** re-arm is the one-shot "start on the first wake-up" hook:
+    only the lifespan passes `on_wake_up_callback`, so after a stop and a start only the antenna starts the app.
+    Pollen's desktop app answers this by sleeping instead of stopping whenever a startup app is set
+    (reachy-mini-desktop-app#291), and `PowerOffPlan` is that rule here:
+    the Robot screen offers the teardown as a second choice, and the doors with nobody to ask —
+    the Home Screen menu, `PowerOffRobotIntent` — only put the robot to sleep.
+    Also: `PUT /apps/startup-app` on a stopped backend cancels the watcher that was there and arms none
+    (`rearm_startup_app_watcher` returns early), and `daemon/start` does not arm one either —
+    only a later `PUT` on a running backend, or a daemon restart, does.
 - No MJPEG endpoint exists. Camera is WebRTC-only (signaling `ws://<host>:8443`, GStreamer webrtcsink, single H.264
   stream, Opus audio, STUN `stun.l.google.com:19302`).
   Through 1.10.0 that stream was pinned to Constrained Baseline 3.1 at a fixed 5 Mbps.

@@ -10354,6 +10354,35 @@
         }
       }
     },
+    "Power off anyway": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem ausschalten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar de todos modos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éteindre quand même"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно выключить"
+          }
+        }
+      }
+    },
     "Power off the robot?": {
       "extractionState": "manual",
       "localizations": {
@@ -10437,6 +10466,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Для выключения нужна собственная сеть робота."
+          }
+        }
+      }
+    },
+    "Powering off stops the camera, the motors and the state stream, and touching an antenna no longer starts the app set to start on wake-up. Wake up brings both back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Ausschalten stoppen Kamera, Motoren und Zustandsstream, und eine Berührung einer Antenne startet die App, die beim Aufwachen starten soll, nicht mehr. Aufwecken bringt beides zurück."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al apagarlo se detienen la cámara, los motores y el flujo de estado, y tocar una antena ya no inicia la app configurada para iniciarse al despertar. Despertar restablece ambas cosas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'extinction arrête la caméra, les moteurs et le flux d'état, et toucher une antenne ne lance plus l'app réglée pour démarrer au réveil. Réveiller rétablit les deux."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При выключении останавливаются камера, моторы и поток состояния, а касание антенны больше не запускает приложение, выбранное для запуска при пробуждении. Разбудить вернёт и то, и другое."
           }
         }
       }
@@ -17774,6 +17832,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Слишком много запросов. Подождите немного перед повторным обновлением."
+          }
+        }
+      }
+    },
+    "Touching an antenna starts the app set to start on wake-up, and a sleeping robot still notices it. A powered-off one does not, until you wake it from here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Berührung einer Antenne startet die App, die beim Aufwachen starten soll, und ein schlafender Roboter bemerkt sie weiterhin. Ein ausgeschalteter nicht – bis du ihn hier aufweckst."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tocar una antena inicia la app configurada para iniciarse al despertar, y un robot dormido lo sigue notando. Uno apagado no, hasta que lo despiertes desde aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toucher une antenne lance l'app réglée pour démarrer au réveil, et un robot en veille le remarque toujours. Un robot éteint, non, tant que vous ne le réveillez pas d'ici."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Касание антенны запускает приложение, выбранное для запуска при пробуждении, и спящий робот его по-прежнему замечает. Выключенный — нет, пока вы не разбудите его отсюда."
           }
         }
       }

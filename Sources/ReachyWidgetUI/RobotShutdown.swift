@@ -10,14 +10,15 @@ import ReachyKit
 /// to put a sentence.
 public struct RobotShutdown: Sendable {
     private let release: RobotAppRelease
+    private let apps: any RobotAppsClient
     private let daemon: any RobotAPIClient
+    private let power: RobotPower
 
     public init(
         client: any RobotAPIClient & RobotAppsClient,
         configuration: RobotSession.Configuration = .widgetIntent
     ) {
-        release = RobotAppRelease(apps: client, configuration: configuration)
-        daemon = client
+        self.init(apps: client, daemon: client, configuration: configuration)
     }
 
     /// Test seam: the two halves, with no client to build them from.
@@ -27,11 +28,21 @@ public struct RobotShutdown: Sendable {
         configuration: RobotSession.Configuration = .widgetIntent
     ) {
         release = RobotAppRelease(apps: apps, configuration: configuration)
+        self.apps = apps
         self.daemon = daemon
+        power = RobotPower(client: daemon, configuration: configuration)
     }
 
     /// Stops whatever holds the robot, then asks the daemon to shut the backend
-    /// down with a sleep on the way.
+    /// down with a sleep on the way — or, with an app set to start on wake-up,
+    /// only puts the robot to sleep.
+    ///
+    /// **That exception is ``PowerOffPlan``'s, and an intent takes it without
+    /// asking** because it has nobody to ask: Siri, Shortcuts and a Control
+    /// Centre button all run this with no screen. The daemon only hears the
+    /// antenna touch that starts that app while the backend runs, so tearing it
+    /// down would switch the app off as a side effect nobody chose. The Robot
+    /// screen is where the teardown is still on offer, as a second choice.
     ///
     /// **The app is stopped here because the daemon will not.** Its teardown drops
     /// the media server and the JSON-RPC relay and never touches the app manager,
@@ -49,11 +60,17 @@ public struct RobotShutdown: Sendable {
     /// failure because it has a screen to report it on — an intent has one sentence
     /// and it belongs to the shutdown.
     public func perform() async throws {
+        let plan = await PowerOffPlan.read(apps: apps, daemon: daemon)
         await release.perform()
-        // Returns as soon as the daemon has accepted the job. Nothing polls it
-        // afterwards: the caller is an intent, and waiting out a sixty-second
-        // budget in a process that has seconds would fail with the work already
-        // done and no way to say so.
-        try await daemon.stopDaemon(gotoSleep: true)
+        switch plan {
+        case .stopBackend:
+            // Returns as soon as the daemon has accepted the job. Nothing polls it
+            // afterwards: the caller is an intent, and waiting out a sixty-second
+            // budget in a process that has seconds would fail with the work
+            // already done and no way to say so.
+            try await daemon.stopDaemon(gotoSleep: true)
+        case .sleep:
+            try await power.sleep()
+        }
     }
 }
