@@ -23,6 +23,11 @@ env:
 ---
 - launchApp:
     appId: com.alexey1312.ReachyMini
+    arguments:
+      # This flow taps Settings, and a development build shows the App Store review
+      # prompt on every request, over the tab bar the next step taps. Quoted and
+      # Boolean for the reason connect-gate.yaml gives. See ReviewPrompt.swift.
+      "--reachy-no-review-prompt": true
 
 # If the gate is still up, drive it. If discovery already won, this whole block is
 # skipped and the shell is waited for below.

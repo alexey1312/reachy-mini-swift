@@ -44,6 +44,9 @@ struct SettingsScreen: View {
             NotificationsSection()
             privacySection
             AdvancedSettingsSection(session: session)
+            // About the app rather than the robot, and it leaves the app — the same
+            // two things true of the section after it.
+            RateAppSection()
             // Last, and about neither the robot nor the app's behaviour: it is the
             // attribution Apache-2.0 asks for. See AcknowledgementsSection.
             AcknowledgementsSection()

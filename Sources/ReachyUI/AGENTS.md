@@ -1320,3 +1320,42 @@ injects the text as a user message and answers it; the words are never read out 
 return as a transcript line. The control is "Type to Reachy", and the client appends its
 own `.typed` row — a kind of its own, because a `.spoken(.user)` row would be the one
 entry in the record claiming to be a recording of something nobody said.
+
+## Asking for a rating
+
+`Review/ReviewPromptPlan.swift`, `Review/ReviewPrompt.swift` and `Settings/RateAppSection.swift`.
+Two ways to the App Store's review sheet:
+the system prompt, asked for when the reader settles on the Settings tab,
+and a row on that tab that is always there.
+
+- **`requestReview` reports nothing, and the policy is shaped by that.**
+  No result, no callback:
+  the app cannot tell whether a prompt appeared, was dismissed, or ended in a rating,
+  and StoreKit decides on its own whether to show one at all —
+  at most three times in 365 days per device, and after a rating only for a new version a year later.
+  So "ask less often after a refusal" can only be "ask less often after every request".
+  The visits skipped between requests grow 1, 3, 5, 8, 13 …,
+  which puts them on visits 1, 3, 7, 13, 22, 36.
+- **Two gates on top, both from Apple's sample: once per `CFBundleShortVersionString`, and thirty days apart.**
+  The second is not decoration.
+  A reader who opens Settings daily would spend the system's three showings in a week on the visit schedule alone,
+  and every request after that would be ignored, silently, for the rest of the year.
+  A request that falls due behind a shut gate is owed rather than skipped: the first visit after it opens asks.
+- **A visit is a change of tab; the prompt waits two seconds on it.**
+  `reviewPrompt(tab:)` hangs on `ReachyTabShell`, the one place that sees the selection change,
+  and counts arriving on Settings — not coming back to the app with Settings already showing.
+  The two-second dwell is Apple's own, and it restarts on the scene phase,
+  so a prompt is never timed across a trip to the background and shown the moment the app returns.
+  The Settings tab exists only once a robot has answered,
+  so the prompt can never be the first thing a new install shows —
+  it can still come in the first session, straight after a first connection, and that is the intent.
+- **The state is `UserDefaults.standard`, not the App Group and not the iCloud mirror.**
+  The system's quota is per device; a count synced from another device is a count of something this one never spent.
+- **A development build shows the prompt on every request, and TestFlight never does.**
+  So nothing but a release build says how often anybody really sees it.
+  `reachyPreviewMode` suppresses it — which covers snapshots, the storybook and `--reachy-smoke` —
+  and `Apps/Maestro/sim-daemon.yaml` passes `--reachy-no-review-prompt`,
+  because it taps Settings and the sheet would cover the tab bar its next step taps.
+- **The row opens the product page with `action=write-review`.**
+  One app record serves iOS and macOS (`docs/release.md`);
+  on a Mac the link takes the `macappstore` scheme, since the web page would open in a browser.

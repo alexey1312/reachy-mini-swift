@@ -34,6 +34,16 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The review row on its own, for the reason `acknowledgements()` is: it sits
+    /// just above that section, below the fold on both snapshot devices.
+    static func rateApp() -> some View {
+        Form {
+            RateAppSection()
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     /// The Advanced group on its own, open.
     ///
     /// Captured here rather than through `SettingsScreen`, where it sits below the
