@@ -99,9 +99,20 @@ let project = Project(
                 "NSBluetoothAlwaysUsageDescription": .string(
                     "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
                 ),
-                // Phase 2 camera: WebRTC mic uplink (client mic → robot speaker)
+                // Two uses, one prompt: the WebRTC uplink (this device's microphone to the
+                // robot's speaker, during a call) and talking to Reachy from this device
+                // on the Conversation screen, whichever the reader reaches first.
                 "NSMicrophoneUsageDescription": .string(
-                    "Talk to people near your Reachy Mini through its speaker."
+                    "Talk to Reachy from this device, and to people near your Reachy Mini through its speaker."
+                ),
+                // Talking to Reachy from this device transcribes here and sends text, because
+                // the robot's conversation app hears only the robot's own microphone. On
+                // device where the language allows it; otherwise Apple's service, and the
+                // string says so rather than letting "on your device" be the whole claim.
+                // A missing key is a TCC kill on the first press — `PrivacyUsageLockstepTests`.
+                "NSSpeechRecognitionUsageDescription": .string(
+                    // swiftlint:disable:next line_length
+                    "Turns what you say to Reachy into text before sending it. This happens on your device when it can; otherwise Apple transcribes the audio."
                 ),
                 "UILaunchScreen": .dictionary([:]),
                 // Two modes for a call framed through LiveCommunicationKit, and

@@ -43,6 +43,12 @@ final class MediaAudioSession {
 
     private(set) var owner: Owner = .nobody
 
+    /// A recording on this device, if one is running — see `DictationAudioPlan`.
+    private var dictation = DictationAudioPlan()
+    /// How a running take is told it has lost the microphone. Cleared as it is called,
+    /// so a preemption reaches the take once.
+    private var dictationPreempted: (@MainActor () -> Void)?
+
     #if os(iOS)
         /// The one audio transition in flight, if any — a deactivation retry
         /// after a stop, or a reclaim after a call ends. There is never a reason
@@ -50,6 +56,9 @@ final class MediaAudioSession {
         /// stop()'s retry loop left running would deactivate the session a
         /// fresh start just opened.
         private var transitionTask: Task<Void, Never>?
+
+        /// Observes interruptions while a take runs, and only then.
+        private var interruptionObserver: NSObjectProtocol?
 
         private static let log = Logger(
             subsystem: "com.alexey1312.ReachyMini", category: "MediaAudioSession"
@@ -76,6 +85,12 @@ final class MediaAudioSession {
                 try? session.setActive(true)
                 owner = .app
             }
+            // A take holding the microphone keeps WebRTC's unit down until it ends;
+            // `dictationDidEnd` brings it up then, as the transition it has to be.
+            guard dictation.cameraStarted() else {
+                Self.log.notice("Camera started under a take; WebRTC audio waits for it")
+                return
+            }
             RTCAudioSession.sharedInstance().isAudioEnabled = true
         #endif
     }
@@ -94,8 +109,53 @@ final class MediaAudioSession {
             RTCAudioSession.sharedInstance().isAudioEnabled = false
             guard owner == .app else { return }
             owner = .nobody
+            // Releasing under a running engine would deactivate the session it is
+            // recording through; the take owes the release instead.
+            guard dictation.cameraStopped() else { return }
             transitionTask?.cancel()
             transitionTask = Task { await Self.releaseAudioSession() }
+        #endif
+    }
+
+    // MARK: - Dictation (from DeviceDictation)
+
+    /// A recording on this device is about to open the microphone. Must be called
+    /// **before** anything reads `AVAudioEngine.inputNode`, which builds an audio unit
+    /// of its own — WebRTC's has to be down by then.
+    ///
+    /// - Parameter onPreempted: called once, on the main actor, if a call or an
+    ///   interruption takes the session before the take ends.
+    /// - Throws: `DeviceDictation.Refusal.callInProgress` during a call, and
+    ///   `.microphoneUnavailable` when the session will not activate.
+    func dictationWillStart(onPreempted: @escaping @MainActor () -> Void) throws(DeviceDictation.Refusal) {
+        #if os(iOS)
+            let effects = dictation.willStart(owner: planOwner)
+            if effects.contains(.refuseCallInProgress) {
+                throw .callInProgress
+            }
+            dictationPreempted = onPreempted
+            do {
+                try perform(effects)
+            } catch {
+                dictationPreempted = nil
+                try? perform(dictation.didEnd(owner: planOwner))
+                throw .microphoneUnavailable
+            }
+            observeInterruptions()
+            Self.log.notice("Dictation started over \(String(describing: owner), privacy: .public)")
+        #endif
+    }
+
+    /// The take let go of the microphone. Idempotent: a preempted take's own teardown
+    /// arrives here after the plan has already ended it.
+    func dictationDidEnd() {
+        #if os(iOS)
+            dictationPreempted = nil
+            stopObservingInterruptions()
+            let effects = dictation.didEnd(owner: planOwner)
+            guard !effects.isEmpty else { return }
+            try? perform(effects)
+            Self.log.notice("Dictation ended over \(String(describing: owner), privacy: .public)")
         #endif
     }
 
@@ -113,6 +173,9 @@ final class MediaAudioSession {
         func callWillStart() {
             transitionTask?.cancel()
             transitionTask = nil
+            // A take ends before the call's handover runs, so the engine has let go of
+            // the microphone by the time the system interrupts this session.
+            try? perform(dictation.callWillStart())
             owner = .call
             // **Take WebRTC's audio unit down on purpose, and this line is the
             // whole fix.** The system is about to interrupt this session and
@@ -161,6 +224,77 @@ final class MediaAudioSession {
     #endif
 
     #if os(iOS)
+        private var planOwner: DictationAudioPlan.Owner {
+            switch owner {
+            case .nobody: .nobody
+            case .app: .app
+            case .call: .call
+            }
+        }
+
+        /// Carries out what `DictationAudioPlan` decided. Only `configureAndActivate`
+        /// can fail, and its failure is the caller's to report.
+        private func perform(_ effects: [DictationAudioPlan.Effect]) throws {
+            for effect in effects {
+                switch effect {
+                case .refuseCallInProgress:
+                    continue
+                case .cancelTransition:
+                    transitionTask?.cancel()
+                    transitionTask = nil
+                case .configureAndActivate:
+                    let session = AVAudioSession.sharedInstance()
+                    // The camera's own configuration, so a camera starting mid-take
+                    // changes nothing about the route the engine is recording from.
+                    try session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker])
+                    try session.setActive(true)
+                case .disableWebRTCAudio:
+                    RTCAudioSession.sharedInstance().isAudioEnabled = false
+                    Self.log.notice("Dictation over the camera; WebRTC audio down")
+                case .enableWebRTCAudio:
+                    RTCAudioSession.sharedInstance().isAudioEnabled = true
+                    Self.log.notice("Dictation over; WebRTC audio back")
+                case .release:
+                    transitionTask?.cancel()
+                    transitionTask = Task { await Self.releaseAudioSession() }
+                case .preempt:
+                    let preempted = dictationPreempted
+                    dictationPreempted = nil
+                    stopObservingInterruptions()
+                    Self.log.notice("Dictation preempted")
+                    preempted?()
+                }
+            }
+        }
+
+        /// Only while a take runs: an interruption with no take is WebRTC's own
+        /// business, and `RTCAudioSession` already observes it.
+        private func observeInterruptions() {
+            guard interruptionObserver == nil else { return }
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification,
+                object: AVAudioSession.sharedInstance(),
+                queue: .main
+            ) { @Sendable notification in
+                let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                guard raw == AVAudioSession.InterruptionType.began.rawValue else { return }
+                // `queue: .main` is what makes this assumption true.
+                MainActor.assumeIsolated {
+                    MediaAudioSession.shared.dictationInterrupted()
+                }
+            }
+        }
+
+        private func stopObservingInterruptions() {
+            guard let interruptionObserver else { return }
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
+
+        private func dictationInterrupted() {
+            try? perform(dictation.interrupted(owner: planOwner))
+        }
+
         /// `setActive(false)` races WebRTC's own audio unit, which winds down on
         /// a background thread after the caller has already returned —
         /// deactivating immediately commonly fails "session is busy", and a

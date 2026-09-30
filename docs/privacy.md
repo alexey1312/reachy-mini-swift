@@ -6,7 +6,7 @@ permalink: /privacy.html
 
 # Privacy Policy — Hey Reachy
 
-Last updated: 10 August 2026.
+Last updated: 1 October 2026.
 
 **Hey Reachy collects nothing.** There is no server behind this app, no account with the developer, no analytics, no
 crash reporting SDK and no advertising. Nothing you do in the app is sent anywhere the app does not need to reach to
@@ -25,7 +25,13 @@ in the system Keychain on your device and can be removed by signing out. See
 [Hugging Face's privacy policy](https://huggingface.co/privacy) for what they do with it.
 
 **Apple, for the platform features you use.** TestFlight feedback and crash reports go to Apple and are governed by
-Apple's own terms. The app itself sends nothing to Apple beyond what any app does.
+Apple's own terms.
+Beyond that the app sends Apple one thing, and only when you use it:
+when you hold **Talk from this device** in a conversation,
+what you say is turned into text on your device if its language is supported there,
+and otherwise by Apple's speech recognition service,
+under [Apple's privacy policy](https://www.apple.com/legal/privacy/).
+Only the resulting text goes to your robot; the recording is not kept.
 
 ## What stays on your device
 
@@ -34,12 +40,13 @@ from the robot. Deleting the app removes them.
 
 ## Permissions
 
-| Permission        | Why                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Local Network** | To find your robot over Bonjour and reach its daemon. The app scans for robots, not for anything else.                               |
-| **Bluetooth**     | Only to put a new robot onto Wi-Fi, and only from that setup flow.                                                                   |
-| **Microphone**    | Only to speak through the robot's speaker during a live session.                                                                     |
-| **Camera**        | Never used to record. The permission string is declared because the WebRTC stack that receives the robot's video references the API. |
+| Permission             | Why                                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Local Network**      | To find your robot over Bonjour and reach its daemon. The app scans for robots, not for anything else.                               |
+| **Bluetooth**          | Only to put a new robot onto Wi-Fi, and only from that setup flow.                                                                   |
+| **Microphone**         | To speak through the robot's speaker during a live session, and to talk to Reachy from this device while you hold the button.        |
+| **Speech Recognition** | To turn what you say to Reachy into text before it is sent. On your device when it can; otherwise by Apple's speech service.         |
+| **Camera**             | Never used to record. The permission string is declared because the WebRTC stack that receives the robot's video references the API. |
 
 ## Children
 

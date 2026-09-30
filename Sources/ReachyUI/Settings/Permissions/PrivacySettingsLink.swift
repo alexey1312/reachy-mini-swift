@@ -27,6 +27,7 @@ public enum PrivacySettingsLink {
     public enum Pane: Sendable {
         case bluetooth
         case microphone
+        case speechRecognition
         case localNetwork
         /// Not a privacy pane on macOS at all — see `macOSURL(_:)`.
         case notifications
@@ -64,7 +65,7 @@ public enum PrivacySettingsLink {
             switch pane {
             case .notifications:
                 "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
-            case .bluetooth, .microphone, .localNetwork:
+            case .bluetooth, .microphone, .speechRecognition, .localNetwork:
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(privacyAnchor(pane))"
             }
         }
@@ -73,6 +74,7 @@ public enum PrivacySettingsLink {
             switch pane {
             case .bluetooth: "Privacy_Bluetooth"
             case .microphone: "Privacy_Microphone"
+            case .speechRecognition: "Privacy_SpeechRecognition"
             case .localNetwork: "Privacy_LocalNetwork"
             // Unreachable: `macOSURL` routes it to its own pane above.
             case .notifications: "Privacy_LocalNetwork"

@@ -42,6 +42,17 @@ struct ConversationScreen: View {
                 guard !isPreview, primingKey != nil else { return }
                 await model.prime(app: app, session: session)
             }
+            // A take is for this screen, in front of somebody: it goes when the screen
+            // does, and when the app leaves the foreground — the `audio` background mode
+            // would otherwise keep this device recording in somebody's pocket.
+            .onChange(of: scenePhase) { _, phase in
+                guard !isPreview, phase != .active else { return }
+                model.cancelTake()
+            }
+            .onDisappear {
+                guard !isPreview else { return }
+                model.cancelTake()
+            }
     }
 
     /// The ladder, and it departs from the log console's on one point deliberately: a
@@ -80,9 +91,18 @@ struct ConversationScreen: View {
                 turn: model.turn,
                 level: model.level,
                 isMicrophoneMuted: model.isMicrophoneMuted,
-                isEnabled: model.isLive && !model.isBusy,
+                isEnabled: model.isLive && !model.isBusy && model.dictation.isIdle,
                 offersControls: model.offersControls,
-                failure: model.lastError,
+                failure: model.dictationRefusal?.message ?? model.lastError,
+                failurePane: model.dictationRefusal?.pane,
+                talk: ConversationTalkState(
+                    phase: model.dictation,
+                    level: model.dictationLevel,
+                    notice: model.dictationNotice,
+                    // A take in flight keeps its button: the release, or the second
+                    // tap, is how it ends.
+                    isEnabled: model.dictation.isIdle ? model.canTalk(session) : true
+                ),
                 perform: perform,
                 hold: hold
             )
@@ -98,6 +118,10 @@ struct ConversationScreen: View {
         case .compose:
             isComposing = true
             isDraftFocused = true
+        case let .talk(gesture):
+            // Straight through, never inside a `Task`: two tasks from one gesture have
+            // no order between them, and a release must not overtake its press.
+            model.talk(gesture, app: app, session: session)
         }
     }
 

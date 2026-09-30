@@ -32,6 +32,8 @@ extension ConversationModel {
             // A new turn makes the last sample meaningless — a meter frozen at the
             // volume of the previous speaker is worse than an empty one.
             level = nil
+            // And the last take's "nothing was sent" has been overtaken by events.
+            dictationNotice = nil
             settleLive()
         case let .transcript(line):
             append(line)
@@ -104,6 +106,12 @@ extension ConversationModel {
     /// back as a transcript line. Without this a send looks like it did nothing.
     func appendTyped(_ text: String) {
         add(TranscriptEntry(kind: .typed, text: text))
+    }
+
+    /// The words a take on this device heard, exactly as they were sent — the record
+    /// of what the robot received, misheard words and all.
+    func appendDictated(_ text: String) {
+        add(TranscriptEntry(kind: .dictated, text: text))
     }
 
     func add(_ entry: TranscriptEntry) {

@@ -179,12 +179,25 @@ struct ConversationTranscriptTests {
         model.receive(.transcript(ConversationLine(role: .user, text: "Hello")))
         model.receive(.transcript(ConversationLine(role: .assistant, text: "Hello yourself")))
         model.appendTyped("happy birthday")
+        model.appendDictated("what's on the shelf")
         model.receive(.closed)
 
         #expect(model.transcriptText == """
         You: Hello
         Reachy: Hello yourself
         You (typed): happy birthday
+        You (dictated): what's on the shelf
         """)
+    }
+
+    /// A dictated row is a record of something said, even though the robot received it
+    /// as text — so it counts, and an empty screen with one of these on it is not empty.
+    @Test("a dictated row is an utterance")
+    func dictatedRowIsAnUtterance() {
+        let model = model()
+        model.appendDictated("hello")
+
+        #expect(model.hasTranscript)
+        #expect(TranscriptRoleCaption.title(of: .dictated) != TranscriptRoleCaption.title(of: .typed))
     }
 }

@@ -70,6 +70,14 @@ final class ConversationModel {
         /// Rows kept. A transcript arrives at the speed of somebody talking, so this is
         /// a ceiling on a long afternoon rather than a rate limit.
         var capacity = 2000
+        /// A press shorter than this is a tap, and a tap starts a take that a second tap
+        /// sends — which is also what a click on a Mac is.
+        var latchThreshold: Duration = .milliseconds(350)
+        /// How long the recognizer gets for its last word once the microphone is off.
+        var transcriptionTimeout: Duration = .seconds(2)
+        /// Under the minute Apple's speech service allows a request when a language has
+        /// no on-device recognizer.
+        var takeLimit: Duration = .seconds(55)
     }
 
     // MARK: State
@@ -108,6 +116,16 @@ final class ConversationModel {
     /// difference between a retry and a retype.
     var draft = ""
 
+    // A take on this device's microphone — see `ConversationModel+Dictation.swift`.
+
+    var dictation: DictationPhase = .idle
+    /// This device's input level while a take records. The robot's own `level` is left
+    /// alone: it is still the robot's.
+    var dictationLevel: ConversationLevel?
+    var dictationNotice: DictationNotice?
+    var dictationRefusal: DictationRefusal?
+    var take: DictationTake?
+
     let configuration: Configuration
     let events: Events
     let readStatus: ReadStatus
@@ -115,6 +133,7 @@ final class ConversationModel {
     let setMicrophone: SetMicrophone
     let interruptConversation: Interrupt
     let say: Say
+    let deviceDictation: ConversationDictation
 
     /// When this screen started waiting for a backend that is still coming up.
     var preparingSince: Date?
@@ -126,7 +145,8 @@ final class ConversationModel {
         readMicrophone: @escaping ReadMicrophone = { try await $0.conversationMicrophoneMuted(for: $1) },
         setMicrophone: @escaping SetMicrophone = { try await $0.setConversationMicrophoneMuted($2, for: $1) },
         interruptConversation: @escaping Interrupt = { try await $0.interruptConversation(for: $1) },
-        say: @escaping Say = { try await $0.sayInConversation($2, for: $1) }
+        say: @escaping Say = { try await $0.sayInConversation($2, for: $1) },
+        dictation: ConversationDictation? = nil
     ) {
         self.configuration = configuration
         self.events = events
@@ -135,6 +155,9 @@ final class ConversationModel {
         self.setMicrophone = setMicrophone
         self.interruptConversation = interruptConversation
         self.say = say
+        // Resolved here rather than in the signature: `live()` is main-actor isolated,
+        // and a default argument is evaluated in a nonisolated context.
+        deviceDictation = dictation ?? .live()
     }
 
     // MARK: Derived
@@ -152,7 +175,8 @@ final class ConversationModel {
     }
 
     var canSend: Bool {
-        isLive && offersControls && !isBusy && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isLive && offersControls && !isBusy && dictation.isIdle
+            && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Clearing empties something nothing refills, so the count is named: the robot
@@ -198,7 +222,11 @@ final class ConversationModel {
             isMicrophoneMuted: Bool = false,
             offersControls: Bool = true,
             draft: String = "",
-            lastError: String? = nil
+            lastError: String? = nil,
+            dictation: DictationPhase = .idle,
+            dictationLevel: ConversationLevel? = nil,
+            dictationNotice: DictationNotice? = nil,
+            dictationRefusal: DictationRefusal? = nil
         ) -> ConversationModel {
             let model = ConversationModel(
                 events: { _, _ in AsyncStream { $0.finish() } },
@@ -206,7 +234,8 @@ final class ConversationModel {
                 readMicrophone: { _, _ in isMicrophoneMuted },
                 setMicrophone: { _, _, muted in muted },
                 interruptConversation: { _, _ in },
-                say: { _, _, _ in }
+                say: { _, _, _ in },
+                dictation: .inert
             )
             model.entries = entries
             model.turn = turn
@@ -216,6 +245,10 @@ final class ConversationModel {
             model.offersControls = offersControls
             model.draft = draft
             model.lastError = lastError
+            model.dictation = dictation
+            model.dictationLevel = dictationLevel
+            model.dictationNotice = dictationNotice
+            model.dictationRefusal = dictationRefusal
             return model
         }
 
@@ -237,6 +270,15 @@ final class ConversationModel {
             TranscriptEntry(
                 kind: .spoken(.assistant),
                 text: "Many happy returns! I would sing, but I have been asked not to."
+            ),
+        ]
+
+        /// The same, spoken into this device rather than typed.
+        static let previewDictatedExchange: [TranscriptEntry] = previewExchange + [
+            TranscriptEntry(kind: .dictated, text: "What's on the bookshelf?"),
+            TranscriptEntry(
+                kind: .spoken(.assistant),
+                text: "Mostly paperbacks, and one robot manual that looks unread."
             ),
         ]
     }

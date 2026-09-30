@@ -41,7 +41,8 @@ enum ConversationTurnCaption {
 ///
 /// `You, typed` is its own caption rather than a decoration on `You`, because it is a
 /// different claim: nobody said those words out loud, and the app injected them as a
-/// prompt for the robot to answer.
+/// prompt for the robot to answer. `You, dictated` is a third claim again: somebody did
+/// say them, but into this device, and the robot got the text.
 enum TranscriptRoleCaption {
     static func title(of kind: TranscriptEntry.Kind) -> LocalizedStringResource? {
         switch kind {
@@ -52,6 +53,7 @@ enum TranscriptRoleCaption {
             case let .unknown(other): "\(other)"
             }
         case .typed: .reachy("You, typed")
+        case .dictated: .reachy("You, dictated")
         case .gap, .ended: nil
         }
     }

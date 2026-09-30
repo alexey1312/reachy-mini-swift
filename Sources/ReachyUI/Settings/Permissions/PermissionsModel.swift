@@ -6,8 +6,9 @@ import ReachyMedia
 /// What the app has been allowed to do, and the four ways to ask for more.
 ///
 /// The governing rule is that **opening the screen must never raise a prompt.**
-/// `refresh()` therefore reads only the two sources that can answer without asking —
-/// `CBCentralManager.authorization` and the microphone's authorization status — and the
+/// `refresh()` therefore reads only the sources that can answer without asking —
+/// `CBCentralManager.authorization` and the microphone's and speech recognition's
+/// authorization statuses — and the
 /// local network, which has no such source, stays at whatever is already known until
 /// the user asks for it. Every prompting path is a method a button calls.
 ///
@@ -24,6 +25,8 @@ final class PermissionsModel {
 
     private let readBluetooth: @Sendable () -> PermissionState
     private let readMicrophone: @Sendable () -> PermissionState
+    private let readSpeechRecognition: @Sendable () -> PermissionState
+    private let promptSpeechRecognition: @Sendable () async -> PermissionState
     private let promptBluetooth: @Sendable () async -> BLEAvailability
     private let promptMicrophone: @Sendable () async -> PermissionState
     private let probeLocalNetwork: @Sendable () async -> PermissionState
@@ -42,6 +45,8 @@ final class PermissionsModel {
         initial: [PermissionKind: PermissionState] = [:],
         readBluetooth: (@Sendable () -> PermissionState)? = nil,
         readMicrophone: (@Sendable () -> PermissionState)? = nil,
+        readSpeechRecognition: (@Sendable () -> PermissionState)? = nil,
+        promptSpeechRecognition: (@Sendable () async -> PermissionState)? = nil,
         promptBluetooth: (@Sendable () async -> BLEAvailability)? = nil,
         promptMicrophone: (@Sendable () async -> PermissionState)? = nil,
         probeLocalNetwork: (@Sendable () async -> PermissionState)? = nil,
@@ -53,6 +58,8 @@ final class PermissionsModel {
         }
         self.readBluetooth = readBluetooth ?? { BluetoothPermission.current }
         self.readMicrophone = readMicrophone ?? { MicrophonePermission.current }
+        self.readSpeechRecognition = readSpeechRecognition ?? { SpeechRecognitionPermission.current }
+        self.promptSpeechRecognition = promptSpeechRecognition ?? { await SpeechRecognitionPermission.request() }
         self.promptBluetooth = promptBluetooth ?? { await BluetoothPermission.promptForAccess() }
         self.promptMicrophone = promptMicrophone ?? { await MicrophonePermission.request() }
         self.probeLocalNetwork = probeLocalNetwork ?? { await LocalNetworkProbe.resolve() }
@@ -69,6 +76,7 @@ final class PermissionsModel {
     func refresh() {
         states[.bluetooth] = readBluetooth()
         states[.microphone] = readMicrophone()
+        states[.speechRecognition] = readSpeechRecognition()
     }
 
     /// The async half of `refresh()`, and non-prompting for the same reason it is.
@@ -90,6 +98,12 @@ final class PermissionsModel {
 
     func requestMicrophone() async {
         await run(.microphone) { await self.promptMicrophone() }
+    }
+
+    /// Also asked by the Conversation screen's first press to talk from this device —
+    /// two paths to one prompt, the shape the microphone already has.
+    func requestSpeechRecognition() async {
+        await run(.speechRecognition) { await self.promptSpeechRecognition() }
     }
 
     /// Reached from two buttons — this screen's Allow, and the Settings toggle. Two
@@ -136,6 +150,7 @@ final class PermissionsModel {
             bluetooth: PermissionState = .granted,
             localNetwork: PermissionState = .granted,
             microphone: PermissionState = .granted,
+            speechRecognition: PermissionState = .granted,
             notifications: PermissionState = .granted,
             availability: BLEAvailability? = nil
         ) -> PermissionsModel {
@@ -144,10 +159,13 @@ final class PermissionsModel {
                     .bluetooth: bluetooth,
                     .localNetwork: localNetwork,
                     .microphone: microphone,
+                    .speechRecognition: speechRecognition,
                     .notifications: notifications,
                 ],
                 readBluetooth: { bluetooth },
                 readMicrophone: { microphone },
+                readSpeechRecognition: { speechRecognition },
+                promptSpeechRecognition: { speechRecognition },
                 promptBluetooth: { BLEAvailability.ready },
                 promptMicrophone: { microphone },
                 probeLocalNetwork: { localNetwork },

@@ -112,6 +112,7 @@ struct PermissionsScreen: View {
         case .bluetooth: await model.requestBluetooth()
         case .localNetwork: await model.checkLocalNetwork()
         case .microphone: await model.requestMicrophone()
+        case .speechRecognition: await model.requestSpeechRecognition()
         case .notifications: await model.requestNotifications()
         }
     }
@@ -140,7 +141,7 @@ struct PermissionsScreen: View {
                 // same as "refused" and the copy must not let it read that way.
                 Text(.reachy("Checking looks for a robot on this Wi-Fi, and asks for permission if it has not yet."))
             }
-        case .microphone, .notifications:
+        case .microphone, .speechRecognition, .notifications:
             EmptyView()
         }
     }

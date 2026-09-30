@@ -98,7 +98,9 @@ struct TranscriptRow: View {
         case .gap, .ended:
             marker
         case .typed:
-            typed
+            sent(glyph: "keyboard")
+        case .dictated:
+            sent(glyph: "waveform")
         case .spoken:
             spoken
         }
@@ -116,12 +118,14 @@ struct TranscriptRow: View {
         .contextMenu { copyLine }
     }
 
-    /// Full width and filled, so it cannot be misread as a chat bubble — and a keyboard
-    /// glyph, because this is the one row nobody said out loud.
-    private var typed: some View {
+    /// Full width and filled, so it cannot be misread as a chat bubble. The fill is what
+    /// the two rows this client sent have in common — the app received text, not a
+    /// voice — and the glyph is what tells them apart: a keyboard for the one nobody
+    /// said out loud, a waveform for the one said into this device.
+    private func sent(glyph: String) -> some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack(spacing: Space.xs) {
-                Image(systemName: "keyboard")
+                Image(systemName: glyph)
                     .font(Typography.statusCompact)
                     .accessibilityHidden(true)
                 caption

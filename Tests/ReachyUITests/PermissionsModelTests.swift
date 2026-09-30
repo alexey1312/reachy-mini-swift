@@ -26,6 +26,8 @@ struct PermissionsModelTests {
         bluetooth: PermissionState = .undetermined,
         microphone: PermissionState = .undetermined,
         promptedMicrophone: PermissionState = .granted,
+        speech: PermissionState = .undetermined,
+        promptedSpeech: PermissionState = .granted,
         probedNetwork: PermissionState = .granted,
         notifications: PermissionState = .undetermined,
         promptedNotifications: PermissionState = .granted,
@@ -39,6 +41,14 @@ struct PermissionsModelTests {
             readMicrophone: {
                 spy.record("readMicrophone")
                 return microphone
+            },
+            readSpeechRecognition: {
+                spy.record("readSpeechRecognition")
+                return speech
+            },
+            promptSpeechRecognition: {
+                spy.record("promptSpeechRecognition")
+                return promptedSpeech
             },
             promptBluetooth: {
                 spy.record("promptBluetooth")
@@ -74,14 +84,16 @@ struct PermissionsModelTests {
         #expect(PermissionKind.allCases.isEmpty == false)
     }
 
-    @Test("a refresh reads the two non-prompting sources and never touches the probes")
+    @Test("a refresh reads the non-prompting sources and never touches the probes")
     func refreshDoesNotPrompt() {
         let spy = ProbeSpy()
-        let model = Self.model(spy: spy, bluetooth: .granted, microphone: .denied)
+        let model = Self.model(spy: spy, bluetooth: .granted, microphone: .denied, speech: .restricted)
         model.refresh()
 
         #expect(model[.bluetooth] == .granted)
         #expect(model[.microphone] == .denied)
+        #expect(model[.speechRecognition] == .restricted)
+        #expect(spy.count("promptSpeechRecognition") == 0)
         // The whole point. Starting a browser *is* the local-network prompt, and
         // building a central *is* the Bluetooth one, so a screen appearing must reach
         // neither.
@@ -164,6 +176,21 @@ struct PermissionsModelTests {
         #expect(model[.microphone].isBlocking)
     }
 
+    /// Speech recognition answers `restricted` on both platforms, unlike the iOS
+    /// microphone, so that state has to survive the round trip rather than read as a
+    /// refusal the reader could undo.
+    @Test("asking for speech recognition prompts once and keeps a restricted answer")
+    func requestSpeechRecognition() async {
+        let spy = ProbeSpy()
+        let model = Self.model(spy: spy, promptedSpeech: .restricted)
+
+        await model.requestSpeechRecognition()
+
+        #expect(spy.count("promptSpeechRecognition") == 1)
+        #expect(model[.speechRecognition] == .restricted)
+        #expect(model.busy == nil)
+    }
+
     @Test("prompting for Bluetooth also learns the radio state authorization cannot report")
     func bluetoothPromptLearnsAvailability() async {
         let spy = ProbeSpy()
@@ -221,5 +248,6 @@ struct PermissionKindTests {
         #expect(PermissionKind.bluetooth.pane == .bluetooth)
         #expect(PermissionKind.localNetwork.pane == .localNetwork)
         #expect(PermissionKind.microphone.pane == .microphone)
+        #expect(PermissionKind.speechRecognition.pane == .speechRecognition)
     }
 }

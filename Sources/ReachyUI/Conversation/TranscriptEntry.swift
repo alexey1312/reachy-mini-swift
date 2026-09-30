@@ -21,6 +21,13 @@ struct TranscriptEntry: Identifiable, Equatable {
         /// nobody said it, it is never transcribed, and it would otherwise be the one
         /// row in the transcript that claims to be a recording and is not.
         case typed
+        /// Something said into **this device**, transcribed here, and sent with
+        /// `conversation.say`.
+        ///
+        /// Neither of the two kinds beside it. Not `.typed`, because somebody did speak;
+        /// not `.spoken(.user)`, because the robot's app never heard it — it received
+        /// text, and this row is exactly the text it received, misheard words and all.
+        case dictated
         /// The feed stopped and started again. What was said in between is lost — the
         /// robot keeps no history — so this is the only honest thing to draw there.
         case gap
@@ -65,7 +72,7 @@ struct TranscriptEntry: Identifiable, Equatable {
     /// about — the seams and endings are this client's own commentary.
     var isUtterance: Bool {
         switch kind {
-        case .spoken, .typed: true
+        case .spoken, .typed, .dictated: true
         case .gap, .ended: false
         }
     }
@@ -88,6 +95,7 @@ extension TranscriptEntry {
             case let .unknown(other): "\(other): "
             }
         case .typed: "You (typed): "
+        case .dictated: "You (dictated): "
         case .gap, .ended: ""
         }
     }

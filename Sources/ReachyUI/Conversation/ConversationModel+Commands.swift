@@ -126,7 +126,9 @@ extension ConversationModel {
         // The dock and this screen both stay up over an unreachable robot on purpose,
         // so their controls have to refuse rather than reach for a socket that cannot
         // open — and refusing is not a failure to report: nothing was attempted.
-        guard isReachable(session), !isBusy else { return }
+        // A take on this device owns the robot's microphone until it ends — a mute or a
+        // send slipped into the middle of one would be overwritten by its restore.
+        guard isReachable(session), !isBusy, dictation.isIdle else { return }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -145,16 +147,22 @@ extension ConversationModel {
     /// timeout and an unreachable socket conclude nothing: the robot may be behind a Wi-Fi
     /// blip and the transport reconnects on its own, so the phase is left where it was and
     /// the failure is merely reported.
-    private func conclude(_ failure: ConversationFailure) {
+    ///
+    /// Internal rather than private only so `+Dictation.swift` can reach it: a take's
+    /// robot calls are judged by the same rules. A verdict also ends a take in flight.
+    func conclude(_ failure: ConversationFailure) {
         switch failure {
         case .methodNotFound:
             offersControls = false
+            cancelTake()
         case let .rejected(_, reason, _):
             switch reason {
             case .notRunning:
                 phase = .unavailable(.appStopped)
+                cancelTake()
             case .appUnavailable:
                 phase = .unavailable(.appUnavailable)
+                cancelTake()
             case .loopUnavailable:
                 phase = .preparing
                 record(failure: failure)
@@ -166,13 +174,13 @@ extension ConversationModel {
         }
     }
 
-    private func record(failure: any Error) {
+    func record(failure: any Error) {
         lastError.recordDaemonFailure(failure)
     }
 
     /// The robot stopped answering. The app is probably still running — but nothing here
     /// can reach it, so the controls are shown inert rather than lying.
-    private func isReachable(_ session: RobotSession) -> Bool {
+    func isReachable(_ session: RobotSession) -> Bool {
         if case .unreachable = session.phase {
             return false
         }
@@ -188,6 +196,7 @@ extension ConversationModel {
     /// wrongs.
     func noteAppEnded() {
         guard phase != .unavailable(.appStopped) else { return }
+        cancelTake()
         phase = .unavailable(.appStopped)
         turn = nil
         level = nil

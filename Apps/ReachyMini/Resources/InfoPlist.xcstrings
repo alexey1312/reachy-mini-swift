@@ -112,31 +112,66 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sprich über den Lautsprecher deines Reachy Mini mit Menschen in seiner Nähe."
+            "value": "Sprich von diesem Gerät aus mit Reachy und über seinen Lautsprecher mit Menschen in der Nähe deines Reachy Mini."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Talk to people near your Reachy Mini through its speaker."
+            "value": "Talk to Reachy from this device, and to people near your Reachy Mini through its speaker."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Habla con las personas cerca de tu Reachy Mini a través de su altavoz."
+            "value": "Habla con Reachy desde este dispositivo y con las personas cerca de tu Reachy Mini a través de su altavoz."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parlez aux personnes près de votre Reachy Mini via son haut-parleur."
+            "value": "Parlez à Reachy depuis cet appareil, et aux personnes près de votre Reachy Mini via son haut-parleur."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Говорите с людьми рядом с вашим Reachy Mini через его динамик."
+            "value": "Говорите с Reachy с этого устройства и с людьми рядом с вашим Reachy Mini через его динамик."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wandelt, was du zu Reachy sagst, vor dem Senden in Text um. Wenn möglich, geschieht das auf deinem Gerät; sonst transkribiert Apple die Aufnahme."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turns what you say to Reachy into text before sending it. This happens on your device when it can; otherwise Apple transcribes the audio."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte en texto lo que le dices a Reachy antes de enviarlo. Se hace en tu dispositivo cuando es posible; si no, Apple transcribe el audio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transforme en texte ce que vous dites à Reachy avant de l'envoyer. Cela se fait sur votre appareil quand c'est possible ; sinon, Apple transcrit l'audio."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Превращает сказанное Reachy в текст перед отправкой. Если возможно, это происходит на устройстве; иначе аудио расшифровывает Apple."
           }
         }
       }

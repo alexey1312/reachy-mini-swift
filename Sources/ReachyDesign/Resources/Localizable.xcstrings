@@ -3220,6 +3220,35 @@
         }
       }
     },
+    "Couldn't turn what you said into text. Nothing was sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Gesagte konnte nicht in Text umgewandelt werden. Es wurde nichts gesendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo convertir lo que dijiste en texto. No se envió nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de transformer ce que vous avez dit en texte. Rien n'a été envoyé."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось превратить сказанное в текст. Ничего не отправлено."
+          }
+        }
+      }
+    },
     "Crashed — open for details": {
       "extractionState": "manual",
       "localizations": {
@@ -3713,6 +3742,64 @@
         }
       }
     },
+    "Didn't catch that. Nothing was sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht verstanden. Es wurde nichts gesendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se entendió. No se envió nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas compris. Rien n'a été envoyé."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось расслышать. Ничего не отправлено."
+          }
+        }
+      }
+    },
+    "Discard recording": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufnahme verwerfen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar grabación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer l'enregistrement"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить запись"
+          }
+        }
+      }
+    },
     "Disconnect": {
       "extractionState": "manual",
       "localizations": {
@@ -4057,6 +4144,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Завершить вызов"
+          }
+        }
+      }
+    },
+    "End the call first. During a call, this device's microphone already goes to Reachy's speaker.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beende zuerst den Anruf. Während eines Anrufs geht das Mikrofon dieses Geräts schon an Reachys Lautsprecher."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero termina la llamada. Durante una llamada, el micrófono de este dispositivo ya va al altavoz de Reachy."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminez d'abord l'appel. Pendant un appel, le microphone de cet appareil passe déjà par le haut-parleur de Reachy."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала завершите звонок. Во время звонка микрофон этого устройства уже звучит из динамика Reachy."
           }
         }
       }
@@ -5685,6 +5801,35 @@
         }
       }
     },
+    "Hold to talk to Reachy from this device, or tap to start and tap again to send. Reachy gets the words this device heard, not your voice.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halte gedrückt, um von diesem Gerät aus mit Reachy zu sprechen, oder tippe zum Starten und erneut zum Senden. Reachy bekommt die Worte, die dieses Gerät gehört hat, nicht deine Stimme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén pulsado para hablar con Reachy desde este dispositivo, o toca para empezar y vuelve a tocar para enviar. Reachy recibe las palabras que oyó este dispositivo, no tu voz."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenez pour parler à Reachy depuis cet appareil, ou touchez pour commencer puis à nouveau pour envoyer. Reachy reçoit les mots entendus par cet appareil, pas votre voix."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удерживайте, чтобы говорить с Reachy с этого устройства, или коснитесь, чтобы начать, и ещё раз, чтобы отправить. Reachy получает слова, которые услышало устройство, а не ваш голос."
+          }
+        }
+      }
+    },
     "Holds back background noise, at the cost of some range.": {
       "extractionState": "manual",
       "localizations": {
@@ -6816,31 +6961,31 @@
         }
       }
     },
-    "Lets you talk to people near the robot through its speaker during a call.": {
+    "Lets you talk to Reachy from this device, and to people near the robot during a call.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lässt dich während eines Anrufs über den Lautsprecher des Roboters mit Menschen in seiner Nähe sprechen."
+            "value": "Lässt dich von diesem Gerät aus mit Reachy sprechen und während eines Anrufs mit Menschen in der Nähe des Roboters."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te permite hablar con las personas cerca del robot a través de su altavoz durante una llamada."
+            "value": "Te permite hablar con Reachy desde este dispositivo y, durante una llamada, con las personas cerca del robot."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous permet de parler aux personnes près du robot par son haut-parleur pendant un appel."
+            "value": "Vous permet de parler à Reachy depuis cet appareil et, pendant un appel, aux personnes près du robot."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Позволяет говорить с людьми рядом с роботом через его динамик во время звонка."
+            "value": "Позволяет говорить с Reachy с этого устройства, а во время звонка — с людьми рядом с роботом."
           }
         }
       }
@@ -7015,6 +7160,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "При привязке ваш токен копируется на робота по локальной сети без шифрования. Делайте это в сети, которой доверяете."
+          }
+        }
+      }
+    },
+    "Listening on this device · tap to send": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hört zu · zum Senden tippen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando en este dispositivo · toca para enviar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écoute sur cet appareil · touchez pour envoyer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушает это устройство · коснитесь, чтобы отправить"
+          }
+        }
+      }
+    },
+    "Listening on this device…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hört zu…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando en este dispositivo…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écoute sur cet appareil…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушает это устройство…"
           }
         }
       }
@@ -7653,6 +7856,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Микрофон"
+          }
+        }
+      }
+    },
+    "Microphone access is blocked by device policy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Mikrofonzugriff ist durch eine Geräterichtlinie gesperrt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso al micrófono está bloqueado por la política del dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accès au microphone est bloqué par une règle de l'appareil"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ к микрофону заблокирован политикой устройства"
           }
         }
       }
@@ -9890,6 +10122,35 @@
         }
       }
     },
+    "Opening this device's microphone…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon dieses Geräts wird geöffnet…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo el micrófono de este dispositivo…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouverture du microphone de cet appareil…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включается микрофон этого устройства…"
+          }
+        }
+      }
+    },
     "Opens the running app": {
       "extractionState": "manual",
       "localizations": {
@@ -11311,6 +11572,35 @@
         }
       }
     },
+    "Release to send": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Senden loslassen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suelta para enviar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relâchez pour envoyer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отпустите, чтобы отправить"
+          }
+        }
+      }
+    },
     "Remote": {
       "extractionState": "manual",
       "localizations": {
@@ -12641,6 +12931,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отправить роботу"
+          }
+        }
+      }
+    },
+    "Send what you said": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesagtes senden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar lo que dijiste"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer ce que vous avez dit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправить сказанное"
+          }
+        }
+      }
+    },
+    "Sending to Reachy…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird an Reachy gesendet…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando a Reachy…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoi à Reachy…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправка Reachy…"
           }
         }
       }
@@ -13979,6 +14327,122 @@
         }
       }
     },
+    "Speech recognition": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spracherkennung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocimiento de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnaissance vocale"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распознавание речи"
+          }
+        }
+      }
+    },
+    "Speech recognition is blocked by device policy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Spracherkennung ist durch eine Geräterichtlinie gesperrt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reconocimiento de voz está bloqueado por la política del dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale est bloquée par une règle de l'appareil"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распознавание речи заблокировано политикой устройства"
+          }
+        }
+      }
+    },
+    "Speech recognition is turned off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Spracherkennung ist deaktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reconocimiento de voz está desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale est désactivée"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распознавание речи отключено"
+          }
+        }
+      }
+    },
+    "Speech recognition isn't available for this language on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Spracherkennung ist für diese Sprache auf diesem Gerät nicht verfügbar."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reconocimiento de voz no está disponible para este idioma en este dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale n'est pas disponible pour cette langue sur cet appareil."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распознавание речи для этого языка на этом устройстве недоступно."
+          }
+        }
+      }
+    },
     "Standard": {
       "extractionState": "manual",
       "localizations": {
@@ -15139,6 +15603,35 @@
         }
       }
     },
+    "Talk from this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von diesem Gerät sprechen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablar desde este dispositivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parler depuis cet appareil"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Говорить с этого устройства"
+          }
+        }
+      }
+    },
     "Teaching the servos new steps…": {
       "extractionState": "manual",
       "localizations": {
@@ -15802,6 +16295,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Живой вид и управление вернутся, как только они запустятся."
+          }
+        }
+      }
+    },
+    "The microphone was needed elsewhere. Nothing was sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Mikrofon wurde anderweitig gebraucht. Es wurde nichts gesendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono se necesitaba para otra cosa. No se envió nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le microphone était requis ailleurs. Rien n'a été envoyé."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Микрофон понадобился для другого. Ничего не отправлено."
           }
         }
       }
@@ -17343,6 +17865,64 @@
         }
       }
     },
+    "This device heard": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hat gehört"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo oyó"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil a entendu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Устройство услышало"
+          }
+        }
+      }
+    },
+    "This device's microphone couldn't start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Mikrofon dieses Geräts konnte nicht starten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono de este dispositivo no pudo iniciarse."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le microphone de cet appareil n'a pas pu démarrer."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось включить микрофон этого устройства."
+          }
+        }
+      }
+    },
     "This folder is empty.": {
       "extractionState": "manual",
       "localizations": {
@@ -17919,6 +18499,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Включите его в Пункте управления или Настройках, и этот список заполнится."
+          }
+        }
+      }
+    },
+    "Turns what you say into text so you can talk to Reachy from this device. On this device when it can, otherwise by Apple.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wandelt Gesagtes in Text um, damit du von diesem Gerät aus mit Reachy sprechen kannst. Wenn möglich auf diesem Gerät, sonst durch Apple."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte lo que dices en texto para que puedas hablar con Reachy desde este dispositivo. En este dispositivo cuando es posible; si no, lo hace Apple."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transforme ce que vous dites en texte pour parler à Reachy depuis cet appareil. Sur cet appareil quand c'est possible, sinon par Apple."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Превращает сказанное в текст, чтобы говорить с Reachy с этого устройства. На устройстве, если возможно, иначе — силами Apple."
           }
         }
       }
@@ -19050,6 +19659,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Когда робот будет подключён, вы сможете дать ему имя в Настройках."
+          }
+        }
+      }
+    },
+    "You can talk from this device now.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst jetzt von diesem Gerät aus sprechen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya puedes hablar desde este dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez maintenant parler depuis cet appareil."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Теперь можно говорить с этого устройства."
+          }
+        }
+      }
+    },
+    "You, dictated": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du, diktiert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú, dictado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous, dicté"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы, надиктовано"
           }
         }
       }

@@ -171,6 +171,48 @@ but the contract does not promise ordering), the owner stays `.call` and a later
 `cameraSessionStopped()` declines to release — the symptom would be ducked audio in other apps
 after a call, and this entry is where to start.
 
+## Dictation: a take on this device's microphone
+
+`DeviceDictation` records one take, transcribes it with `SFSpeechRecognizer` and returns the words;
+`ReachyUI` sends them with `conversation.say`, because the robot's conversation app hears only the robot's own
+microphone (`docs/research/audio.md`).
+It lives here because it needs the audio session, and **every `AVAudioSession` and `RTCAudioSession` mention still
+stays in `MediaAudioSession.swift`**: a take borrows the session through `dictationWillStart(onPreempted:)` and hands
+it back through `dictationDidEnd()`.
+`DictationAudioPlan` decides the handover, the `CallLifecycle` shape, and `DictationAudioPlanTests` is its table.
+
+- **A call refuses a take.** During a call this device's microphone already goes to the robot's speaker,
+  and the system owns activation.
+- **Over a camera session WebRTC's audio unit goes down for the take and comes back after it** — a real transition
+  both ways, which is the only thing that restarts the unit (the #111 entry above).
+  It also silences the robot's voice on this device's speaker, which would otherwise be transcribed with the rest.
+- **With nothing running the take activates the session itself**, in the camera's own configuration,
+  and owes the same release with the same retry.
+- **A camera starting or stopping mid-take moves the ownership and never the unit.**
+  `cameraSessionStarted` skips `isAudioEnabled = true` while a take records;
+  `cameraSessionStopped` leaves the release to the take.
+- **A call or an interruption mid-take ends the take first**, before the call's own handover runs.
+
+Three things the order in `DeviceDictation.start` depends on:
+
+- The session is borrowed **before** anything reads `AVAudioEngine.inputNode`, which builds an audio unit of its own;
+  WebRTC's has to be down by then, and the engine's start is retried 5 × 200 ms because it winds down on a
+  background thread.
+- The tap and the result handler are built in `nonisolated static` factories and marked `@Sendable`.
+  Written inside a `@MainActor` method they would inherit its isolation,
+  and the audio thread calling them would trip `dispatch_assert_queue` — `abort_with_payload`,
+  a `LIBDISPATCH` line in the log and nothing else, the trap `ReachyUI/AGENTS.md` records for
+  `ASWebAuthenticationSession`.
+- `finish` turns the microphone off **before** it waits for the recognizer's last word,
+  so the robot's audio is back on this device at once.
+
+On device where the language allows it, Apple's service where it does not — the usage string and `docs/privacy.md`
+say so. The locale falls back to any supported one in the same language (`ru_KZ` transcribes as Russian).
+The macOS build turns on voice processing for the input, because there is no session to stand WebRTC down with and
+the robot's voice may be playing through the Mac's speakers; whether that cancels it is a device measurement.
+The "no speech" error codes that map to `.nothing` (`kAFAssistantErrorDomain` 1110, `kLSRErrorDomain` 301) are the
+known ones and are worth confirming on a device.
+
 ## Device checks (nothing headless can cover these)
 
 - Passive path first, before trusting any call work: robot audio audible while just viewing;
@@ -182,6 +224,10 @@ after a call, and this entry is where to start.
   **not** unmute past it, or at a robot other than the one named.
 - "Call Reachy" by voice; a relay call's End leaves the robot's control channel alive.
 - A refused microphone: no ghost call, the blocked button state appears.
+- Talking from this device over a camera session: `Stopping AURemoteIO` before the take and `Starting AURemoteIO`
+  after it in the sysdiagnose timeline, and the robot still audible after ten takes in a row.
+- The same over the relay (no renegotiation, `say` arrives), with the viewport off (other apps' audio un-ducks),
+  and with a call placed from the Lock Screen mid-take (the take discards, the call has audio both ways).
 
 Untested by design, and the reason in one line each: `CameraSession`/`WebRTCDataChannel` need a
 live peer connection; `RobotCallController`'s adapter needs callservicesd. What can be held is

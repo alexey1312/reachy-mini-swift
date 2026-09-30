@@ -350,8 +350,8 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   same bug and the reason `YourReachiesSection` is now the one segment nothing disables: a robot on the relay is not
   on this Wi-Fi, so a sweep of this one says nothing about whether it can be reached.
 - **Privacy permissions are one screen and four in-place refusals, and the split is deliberate.**
-  `Settings/Permissions/` holds the overview: `PermissionsScreen` reports Bluetooth, Local Network and
-  the microphone, and offers each one an action. Its governing rule is that **opening it must never raise
+  `Settings/Permissions/` holds the overview: `PermissionsScreen` reports Bluetooth, Local Network,
+  the microphone and speech recognition, and offers each one an action. Its governing rule is that **opening it must never raise
   a prompt** — `refresh()` reads only what can answer without asking, and every prompting path is behind a
   button. Bluetooth is the awkward one: there is no `requestAuthorization` for it, so "Allow" builds a
   short-lived central, which is exactly what `CoreBluetoothTransport` says to do only behind a screen that
@@ -1320,6 +1320,47 @@ injects the text as a user message and answers it; the words are never read out 
 return as a transcript line. The control is "Type to Reachy", and the client appends its
 own `.typed` row — a kind of its own, because a `.spoken(.user)` row would be the one
 entry in the record claiming to be a recording of something nobody said.
+
+### Talk from this device
+
+`ConversationModel+Dictation.swift`, `ConversationDictation.swift`, `ConversationTalkButton.swift`,
+over `DeviceDictation` in `ReachyMedia`.
+The robot's conversation app hears only the robot's own microphone — `conversation.mic` is mute and unmute, and the
+daemon drops a client's audio after playing it — so the one way a better microphone reaches it is to transcribe here
+and send the words with `conversation.say` (`docs/research/audio.md` has the upstream reading).
+
+- **The order of the robot calls is the feature.** Permission first, and a take that had to prompt records nothing:
+  the alert took the touch, so its release may never arrive.
+  Then the recording, then an interrupt if the robot is speaking or thinking, then the robot's microphone muted.
+  On release the recording stops, the press's own robot calls are awaited, then `say`, then the unmute.
+  An unmute is owed only if the robot answered that it muted; a robot already muted is left alone.
+  `ConversationDictationTests` holds the whole sequence in one log, device and robot together,
+  and `unmuteWaitsForTheMute` goes red if the await on the press's calls is removed — checked by mutating it.
+- **One synchronous entry point, `talk(_:app:session:)`.** Two `Task { await … }` from one gesture have no order
+  between them, which is how a press and its release race. The press's state change is applied before the call
+  returns, a release that arrives while the take is still preparing is stored rather than dropped, and the returned
+  task is what a test awaits (rule 7).
+- **A tap latches; a hold sends on release.** Under 350 ms is a tap, and the next tap sends — which is also what a
+  click on a Mac is. The button's own action is `.toggled`, the path VoiceOver, Switch Control and Full Keyboard
+  Access reach; a finger reaches `TalkButtonStyle`'s drag and never the action, so one touch cannot count twice.
+  The drag reads `@GestureState`, which resets when the system takes the touch — `onEnded` would not fire then.
+- **`.dictated` is a third kind of row**, beside `.typed` and `.spoken(.user)`, and it is neither:
+  somebody did speak, but the robot's app never heard it — it received text, and the row is exactly that text,
+  misheard words and all. `You (dictated):` in an export.
+- **The refusal has a slot of its own**, `dictationRefusal`, because `lastError` is cleared only by a later
+  successful command and a refused permission must go on the next press. The failure line shows it with
+  `PrivacySettingsButton` when there is a pane.
+- **While a take runs the other controls are inert** — `run` refuses while `dictation` is not idle — so a mute from
+  the dock cannot land between the take's mute and its restore.
+  A verdict on the app (`not_running`, `app_unavailable`, `-32601`, `noteAppEnded`) cancels the take;
+  a dropped feed does not, for the reason the rule above gives.
+- **The screen cancels a take when it disappears and when the scene leaves `.active`**: with the `audio` background
+  mode a take would otherwise keep recording in somebody's pocket.
+- **The state line shows the take, not the turn, while one runs** — this device's level, and the words so far in
+  italics, head-truncated — and it drops `.updatesFrequently`, so VoiceOver does not read them out of the speaker and
+  into the microphone transcribing them.
+- **Which language** is the device's own, falling back to any supported locale in the same language;
+  on device when the recognizer supports it, Apple's service otherwise, and `docs/privacy.md` says so.
 
 ## Asking for a rating
 

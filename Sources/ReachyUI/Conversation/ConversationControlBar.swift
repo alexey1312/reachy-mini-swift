@@ -2,12 +2,15 @@ import ReachyDesign
 import ReachyKit
 import SwiftUI
 
-/// The state line and the three controls, pinned below the transcript.
+/// The state line and the four controls, pinned below the transcript.
 ///
 /// **The geometry never restructures.** Across every state the bar is the same state
-/// line above the same three slots; a conversation that cannot be reached dims them
+/// line above the same four slots; a conversation that cannot be reached dims them
 /// rather than removing them, so the screen stays recognisably the same place. A bar
 /// that rebuilt itself per state would make each failure look like a different screen.
+///
+/// The slots pair up: the leading two act on the robot — its microphone, its voice —
+/// and the trailing two are yours, spoken into this device or typed.
 struct ConversationControlBar: View {
     let turn: ConversationTurn?
     let level: ConversationLevel?
@@ -15,6 +18,9 @@ struct ConversationControlBar: View {
     let isEnabled: Bool
     let offersControls: Bool
     let failure: String?
+    /// Where a refusal can be undone, when it is a permission.
+    var failurePane: PrivacySettingsLink.Pane?
+    var talk = ConversationTalkState()
     let perform: (Action) -> Void
     let hold: (Bool) -> Void
 
@@ -22,14 +28,27 @@ struct ConversationControlBar: View {
         case toggleMicrophone
         case interrupt
         case compose
+        case talk(TalkGesture)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             if let failure {
-                Text(failure)
+                HStack(spacing: Space.sm) {
+                    Text(failure)
+                        .font(Typography.status)
+                        .foregroundStyle(Tone.warning.style)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let failurePane {
+                        PrivacySettingsButton(pane: failurePane)
+                            .font(Typography.status)
+                    }
+                }
+            }
+            if let notice = talk.notice {
+                Text(notice.message)
                     .font(Typography.status)
-                    .foregroundStyle(Tone.warning.style)
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             stateLine
@@ -44,7 +63,16 @@ struct ConversationControlBar: View {
 
     // MARK: The state line
 
+    @ViewBuilder
     private var stateLine: some View {
+        if talk.phase.isIdle {
+            turnLine
+        } else {
+            takeLine
+        }
+    }
+
+    private var turnLine: some View {
         HStack(spacing: Space.sm) {
             Text(turn.map(ConversationTurnCaption.title) ?? ConversationTurnCaption.unknown)
                 .font(Typography.status)
@@ -62,6 +90,33 @@ struct ConversationControlBar: View {
         .accessibilityAddTraits(.updatesFrequently)
     }
 
+    /// The take instead of the turn: while this device is listening, what it is doing
+    /// and what it has heard is the state that matters, and the meter is this device's.
+    ///
+    /// **No `updatesFrequently` here.** VoiceOver reading the words as they arrive would
+    /// read them out of the speaker and into the very microphone transcribing them.
+    private var takeLine: some View {
+        HStack(spacing: Space.sm) {
+            Text(DictationCaption.state(for: talk.phase))
+                .font(Typography.status)
+                .foregroundStyle(.secondary)
+                .layoutPriority(1)
+            ConversationLevelMeter(level: talk.level)
+            if !talk.phase.heard.isEmpty {
+                // What the device heard, verbatim: it is the user's own words, and the
+                // newest of them are the ones worth keeping on screen.
+                Text(verbatim: talk.phase.heard)
+                    .font(Typography.status)
+                    .italic()
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(.reachy("This device heard"))
+    }
+
     // MARK: The controls
 
     private var controls: some View {
@@ -69,6 +124,7 @@ struct ConversationControlBar: View {
             microphone
             interrupt
             Spacer(minLength: 0)
+            ConversationTalkButton(phase: talk.phase, isEnabled: talk.isEnabled) { perform(.talk($0)) }
             compose
         }
     }

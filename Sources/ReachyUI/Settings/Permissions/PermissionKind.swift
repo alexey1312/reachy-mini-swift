@@ -21,12 +21,17 @@ import SwiftUI
 /// alternative is a switch in Settings that silently does nothing — which is the
 /// failure this whole screen was built to end. It is also the only row with no
 /// matching usage string in `Apps/Project.swift`: the system writes that prompt's
-/// text, not this app. It goes last so the three device permissions keep the order
-/// they have always had.
+/// text, not this app. It goes last so the device permissions keep the order they have
+/// always had.
+///
+/// Speech recognition sits beside the microphone because it is asked for by the same
+/// press: talking to Reachy from this device records here and transcribes here, and
+/// either refusal stops it.
 enum PermissionKind: CaseIterable, Hashable, Sendable {
     case bluetooth
     case localNetwork
     case microphone
+    case speechRecognition
     case notifications
 
     var title: LocalizedStringResource {
@@ -34,6 +39,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .bluetooth: .reachy("Bluetooth")
         case .localNetwork: .reachy("Local network")
         case .microphone: .reachy("Microphone")
+        case .speechRecognition: .reachy("Speech recognition")
         case .notifications: .reachy("Notifications")
         }
     }
@@ -47,7 +53,12 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .localNetwork:
             .reachy("Finds your robot on this Wi-Fi and talks to it. Without it the robot cannot be reached at all.")
         case .microphone:
-            .reachy("Lets you talk to people near the robot through its speaker during a call.")
+            .reachy("Lets you talk to Reachy from this device, and to people near the robot during a call.")
+        case .speechRecognition:
+            .reachy(
+                // swiftlint:disable:next line_length
+                "Turns what you say into text so you can talk to Reachy from this device. On this device when it can, otherwise by Apple."
+            )
         case .notifications:
             // "In another app", not "when the app is closed". Nothing here survives
             // the process being unloaded, and the copy must not imply it does.
@@ -60,6 +71,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .bluetooth: "dot.radiowaves.left.and.right"
         case .localNetwork: "wifi"
         case .microphone: "mic"
+        case .speechRecognition: "waveform"
         case .notifications: "bell"
         }
     }
@@ -69,6 +81,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
         case .bluetooth: .bluetooth
         case .localNetwork: .localNetwork
         case .microphone: .microphone
+        case .speechRecognition: .speechRecognition
         case .notifications: .notifications
         }
     }
@@ -105,7 +118,7 @@ enum PermissionKind: CaseIterable, Hashable, Sendable {
     private var undeterminedCaption: String {
         switch self {
         case .localNetwork: String(localized: .reachy("Not known yet"))
-        case .bluetooth, .microphone, .notifications: String(localized: .reachy("Not asked yet"))
+        case .bluetooth, .microphone, .speechRecognition, .notifications: String(localized: .reachy("Not asked yet"))
         }
     }
 
