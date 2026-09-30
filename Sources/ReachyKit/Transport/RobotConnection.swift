@@ -205,9 +205,19 @@ public actor RobotConnection {
         switch try await client.getDaemonStatusApiDaemonStatusGet() {
         case let .ok(response):
             return try response.body.json
-        case let .undocumented(statusCode, _):
+        case let .undocumented(statusCode, payload):
+            // The first request of every handshake, so a host the daemon refuses is
+            // caught here or nowhere — and "HTTP 400" alone says nothing to act on.
+            if statusCode == 400, await Self.detail(of: payload) == ReachyKitError.untrustedHostDetail {
+                throw ReachyKitError.untrustedHost(host: address.host)
+            }
             throw ReachyKitError.fromStatusCode(statusCode)
         }
+    }
+
+    private static func detail(of payload: UndocumentedPayload) async -> String? {
+        guard let body = payload.body, let data = try? await Data(collecting: body, upTo: 4096) else { return nil }
+        return ReachyKitError.detail(in: data)
     }
 
     /// Returns the name the daemon actually stored. It persists it and re-advertises

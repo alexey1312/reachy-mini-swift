@@ -1,4 +1,5 @@
 import Foundation
+import ReachyJSON
 @testable import ReachyKit
 import Testing
 
@@ -16,6 +17,28 @@ struct RobotAddressTests {
         #expect(address.rootURL?.absoluteString == "http://[fd00::1234]:8000")
         #expect(address.webSocketURL(path: "/api/state/ws/full")?.absoluteString
             == "ws://[fd00::1234]:8000/api/state/ws/full")
+    }
+
+    /// The daemon's local-network guard (reachy_mini#1423) accepts a name only when it
+    /// ends in `.local`, so a fully qualified `reachy-mini.local.` would be a 400.
+    @Test(
+        "a trailing dot never reaches the Host header",
+        arguments: ["reachy-mini.local.", "reachy-mini.local.:8000", "  reachy-mini.local.  "]
+    )
+    func dropsTheTrailingDot(input: String) throws {
+        let address = try #require(RobotAddress(parsing: input))
+        #expect(address.host == "reachy-mini.local")
+        #expect(address.rootURL?.absoluteString == "http://reachy-mini.local:8000")
+    }
+
+    /// A record written before the normalisation decodes straight into the stored
+    /// property, so the URL builder has to apply it as well.
+    @Test("a stored address with a trailing dot still builds a URL without it")
+    func dropsTheTrailingDotFromAStoredAddress() throws {
+        let stored = Data(#"{"host": "reachy-mini.local.", "port": 8000}"#.utf8)
+        let address = try JSONCodec.stored.decode(RobotAddress.self, from: stored)
+        #expect(address.webSocketURL(path: "/api/state/ws/full")?.absoluteString
+            == "ws://reachy-mini.local:8000/api/state/ws/full")
     }
 
     @Test("custom port is preserved")
