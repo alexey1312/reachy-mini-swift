@@ -215,7 +215,11 @@ struct ConnectionScreen: View {
                     connect: connectToSimulator
                 )
             } label: {
+                // On the label, never on the group: an identifier on a
+                // `DisclosureGroup` reaches every row it discloses and overrides
+                // theirs — `Start the simulator` came back as `connect.developer`.
                 Label(.reachy("Developer"), systemImage: "hammer")
+                    .accessibilityIdentifier(.connectDeveloper)
             }
         }
     }
@@ -298,6 +302,7 @@ struct ConnectionScreen: View {
             } label: {
                 Label(.reachy("Set up a new robot over Bluetooth"), systemImage: "antenna.radiowaves.left.and.right")
             }
+            .accessibilityIdentifier(.connectBluetoothSetup)
         }
     }
 

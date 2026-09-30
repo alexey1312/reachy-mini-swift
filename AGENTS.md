@@ -294,10 +294,21 @@ replaced by those flows (ADR 0005). Four things about that are worth knowing bef
   consistent with what slimming leaves alone: the flows are HTTP and Bonjour, and the allowlist carries no
   `mDNSResponder`, `configd` or `networkd`. A widget or Control Centre flow would be a different question, since
   `widgets` disables `PosterBoard` and `chronod`.
-- **Selectors match text with no element-type filter.** `assertVisible: "Nearby"` is weaker than the
-  `app.buttons["Nearby"]` it replaced, and there are **zero** `accessibilityIdentifier`s in the repository, so
-  anything needing to disambiguate a repeated label has no way to. That is the ceiling on what the flow set can
-  assert until identifiers land, and it is why the set is deliberately small.
+- **A control is selected by identifier; what has none is still selected by text, with no element-type filter.**
+  `AccessibilityID` (`Sources/ReachyUI/AccessibilityID.swift`) names the connect gate's five controls,
+  the flows select them with `id:`,
+  and `MaestroFlowIdentifierTests` fails when the YAML and the enum disagree in either direction.
+  The ambiguity it settled was real: the screen's title is also "Connect", so `tapOn: "Connect"` matched two elements.
+  Three things about placing one, each measured with `maestro hierarchy`:
+  - **An identifier on a container reaches every element inside it and overrides theirs.**
+    On a `DisclosureGroup` it relabelled `Start the simulator` as `connect.developer`,
+    so the Developer one sits on the group's `Label` instead,
+    where it only spreads across that one row.
+  - **A tab bar button cannot carry one.** `TabContent.accessibilityIdentifier` exists and does not reach the button:
+    the only identifier that surfaces there is the SF Symbol's name (`figure.wave` on the Robot tab), never ours.
+    So tabs and segments are still matched by visible English text,
+    the language pin stays, and `assertVisible: "Nearby"` is still weaker than the `app.buttons["Nearby"]` it replaced.
+  - **An identifier does not change a pixel**, so adding one moves no reference image.
 
 Tier 2 (`test:smoke:sim`) is tagged `daemon` and excluded from `test:smoke` by tag, the way `test:sim` is gated on
 `REACHY_SIM_HOST` — a plain run skips it. Its host arrives as a flow variable (`-e HOST=…`), not through the
@@ -564,16 +575,22 @@ So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, a
 different iOS runtime renders text differently and every reference would have to be re-recorded.
 **Adding a size to `snapshot_devices` costs +816 references and roughly +100 MB of LFS**, one per preview per
 appearance, so weigh that before a third entry (#114 measured it and decided against).
-**Its position in the list used to be load-bearing, and that was a bug, now fixed.**
-The stencil renders one preview instance once per entry, reassigning `snapshot.device` between renders,
-and three previews kept their seeded state only on the **first** render —
-`Device check — robots found`, `Device check — permission denied` and `Controller — recording` —
-because `DeviceCheckView` stopped its browser and `ControllerScreen` ended the take in `onDisappear`.
+**Its position in the list used to be load-bearing, and it no longer is — fixed twice over.**
+`PrefireSnapshot.init` evaluates the preview body once and keeps the view,
+and the stencil used to build one and render it for every entry and both appearances,
+so all four captures shared the models that body built, and a teardown in the first reached the other three.
+`Device check — robots found`, `Device check — permission denied` and `Controller — recording`
+kept their seeded state only in the **first** capture,
+because `DeviceCheckView` stopped its browser and `ControllerScreen` ended the take in `onDisappear` —
+the `iPad Pro 11` reference for "robots found" read "No robots found".
 Both teardowns now sit behind the preview switch (`browsesLiveNetwork`, `reachyPreviewMode`),
-and re-recording moved the later captures while the first of each stayed byte-identical,
-so a new size may go anywhere in the list.
-A reference that reads one state on its first capture and another on the rest is the next such teardown —
-see "One preview body, one model, four captures" in `Sources/ReachyUI/AGENTS.md`.
+which fixes those two screens,
+and the stencil now builds the `PrefireSnapshot` inside its loop, so every capture renders a preview of its own,
+which fixes the class.
+Each was measured without the other: either one alone re-recorded the same nine references, byte for byte,
+with the first capture of each unchanged.
+So a new size may go anywhere in the list — by construction, not by actually reordering it.
+See "Each capture builds its own preview" in `Sources/ReachyUI/AGENTS.md`.
 **`required_os` is compiled into the generated tests, not read at run time.** Editing `.prefire.yml` without
 rebuilding the snapshot target leaves the old value in `…PreviewsTests.generated.swift`, where it is a `fatalError`
 and not a failed assertion — `Switch to iOS 26 for these tests`. Reached through `record`, which deletes every PNG

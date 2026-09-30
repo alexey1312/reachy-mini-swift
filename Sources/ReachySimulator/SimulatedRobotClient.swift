@@ -22,6 +22,10 @@ import ReachyKit
 /// - **`DaemonLogClient`** — there is no daemon and so no journal. Upstream's own
 ///   simulator refuses the log upgrade with a 403, and inventing lines here would
 ///   put simulator events on a screen that says "Daemon logs".
+/// - **`AudioLevelClient`, `TestSoundClient`** — there is no speaker and no
+///   microphone. These were `RobotAPIClient` requirements with throwing defaults
+///   until the Settings tab drew its Audio section here and printed the default's
+///   raw `NSURLErrorDomain error -1002`; declining is now a conformance left out.
 /// - **`PresenceClient`, `HFAuthClient`, `WiFiConfigClient`, `DaemonUpdateClient`,
 ///   `CacheMaintenanceClient`** — a robot's Wi-Fi, its software, its Hugging Face
 ///   account and its caches all belong to a machine that does not exist.

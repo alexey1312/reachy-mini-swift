@@ -2,9 +2,12 @@
 # connect gate stands, both route segments answer, the Bluetooth way out is
 # offered, and the simulator is where the Developer disclosure puts it.
 #
-# Selectors are visible English text. The mise task pins the simulator's language
-# before it runs — an unpinned simulator renders these in whatever language it is
-# set to and every one of them misses.
+# Controls are selected by accessibility identifier (`id:`), declared in
+# Sources/ReachyUI/AccessibilityID.swift and checked against these files by
+# MaestroFlowIdentifierTests. What is still matched by visible English text is what
+# has no identifier to give — the segment names — so the mise task still pins the
+# simulator's language before it runs; an unpinned simulator renders those in
+# whatever language it is set to and every one of them misses.
 appId: com.alexey1312.ReachyMini
 tags:
   - ci
@@ -28,8 +31,10 @@ tags:
 # The address field is asserted on the `Nearby` segment rather than behind one of
 # its own — it moved under the robot list when the segments were shortened, which
 # is the sort of change only this flow and a reference image can see.
-- assertVisible: "host, host:port, or IP"
-- assertVisible: "Set up a new robot over Bluetooth"
+- assertVisible:
+    id: "connect.address"
+- assertVisible:
+    id: "connect.bluetooth-setup"
 
 - tapOn: "Remote"
 - tapOn: "Nearby"
@@ -37,10 +42,13 @@ tags:
 # Below the fold on a phone: a row that exists but is not on screen takes a tap
 # nowhere, so it is scrolled into view first.
 - scrollUntilVisible:
-    element: "Developer"
+    element:
+      id: "connect.developer"
     direction: DOWN
-- tapOn: "Developer"
+- tapOn:
+    id: "connect.developer"
 # And the disclosure opens below the fold in turn.
 - scrollUntilVisible:
-    element: "Start the simulator"
+    element:
+      id: "connect.start-simulator"
     direction: DOWN

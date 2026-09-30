@@ -12,7 +12,7 @@ import ReachyJSON
 ///
 /// The command names and their fields are `reachy_mini/io/protocol.py`; the reply
 /// shapes are `process_command` in `daemon/backend/abstract.py`.
-public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlaybackClient {
+public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlaybackClient, AudioLevelClient {
     let control: RemoteControlChannel
     /// From the central listing that got us to this robot — the same place the
     /// user picked it from. Daemon 1.10.0 also answers `get_robot_name`, but the

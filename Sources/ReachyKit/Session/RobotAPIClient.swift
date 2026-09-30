@@ -13,11 +13,6 @@ public protocol RobotAPIClient: RobotGeometryClient {
     func startDaemon(wakeUp: Bool) async throws
     func stopDaemon(gotoSleep: Bool) async throws
     func kinematicsInfo() async throws -> KinematicsInfo
-    func volume() async throws -> AudioLevel
-    func setVolume(_ percent: Int) async throws -> AudioLevel
-    func microphoneVolume() async throws -> AudioLevel
-    func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel
-    func playTestSound() async throws
     /// The robot's inertial reading, or nil where there is no IMU to read.
     func imuReading() async throws -> RobotIMUReading?
 }
@@ -52,26 +47,6 @@ public extension RobotAPIClient {
     }
 
     func kinematicsInfo() async throws -> KinematicsInfo {
-        throw URLError(.unsupportedURL)
-    }
-
-    func volume() async throws -> AudioLevel {
-        throw URLError(.unsupportedURL)
-    }
-
-    func setVolume(_: Int) async throws -> AudioLevel {
-        throw URLError(.unsupportedURL)
-    }
-
-    func microphoneVolume() async throws -> AudioLevel {
-        throw URLError(.unsupportedURL)
-    }
-
-    func setMicrophoneVolume(_: Int) async throws -> AudioLevel {
-        throw URLError(.unsupportedURL)
-    }
-
-    func playTestSound() async throws {
         throw URLError(.unsupportedURL)
     }
 }

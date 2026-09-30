@@ -19,6 +19,7 @@ struct SimulatorSection: View {
     var body: some View {
         Button(.reachy("Start the simulator"), action: connect)
             .disabled(isConnecting)
+            .accessibilityIdentifier(.connectStartSimulator)
         Text(.reachy(
             // swiftlint:disable:next line_length
             "A robot drawn from its own description, with no hardware and no physics. The joystick moves it, and the 3D model follows exactly as it would over the network."

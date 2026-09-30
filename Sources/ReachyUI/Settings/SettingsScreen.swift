@@ -31,7 +31,10 @@ struct SettingsScreen: View {
     var body: some View {
         Form {
             robotSection
-            if session.isBackendRunning {
+            // `canAdjustAudio` as well as a running backend: the in-app simulator
+            // reports its backend ready and has no speaker, and without the second
+            // test this section drew two dead sliders over a raw URL error.
+            if session.isBackendRunning, session.canAdjustAudio {
                 AudioSettingsSection(session: session)
             }
             if session.supportsWirelessFeatures {
@@ -44,6 +47,9 @@ struct SettingsScreen: View {
             NotificationsSection()
             privacySection
             AdvancedSettingsSection(session: session)
+            // About the app rather than the robot, and it leaves the app — the same
+            // two things true of the section after it.
+            RateAppSection()
             // Last, and about neither the robot nor the app's behaviour: it is the
             // attribution Apache-2.0 asks for. See AcknowledgementsSection.
             AcknowledgementsSection()

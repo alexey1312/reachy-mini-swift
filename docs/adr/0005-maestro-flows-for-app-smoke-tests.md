@@ -79,6 +79,15 @@ anywhere in the hierarchy. With **zero** `accessibilityIdentifier`s in the repos
 a repeated label, so the flow set is deliberately small and cannot grow much until identifiers land. That work is the
 natural follow-up and it touches every screen in `Sources/ReachyUI`.
 
+_Update, 2026-09-30:_
+the connect gate's five controls carry identifiers now (`AccessibilityID`),
+and both flows select them by `id:` —
+which settled one ambiguity that was real rather than hypothetical:
+the screen's title is also "Connect", so `tapOn: "Connect"` matched two elements.
+The shell's tabs cannot follow.
+`TabContent.accessibilityIdentifier` does not reach the tab bar button on iOS 27 (measured with `maestro hierarchy`),
+so they are still selected by label and the language pin stays.
+
 **`XCTAssertEqual(app.state, .runningForeground)`** has no Maestro equivalent. A trailing `assertVisible` on something
 the app draws covers the same ground less directly.
 

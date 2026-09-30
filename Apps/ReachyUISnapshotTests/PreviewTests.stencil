@@ -54,9 +54,11 @@ import SnapshotTesting
     // zero tests. Wrap it the same way if one is ever added here.
     {% for type in types.types where type.implements.PrefireProvider or type.based.PrefireProvider or type|annotated:"PrefireProvider" %}
     func test_{{ type.name|lowerFirstLetter|replace:"_Previews", "" }}() {
-        for preview in {{ type.name }}._allPreviews {
-            if let failure = assertSnapshots(for: PrefireSnapshot(preview, device: preview.device?.snapshotDevice() ?? deviceConfig)) {
-                XCTFail(failure)
+        for variant in snapshotVariants {
+            for preview in {{ type.name }}._allPreviews {
+                if let failure = assertSnapshot(for: PrefireSnapshot(preview, device: preview.device?.snapshotDevice() ?? deviceConfig), variant: variant) {
+                    XCTFail(failure)
+                }
             }
         }
     }
@@ -70,24 +72,26 @@ import SnapshotTesting
     {% for macroModel in argument.previewsMacrosDict %}
     func test_{{ macroModel.componentTestName }}_Preview() {
         {% if macroModel.hasArguments %}
-        for (previewArgumentIndex, previewArgument) in ({{ macroModel.arguments }}).enumerated() {
-            let {{ macroModel.argumentPattern }} = previewArgument
+        for variant in snapshotVariants {
+            for (previewArgumentIndex, previewArgument) in ({{ macroModel.arguments }}).enumerated() {
+                let {{ macroModel.argumentPattern }} = previewArgument
 
-            let prefireSnapshot = PrefireSnapshot(
-                {
-                    Group {
-                        {{ macroModel.body|indent:24 }}
-                    }
-                    .reachyTheme(.fallback)
-                    .reachyPreviewMode(true)
-                },
-                name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
-                isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
-                device: deviceConfig
-            )
+                let prefireSnapshot = PrefireSnapshot(
+                    {
+                        Group {
+                            {{ macroModel.body|indent:28 }}
+                        }
+                        .reachyTheme(.fallback)
+                        .reachyPreviewMode(true)
+                    },
+                    name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
+                    isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
+                    device: deviceConfig
+                )
 
-            if let failure = assertSnapshots(for: prefireSnapshot) {
-                XCTFail(failure)
+                if let failure = assertSnapshot(for: prefireSnapshot, variant: variant) {
+                    XCTFail(failure)
+                }
             }
         }
         {% else %}
@@ -103,25 +107,27 @@ import SnapshotTesting
             }
         }
         {% endif %}
-        let prefireSnapshot = PrefireSnapshot(
-            {
-                {% if macroModel.properties %}
-                PreviewWrapper{{ macroModel.componentTestName }}()
-                {% else %}
-                Group {
-                    {{ macroModel.body|indent:16 }}
-                }
-                .reachyTheme(.fallback)
-                .reachyPreviewMode(true)
-                {% endif %}
-            },
-            name: "{{ macroModel.displayName }}",
-            isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
-            device: deviceConfig
-        )
+        for variant in snapshotVariants {
+            let prefireSnapshot = PrefireSnapshot(
+                {
+                    {% if macroModel.properties %}
+                    PreviewWrapper{{ macroModel.componentTestName }}()
+                    {% else %}
+                    Group {
+                        {{ macroModel.body|indent:20 }}
+                    }
+                    .reachyTheme(.fallback)
+                    .reachyPreviewMode(true)
+                    {% endif %}
+                },
+                name: "{{ macroModel.displayName }}",
+                isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
+                device: deviceConfig
+            )
 
-        if let failure = assertSnapshots(for: prefireSnapshot) {
-            XCTFail(failure)
+            if let failure = assertSnapshot(for: prefireSnapshot, variant: variant) {
+                XCTFail(failure)
+            }
         }
         {% endif %}
     }
@@ -132,7 +138,11 @@ import SnapshotTesting
     {% endif %}
     // MARK: Private
 
-    // PREFIRE FORK — the only edit against the 5.7.0 built-in template is this method.
+    // PREFIRE FORK — besides the `.reachyTheme` / `.reachyPreviewMode` wrapping above,
+    // the edits against the 5.7.0 built-in template are `SnapshotVariant`, the two
+    // members below it, and the `for variant in snapshotVariants` loop every test above
+    // builds its `PrefireSnapshot` inside.
+    //
     // Every preview is captured in both appearances. The light name is left exactly as
     // Prefire wrote it and dark takes a `-dark` suffix, which is what let this land
     // without re-recording a single existing reference.
@@ -142,38 +152,54 @@ import SnapshotTesting
     // SwiftUI's own colours while leaving UIKit-backed ones light — a half-dark image is
     // worse than none. swift-snapshot-testing feeds this collection to
     // `setOverrideTraitCollection`, which reaches both.
-    private func assertSnapshots<Content: SwiftUI.View>(for prefireSnapshot: PrefireSnapshot<Content>) -> String? {
-        guard !snapshotDevices.isEmpty else {
+    //
+    // The `PrefireSnapshot` is built inside the loop, once per capture, and that is
+    // load-bearing. Its initialiser evaluates the preview body once and keeps the view,
+    // so building it once and reassigning `device` rendered one instance four times —
+    // and a preview's models are classes, so whatever the first render did to them the
+    // other three inherited. `DeviceCheckView` stops its browser `onDisappear`, and every
+    // reference of `Device check — robots found` but the first read "No robots found".
+    private struct SnapshotVariant {
+        let deviceName: String
+        let suffix: String
+        let style: UIUserInterfaceStyle
+    }
+
+    /// Device-major, light before dark. `[nil]` — one capture, named as Prefire names
+    /// it — when `snapshot_devices` is empty.
+    private var snapshotVariants: [SnapshotVariant?] {
+        guard !snapshotDevices.isEmpty else { return [nil] }
+
+        return snapshotDevices.flatMap { deviceName in
+            [("", UIUserInterfaceStyle.light), ("-dark", .dark)].map { suffix, style in
+                SnapshotVariant(deviceName: deviceName, suffix: suffix, style: style)
+            }
+        }
+    }
+
+    private func assertSnapshot<Content: SwiftUI.View>(for prefireSnapshot: PrefireSnapshot<Content>, variant: SnapshotVariant?) -> String? {
+        guard let variant else {
             return assertSnapshot(for: prefireSnapshot)
         }
-
-        for deviceName in snapshotDevices {
-            guard let device: DeviceConfig = PreviewDevice(rawValue: deviceName).snapshotDevice() else {
-                fatalError("Unknown device name from configuration file: \(deviceName)")
-            }
-
-            for (suffix, style) in [("", UIUserInterfaceStyle.light), ("-dark", .dark)] {
-                var snapshot = prefireSnapshot
-
-                snapshot.name = "\(prefireSnapshot.name)-\(deviceName)\(suffix)"
-                snapshot.device = device
-
-                // Ignore specific device safe area
-                snapshot.device.safeArea = .zero
-
-                // Ignore specific device display scale
-                snapshot.traits = UITraitCollection { traits in
-                    traits.displayScale = 2.0
-                    traits.userInterfaceStyle = style
-                }
-
-                if let failure = assertSnapshot(for: snapshot) {
-                    XCTFail(failure)
-                }
-            }
+        guard let device: DeviceConfig = PreviewDevice(rawValue: variant.deviceName).snapshotDevice() else {
+            fatalError("Unknown device name from configuration file: \(variant.deviceName)")
         }
 
-        return nil
+        var snapshot = prefireSnapshot
+
+        snapshot.name = "\(prefireSnapshot.name)-\(variant.deviceName)\(variant.suffix)"
+        snapshot.device = device
+
+        // Ignore specific device safe area
+        snapshot.device.safeArea = .zero
+
+        // Ignore specific device display scale
+        snapshot.traits = UITraitCollection { traits in
+            traits.displayScale = 2.0
+            traits.userInterfaceStyle = variant.style
+        }
+
+        return assertSnapshot(for: snapshot)
     }
 
     private func assertSnapshot<Content: SwiftUI.View>(for prefireSnapshot: PrefireSnapshot<Content>) -> String? {

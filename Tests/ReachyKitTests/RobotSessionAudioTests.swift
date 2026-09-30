@@ -2,7 +2,7 @@ import Foundation
 @testable import ReachyKit
 import Testing
 
-private final class AudioRobotClient: RobotAPIClient, @unchecked Sendable {
+private final class AudioRobotClient: RobotAPIClient, AudioLevelClient, TestSoundClient, @unchecked Sendable {
     private let lock = NSLock()
     /// Percents the daemon accepted, in order — the point of the slider tests.
     private(set) var accepted: [Int] = []
@@ -64,6 +64,43 @@ private final class AudioRobotClient: RobotAPIClient, @unchecked Sendable {
     }
 }
 
+/// The relay's shape: the levels ride its data channel, the test sound does not.
+private final class LevelsOnlyClient: RobotAPIClient, AudioLevelClient, @unchecked Sendable {
+    private let base = AudioRobotClient()
+
+    func handshake() async throws -> RobotConnection.Handshake {
+        try await base.handshake()
+    }
+
+    func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
+        try await base.daemonStatus()
+    }
+
+    func wakeUp() async throws -> String {
+        try await base.wakeUp()
+    }
+
+    func gotoSleep() async throws -> String {
+        try await base.gotoSleep()
+    }
+
+    func volume() async throws -> AudioLevel {
+        try await base.volume()
+    }
+
+    func setVolume(_ percent: Int) async throws -> AudioLevel {
+        try await base.setVolume(percent)
+    }
+
+    func microphoneVolume() async throws -> AudioLevel {
+        try await base.microphoneVolume()
+    }
+
+    func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel {
+        try await base.setMicrophoneVolume(percent)
+    }
+}
+
 @MainActor
 @Suite("RobotSession audio")
 struct RobotSessionAudioTests {
@@ -91,6 +128,26 @@ struct RobotSessionAudioTests {
 
         try await session.playTestSound()
         #expect(client.testSoundCalls == 1)
+        session.disconnect()
+    }
+
+    /// The test sound is `POST /api/volume/test-sound`, a LAN route the relay's data
+    /// channel has no command for. It used to be a throwing default, so the button
+    /// answered with a raw -1002; now the session says it is not there, and the
+    /// section does not draw it.
+    @Test("a client with levels and no test sound offers the one and not the other")
+    func levelsWithoutTestSound() async throws {
+        var configuration = RobotSession.Configuration()
+        configuration.pollInterval = .seconds(60)
+        let session = RobotSession(configuration: configuration) { _ in LevelsOnlyClient() }
+        #expect(await session.connect(to: .init(host: "127.0.0.1")))
+
+        #expect(session.canAdjustAudio)
+        #expect(!session.canPlayTestSound)
+        #expect(try await session.volume().percent == 42)
+        await #expect(throws: ReachyKitError.audioLevelsUnavailable) {
+            try await session.playTestSound()
+        }
         session.disconnect()
     }
 

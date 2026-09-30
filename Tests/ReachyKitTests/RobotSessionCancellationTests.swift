@@ -5,7 +5,7 @@ import Testing
 
 /// Fails every call with whatever it was handed. The point of both suites is
 /// which errors reach `robotError`, so the double does nothing else.
-private final class FailingClient: RobotAPIClient, RobotAppsClient, @unchecked Sendable {
+private final class FailingClient: RobotAPIClient, RobotAppsClient, AudioLevelClient, @unchecked Sendable {
     private let lock = NSLock()
     private var failure: (any Error)?
 
@@ -50,6 +50,21 @@ private final class FailingClient: RobotAPIClient, RobotAppsClient, @unchecked S
     func volume() async throws -> AudioLevel {
         try throwIfFailing()
         return AudioLevel(percent: 42, platform: "pulseaudio", device: "speaker")
+    }
+
+    func setVolume(_ percent: Int) async throws -> AudioLevel {
+        try throwIfFailing()
+        return AudioLevel(percent: percent, platform: "pulseaudio", device: "speaker")
+    }
+
+    func microphoneVolume() async throws -> AudioLevel {
+        try throwIfFailing()
+        return AudioLevel(percent: 42, platform: "pulseaudio", device: "microphone")
+    }
+
+    func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel {
+        try throwIfFailing()
+        return AudioLevel(percent: percent, platform: "pulseaudio", device: "microphone")
     }
 
     private func throwIfFailing() throws {

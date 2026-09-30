@@ -37,7 +37,9 @@ struct TelepresenceSheet: View {
 
     var body: some View {
         Form {
-            AudioSettingsSection(session: session, model: audio)
+            if session.canAdjustAudio {
+                AudioSettingsSection(session: session, model: audio)
+            }
             if let viewport {
                 voiceSection(viewport)
             }

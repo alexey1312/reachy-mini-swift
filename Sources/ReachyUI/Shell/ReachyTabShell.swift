@@ -152,6 +152,9 @@ struct ReachyTabShell: View {
         .onChange(of: router.tab, initial: true) { _, tab in
             floating.isLiveTabSelected = tab == .live
         }
+        // On the shell rather than in `SettingsTab`, because a visit is a change of
+        // tab — and the shell is the one place that sees the selection change.
+        .reviewPrompt(tab: router.tab)
         // Neither placement the strip can take is reported to an overlay on the
         // `TabView`, the way the tab bar is not, so the window is told rather than
         // left to measure.
