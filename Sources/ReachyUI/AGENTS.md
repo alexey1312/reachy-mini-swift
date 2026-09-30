@@ -1354,8 +1354,9 @@ and send the words with `conversation.say` (`docs/research/audio.md` has the ups
   the dock cannot land between the take's mute and its restore.
   A verdict on the app (`not_running`, `app_unavailable`, `-32601`, `noteAppEnded`) cancels the take;
   a dropped feed does not, for the reason the rule above gives.
-- **The screen cancels a take when it disappears and when the scene leaves `.active`**: with the `audio` background
-  mode a take would otherwise keep recording in somebody's pocket.
+- **The screen cancels a take when it disappears and when the scene goes to `.background`**: with the `audio`
+  background mode a take would otherwise keep recording in somebody's pocket. Not on `.inactive` — the permission
+  prompt a first press raises goes through it, and cancelling there would swallow the take's own "you can talk now".
 - **The state line shows the take, not the turn, while one runs** — this device's level, and the words so far in
   italics, head-truncated — and it drops `.updatesFrequently`, so VoiceOver does not read them out of the speaker and
   into the microphone transcribing them.

@@ -43,10 +43,13 @@ struct ConversationScreen: View {
                 await model.prime(app: app, session: session)
             }
             // A take is for this screen, in front of somebody: it goes when the screen
-            // does, and when the app leaves the foreground — the `audio` background mode
+            // does, and when the app goes to the background — the `audio` background mode
             // would otherwise keep this device recording in somebody's pocket.
+            // `.background` and not "anything but `.active`": the permission prompt a
+            // first press raises takes the scene to `.inactive`, and cancelling there would
+            // swallow the take's own "you can talk now".
             .onChange(of: scenePhase) { _, phase in
-                guard !isPreview, phase != .active else { return }
+                guard !isPreview, phase == .background else { return }
                 model.cancelTake()
             }
             .onDisappear {

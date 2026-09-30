@@ -142,7 +142,9 @@ final class MediaAudioSession {
                 throw .microphoneUnavailable
             }
             observeInterruptions()
-            Self.log.notice("Dictation started over \(String(describing: owner), privacy: .public)")
+            // A local: the log's autoclosure needs `self.`, and swiftformat strips it.
+            let over = String(describing: owner)
+            Self.log.notice("Dictation started over \(over, privacy: .public)")
         #endif
     }
 
@@ -155,7 +157,8 @@ final class MediaAudioSession {
             let effects = dictation.didEnd(owner: planOwner)
             guard !effects.isEmpty else { return }
             try? perform(effects)
-            Self.log.notice("Dictation ended over \(String(describing: owner), privacy: .public)")
+            let over = String(describing: owner)
+            Self.log.notice("Dictation ended over \(over, privacy: .public)")
         #endif
     }
 
