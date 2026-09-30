@@ -18,23 +18,46 @@ final class RobotPowerOffModel {
     /// The app set to start on wake-up, as last read — the one reason Power off
     /// has a second choice (``PowerOffPlan``).
     ///
-    /// Read when the screen appears rather than when the button is tapped: a dialog
-    /// that waited on a request would open late, or not at all on a robot that has
-    /// stopped answering.
+    /// Read when the screen appears and again when the button is tapped — see
+    /// `confirm(_:budget:)` for why the first is not enough.
     private(set) var startupApp: String?
     /// The robot `startupApp` was read from, so a reading never outlives the
     /// connection it came from.
     private var readFrom: String?
+
+    /// How long a tap on Power off waits for a fresh reading before the dialog opens
+    /// on the last one. A LAN round trip is tens of milliseconds; this only bounds a
+    /// robot that has stopped answering.
+    static let confirmationReadBudget: Duration = .milliseconds(800)
 
     /// The seam a preview reaches for: a model that has already read the robot.
     init(startupApp: String? = nil) {
         self.startupApp = startupApp
     }
 
+    /// Opens the dialog on a reading taken at the tap.
+    ///
+    /// The one taken on appearance is not enough. The switch that sets a startup app
+    /// is also on the running app's page, which the dock presents as a sheet over
+    /// every tab — this one included — and a sheet does not make the screen under it
+    /// disappear, so nothing re-reads when it closes. Another client can set it too.
+    /// So the tap reads again, and waits only `budget` for the answer: a dialog that
+    /// never opens would be worse than one opened on the previous reading.
+    func confirm(_ session: RobotSession, budget: Duration = confirmationReadBudget) async {
+        let reading = Task { await refresh(session) }
+        let deadline = Task {
+            try await Task.sleep(for: budget)
+            reading.cancel()
+        }
+        await reading.value
+        deadline.cancel()
+        isConfirming = true
+    }
+
     /// Only a reading that arrived replaces the last one. `try?` would fold "no
     /// startup app" and "no answer" into the same `nil`, and a Wi-Fi blip must not
-    /// quietly put the teardown back as the only choice. A daemon older than 1.9
-    /// answers 404, which leaves `nil` — the dialog it always had.
+    /// quietly put the teardown back as the only choice. A robot that has never
+    /// answered leaves `nil` — the dialog it always had.
     func refresh(_ session: RobotSession) async {
         let robot = session.connectedIdentity?.deduplicationKey
         if robot != readFrom {

@@ -243,7 +243,7 @@ struct RobotScreen: View {
                 powerRow
             }
             Button(role: .destructive) {
-                powerOff.isConfirming = true
+                Task { await powerOff.confirm(session) }
             } label: {
                 Label(.reachy("Power off"), systemImage: "power")
             }

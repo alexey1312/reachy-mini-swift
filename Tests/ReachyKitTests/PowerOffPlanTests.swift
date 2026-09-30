@@ -9,8 +9,8 @@ private final class PlanClient: RobotAPIClient, RobotAppsClient, @unchecked Send
 
     enum Startup {
         case set(String?)
-        /// What a daemon older than 1.9 does: the route is not there.
-        case missing
+        /// A read that never answers — the robot dropped off, or the request timed out.
+        case unanswered
     }
 
     private let lock = NSLock()
@@ -56,7 +56,7 @@ private final class PlanClient: RobotAPIClient, RobotAppsClient, @unchecked Send
     func startupApp() async throws -> String? {
         switch startup {
         case let .set(name): return name
-        case .missing: throw URLError(.fileDoesNotExist)
+        case .unanswered: throw URLError(.timedOut)
         }
     }
 }
@@ -118,9 +118,11 @@ struct PowerOffPlanTests {
         #expect(client.statusReads == 0)
     }
 
-    @Test("a daemon without the startup-app route is torn down as before")
-    func missingRouteIsATeardown() async {
-        let client = PlanClient(startup: .missing)
+    /// Nothing is known to be worth keeping, so powering off stays what it was —
+    /// and a client that cannot ask at all keeps the refusal it always gave.
+    @Test("an unanswered startup-app read is torn down as before")
+    func unansweredReadIsATeardown() async {
+        let client = PlanClient(startup: .unanswered)
         #expect(await PowerOffPlan.read(from: client) == .stopBackend)
         #expect(client.statusReads == 0)
         #expect(await PowerOffPlan.read(from: BareClient()) == .stopBackend)

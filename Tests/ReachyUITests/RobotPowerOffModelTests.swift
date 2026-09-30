@@ -116,6 +116,43 @@ struct RobotPowerOffModelTests {
         #expect(model.startupApp == nil)
     }
 
+    /// The dock presents an app's page — and its start-on-wake-up switch — as a
+    /// sheet over this screen, which does not disappear under it, so the reading
+    /// from its appearance can be out of date by the time the button is tapped.
+    @Test("a tap reads the startup app again before the dialog opens")
+    func confirmReadsAgain() async {
+        let client = StoreRobotClient()
+        let session = RobotSession.preview(client: client)
+        let model = RobotPowerOffModel()
+        await model.refresh(session)
+        #expect(model.startupApp == nil)
+
+        client.startup = "dance"
+        await model.confirm(session)
+        #expect(model.startupApp == "dance")
+        #expect(model.isConfirming)
+    }
+
+    /// Both branches end with the dialog open on the same reading, and differ only
+    /// in how long they took — so the duration is the assertion (project rule 7).
+    @Test("a robot that does not answer still gets its dialog, on the last reading", .timeLimit(.minutes(1)))
+    func confirmDoesNotWaitOnASilentRobot() async {
+        let client = StoreRobotClient()
+        client.startup = "dance"
+        let session = RobotSession.preview(client: client)
+        let model = RobotPowerOffModel()
+        await model.refresh(session)
+
+        client.startupReadDelay = .seconds(30)
+        let start = ContinuousClock.now
+        await model.confirm(session, budget: .milliseconds(50))
+        let elapsed = start.duration(to: .now)
+
+        #expect(elapsed < .seconds(10))
+        #expect(model.isConfirming)
+        #expect(model.startupApp == "dance")
+    }
+
     /// `try?` would fold "no startup app" and "no answer" into the same nil, and a
     /// Wi-Fi blip would quietly make the teardown the only choice again.
     @Test("a read that fails keeps the last answer")

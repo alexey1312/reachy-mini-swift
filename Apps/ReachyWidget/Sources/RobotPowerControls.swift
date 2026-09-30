@@ -43,7 +43,9 @@
 
     /// Powering off has no confirmation and cannot have one — `PowerOffRobotIntent`
     /// says why. So the description carries the way back instead: the daemon's own
-    /// HTTP server survives the teardown, and Wake up is what undoes this.
+    /// HTTP server survives the teardown, and Wake up is what undoes this. It names
+    /// the exception too, because the intent takes it without asking: with an app
+    /// set to start on wake-up the robot only goes to sleep (`PowerOffPlan`).
     ///
     /// The widget deliberately does not offer this. A Home Screen tap is too cheap for
     /// something irreversible from where it is tapped; reaching Control Centre is not.
@@ -56,7 +58,8 @@
             }
             .displayName("Power Reachy Mini off")
             .description(
-                "Stops the running app, sleeps the robot and shuts its backend down. Waking up brings it back."
+                // swiftlint:disable:next line_length
+                "Stops the running app, sleeps the robot and shuts its backend down — or only sleeps it, when an app is set to start on wake-up. Waking up brings it back."
             )
         }
     }

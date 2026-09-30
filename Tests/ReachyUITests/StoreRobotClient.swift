@@ -18,6 +18,9 @@ final class StoreRobotClient: RobotAPIClient, MovePlaybackClient, RobotAppsClien
     var startup: String?
     /// A read of the startup app that never arrives, as a Wi-Fi blip leaves it.
     var failsStartupRead = false
+    /// A read of the startup app that takes this long, cancellably — a robot that
+    /// has stopped answering without the socket having noticed yet.
+    var startupReadDelay: Duration?
     /// Logged in by default: every other test in this file loads the store, and the
     /// store now reads this on the way in.
     var hfStatus = HFAuthStatus(isLoggedIn: true, username: "tester")
@@ -107,6 +110,9 @@ final class StoreRobotClient: RobotAPIClient, MovePlaybackClient, RobotAppsClien
     }
 
     func startupApp() async throws -> String? {
+        if let startupReadDelay {
+            try await Task.sleep(for: startupReadDelay)
+        }
         if failsStartupRead {
             throw URLError(.timedOut)
         }

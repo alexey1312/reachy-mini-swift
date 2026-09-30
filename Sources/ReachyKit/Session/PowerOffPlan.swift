@@ -35,12 +35,19 @@ public enum PowerOffPlan: Equatable, Sendable {
 
     /// Reads both facts from the robot itself, the startup app first.
     ///
-    /// **A failed read of the startup app plans the teardown**, which is what a
-    /// daemon older than 1.9 answers with a 404 and what powering off always was.
-    /// A failed read of the status plans the sleep instead, because the two
-    /// mistakes are not the same size: a sleep sent at a stopped backend is refused
-    /// out loud and changes nothing, while a teardown sent at a running one
-    /// silently switches the antenna off.
+    /// **The plan only errs towards keeping the backend once it knows there is
+    /// something to keep.** So a failed read of the startup app plans the teardown —
+    /// what powering off always was, and right for the robot with none, which is
+    /// most of them; every supported daemon has the route (it arrived in 1.9.0, the
+    /// floor), so the failure is a robot not answering, and the teardown sent next
+    /// is likely to be refused the same way. A client that cannot ask at all — the
+    /// relay, whose vocabulary has no startup app and no `daemon/stop` either — lands
+    /// here too and keeps the refusal it always gave. A failed read of the status,
+    /// with a startup app already known, plans the sleep: a sleep sent at a stopped
+    /// backend is refused out loud and changes nothing, while a teardown sent at a
+    /// running one silently switches the antenna off. `RobotPowerOffModel.refresh`
+    /// holds the same line from the other side — a known answer is kept through a
+    /// read that fails.
     ///
     /// The status is only read once a startup app is known, so a robot without
     /// one costs a single request, and the shape of every call sequence that
