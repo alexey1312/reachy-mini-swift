@@ -5,7 +5,7 @@ import Testing
 /// A daemon below the baseline used to throw out of the handshake, leaving the user
 /// on a "Try again" button that could never work. It is now a halt the update flow
 /// can act on — while ADR 0001 still forbids sending that daemon any command.
-private final class OldDaemonClient: RobotAPIClient, @unchecked Sendable {
+private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, @unchecked Sendable {
     private let lock = NSLock()
     private var commands: [String] = []
     private let version: String
@@ -59,6 +59,23 @@ private final class OldDaemonClient: RobotAPIClient, @unchecked Sendable {
     func volume() async throws -> AudioLevel {
         lock.withLock { commands.append("volume") }
         return AudioLevel(percent: 50, platform: "test", device: "test")
+    }
+
+    /// The other three levels, so this double speaks `AudioLevelClient` and the gate
+    /// below is what stops `volume()` — not a missing conformance.
+    func setVolume(_ percent: Int) async throws -> AudioLevel {
+        lock.withLock { commands.append("setVolume") }
+        return AudioLevel(percent: percent, platform: "test", device: "test")
+    }
+
+    func microphoneVolume() async throws -> AudioLevel {
+        lock.withLock { commands.append("microphoneVolume") }
+        return AudioLevel(percent: 50, platform: "test", device: "test")
+    }
+
+    func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel {
+        lock.withLock { commands.append("setMicrophoneVolume") }
+        return AudioLevel(percent: percent, platform: "test", device: "test")
     }
 }
 

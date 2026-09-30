@@ -3,7 +3,7 @@ import Foundation
 @testable import ReachyUI
 import Testing
 
-private final class AudioStubClient: RobotAPIClient, @unchecked Sendable {
+private final class AudioStubClient: RobotAPIClient, AudioLevelClient, @unchecked Sendable {
     private let lock = NSLock()
     private(set) var speakerWrites: [Int] = []
     private(set) var microphoneWrites: [Int] = []

@@ -22,6 +22,14 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
 - `RobotAPIClient` supplies throwing defaults for everything except `handshake`, `daemonStatus`, `wakeUp` and
   `gotoSleep` — every test double must implement those four. `/wifi/*` and `/update/*` live on separate protocols so
   doubles for the connection surface stay small.
+  **A throwing default is not a way to say "this client cannot"**:
+  to a screen gating on something else it looks exactly like a real surface.
+  The audio levels and the test sound were defaults throwing `URLError(.unsupportedURL)`,
+  Settings drew its Audio section for the in-app simulator because that one reports its backend ready,
+  and the section printed "NSURLErrorDomain error -1002" —
+  while over the relay the Test sound button, which has no data-channel command behind it, answered the same.
+  They are `AudioLevelClient` and `TestSoundClient` now, gated by `canAdjustAudio` and `canPlayTestSound`;
+  a capability the next client may lack belongs on a protocol of its own the same way.
 - Bluetooth layers as `BLETransport` (CoreBluetooth behind a seam; `FakeBLETransport` is the only stand-in, since the
   robot's GATT service is Linux/BlueZ) → `BLECommandPump` (one command at a time, write→read→maybe-notify) →
   `BLELink` (`@MainActor @Observable`, the screens' state). One link per transport: the response characteristic

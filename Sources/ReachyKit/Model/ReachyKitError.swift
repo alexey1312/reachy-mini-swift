@@ -94,6 +94,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     ///
     /// Appended, like every case since ``daemonLogsUnavailable``.
     case conversationUnavailable
+    /// This connection cannot set the robot's audio levels or play its test sound —
+    /// the in-app simulator has neither, the relay has no test sound. See
+    /// ``AudioLevelClient`` and ``TestSoundClient``.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case audioLevelsUnavailable
 
     /// Maps a daemon HTTP status onto the cases callers can act on.
     ///
@@ -133,7 +139,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
              .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
-             .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable:
+             .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable, .audioLevelsUnavailable:
             nil
         }
     }
@@ -194,6 +200,8 @@ extension ReachyKitError: LocalizedError {
             "The robot's moves cannot be played over this connection"
         case .conversationUnavailable:
             "The conversation cannot be reached over this connection"
+        case .audioLevelsUnavailable:
+            "The robot's audio cannot be reached over this connection"
         case let .soundTooLarge(bytes, limit):
             """
             \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)) is more than the robot \

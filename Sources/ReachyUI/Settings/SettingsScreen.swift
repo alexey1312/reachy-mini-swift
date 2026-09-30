@@ -31,7 +31,10 @@ struct SettingsScreen: View {
     var body: some View {
         Form {
             robotSection
-            if session.isBackendRunning {
+            // `canAdjustAudio` as well as a running backend: the in-app simulator
+            // reports its backend ready and has no speaker, and without the second
+            // test this section drew two dead sliders over a raw URL error.
+            if session.isBackendRunning, session.canAdjustAudio {
                 AudioSettingsSection(session: session)
             }
             if session.supportsWirelessFeatures {

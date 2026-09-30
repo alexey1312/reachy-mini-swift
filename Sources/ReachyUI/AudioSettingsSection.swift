@@ -42,11 +42,15 @@ struct AudioSettingsSection: View {
                 if model.canTuneProfile {
                     profilePicker
                 }
-                Button(.reachy("Test sound")) {
-                    Task { await model.playTestSound(session: session) }
+                // LAN only: the relay's data channel carries the levels and no test
+                // sound, and a button that can only fail is worse than none.
+                if session.canPlayTestSound {
+                    Button(.reachy("Test sound")) {
+                        Task { await model.playTestSound(session: session) }
+                    }
+                    .reachyButton(.standard)
+                    .disabled(model.isBusy || !model.isReady)
                 }
-                .reachyButton(.standard)
-                .disabled(model.isBusy || !model.isReady)
             }
             if let errorMessage = model.errorMessage {
                 Text(errorMessage)

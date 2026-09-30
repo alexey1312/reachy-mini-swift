@@ -80,6 +80,25 @@ struct SimulatedRobotClientTests {
         #expect(session.address == nil)
     }
 
+    /// The bug this pins down: the simulator reports its backend ready, so Settings
+    /// drew the Audio section for it, and the section printed a raw
+    /// "NSURLErrorDomain error -1002" under two dead sliders. Having no speaker is a
+    /// conformance it lacks, and asking anyway is answered in words.
+    @Test("a simulated session offers no audio, and asking for it says why")
+    func offersNoAudio() async throws {
+        let client = try stillClient()
+        defer { client.shutDown() }
+        let session = RobotSession { _ in throw ReachyKitError.notConnected }
+        #expect(await session.connect(simulating: client))
+
+        #expect(session.isBackendRunning)
+        #expect(!session.canAdjustAudio)
+        #expect(!session.canPlayTestSound)
+        await #expect(throws: ReachyKitError.audioLevelsUnavailable) {
+            try await session.volume()
+        }
+    }
+
     @Test("the motors start disabled and waking enables them")
     func wakingEnablesTheMotors() async throws {
         let client = try stillClient()
