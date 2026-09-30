@@ -36,9 +36,31 @@ public extension RemoteControlChannel {
     ) async throws -> Data {
         let id = nextRPCID()
         let text = try Self.encodeRPC(method: method, params: params, id: id)
-        let reply = try await awaitRPCReply(id: id, sending: text, timeout: timeout)
+        let reply: Data
+        do {
+            reply = try await awaitRPCReply(id: id, sending: text, timeout: timeout)
+        } catch Failure.timedOut {
+            throw await answersPlainCommands() ? Failure.relaySilent : Failure.timedOut
+        }
         try Self.throwIfRPCError(in: reply)
         return reply
+    }
+
+    /// Whether the robot still answers the `{type, command}` protocol, asked only
+    /// once a JSON-RPC call has gone unanswered.
+    ///
+    /// The two are served by different code on the robot, and the JSON-RPC half can
+    /// die alone: daemons 1.10 and 1.11 wire the relay onto the event loop of
+    /// whatever started the backend, and `POST /api/daemon/start` — this app's own
+    /// Wake up after a Power off, among others — runs that start in a loop that
+    /// closes as soon as its job ends. Every call then times out until the daemon
+    /// *process* restarts (pollen-robotics/reachy_mini#1421, fixed by the open
+    /// #1422), and a bare timeout reads as a robot that is not there. One cheap
+    /// command tells the two apart. Skipped on a channel that is not open, where it
+    /// would sit out a whole negotiation to learn nothing.
+    private func answersPlainCommands() async -> Bool {
+        guard isChannelOpen else { return false }
+        return await (try? perform("get_version", correlation: .replyKey("version"))) != nil
     }
 
     /// The same, with the `result` decoded.
@@ -139,6 +161,11 @@ extension RemoteControlChannel.Failure: LocalizedError {
         // to every screen — and a test pins this string for that reason.
         case let .rpc(_, message, reason):
             reason.map { "\(message) (\($0))" } ?? message
+        case .relaySilent:
+            """
+            The robot is connected, but its app relay has stopped answering — a known issue in robot \
+            software 1.10 and 1.11 after its backend is started again. Restarting the robot fixes it.
+            """
         }
     }
 }

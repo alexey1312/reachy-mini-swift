@@ -150,6 +150,30 @@ struct RemoteControlChannelRPCTests {
         await #expect(throws: RemoteControlChannel.Failure.timedOut) { _ = try await pending.value }
     }
 
+    /// Daemons 1.10 and 1.11 lose the JSON-RPC relay after `POST /api/daemon/start`
+    /// (pollen-robotics/reachy_mini#1421) while the plain protocol keeps answering. A
+    /// bare timeout there reads as a robot that is not there; this reads as what it is.
+    @Test("an unanswered call on a robot that still answers plain commands names the relay")
+    func namesASilentRelay() async {
+        let (control, _) = channel(
+            ["get_version": #"{"version": "1.11.0"}"#],
+            timeout: .milliseconds(300)
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.relaySilent) {
+            _ = try await control.call("apps.status")
+        }
+    }
+
+    @Test("a robot that answers nothing at all is still a timeout")
+    func keepsATimeoutWhenEverythingIsSilent() async {
+        let (control, _) = channel(timeout: .milliseconds(300))
+
+        await #expect(throws: RemoteControlChannel.Failure.timedOut) {
+            _ = try await control.call("apps.status")
+        }
+    }
+
     private static func sentRPCID(in frame: String) throws -> Int {
         struct Sent: Decodable {
             let id: Int

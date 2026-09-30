@@ -89,6 +89,10 @@ public extension ConversationFailure {
             self = .unreachable
         case let .robot(message):
             self = .rejected(code: nil, reason: nil, message: message)
+        // Carried as the relay's own sentence: `unreachable` would say the app is
+        // gone, when it is the daemon's relay in front of it that went quiet.
+        case .relaySilent:
+            self = .rejected(code: nil, reason: nil, message: failure.localizedDescription)
         }
     }
 
