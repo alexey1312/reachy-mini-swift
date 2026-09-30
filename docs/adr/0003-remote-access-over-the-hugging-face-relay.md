@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-05
+- Amended: 2026-10-01 — "Decision: a robot signs itself in with a device code"
 
 ## Context
 
@@ -40,6 +41,33 @@ user already signed in to the Hub is one tap from done, and this app never sees 
 Linking a robot hands it a **copy** of the token. Signing out of this app deliberately does **not** unlink the robot: a
 robot left reachable with a token its owner believes they revoked is the one outcome worth going out of the way to
 prevent, so unlinking is its own explicit action.
+
+## Decision: a robot signs itself in with a device code
+
+Amendment, 2026-10-01.
+Copying this app's token to the robot had two costs the section above accepts rather than removes:
+the token crosses the local network over plain HTTP,
+and the robot receives an access token with nothing to renew it,
+so it drops off central when that copy expires.
+Daemon 1.10.0 mounts a device-code flow (`/api/hf-auth/oauth/device/*`, pollen-robotics/reachy_mini#1223)
+that removes both.
+
+- **From 1.10.0 the robot links itself.**
+  It asks the Hub for a code, this app shows the code and opens the approval page,
+  and the robot polls the Hub over HTTPS until it holds a token of its own — with a refresh token behind it.
+  This app never sees a token, and none crosses the local network.
+- **No sign-in in this app is needed for it.**
+  The approval happens in the browser, with whichever account the robot should hold.
+  The two custody points stay apart, now by construction rather than by a copy.
+- **`save-token` stays for 1.9.x**, which does not mount the routes,
+  together with the footer that says the hop is unencrypted.
+  The choice is made on the daemon's version, withheld only on evidence like every other gate,
+  and a 404 is still reported rather than assumed away.
+- **Daemon 1.12 signs every robot out once** (pollen-robotics/reachy_mini#1367):
+  it moves to a credential store of its own with no migration,
+  so a robot linked on 1.11 reads as unlinked after the update and leaves central.
+  The card says so on a robot known to run 1.12 or later.
+  Relinking needs the local network, so a robot updated remotely cannot be brought back remotely.
 
 ## Decision: the relay carries signaling, not robot data
 
