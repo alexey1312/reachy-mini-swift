@@ -127,6 +127,10 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     which the reset needs and `--no-media` removes —
     and `followDaemonParking` shows the daemon's sleep as `.goingToSleep` until a reading says asleep.
     It does not fall back to parking when the reset never comes: whoever cancelled it owns the robot.
+    `sleep()` over a running app takes the same path (#166):
+    the release it opens with is what schedules the reset,
+    so it watches it under its own `.goingToSleep` through the same `watchIdleReset` —
+    and, because somebody asked for sleep, chases a reset that never comes.
     The relay keeps the session's own parking, because every data-channel frame cancels the reset first.
     Why each condition holds, with the daemon's line numbers, is in `.claude/rules/daemon-api.md`.
 - **The daemon has exactly one move slot, it refuses the second caller in silence, and everything in

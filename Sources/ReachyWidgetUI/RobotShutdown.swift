@@ -12,7 +12,7 @@ public struct RobotShutdown: Sendable {
     private let release: RobotAppRelease
     private let apps: any RobotAppsClient
     private let daemon: any RobotAPIClient
-    private let power: RobotPower
+    private let sleep: RobotSleep
 
     public init(
         client: any RobotAPIClient & RobotAppsClient,
@@ -30,7 +30,7 @@ public struct RobotShutdown: Sendable {
         release = RobotAppRelease(apps: apps, configuration: configuration)
         self.apps = apps
         self.daemon = daemon
-        power = RobotPower(client: daemon, configuration: configuration)
+        sleep = RobotSleep(apps: apps, daemon: daemon, configuration: configuration)
     }
 
     /// Stops whatever holds the robot, then asks the daemon to shut the backend
@@ -59,9 +59,15 @@ public struct RobotShutdown: Sendable {
     /// way, and that is the half that matters. `RobotSession.powerOff` reports that
     /// failure because it has a screen to report it on — an intent has one sentence
     /// and it belongs to the shutdown.
+    ///
+    /// The sleep-only plan parks through `RobotSleep`, released app and all: on
+    /// 1.10.0 the release is a sleep already on its way, and the sleep-only plan
+    /// would otherwise play a second one into it — the race `RobotSleep` exists to
+    /// avoid (#166). The teardown has no such wait; `RobotSession.powerOff` says why
+    /// its stop lands in time.
     public func perform() async throws {
         let plan = await PowerOffPlan.read(apps: apps, daemon: daemon)
-        await release.perform()
+        let released = await release.perform()
         switch plan {
         case .stopBackend:
             // Returns as soon as the daemon has accepted the job. Nothing polls it
@@ -70,7 +76,7 @@ public struct RobotShutdown: Sendable {
             // already done and no way to say so.
             try await daemon.stopDaemon(gotoSleep: true)
         case .sleep:
-            try await power.sleep()
+            try await sleep.park(after: released)
         }
     }
 }

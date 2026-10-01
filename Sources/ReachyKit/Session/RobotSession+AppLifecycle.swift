@@ -131,29 +131,20 @@ extension RobotSession {
 
     /// Whether the daemon puts the robot to sleep by itself once an app lets go.
     ///
-    /// From 1.10.0 a freed app slot calls `request_idle_reset()`, which waits
-    /// `IDLE_RESET_DEBOUNCE_S` (1.5 s) and then runs `reset_to_sleep()`: the head
-    /// lifts to the zero pose, the sleep animation plays and the motors are cut.
     /// Only an app starting, a remote session taking the slot or a data-channel
-    /// frame cancels it — no motion or motor route does — so a `goto` or a sleep
-    /// sent from here over the LAN does not replace that motion, it runs alongside
-    /// it.
+    /// frame cancels that sleep — no motion or motor route does — so a `goto` or a
+    /// sleep sent from here over the LAN does not replace that motion, it runs
+    /// alongside it.
     ///
-    /// Three conditions, each imposed by the daemon's own code:
-    /// - **1.10.0 or newer, known rather than guessed.** A version this client
-    ///   cannot read keeps the parking it always had, like every gate built on
-    ///   `DaemonCompatibilityPolicy`.
-    /// - **A media server.** The reset runs on the loop `setup_media_server`
-    ///   builds, and `request_idle_reset()` returns at once without one — so a
-    ///   `--no-media` daemon leaves the robot wherever the app did.
+    /// The version and the media server are the status's to say
+    /// (`resetsToSleepAfterApps`); the transport is the session's:
     /// - **Not over the relay.** There every command is a data-channel frame, and
     ///   `_handle_webrtc_message` cancels a pending or running reset before it does
     ///   anything else, so the session's own parking pre-empts the daemon's cleanly
     ///   instead of racing it. Watching the reset would cancel it as well: the
     ///   relayed status is a `get_state` frame.
     var daemonParksAfterApps: Bool {
-        !isRemote && lastStatus?.noMedia != true
-            && DaemonCompatibilityPolicy.isKnownAtLeast("1.10.0", reported: lastStatus?.version)
+        !isRemote && lastStatus?.resetsToSleepAfterApps == true
     }
 
     /// Shows the daemon's own parking as the transition it is, and sends nothing.
@@ -186,18 +177,42 @@ extension RobotSession {
                 powerTransition = nil
             }
         }
+        _ = await watchIdleReset(client: client, attemptID: attemptID)
+    }
+
+    /// How waiting for the daemon's own sleep ended.
+    enum IdleResetWatch: Equatable {
+        /// A reading said the motors are off — the reset ran, or there was nothing
+        /// left for it to do.
+        case asleep
+        /// An app holds the robot again, which cancels the reset daemon-side, or
+        /// this session is no longer the one connected.
+        case abandoned
+        /// `idleResetTimeout` passed with the robot still awake.
+        case timedOut
+    }
+
+    /// Reads the status until the daemon's reset has cut the motors, under a
+    /// transition the caller already holds.
+    ///
+    /// The loop both callers share: the parking after an app, which lets a
+    /// timeout go, and a deliberate sleep, which chases one. Which of the two is
+    /// right is the caller's decision, so the outcome says why the wait ended
+    /// rather than whether the robot slept.
+    func watchIdleReset(client: any RobotAPIClient, attemptID: UUID) async -> IdleResetWatch {
         let deadline = ContinuousClock.now + configuration.idleResetTimeout
         while ContinuousClock.now < deadline {
             try? await Task.sleep(for: configuration.appStopPollInterval)
-            guard isAttemptLive(attemptID), runningApp?.isBusy != true else { return }
+            guard isAttemptLive(attemptID), runningApp?.isBusy != true else { return .abandoned }
             // A reading that never arrived is not evidence either way.
             guard let status = try? await client.daemonStatus() else { continue }
-            guard isAttemptLive(attemptID) else { return }
+            guard isAttemptLive(attemptID) else { return .abandoned }
             lastStatus = status
             if !status.isAwake {
-                return
+                return .asleep
             }
         }
+        return .timedOut
     }
 
     /// The zero pose, for a robot somebody else woke.

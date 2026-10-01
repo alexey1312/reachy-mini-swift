@@ -293,6 +293,12 @@ the next pair.
   from `stop-current-app` is not the app letting go, so the reading is what says the robot is free. `.widgetIntent`
   cuts that budget to six seconds against the session's thirty, which is a real trade — the session waits for a slow
   stop, an intent gives up and parks anyway rather than being killed with nothing written down.
+  **From 1.10.0 a release that freed the slot is a sleep already on its way (#166).**
+  `RobotAppRelease.Outcome` says whether one happened,
+  and `RobotSleep.park(after:)` then waits for the daemon's reset instead of playing a second sleep into it,
+  chasing it only past `idleResetTimeout`, which `.widgetIntent` cuts to nine seconds so a chase still fits the 15.
+  `RobotShutdown`'s sleep-only plan parks through the same method.
+  The relay is excluded by type, because a relayed status read would cancel the reset it watched.
 - **`RobotAppLauncher.stop()` parks the robot at zero and must never sleep it.** An app leaves the head wherever its
   last frame put it, and the daemon does not pick it up (`.claude/rules/daemon-api.md`). The session restores what
   the robot _was_ — asleep, if it woke it for the app — but that memory is in-process, and it must not become a
