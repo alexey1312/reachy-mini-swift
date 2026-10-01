@@ -67,6 +67,7 @@ Hey Reachy is a separate app, and this is where it differs:
   Python. It declines what it cannot honestly answer instead of lying.
 - **Live control** — joystick teleop of the 6-DoF head, antennas and body rotation, with the WebRTC camera and
   two-way audio.
+  A game controller drives the same teleop and leaves the screen to the camera.
 - **3D viewer** — a RealityKit scene built from the robot's own URDF and meshes, mirroring it in real time.
 - **State** — the daemon's control loop charted live, beside CPU, memory, temperature and uptime read over SSH.
 - **Moves and sounds** — play the daemon's recorded moves, record your own takes from the phone, and drive a

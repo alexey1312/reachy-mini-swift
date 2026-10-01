@@ -118,6 +118,9 @@ struct TeleopPadCluster: View {
                 .animation(Motion.stateChange, value: driver.isBodyTurned)
             }
         }
+        // Below the Controller screen when both are on screen — an iPad under a
+        // sidebar shows the two at once — so a controller never drives two drivers.
+        .gamepadTeleop(driver, priority: .overlay, standDown: standDown, isActive: isVisible)
         .onAppear { connectTeleop() }
         .onDisappear { driver.stop() }
     }

@@ -12,6 +12,9 @@ struct ControllerScreen: View {
     /// second model here would let one joystick turn a behaviour off behind a switch
     /// still showing it on.
     var standDown: TeleopStandDown?
+    /// `nil` is the shared one, resolved in the body for the reason the hub's own
+    /// modifier gives; a preview hands in one naming a controller nobody connected.
+    var gamepad: GamepadTeleop?
 
     @State private var driver: TeleopDriver
     @State private var setupError: String?
@@ -21,15 +24,23 @@ struct ControllerScreen: View {
     init(
         session: RobotSession,
         standDown: TeleopStandDown? = nil,
+        gamepad: GamepadTeleop? = nil,
         driver: TeleopDriver = TeleopDriver(),
         setupError: String? = nil,
         recorder: MoveRecorderModel? = nil
     ) {
         self.session = session
         self.standDown = standDown
+        self.gamepad = gamepad
         _driver = State(initialValue: driver)
         _setupError = State(initialValue: setupError)
         _recorder = State(initialValue: recorder ?? MoveRecorderModel())
+    }
+
+    /// The injected hub, else the shared one — except in a capture, which must not
+    /// depend on whatever controller is paired to the machine rendering it.
+    private var gamepadHub: GamepadTeleop? {
+        gamepad ?? (previewMode ? nil : .shared)
     }
 
     /// How often a take samples the driver.
@@ -39,11 +50,12 @@ struct ControllerScreen: View {
     /// buys resolution the robot's own loop would smooth away anyway.
     private static let sampleInterval = Duration.milliseconds(100)
 
-    /// Comfortable UI ranges; hardware limits (clamped by the daemon anyway):
-    /// head pitch/roll ±40°, yaw ±180°. Body yaw is `TeleopDriver.bodyYawLimit`, which
-    /// is the URDF's own ±160° rather than a comfortable range — past it the daemon
-    /// truncates, and the head's world yaw is computed from the number this slider set.
-    private let antennaRange = 150.0 * .pi / 180
+    // Comfortable UI ranges; hardware limits (clamped by the daemon anyway):
+    // head pitch/roll ±40°, yaw ±180°. Body yaw is `TeleopDriver.bodyYawLimit`, which
+    // is the URDF's own ±160° rather than a comfortable range — past it the daemon
+    // truncates, and the head's world yaw is computed from the number this slider set.
+    // Height and antennas are `TeleopDriver`'s too, because a game controller's held
+    // buttons integrate inside the same ranges these sliders offer.
 
     var body: some View {
         @Bindable var driver = driver
@@ -78,6 +90,9 @@ struct ControllerScreen: View {
                     // are the robot's, and the reader's are "look" and "turn".
                     Text(.reachy("Drag to look around. Hold at the side to turn the body."))
                 }
+                if let controllerName = gamepadHub?.controllerName {
+                    GamepadLegendSection(controllerName: controllerName)
+                }
                 recordingSection
                 Section(.reachy("Roll and height")) {
                     slider(
@@ -86,7 +101,12 @@ struct ControllerScreen: View {
                         range: -driver.mapping.headAngle ... driver.mapping.headAngle,
                         format: .degrees
                     )
-                    slider(.reachy("Height"), value: $driver.z, range: -0.03 ... 0.03, format: .millimeters)
+                    slider(
+                        .reachy("Height"),
+                        value: $driver.z,
+                        range: -TeleopDriver.heightLimit ... TeleopDriver.heightLimit,
+                        format: .millimeters
+                    )
                 }
                 Section(.reachy("Body")) {
                     slider(
@@ -100,13 +120,13 @@ struct ControllerScreen: View {
                     slider(
                         .reachy("Left"),
                         value: $driver.antennaLeft,
-                        range: -antennaRange ... antennaRange,
+                        range: -TeleopDriver.antennaLimit ... TeleopDriver.antennaLimit,
                         format: .degrees
                     )
                     slider(
                         .reachy("Right"),
                         value: $driver.antennaRight,
-                        range: -antennaRange ... antennaRange,
+                        range: -TeleopDriver.antennaLimit ... TeleopDriver.antennaLimit,
                         format: .degrees
                     )
                 }
@@ -118,6 +138,9 @@ struct ControllerScreen: View {
         }
         .formStyle(.grouped)
         .navigationTitle(.reachy("Controller"))
+        // The controller drives this pad exactly when a thumb could: the controls
+        // below are disabled while the robot sleeps, and so is the controller.
+        .gamepadTeleop(driver, priority: .screen, standDown: standDown, isActive: session.isAwake, hub: gamepad)
         .onAppear { start() }
         // A take starts and ends under a thumb that is on the pad rather than on the
         // button, so the moment is felt rather than watched.
