@@ -99,6 +99,39 @@ struct GamepadTeleopTests {
         #expect(calls == 1)
     }
 
+    /// A surface going away, the robot falling asleep, the app leaving the foreground:
+    /// each releases the claim mid-gesture, and a look held into the rotation zone
+    /// would otherwise leave the driver's own ticker turning the body for good.
+    @Test("losing the controller mid-turn stops the turn")
+    func releaseStopsAHeldTurn() {
+        let hub = GamepadTeleop()
+        let driver = TeleopDriver()
+        let claim = hub.claim(driver, priority: .screen, standDown: nil)
+        hub.tick(reading { $0.rightStick = .init(x: 1, y: 0) }, seconds: 0.016)
+        #expect(driver.bodyYawRate != 0)
+
+        hub.release(claim)
+
+        #expect(driver.bodyYawRate == 0)
+        driver.stop()
+    }
+
+    /// The pad and the controller share a driver; letting go of the controller must
+    /// not recentre a head a finger is holding.
+    @Test("letting go leaves a look the controller was not holding")
+    func releaseLeavesAFingersLook() {
+        let hub = GamepadTeleop()
+        let driver = TeleopDriver()
+        let claim = hub.claim(driver, priority: .screen, standDown: nil)
+        hub.tick(reading { $0.rightShoulder = true }, seconds: 0.016)
+        driver.apply(JoystickDeflection(x: 0.2, y: -0.3))
+        let held = driver.target
+
+        hub.release(claim)
+
+        #expect(driver.target == held)
+    }
+
     @Test("with nobody claiming it the controller drives nothing")
     func unclaimedIsInert() {
         let hub = GamepadTeleop()

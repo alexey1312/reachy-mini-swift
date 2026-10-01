@@ -599,8 +599,16 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   Surfaces claim it through `gamepadTeleop(_:priority:standDown:isActive:)`,
   the Controller screen outranks a pad over the picture,
   and a hand-over releases the old owner's look so a stick held through it does not leave that body turning.
-- **It polls, at 60 Hz, only while a surface claims it and a two-stick controller is connected.**
+- **Every way the controller leaves a driver releases a look it was holding** (`letGo(of:)`) —
+  a hand-over, the surface going away, the robot falling asleep, the controller disconnecting.
+  A look held into the rotation zone is the one input that outlives the hand,
+  because the driver's own ticker keeps turning the body until something sends `.zero`;
+  a touch pad gets that from the finger lifting, a controller has to be given it.
+  A look that was already centred is left alone, since it may be a finger's.
+- **It polls, at 60 Hz, only while a surface claims it, the scene is active and a two-stick controller is connected.**
   A change handler fires when a stick moves, and a held turn is the case where nothing moves.
+  The scene gate is the same hazard again: the system stops delivering a controller's input in the background,
+  and a stick last read as held would go on turning the body with nobody at the controls.
 - **Captures never see a real controller.**
   `ControllerScreen` reads `.shared` only outside `reachyPreviewMode`,
   so a controller paired to the Mac running the suite cannot put the legend into a root reference;

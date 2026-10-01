@@ -83,6 +83,9 @@ final class GamepadTeleop {
     }
 
     func release(_ id: UUID) {
+        if id == drivenBy, let claim = claims.first(where: { $0.id == id }) {
+            letGo(of: claim.driver)
+        }
         claims.removeAll { $0.id == id }
         reconcilePolling()
     }
@@ -97,7 +100,7 @@ final class GamepadTeleop {
         }
         if claim.id != drivenBy {
             if let old = claims.first(where: { $0.id == drivenBy }) {
-                old.driver.steer(TeleopStep(look: .zero))
+                letGo(of: old.driver)
             }
             drivenBy = claim.id
             // From neutral, so whatever is already held reaches the new owner now
@@ -109,6 +112,19 @@ final class GamepadTeleop {
         guard let step = mapping.step(from: last, to: reading, seconds: seconds) else { return }
         claim.driver.steer(step)
         claim.standDown?()
+    }
+
+    /// The controller leaving a driver, whichever way it leaves — a hand-over, the
+    /// surface going away, the controller disconnecting. A look held into the rotation
+    /// zone is the one thing that outlives the hand: the driver's own ticker would go
+    /// on turning the body, so it is released the way lifting a thumb releases the pad.
+    /// A look that was already centred is left alone, since it may be a finger's.
+    private func letGo(of driver: TeleopDriver) {
+        if mapping.look(previous) != .zero {
+            driver.steer(TeleopStep(look: .zero))
+        }
+        drivenBy = nil
+        previous = .neutral
     }
 
     private var currentClaim: Claim? {
@@ -151,6 +167,9 @@ final class GamepadTeleop {
         } else if !shouldPoll, let poller {
             poller.cancel()
             self.poller = nil
+            if let driving = claims.first(where: { $0.id == drivenBy }) {
+                letGo(of: driving.driver)
+            }
             drivenBy = nil
             previous = .neutral
         }
@@ -207,14 +226,22 @@ private struct GamepadClaim: ViewModifier {
     /// because a main-actor default fails the `Apps/` build (`ReachyUI/AGENTS.md`).
     let hub: GamepadTeleop?
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Not while the app is in the background: the system stops delivering a
+    /// controller's input there, and a stick last read as held would go on turning
+    /// the body with nobody at the controls.
+    private var holdsClaim: Bool {
+        isActive && scenePhase == .active && !previewMode
+    }
 
     func body(content: Content) -> some View {
-        content.task(id: isActive) {
-            guard isActive, !previewMode else { return }
+        content.task(id: holdsClaim) {
+            guard holdsClaim else { return }
             let hub = hub ?? .shared
             let id = hub.claim(driver, priority: priority, standDown: standDown)
-            // The claim lives exactly as long as this task: a view leaving, or
-            // `isActive` turning false, cancels it.
+            // The claim lives exactly as long as this task: a view leaving, `isActive`
+            // turning false or the scene leaving the foreground cancels it.
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3600))
             }
