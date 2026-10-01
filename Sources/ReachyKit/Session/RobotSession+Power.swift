@@ -17,19 +17,28 @@ public extension RobotSession {
     ///
     /// A deliberate wake is also the user taking the robot back: whatever this
     /// session woke it *for* no longer owns it (see ``RobotSession/appLifecycle``).
+    ///
+    /// A wake that worked also tells the robot it has met its owner
+    /// (``recordFirstWakeUp(using:)``) — after the transition is released, not
+    /// inside it: the robot is already standing, and a flag nobody can see must not
+    /// hold the spinner over it for a round trip, or for a whole reply budget on a
+    /// relay that has gone quiet.
     func wake() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
         // Claimed before the first suspension point: `@MainActor` re-enters on
         // every `await`, so a later latch would let a double tap through.
         powerTransition = .wakingUp
-        defer { powerTransition = nil }
         appLifecycle.releaseWakeOwnership()
         do {
             try await runWake(client: client, startingBackend: true)
         } catch {
             report(error)
+            powerTransition = nil
+            return
         }
+        powerTransition = nil
+        await recordFirstWakeUp(using: client)
     }
 
     /// Mirror image of wake: the animation must finish *before* power is cut,

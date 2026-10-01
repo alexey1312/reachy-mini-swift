@@ -59,6 +59,12 @@ agree:
 - `daemon/jsonrpc_relay.py` is mounted on the WebRTC data channel and `/ws/sdk` for `apps.*`, and
   routes everything else to the running app — not to the command handlers.
 
+**It does run them, though, and that is a different thing from ignoring them.**
+In 1.11.0 and on `main` `WSServer._handle_command` hands `process_command` a `send` that does nothing,
+so a command over `/ws/sdk` takes effect and its reply is dropped.
+A `set_*` sent there changes the robot with no way to learn that it did —
+which is why `set_first_wake_up` is not sent that way (`.claude/rules/daemon-api.md`).
+
 So the reply shapes for those commands can be verified **only through a real peer connection**.
 That is why the relay features in this app are covered by unit tests and previews and not by a
 live check: the app drives the data channel over the Hugging Face relay, and a LAN session opens
