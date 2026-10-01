@@ -454,12 +454,12 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   none of them is an app start. The daemon does know the sequence — `startup_app.wake_or_start_startup_app_if_idle`
   enables the motors, awaits the animation and only then starts — but it is reachable only by touching an antenna,
   never over REST. The client owns it: `RobotSession.claimRobotForApp` and `RobotAppLauncher.startFreeRobot`.
-- **The daemon's return-to-zero after an app is not observed on hardware, and the crash path has none.**
+- **The daemon's return-to-zero after an app is not observed on hardware, and before 1.10.0 the crash path has none.**
   `AppManager.stop_current_app` ends with `goto_target(INIT_HEAD_POSE, antennas=[-0.1745, 0.1745], duration=1.0)`
   unless the head is within `SLEEP_POSE_MAGIC_DISTANCE` (10 magic-mm) of the sleep pose — present in 1.9.0 and in
   `1.10.0.dev0` alike, and reported as not happening on a real unit. `monitor_process` releases the robot-app lock in
   its `finally` and does nothing else, so an app that **exits or crashes** leaves the head wherever its last frame
-  put it in every version. So the client parks it, and `[-0.1745, 0.1745]` is the pose to send: ~±10°, "to reduce
+  put it on 1.9. So the client parks it there, and `[-0.1745, 0.1745]` is the pose to send: ~±10°, "to reduce
   shaking at vertical", and `RobotConnection.zeroAntennas` is the one copy of it. A `goto` issued after
   `stop-current-app` has answered is safe — that route is synchronous, so its 200 lands past the daemon's own
   attempt — and upstream `de6902d8b` adds a debounced `goto_sleep` 1.5 s after the app lock frees, which a robot on
@@ -468,7 +468,31 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `IDLE_RESET_DEBOUNCE_S = 1.5` s (`IDLE_RESET_HANDOFF_GRACE_S = 15.0` when a successor is expected), then runs
   `reset_to_sleep()`, which ends with the motors **disabled** (`backend/abstract.py:3073` onwards).
   It leaves alone a robot that is already limp *and* at the sleep pose, and a new owner cancels it inside the window.
-  So on 1.10+ the client's `goto` to zero is overtaken by the daemon's sleep — tracked in #154.
+  `main` is unchanged as of 2026-10-01;
+  reachy_mini#1400 asks for the policy to become opt-in, so it may still move.
+  **What cancels the reset decides who parks the robot (#154).**
+  Three things do, a pending reset and one already moving alike:
+  an app starting (`AppManager.start_app`), a remote session taking the slot,
+  and any data-channel frame at all (`_handle_webrtc_message` cancels before it dispatches).
+  No motion or motor route does — not `goto`, not `play/*`, not `motors/set_mode` —
+  so over the LAN a `goto` or a sleep sent after an app runs *beside* the reset: two trajectories on one head.
+  `RobotSession.daemonParksAfterApps` is therefore true for a LAN daemon known to be ≥ 1.10.0 that has a media server,
+  and there `parkAfterApp()` sends nothing.
+  It holds `powerTransition = .goingToSleep` and reads the status every `appStopPollInterval`,
+  letting go on the first reading that says asleep, on an app holding the robot again,
+  or at `idleResetTimeout` — 12 s against the reset's 7.2 s worst case — and it never chases a reset that did not come,
+  since whoever cancelled it owns the robot.
+  The media server is a condition because the reset runs on the loop `setup_media_server` builds:
+  `request_idle_reset()` returns at once without one, so a `--no-media` daemon (`no_media` in the status) parks nothing.
+  Over the relay the session keeps its own parking.
+  Each of its commands cancels the reset before running, so there they replace it rather than race it —
+  and a relayed status read is a `get_state` frame, so watching the reset would cancel it too.
+  **Still open: a deliberate sleep with an app running.**
+  `RobotSession.sleep()` and `RobotSleep` stop the app first, which frees the slot,
+  and then play their own `goto_sleep` into the reset that release scheduled — tracked in #166.
+  Power-off is safer but not safe:
+  `Daemon.stop` unwires the free-slot hook and sets `is_shutting_down`, which stops a reset still in its debounce,
+  but not one already moving when the stop arrives.
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.

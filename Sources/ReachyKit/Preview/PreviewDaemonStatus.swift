@@ -27,7 +27,10 @@
             controlLoop: ControlLoopStats? = nil,
             // Absent by default: the field was never in this fixture, and adding one
             // would move every reference that draws the installed version.
-            version: String? = nil
+            version: String? = nil,
+            // Absent unless asked for. A `--no-media` daemon has no idle reset, and
+            // `cameraSpecsName: ""` alone does not say which of its three causes it is.
+            noMedia: Bool? = nil
         ) -> Components.Schemas.DaemonStatus {
             let camera = cameraSpecsName ?? Self.previewCameraName(
                 wirelessVersion: wirelessVersion,
@@ -42,12 +45,13 @@
                 : "null"
             let errorField = error.map { "\"error\": \"\($0)\"," } ?? ""
             let versionField = version.map { "\"version\": \"\($0)\"," } ?? ""
+            let mediaField = noMedia.map { "\"no_media\": \($0)," } ?? ""
             let json = """
             {"robot_name": "Reachy Mini", "state": "\(state.rawValue)",
              "wireless_version": \(wirelessVersion), "desktop_app_daemon": false,
              "simulation_enabled": \(simulationEnabled), "mockup_sim_enabled": \(mockupSimEnabled),
              "camera_specs_name": "\(camera)",
-             \(errorField)\(versionField)
+             \(errorField)\(versionField)\(mediaField)
              "backend_status": \(backend)}
             """
             // swiftlint:disable:next force_try

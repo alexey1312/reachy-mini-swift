@@ -120,6 +120,15 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     decision the robot's state is theirs. A robot this session woke goes back to sleep, one the user woke gets the
     zero pose, and a power transition already in flight gets neither — `releaseRunningApp` reaches the release from
     inside a transition that is already parking, and a `goto` sent into that is the two-motions-one-slot bug again.
+  - **From 1.10.0 the daemon parks the robot itself, and over the LAN the session then sends nothing (#154).**
+    A freed app slot schedules `reset_to_sleep()` 1.5 s later, and no motion or motor route cancels it,
+    so either of the two parkings above would run beside it rather than instead of it.
+    `daemonParksAfterApps` decides — LAN, a version known to be ≥ 1.10.0, and a media server,
+    which the reset needs and `--no-media` removes —
+    and `followDaemonParking` shows the daemon's sleep as `.goingToSleep` until a reading says asleep.
+    It does not fall back to parking when the reset never comes: whoever cancelled it owns the robot.
+    The relay keeps the session's own parking, because every data-channel frame cancels the reset first.
+    Why each condition holds, with the daemon's line numbers, is in `.claude/rules/daemon-api.md`.
 - **The daemon has exactly one move slot, it refuses the second caller in silence, and everything in
   `RobotSession+Moves` follows from that.** `play_move` opens with `if not self._try_start_move(): return`
   (`backend/abstract.py`) — non-blocking, no error, and the route has _already_ filed a fresh UUID through
