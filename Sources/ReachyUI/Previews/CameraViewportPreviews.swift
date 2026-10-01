@@ -3,7 +3,7 @@ import ReachyMedia
 import SwiftUI
 
 // The video layer is a Metal-backed `RTCMTLVideoView` and captures as an empty rectangle, so the
-// three phases that draw an overlay carry this screen's cover. `.streaming` is here anyway, twice:
+// four phases that draw an overlay carry this screen's cover. `.streaming` is here anyway, twice:
 // its chrome is not the video and does render, and the return-to-neutral button is conditional —
 // a reference for the turned state alone could not tell it apart from a permanent one. Expect a
 // black frame with controls on it, which is exactly what is under test.
@@ -23,6 +23,12 @@ import SwiftUI
 #Preview("Camera — unavailable") {
     PreviewScene.pane {
         CameraViewport(session: .preview(.failed("The robot closed the signaling socket.")))
+    }
+}
+
+#Preview("Camera — stalled") {
+    PreviewScene.pane {
+        CameraViewport(session: .preview(.stalled))
     }
 }
 

@@ -68,11 +68,13 @@ struct RootCallLifecycle: ViewModifier {
         RootViewportTarget.source(session: session, remoteLink: remoteLink)
     }
 
+    /// `.stalled` too: the session stopped asking after two attempts, and a call over
+    /// a session that is not trying any more has nothing left to carry it.
     private var cameraHasFailed: Bool {
-        if case .failed = viewport.cameraSession?.phase {
-            return true
+        switch viewport.cameraSession?.phase {
+        case .failed, .stalled: true
+        default: false
         }
-        return false
     }
 
     private var callMustEnd: Bool {

@@ -39,6 +39,18 @@ struct RemoteSessionEndTests {
         #expect(end.isWorthRetrying == false)
     }
 
+    /// The robot's negotiation watchdog ending a session is a stall, not a refusal:
+    /// the camera spends its one retry on it rather than showing the code. Nothing a
+    /// person did is one, or a robot somebody took would be retried out from under them.
+    @Test("the robot's own negotiation watchdog is a stall; a refusal is not")
+    func recognisesANegotiationStall() {
+        #expect(RemoteSessionEnd(reason: "ice_negotiation_timeout").isNegotiationStall)
+        #expect(RemoteSessionEnd(reason: "peer_connection_failed").isNegotiationStall)
+        for refusal in ["robot_busy", "local_app_started", "install_id_takeover", "gremlins"] {
+            #expect(RemoteSessionEnd(reason: refusal).isNegotiationStall == false, "\(refusal)")
+        }
+    }
+
     /// A reason a later central invents must still produce a sentence, and must
     /// carry the raw code so a bug report can name it.
     @Test("an unfamiliar reason is still shown, verbatim")

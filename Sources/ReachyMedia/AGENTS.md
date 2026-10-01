@@ -86,9 +86,11 @@ integration is three types with one direction of trust:
   button, the same lesson `startFailed` carries.
 - A call ends on `.failed`, robot asleep/disconnected, or the viewport target dissolving —
   **never on merely leaving `.streaming`**. `CameraSession` self-heals through `.connecting`
-  (watchdog, ICE failure, LAN lull) and the mic track comes back with `attachMicTrack`'s
+  (a stalled attempt's one retry, a failed peer, a LAN lull) and the mic track comes back with `attachMicTrack`'s
   `track.isEnabled = isMicEnabled`, so a call rides a renegotiation out. `RootCallLifecycle` in
   ReachyUI owns that predicate.
+  `.stalled` ends a call the way `.failed` does:
+  the session has stopped asking after two attempts, so there is nothing left to carry it.
   **Known remainder: `.failed` is not only a stream that died.** `CameraSession.accept()` sets it
   on its own renegotiation path when the peer cannot be built or a description is refused, and
   over the relay `CentralSignalingTransport` yields `.failed` routinely. `callMustEnd` treats any
@@ -101,6 +103,57 @@ integration is three types with one direction of trust:
   `ViewportModel.stopCamera()` drops the last strong one, so every later `applyMic` lands on nil
   while the replacement session starts at `isMicEnabled == false`. The first-ever tap lands in
   exactly that window, because the microphone prompt takes the scene out of `.active`.
+
+## Negotiation: a deadline, one retry, then `.stalled` (#155)
+
+**`.streaming` means the peer connection is `connected` — ICE and DTLS both up —
+and not that the offer named a video track.**
+libwebrtc fires `didAdd rtpReceiver` while it _applies the offer_,
+before the robot has seen an answer at all.
+`.streaming` used to be declared right there,
+so the 10 s watchdog behind it, which asked "not streaming yet?", was always told no and never once fired.
+Measured with the answer dropped:
+`.streaming` twelve seconds later, the robot's peer still `new`, zero restarts —
+a black picture with no spinner, for as long as the app stayed open.
+`videoTrack` is still taken at that early moment, so the view is attached before the first frame;
+it is the phase that waits.
+
+- **An attempt is one subscription to signaling, and it has 15 s to connect**
+  (`defaultNegotiationDeadline`, in `CameraSession+Negotiation.swift`).
+  The clock covers every step — the offer that never comes, the answer the robot never gets, ICE stuck in
+  `checking` — and stops only for `.waitingForProducer`, which is the robot answering rather than stalling.
+- **On the LAN this deadline is the only thing that ends a stall.**
+  The daemon (1.10+) has a 12 s watchdog of its own,
+  but it reports a stuck peer to central only — as `ice_negotiation_timeout` or `peer_connection_failed`;
+  for a peer on its own `:8443` socket it logs `stuck mid-negotiation` and does nothing.
+  Over the relay those two codes count as a stall exactly like the deadline passing
+  (`RemoteSessionEnd.isNegotiationStall`); every other code stays `.failed`, with no retry offered,
+  because retrying a robot somebody took is how two devices fight over it.
+- **The first stall starts over from the top; the second in a row is `.stalled`.**
+  Starting over is a new subscription, not the old one resumed:
+  on the LAN a fresh socket and `startSession`, over the relay a fresh event stream and a fresh ask —
+  `disconnect()` alone never asked again over the relay, so the ICE-failure restart it used to be was a
+  dead end there.
+  `.stalled` drops signaling, ends the robot's half and closes both channels,
+  and the viewport offers **Try again** (`retry()`), which refills the budget.
+  Connecting refills it too, so a stream that drops after working gets the same one retry.
+- **Starting over overlaps the old attempt, and three things keep it from leaking into the new one.**
+  `CameraSignalingClient` clears only the socket its own loop opened;
+  `accept` re-checks `peer === peerConnection` after every await;
+  and `peer(_:changedTo:)` ignores a verdict from any peer but the current one —
+  a closed peer still reports, and its `failed` would count against its successor.
+- **The tests stand the robot up in-process.**
+  `ReachyMediaTests` offers from a second peer connection (`LoopbackRobot`) the way `webrtcsink` does,
+  and connects to it in milliseconds — so the stall is caused, by not carrying the answer,
+  rather than waited out.
+  The robot sends video and the `data` channel and **no audio**:
+  an audio m-line makes the session attach its microphone track,
+  and on macOS, where nothing holds libwebrtc in manual audio mode,
+  a sending audio stream starts the capture device —
+  which a test process with no usage description is killed for.
+  `sim-daemon` was not the reproduction because it could not be:
+  on the Mac this was measured on its WebRTC producer never registers
+  (the default input is a virtual eight-channel device; see the root `CLAUDE.md`).
 
 ## Audio-session ownership
 
@@ -180,9 +233,14 @@ after a call, and this entry is where to start.
   **not** unmute past it, or at a robot other than the one named.
 - "Call Reachy" by voice; a relay call's End leaves the robot's control channel alive.
 - A refused microphone: no ghost call, the blocked button state appears.
+- A healthy robot's camera still comes up at once: "Connecting…" now holds until the peer connects
+  rather than until the offer is read, which on the LAN is well under a second. A camera that
+  hangs on "Connecting…" for 15 s and then retries is the deadline at work — check the daemon's
+  log for `stuck mid-negotiation` before blaming the client.
 
-Untested by design, and the reason in one line each: `CameraSession`/`WebRTCDataChannel` need a
-live peer connection; `RobotCallController`'s adapter needs callservicesd. What can be held is
-held: `CallLifecycleTests` (the decision table), `CameraSessionCandidateTests` (the one pure
-static), `CallProjectLockstepTests` (the Info.plist and metadata declarations the framing leans
-on).
+Untested by design, and the reason in one line each: `RobotCallController`'s adapter needs
+callservicesd; `WebRTCDataChannel` and the audio side of `CameraSession` need a live robot on the
+other end. What can be held is held: `CallLifecycleTests` (the decision table),
+`CameraSessionNegotiationTests` (the negotiation, against a peer connection in the same process),
+`CameraSessionCandidateTests` (the one pure static), `CallProjectLockstepTests` (the Info.plist and
+metadata declarations the framing leans on).
