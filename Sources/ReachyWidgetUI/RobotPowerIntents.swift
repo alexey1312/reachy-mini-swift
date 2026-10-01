@@ -41,6 +41,9 @@ public enum RobotIntentTarget {
     public struct VerifiedConnection: Sendable {
         public let robot: KnownRobot
         public let client: RobotConnection
+        /// What the connection was verified with. Its status is seconds old and
+        /// carries the version, which is a question no command need ask again.
+        public let handshake: RobotConnection.Handshake
     }
 
     /// The last completed handshake, including the stable identity an intent must
@@ -88,7 +91,7 @@ public enum RobotIntentTarget {
             )
             let handshake = try await connection.handshake()
             try validate(handshake, expected: robot)
-            return VerifiedConnection(robot: robot, client: connection)
+            return VerifiedConnection(robot: robot, client: connection, handshake: handshake)
         } catch let error as RobotIntentError {
             throw error
         } catch {

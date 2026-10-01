@@ -8,8 +8,11 @@ import Testing
 /// Home Screen button evicts somebody else's app or drops a head on a desk.
 @Suite("Robot app launcher", .timeLimit(.minutes(1)))
 struct RobotAppLauncherTests {
-    private func launcher(_ client: StubAppsClient, assumeAwake: Bool? = true) -> RobotAppLauncher {
-        RobotAppLauncher(client: client, assumeAwake: assumeAwake)
+    /// Built the way `RobotAppCommand` builds one: with the handshake the
+    /// connection was verified with, which the stub answers without recording a
+    /// call — so every sequence below is what the launcher itself sent.
+    private func launcher(_ client: StubAppsClient, assumeAwake: Bool? = true) async throws -> RobotAppLauncher {
+        try await RobotAppLauncher(client: client, assumeAwake: assumeAwake, handshake: client.handshake())
     }
 
     @Test("tapping the app that is running stops it")
@@ -19,7 +22,7 @@ struct RobotAppLauncherTests {
 
         let outcome = try await launcher(client).toggle(name: "dance_party")
 
-        #expect(outcome == .stopped(name: "dance_party"))
+        #expect(outcome == .stopped(name: "dance_party", robotSleeps: false))
         #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .gotoNeutral])
     }
 
@@ -171,7 +174,7 @@ struct RobotAppLauncherTests {
 
         let outcome = try await launcher(client).stop()
 
-        #expect(outcome == .stopped(name: "dance_party"))
+        #expect(outcome == .stopped(name: "dance_party", robotSleeps: false))
         #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .gotoNeutral])
     }
 
@@ -228,6 +231,69 @@ struct RobotAppLauncherTests {
         #expect(client.calls == [.currentAppStatus])
     }
 
+    /// From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no
+    /// motion route cancels it, so a `goto` would be a second trajectory on the
+    /// head (#173). Nothing follows the stop — not even a status read: the version
+    /// and the media flag came with the handshake, which the stub does not record.
+    @Test("a daemon that sleeps the robot after an app gets nothing sent after the stop", arguments: [
+        "1.10.0", "1.11.0",
+    ])
+    func leavesTheParkingToTheDaemon(version: String) async throws {
+        let stopped = StubAppsClient()
+        stopped.daemonVersion = version
+        stopped.running = StubAppsClient.status(name: "dance_party")
+
+        let outcome = try await launcher(stopped, assumeAwake: nil).stop()
+
+        #expect(outcome == .stopped(name: "dance_party", robotSleeps: true))
+        #expect(stopped.calls == [.currentAppStatus, .stopCurrentApp])
+
+        let toggled = StubAppsClient()
+        toggled.daemonVersion = version
+        toggled.running = StubAppsClient.status(name: "dance_party")
+
+        let toggledOutcome = try await launcher(toggled, assumeAwake: nil).toggle(name: "dance_party")
+
+        #expect(toggledOutcome == .stopped(name: "dance_party", robotSleeps: true))
+        #expect(toggled.calls == [.currentAppStatus, .stopCurrentApp])
+    }
+
+    /// The reset needs 1.10.0 known rather than guessed, and the loop the media
+    /// server builds — `request_idle_reset()` returns at once without one. Each of
+    /// these leaves the head where the app put it unless the client parks it.
+    @Test("a daemon with no reset to run still gets the robot parked at zero", arguments: [
+        (nil, nil), ("1.9.0", nil), ("1.11.0", true),
+    ] as [(String?, Bool?)])
+    func parksWhereTheDaemonWillNot(version: String?, noMedia: Bool?) async throws {
+        let client = StubAppsClient()
+        client.daemonVersion = version
+        client.noMedia = noMedia
+        client.running = StubAppsClient.status(name: "dance_party")
+
+        let outcome = try await launcher(client, assumeAwake: nil).stop()
+
+        #expect(outcome == .stopped(name: "dance_party", robotSleeps: false))
+        #expect(client.calls == [.currentAppStatus, .stopCurrentApp, .gotoNeutral])
+    }
+
+    /// The snapshot is what the next tap trusts: an "awake" reading skips the wake
+    /// (`assumeAwake`), so a stop the daemon follows with its sleep must not leave
+    /// one behind, or that tap starts an app on a robot nobody woke.
+    @Test("a stop the daemon follows with its sleep is recorded asleep")
+    func recordsTheDaemonsSleep() throws {
+        let suite = "RobotAppLauncherTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let snapshots = RobotSnapshotStore(defaults: defaults)
+        let robot = KnownRobot(key: "hw", name: "testbot", address: .init(host: "127.0.0.1"), lastConnected: Date())
+
+        RobotAppCommand.record(.stopped(name: "dance_party", robotSleeps: true), robot: robot, in: snapshots)
+        #expect(snapshots.current?.isAwake == false)
+
+        RobotAppCommand.record(.stopped(name: "dance_party", robotSleeps: false), robot: robot, in: snapshots)
+        #expect(snapshots.current?.isAwake == true)
+    }
+
     /// The whole budget is a few seconds, so no path may ask the daemon what is
     /// running more than once.
     @Test("each path reads the running app exactly once")
@@ -262,7 +328,7 @@ struct RobotAppLauncherTests {
         client.moveNeverFinishes = true
 
         let start = ContinuousClock.now
-        _ = try await RobotAppLauncher(client: client, assumeAwake: false).toggle(name: "face_tracking")
+        _ = try await launcher(client, assumeAwake: false).toggle(name: "face_tracking")
         let elapsed = ContinuousClock.now - start
 
         #expect(elapsed < .seconds(8))

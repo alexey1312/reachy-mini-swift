@@ -299,7 +299,19 @@ the next pair.
   chasing it only past `idleResetTimeout`, which `.widgetIntent` cuts to nine seconds so a chase still fits the 15.
   `RobotShutdown`'s sleep-only plan parks through the same method.
   The relay is excluded by type, because a relayed status read would cancel the reset it watched.
-- **`RobotAppLauncher.stop()` parks the robot at zero and must never sleep it.** An app leaves the head wherever its
+- **`RobotAppLauncher.stop()` sends nothing after the stop where the daemon parks the robot itself (#173),
+  and parks it at zero everywhere else — and never sleeps it.**
+  From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no motion route cancels it,
+  so on a LAN daemon with a media server a `goto` would be a second trajectory beside the daemon's.
+  Deciding that costs no request: `RobotIntentTarget.VerifiedConnection` carries the handshake it verified,
+  and its status has the version and `no_media`.
+  The relay is excluded by type, as `RobotSleep` excludes it — there the `goto` cancels the reset and parks cleanly.
+  The outcome says which happened (`Outcome.stopped(name:robotSleeps:)`),
+  because `RobotAppCommand` records the snapshot off it:
+  `isAwake: true` over a robot the daemon was about to put to sleep would be believed for half an hour,
+  and the next tap would start an app on a robot nobody woke.
+  Recorded asleep a few seconds early is harmless — an asleep reading is never believed.
+  Anywhere else an app leaves the head wherever its
   last frame put it, and the daemon does not pick it up (`.claude/rules/daemon-api.md`). The session restores what
   the robot _was_ — asleep, if it woke it for the app — but that memory is in-process, and it must not become a
   shared App Group record: it would be the first one with two writers and no arbitration, and unlike
