@@ -66,6 +66,7 @@ swift run ReachyGeometryExport --output "$BASE.usdc" ${EXPORT_ARGS[@]+"${EXPORT_
 # the same failure shape ci_post_clone.sh's build-number sed guards against. The
 # assertion is the point; the edit is one line.
 python3 - "$BASE.usda" <<'PY'
+import re
 import sys
 from pathlib import Path
 
@@ -76,7 +77,31 @@ if not text.startswith(header):
     raise SystemExit(f"{path}: not a .usda layer — cannot author metersPerUnit")
 if "metersPerUnit" in text.split(")", 1)[0]:
     raise SystemExit(f"{path}: already carries metersPerUnit, refusing to author a second")
-path.write_text(text.replace(header, header + "    metersPerUnit = 1\n", 1))
+text = text.replace(header, header + "    metersPerUnit = 1\n", 1)
+
+# UsdPreviewSurface declares diffuseColor and emissiveColor as `color3f`, and
+# Model I/O cannot write that type: a float3 property serialises as `float3` and
+# a CGColor one as `color4f` — both measured, and a renderer reads neither. The
+# robot comes out **white**, which is not a subtle loss for the one consumer this
+# file has: Create ML's object tracker is appearance-based, so training would be
+# fitted to a featureless blob and the negative result would read as "flat CAD
+# greys are too hard" rather than "the colour never arrived". `usdchecker --arkit`
+# names it, two errors per material; `usdrecord` shows it.
+diffuse = text.count("float3 inputs:diffuseColor")
+text = text.replace("float3 inputs:diffuseColor", "color3f inputs:diffuseColor")
+text, emissive = re.subn(
+    r"color4f inputs:emissiveColor = \(([^,]+), ([^,]+), ([^,]+), [^)]+\)",
+    r"color3f inputs:emissiveColor = (\1, \2, \3)",
+    text,
+)
+if diffuse == 0 or emissive == 0:
+    raise SystemExit(
+        f"{path}: retyped {diffuse} diffuseColor and {emissive} emissiveColor inputs — "
+        "Model I/O's spelling moved, and the export would be colourless"
+    )
+print(f"  retyped {diffuse} diffuseColor and {emissive} emissiveColor inputs to color3f")
+
+path.write_text(text)
 PY
 
 \rm -f "$BASE.usdz"
