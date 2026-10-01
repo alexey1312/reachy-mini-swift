@@ -31,3 +31,8 @@ import SwiftUI
 #Preview("Controller — setup failed") {
     PreviewScene.controller(.preview(), setupError: "Could not open ws://192.168.1.42:8000/api/move/ws/set_target")
 }
+
+// The legend appears only while a controller is connected, so every preview above is its absence.
+#Preview("Controller — game controller") {
+    PreviewScene.controller(.preview(), controllerName: "Xbox Wireless Controller")
+}

@@ -571,6 +571,45 @@ haptic on.
   backwards renders the complement — a mistake no test catches and only a simulator shows. The intersection is
   correct by construction and cannot drift away from the mapping's boundary.
 
+## A game controller (#160)
+
+`GamepadMapping.swift`, `GamepadTeleop.swift` and `GamepadLegendSection.swift`.
+A controller is one more writer of the target the pad and the sliders already write,
+so the slew limiter and the daemon's limits apply unchanged (project rule 2).
+
+- **The right stick is the pad, not a second mapping of it.**
+  It produces a `JoystickDeflection` and `TeleopDriver.steer` runs it through the same `JoystickMapping`,
+  rotation zone and ticker included,
+  so a stick held at its side turns the body exactly as a thumb at the pad's rim does.
+  The right stick because that is where a controller's camera lives, and where Pollen's desktop app puts its look.
+  Its left stick drives the head's `x` and `y` there, which this client does not:
+  those are world-frame and would need the body's yaw composed in (the rotation-zone section above).
+  So the left stick and the d-pad turn the body and raise the head, the shoulders roll it, the triggers move the antennas,
+  and the right face button resets — named by position, because the letter differs on every make.
+- **Only a change is reported, and that is what lets a controller sit beside the screen.**
+  A stick resting at centre would otherwise send `.zero` every tick and snap the touch pad back under a finger,
+  and triggers at rest would zero antennas a slider had set.
+  What is held — the turn, the lift, the roll — is an amount per tick instead,
+  and it stays inside the matching slider's range (`TeleopDriver.heightLimit`, `.antennaLimit`):
+  an integral the daemon truncated would wind up, and the opposite button would spend as long bringing the head back.
+- **One controller, one owner, which is why `GamepadTeleop` is shared.**
+  An iPad under a sidebar shows the Controller screen and the viewport column's pad at once,
+  each with a `TeleopDriver` and a channel of its own.
+  A finger lands on one; a controller would reach both.
+  Surfaces claim it through `gamepadTeleop(_:priority:standDown:isActive:)`,
+  the Controller screen outranks a pad over the picture,
+  and a hand-over releases the old owner's look so a stick held through it does not leave that body turning.
+- **It polls, at 60 Hz, only while a surface claims it and a two-stick controller is connected.**
+  A change handler fires when a stick moves, and a held turn is the case where nothing moves.
+- **Captures never see a real controller.**
+  `ControllerScreen` reads `.shared` only outside `reachyPreviewMode`,
+  so a controller paired to the Mac running the suite cannot put the legend into a root reference;
+  `Controller — game controller` hands in a hub naming one instead.
+- **What no test can say is how it feels.**
+  The rates are the sliders' half ranges per second and the deadzone is a guess,
+  like every constant in the teleop path;
+  the roll's direction follows the right-hand rule about the robot's forward axis and has not been checked on hardware.
+
 ## Errors
 
 **An error is shown by the screen whose action caused it.** A daemon failure goes into the slot on that screen's

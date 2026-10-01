@@ -67,6 +67,14 @@ final class TeleopDriver {
     /// the whole ±160° is reachable.
     static let bodyYawLimit = 160.0 * .pi / 180
 
+    /// The height and antenna sliders' ranges, which a game controller's held buttons
+    /// integrate inside (`steer`). Comfortable ranges rather than safety limits — the
+    /// daemon clamps anyway (project rule 2) — but an integral it truncated would wind
+    /// up: hold "up" for ten seconds and the opposite button would then spend ten
+    /// seconds bringing the head back from somewhere it never went.
+    nonisolated static let heightLimit = 0.03
+    nonisolated static let antennaLimit = 150.0 * .pi / 180
+
     private static let turnedThreshold = 0.5 * .pi / 180
     private static let tick = Duration.milliseconds(20)
     private var client: (any TeleopChannel)?
@@ -119,6 +127,48 @@ final class TeleopDriver {
         stopRotation()
         relativeHeadYaw = 0
         target = .init()
+    }
+
+    /// One tick of a game controller, written as one target for the reason `apply` is
+    /// one assignment — a controller is polled at screen rate too (`GamepadTeleop`).
+    ///
+    /// The look goes through the pad's own mapping, rotation zone and ticker included,
+    /// so a stick is a second thumb on the same pad rather than a second idea of it.
+    /// What a held button adds stays inside the matching slider's range, and only an
+    /// axis that moved is clamped: a target some other writer put outside that range
+    /// is left where it is rather than snapped in by an unrelated tick.
+    func steer(_ step: TeleopStep) {
+        if step.reset {
+            reset()
+            return
+        }
+        var next = target
+        if let look = step.look {
+            relativeHeadYaw = mapping.headYaw(look)
+            next.pitch = mapping.headPitch(look)
+        }
+        if step.bodyYaw != 0 {
+            next.bodyYaw = (next.bodyYaw + step.bodyYaw).clamped(to: -Self.bodyYawLimit ... Self.bodyYawLimit)
+        }
+        next.yaw = Self.worldYaw(body: next.bodyYaw, head: relativeHeadYaw)
+        if step.roll != 0 {
+            next.roll = (next.roll + step.roll).clamped(to: -mapping.headAngle ... mapping.headAngle)
+        }
+        if step.height != 0 {
+            next.z = (next.z + step.height).clamped(to: -Self.heightLimit ... Self.heightLimit)
+        }
+        if let antennas = step.antennas {
+            next.antennaLeft = antennas.left
+            next.antennaRight = antennas.right
+        }
+        // Held against a limit a tick changes nothing, and an unchanged target is not
+        // worth a push — the same guard `setBodyYaw` keeps.
+        if next != target {
+            target = next
+        }
+        if let look = step.look {
+            setRotation(rate: mapping.bodyYawRate(look))
+        }
     }
 
     /// One integration step. Called by the ticker, and by tests without one.

@@ -141,11 +141,15 @@ enum PreviewScene {
         _ session: RobotSession,
         driver: TeleopDriver? = nil,
         setupError: String? = nil,
-        recorder: MoveRecorderModel? = nil
+        recorder: MoveRecorderModel? = nil,
+        // A hub that watches for no controller, so a capture never depends on what
+        // happens to be paired to the machine running it.
+        controllerName: String? = nil
     ) -> some View {
         NavigationHost {
             ControllerScreen(
                 session: session,
+                gamepad: GamepadTeleop(controllerName: controllerName),
                 driver: driver ?? TeleopDriver(),
                 setupError: setupError,
                 recorder: recorder
