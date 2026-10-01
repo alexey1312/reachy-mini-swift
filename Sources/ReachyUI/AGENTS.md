@@ -755,6 +755,19 @@ Start.
   which is the pattern to copy: seed an app that is installed in its own right,
   because fixing the shared fixture would move references belonging to other screens.
 
+- **The header's button sits under the name, never beside it.**
+  Beside it, `AppIdentityHeader`'s text column kept about 110 pt on a phone,
+  and the badges were wrapped a letter to a line ("Of / fi- / ci / al", "2 / 1 / 4").
+  Every iPhone reference with an Install or Start recorded it, and passed —
+  a reference that passes is not one anybody reads.
+  `ViewThatFits` choosing between beside and under was tried first and is not enough:
+  by ideal sizes the row fitted with a couple of points to spare, the laid-out column still got less,
+  and the badges came out as "…".
+  The row is top-aligned under a button and centred without one,
+  which kept the 13 previews without a button byte-identical and moved the 9 with one.
+  The badges themselves still fall back to one per line rather than a letter per line
+  at text sizes where even the full column is too narrow.
+
 - **Over the relay the store is Discover alone, and the page knows less (#158).**
   `AppStoreModel+Relay.swift` holds the fork, keyed on `isOverRelay` (`session.canInstallFromCatalogue`),
   so every preview built on a client without that capability renders exactly as before.
