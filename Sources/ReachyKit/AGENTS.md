@@ -281,3 +281,13 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     indistinguishable over the relay. `errorDescription` composes the identical sentence, and a test pins it: no
     screen's wording changed. `ConversationFailure` is the shared vocabulary both arms throw, with `-32601` mapped
     in exactly one initialiser so the two cannot drift.
+- **`FirstWakeUpClient` is relay-only, and that is the daemon's doing, not a gap here.**
+  The robot keeps one `first_wake_up_completed` flag that Pollen's apps gate their first-run wizard on (#157),
+  and it is answered on the data channel alone:
+  no daemon up to `main` has a REST route, and `/ws/sdk` runs `set_first_wake_up` while answering nothing,
+  so over the LAN a write could not be confirmed and a read could not be made.
+  `RobotSession.wake()` writes it after a wake that worked, read first so a marked robot costs no write,
+  **after** `powerTransition` is released — the robot is already standing,
+  and a 1.10-reporting build without the command would otherwise hold "Waking up" for the whole reply budget.
+  Nothing is reported on failure: `robotError` is power and connection, and the owner never sees this flag.
+  When a route lands, `RobotConnection` conforms and nothing above the protocol moves.

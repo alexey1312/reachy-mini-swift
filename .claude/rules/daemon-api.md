@@ -587,3 +587,27 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     Daemon `main` casts before packing (#1395, merged after v1.11.0), so integer registers become writable in 1.12.
     Keep the constraint until the minimum reaches that release.
   - A write is global and outlives the session that made it. Whether it outlives a reboot is untested.
+- **"First wake-up completed" is one robot-wide boolean, and only the data channel can read it.**
+  Daemon 1.10.0 stores `first_wake_up_completed` in the same config file as the startup app
+  (`daemon/startup_app_config.py`, pollen-robotics/reachy_mini#1340)
+  and answers `get_first_wake_up` / `set_first_wake_up {is_completed}` in `process_command`,
+  both echoing the command with the stored value under `is_completed`.
+  Unset or malformed reads as `false`.
+  A failed write is **not** an `error` reply: it answers `"status": "error"` with the value still on disk,
+  so a caller compares what came back rather than trusting the request.
+  Pollen's mobile app (0.11.2) reads it when a relay session goes live,
+  keeps the robot asleep and runs its wizard while it is `false`,
+  and writes `true` when the wizard ends, finished or skipped.
+  - **No REST route exists on any daemon up to `main`** (551679d, 2026-09-30).
+    The open desktop wizard (reachy-mini-desktop-app#225) calls `GET /api/first-wake-up/status`
+    and falls back when it 404s — a route proposed and never merged, so do not code against its shape.
+  - **`/ws/sdk` executes the command and answers nothing.**
+    `WSServer._handle_command` hands `process_command` a `send` that does nothing,
+    so `set_first_wake_up` over the LAN socket really is stored, with no way to learn that it was,
+    and `get_first_wake_up` has no answer to give.
+    This app does not write it that way: an unconfirmable write to the robot's own state is worse than none.
+  - **A daemon before 1.10.0 answers an unknown command with `{"error": "Invalid command: …"}` and no `command`**,
+    so a waiter keyed on the echo never matches and sits out the whole reply budget.
+    Gate on the version (`predatesRelayCommands`), never on the reply.
+  - The session writes it after the first wake-up it performs over the relay
+    (`RobotSession+FirstWakeUp.swift`), reading first so a marked robot costs no write.
