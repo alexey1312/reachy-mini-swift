@@ -60,11 +60,15 @@ public struct RobotAppCommand: Sendable {
             let robot = robot
             let result = try await RobotIntentTarget.withTimeout(Self.executionTimeout) {
                 let target = try await RobotIntentTarget.connection(to: robot, timeout: 6)
-                let launcher = RobotAppLauncher(client: target.client, assumeAwake: assumeAwake)
+                let launcher = RobotAppLauncher(
+                    client: target.client,
+                    assumeAwake: assumeAwake,
+                    handshake: target.handshake
+                )
                 let outcome = try await operation.run(on: launcher)
                 return (target.robot, outcome)
             }
-            record(result.1, robot: result.0, in: snapshots)
+            Self.record(result.1, robot: result.0, in: snapshots)
             if let appID {
                 launches.succeed(appID: appID)
             }
@@ -101,7 +105,13 @@ public struct RobotAppCommand: Sendable {
     /// A stop that found nothing to stop claims nothing about the motors: it never
     /// asked, and `isAwake: nil` leaves the previous reading where it was rather
     /// than inventing one.
-    private func record(
+    ///
+    /// A stop the daemon follows with its own sleep is recorded asleep a few seconds
+    /// early rather than awake for half an hour. The early half is harmless — an
+    /// "asleep" reading is never believed (`RobotAppLauncher.assumeAwake`), so the
+    /// next tap asks — while an "awake" one would be, and the next tap would start
+    /// an app on a robot nobody woke.
+    static func record(
         _ outcome: RobotAppLauncher.Outcome?,
         robot: KnownRobot,
         in snapshots: RobotSnapshotStore
@@ -115,13 +125,13 @@ public struct RobotAppCommand: Sendable {
                 robotName: robot.name,
                 isAwake: true
             )
-        case .stopped:
+        case let .stopped(_, robotSleeps):
             snapshots.recordRunningApp(
                 title: nil,
                 name: nil,
                 robotID: robot.key,
                 robotName: robot.name,
-                isAwake: true
+                isAwake: !robotSleeps
             )
         case .none:
             snapshots.recordRunningApp(

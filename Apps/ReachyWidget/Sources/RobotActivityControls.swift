@@ -42,8 +42,10 @@
     /// parameter, and the reasoning is the same: asking which app is asking somebody
     /// to repeat something the robot already knows.
     ///
-    /// Stopping parks the robot at zero and never sleeps it (`RobotAppLauncher.stop()`),
-    /// which is why this is not a quieter spelling of the Sleep control beside it.
+    /// Stopping never sleeps the robot from here (`RobotAppLauncher.stop()`): it parks
+    /// at zero, or on a 1.10+ daemon leaves the parking to the daemon's own reset —
+    /// which happens to end asleep. That is the daemon's policy rather than this
+    /// control's, so this is still not a quieter spelling of the Sleep control beside it.
     struct StopRobotAppControl: ControlWidget {
         var body: some ControlWidgetConfiguration {
             StaticControlConfiguration(kind: "StopRobotApp") {

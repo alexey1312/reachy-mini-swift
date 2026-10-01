@@ -24,7 +24,10 @@ public struct RobotAppLauncher: Sendable {
     /// here embellishes what the daemon said.
     public enum Outcome: Equatable, Sendable {
         case started(name: String, title: String)
-        case stopped(name: String)
+        /// `robotSleeps` is the daemon putting the robot to sleep by itself once the
+        /// slot freed (1.10.0+, over the LAN), so a reading taken now would still
+        /// say awake for the few seconds that takes and then stop saying it.
+        case stopped(name: String, robotSleeps: Bool)
     }
 
     /// The three ways a command refuses before the robot is even asked to start an
@@ -76,17 +79,26 @@ public struct RobotAppLauncher: Sendable {
     private let apps: any RobotAppsClient
     private let power: RobotPower
     private let readiness: @Sendable () async throws -> Readiness
-    private let park: @Sendable () async -> Void
+    /// What follows a stop. Answers whether the daemon is putting the robot to
+    /// sleep instead, which is the one case where nothing is sent.
+    private let park: @Sendable () async -> Bool
 
     /// `assumeAwake` skips the readiness round trip when the caller already holds a
     /// reading worth trusting — but **only when it says awake**. A snapshot cannot
     /// tell a parked robot from a torn-down backend, because `isAwake` is false for
     /// both and the two need different sequences, so that answer is asked afresh
     /// rather than acted on. Either way the daemon is asked at most once.
+    ///
+    /// `handshake` is the one `RobotIntentTarget` verified the connection with. Its
+    /// status carries the version and the media flag, which are all a stop needs
+    /// to know whether the daemon parks the robot itself — so that answer costs no
+    /// request on a budget of seconds. It is not a reading of the motors: those
+    /// are still `assumeAwake`'s question.
     public init(
         client: any RobotAPIClient & RobotAppsClient,
         configuration: RobotSession.Configuration = .widgetIntent,
-        assumeAwake: Bool?
+        assumeAwake: Bool?,
+        handshake: RobotConnection.Handshake
     ) {
         apps = client
         power = RobotPower(client: client, configuration: configuration)
@@ -96,13 +108,19 @@ public struct RobotAppLauncher: Sendable {
             }
             return try await Readiness(client.daemonStatus())
         }
+        // From 1.10.0 a freed slot is a sleep already on its way (#173), and no
+        // motion route cancels it, so a `goto` would put a second trajectory on the
+        // head. The relay is left out by type, as `RobotSleep` leaves it out: there
+        // the `goto` is a data-channel frame, which cancels the reset before it
+        // runs and so parks the robot instead of racing the daemon.
+        let daemonSleepsIt = !(client is RemoteRobotConnection) && handshake.status.resetsToSleepAfterApps
         // Parking is playback work, and a transport without it simply stays where
         // the app left the robot — the same trade `RobotSession.recentre` makes.
         park = { [moves = client as? any MovePlaybackClient] in
-            // A transport without playback stays where the app left the robot; a
-            // park that was attempted and refused is worth a line, because an
-            // intent has no screen to put it on and the head is left up either way.
-            guard let moves else { return }
+            if daemonSleepsIt {
+                return true
+            }
+            guard let moves else { return false }
             do {
                 _ = try await moves.gotoNeutral(duration: configuration.recentreDuration)
             } catch {
@@ -110,6 +128,7 @@ public struct RobotAppLauncher: Sendable {
                 // to put this on and the head stays up either way.
                 _ = RobotSession.message(for: error)
             }
+            return false
         }
     }
 
@@ -118,7 +137,7 @@ public struct RobotAppLauncher: Sendable {
         apps: any RobotAppsClient,
         power: RobotPower,
         readiness: @escaping @Sendable () async throws -> Readiness,
-        park: @escaping @Sendable () async -> Void = {}
+        park: @escaping @Sendable () async -> Bool = { false }
     ) {
         self.apps = apps
         self.power = power
@@ -133,8 +152,7 @@ public struct RobotAppLauncher: Sendable {
         if let running = try await runningApp() {
             guard running.app.name == name else { throw Failure.busy(title: running.app.title) }
             try await apps.stopCurrentApp()
-            await park()
-            return .stopped(name: name)
+            return await .stopped(name: name, robotSleeps: park())
         }
         return try await startFreeRobot(named: name)
     }
@@ -163,15 +181,25 @@ public struct RobotAppLauncher: Sendable {
     /// robot was already clear. Nothing here wakes it — stopping a process needs no
     /// motors.
     ///
-    /// **It parks the robot at zero, and never puts it to sleep.** An app leaves the
-    /// head wherever its last frame put it: `AppManager.stop_current_app` carries a
-    /// return-to-zero that hardware does not perform, and the crash path has none.
-    /// The session restores what the robot *was* — asleep if it woke it for the app
-    /// — but that memory belongs to a process an extension is not: a launch state
-    /// shared across the App Group would have two writers, no arbitration, and would
-    /// authorise a motion on the strength of a record written by something that has
-    /// since died. So this offers the one restoration it can defend, and the app's
-    /// own poll performs the fuller one whenever it is running.
+    /// **From 1.10.0, over the LAN, the daemon puts the robot to sleep and this
+    /// sends nothing after the stop (#173).** Freeing the slot schedules its
+    /// `reset_to_sleep()` 1.5 s later — the head lifts to the zero pose, the sleep
+    /// animation plays, the motors are cut — and no motion route cancels it, so a
+    /// `goto` here would be a second trajectory beside the daemon's. The outcome
+    /// says so, because the robot will not be awake by the time anybody reads it.
+    ///
+    /// **Anywhere else it parks the robot at zero, and never puts it to sleep** —
+    /// before 1.10.0, on a `--no-media` daemon (the reset runs on the loop the media
+    /// server builds), and over the relay, where the `goto` is a data-channel frame
+    /// that cancels the reset before it runs. An app leaves the head wherever its
+    /// last frame put it: `AppManager.stop_current_app` carries a return-to-zero that
+    /// hardware does not perform, and the crash path has none. The session restores
+    /// what the robot *was* — asleep if it woke it for the app — but that memory
+    /// belongs to a process an extension is not: a launch state shared across the
+    /// App Group would have two writers, no arbitration, and would authorise a motion
+    /// on the strength of a record written by something that has since died. So this
+    /// offers the one restoration it can defend, and the app's own poll performs the
+    /// fuller one whenever it is running.
     ///
     /// The `goto` is one request, not one second: the daemon answers with a task id
     /// and plays the move afterwards, so nothing here waits it out. A failure is
@@ -180,8 +208,7 @@ public struct RobotAppLauncher: Sendable {
     public func stop() async throws -> Outcome? {
         guard let running = try await runningApp() else { return nil }
         try await apps.stopCurrentApp()
-        await park()
-        return .stopped(name: running.app.name)
+        return await .stopped(name: running.app.name, robotSleeps: park())
     }
 
     /// A `/` would split the `start-app` path into segments and 404, so it is

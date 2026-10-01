@@ -526,6 +526,10 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   The session lets the wait go when an app holds the robot again, since starting one cancels the reset;
   an intent would have to ask for that and does not.
   `RobotShutdown`'s sleep-only plan stops an app too, so it parks through `RobotSleep` for the same reason.
+  **The widget's app stop is left to it too (#173).**
+  `RobotAppLauncher` sends its zero-pose `goto` only where the reset will not run,
+  read off the handshake's status rather than a fresh request,
+  and the snapshot it leaves says asleep.
   Power-off is safer but not safe:
   `Daemon.stop` unwires the free-slot hook and sets `is_shutting_down`, which stops a reset still in its debounce,
   but not one already moving when the stop arrives.
