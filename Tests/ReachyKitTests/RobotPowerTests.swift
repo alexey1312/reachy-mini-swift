@@ -213,9 +213,14 @@ struct RobotPowerTests {
 
     /// `.error` is a finished job, not a slow one — the daemon records a failed
     /// start that way and stops. Both branches answer `false`, so the assertion has
-    /// to be the *duration*: the wrong one returns the same verdict ten seconds
+    /// to be the *duration*: the wrong one returns the same verdict thirty seconds
     /// later, and the suite would pass green with only `test_time` grown
     /// (project rule 7).
+    ///
+    /// The bound is a third of the budget rather than a tenth of it. At one second
+    /// against ten, a loaded CI runner took 1.8 s over two status reads and failed
+    /// `main` with the branch intact; ten against thirty still separates the two
+    /// answers by twenty seconds.
     @Test("a failed start ends the wait rather than spending the budget")
     func aFailedStartIsNotATimeout() async {
         let client = Client()
@@ -226,10 +231,10 @@ struct RobotPowerTests {
         client.state = .starting
         let started = ContinuousClock.now
 
-        let running = await patientPower(client).waitForBackendRunning()
+        let running = await patientPower(client, budget: .seconds(30)).waitForBackendRunning()
 
         #expect(running == false)
-        #expect(started.duration(to: .now) < .seconds(1))
+        #expect(started.duration(to: .now) < .seconds(10))
     }
 
     /// The other half of that pair: a backend that never arrives is bounded, and
