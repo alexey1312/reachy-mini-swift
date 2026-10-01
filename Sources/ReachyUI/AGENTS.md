@@ -749,6 +749,25 @@ purpose so no Hugging Face credential passes through one of ours.)
   carrying no metadata at all is not an oversight either: it is what a local app with no Hub card looks like, which
   is the one case `describedFromInstalled` still cannot describe.
 
+## Hosted JS apps — the #159 prototype
+
+`JSApps/`, compiled in `DEBUG` only and reached from Settings → Advanced → Web apps.
+`docs/adr/0006-js-apps.md` holds the decisions; what follows is what the code relies on.
+
+- **The page is the web view's own document, not an iframe in a page of ours.**
+  The SDK sees `window.parent === window`, boots from the URL fragment without `host:init`,
+  and posts its protocol to its own window,
+  where `JSAppHostBridge`'s document-start script forwards `embed:*` to Swift.
+  `JSAppHostLiveTests` proves that against a real Space when `REACHY_JS_APP_LIVE` is set.
+- **`RootJSAppHost` is mounted on the root, above the gate**, for the reason `RootSheets` is:
+  over the relay this app's session is ended before the page loads,
+  the phase leaves `.connected`, and the shell — with the screen the app was opened from — is thrown away.
+- **Closing waits for `embed:left`**, because that is the page putting the robot to sleep;
+  `JSAppHostModel.leave()` gives it 9.5 s, the reference host's bound.
+- **The token is the narrow one** (`HFOAuthConfiguration.reachyMiniWebApps`), in memory,
+  and the web view's data store is non-persistent, so the page's own copy dies with it.
+- No previews and no references, said here as rule 8 asks: it ships to nobody.
+
 ## Maintenance, and the guard the robot does not have
 
 `MaintenanceCard` carries the two `/cache/*` actions. Both delete something on the robot, both are irreversible from

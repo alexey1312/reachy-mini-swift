@@ -78,6 +78,14 @@ struct AdvancedScreen: View {
                         Label(.reachy("Developer tools"), systemImage: "stethoscope")
                     }
                 }
+                #if DEBUG
+                    // The #159 prototype: ships to nobody (ADR 0006).
+                    NavigationLink {
+                        JSAppsPrototypeScreen(session: session)
+                    } label: {
+                        Label(.reachy("Web apps"), systemImage: "globe")
+                    }
+                #endif
             }
         }
         .formStyle(.grouped)
