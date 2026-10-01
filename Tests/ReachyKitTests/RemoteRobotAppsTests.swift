@@ -190,9 +190,14 @@ struct RemoteRobotAppsTests {
     /// The reply budget would end a first install ten seconds in. Measured rather
     /// than assumed, because both budgets end in the same `.timedOut` and the wrong
     /// one would pass on outcome alone (project rule 7).
+    /// The reply budget also bounds the `apps.status` asked before the install, and
+    /// that one is answered by a polling task — so it needs headroom a loaded runner
+    /// cannot eat (project rule 7). At 100 ms it did, on CI: the probe timed out,
+    /// the install was never sent, and the test waited out its ten seconds. A full
+    /// second still sits well under the three the install is held for.
     @Test("an install waits on its own budget, not the reply budget")
     func waitsOnTheInstallBudget() async throws {
-        let (connection, fake) = connection(timeout: .milliseconds(100), installTimeout: .seconds(30))
+        let (connection, fake) = connection(timeout: .seconds(1), installTimeout: .seconds(30))
         let relay = answeringStatus(on: fake)
         defer { relay.cancel() }
 
@@ -200,11 +205,11 @@ struct RemoteRobotAppsTests {
         let start = clock.now
         async let outcome = connection.installFromCatalogue(named: "reachy_mini_radio")
         let install = try await installFrame(on: fake)
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .seconds(3))
         fake.emit(#"{"jsonrpc":"2.0","id":\#(install.id),"result":{"installed":true}}"#)
 
         #expect(try await outcome == .succeeded)
-        #expect(clock.now - start >= .milliseconds(500))
+        #expect(clock.now - start >= .seconds(3))
     }
 
     @Test("the catalogue over the relay is the Hub's")
