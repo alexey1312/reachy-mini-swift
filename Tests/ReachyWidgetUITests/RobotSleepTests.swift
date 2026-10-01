@@ -11,12 +11,22 @@ import Testing
 struct RobotSleepTests {
     private func sleep(
         _ client: StubAppsClient,
-        appStopTimeout: Duration = .seconds(5)
+        appStopTimeout: Duration = .seconds(5),
+        idleResetTimeout: Duration = .seconds(5)
     ) -> RobotSleep {
         var configuration = RobotSession.Configuration.widgetIntent
         configuration.appStopTimeout = appStopTimeout
         configuration.appStopPollInterval = .milliseconds(10)
+        configuration.idleResetTimeout = idleResetTimeout
         return RobotSleep(client: client, configuration: configuration)
+    }
+
+    /// A daemon that sleeps the robot itself once the app slot frees (#166).
+    private func parkingDaemon(running app: String? = "dance_party") -> StubAppsClient {
+        let client = StubAppsClient()
+        client.daemonVersion = "1.11.0"
+        client.running = app.map { StubAppsClient.status(name: $0) }
+        return client
     }
 
     @Test("the running app is stopped before the motors are taken from it")
@@ -26,10 +36,13 @@ struct RobotSleepTests {
 
         try await sleep(client).perform()
 
+        // The status read asks whether the daemon will sleep the robot itself once
+        // the slot frees; one with no version to read will not.
         #expect(client.calls == [
             .currentAppStatus,
             .stopCurrentApp,
             .currentAppStatus,
+            .daemonStatus,
             .gotoSleep,
             .setMotorMode(.disabled),
         ])
@@ -128,5 +141,84 @@ struct RobotSleepTests {
         #expect(played != nil)
         #expect(parked != nil)
         #expect((played ?? 0) < (parked ?? 0))
+    }
+
+    // MARK: - A daemon that sleeps the robot itself (#166)
+
+    /// Stopping the app frees the slot, and from 1.10.0 that schedules the daemon's
+    /// own `reset_to_sleep()`, which no motion or motor route cancels. A
+    /// `goto_sleep` of ours would be a second trajectory on the same head.
+    @Test("a released app's sleep is left to the daemon, not played a second time")
+    func leavesTheSleepToTheDaemon() async throws {
+        let client = parkingDaemon()
+        client.idleResetAfterReads = 3
+
+        try await sleep(client).perform()
+
+        #expect(client.calls.contains(.stopCurrentApp))
+        #expect(client.calls.contains(.gotoSleep) == false)
+        #expect(client.calls.contains(.setMotorMode(.disabled)) == false)
+        // Three readings that still found it awake, and the one that did not.
+        #expect(client.calls.count { $0 == .daemonStatus } == 4)
+    }
+
+    /// Unlike the parking after an app, somebody asked for this sleep — so a reset
+    /// that never comes is chased rather than let go.
+    @Test("a reset that never comes is chased with the sleep that was asked for")
+    func chasesAMissingReset() async throws {
+        let client = parkingDaemon()
+
+        try await sleep(client, idleResetTimeout: .milliseconds(200)).perform()
+
+        #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
+    }
+
+    /// Only a release schedules the reset. With nothing running the old sequence is
+    /// the whole of it, and not even the version is read.
+    @Test("with no app running nothing is waited for, whatever the daemon")
+    func noAppNoWait() async throws {
+        let client = parkingDaemon(running: nil)
+
+        try await sleep(client).perform()
+
+        #expect(client.calls == [.currentAppStatus, .gotoSleep, .setMotorMode(.disabled)])
+    }
+
+    @Test(
+        "a daemon with no reset of its own costs one reading on the way to the animation",
+        arguments: [
+            ("1.9.0" as String?, nil as Bool?),
+            (nil, nil),
+            ("1.11.0", true),
+        ]
+    )
+    func readsOnceWhereThereIsNoReset(version: String?, noMedia: Bool?) async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+        client.daemonVersion = version
+        client.noMedia = noMedia
+
+        try await sleep(client).perform()
+
+        #expect(client.calls == [
+            .currentAppStatus,
+            .stopCurrentApp,
+            .currentAppStatus,
+            .daemonStatus,
+            .gotoSleep,
+            .setMotorMode(.disabled),
+        ])
+    }
+
+    /// A refused stop frees nothing, so nothing is scheduled to wait for.
+    @Test("a stop the daemon refused is not waited on")
+    func aRefusedStopIsNotWaitedOn() async throws {
+        let client = parkingDaemon()
+        client.stopAppFails = true
+
+        try await sleep(client).perform()
+
+        #expect(client.calls.contains(.daemonStatus) == false)
+        #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
     }
 }

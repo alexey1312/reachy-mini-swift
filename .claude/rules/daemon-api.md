@@ -518,12 +518,20 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   Over the relay the session keeps its own parking.
   Each of its commands cancels the reset before running, so there they replace it rather than race it —
   and a relayed status read is a `get_state` frame, so watching the reset would cancel it too.
-  **Still open: a deliberate sleep with an app running.**
-  `RobotSession.sleep()` and `RobotSleep` stop the app first, which frees the slot,
-  and then play their own `goto_sleep` into the reset that release scheduled — tracked in #166.
+  **A deliberate sleep with an app running is left to the reset as well (#166).**
+  `RobotSession.sleep()` and `RobotSleep` stop the app first, which frees the slot and schedules the reset,
+  so where it applies they watch the motors read disabled instead of playing a `goto_sleep` into it.
+  Unlike the parking after an app, a reset that never comes is chased with the sleep that was asked for,
+  after `idleResetTimeout` — 12 s, or 9 s for an intent, whose whole command has 15.
+  The session lets the wait go when an app holds the robot again, since starting one cancels the reset;
+  an intent would have to ask for that and does not.
+  `RobotShutdown`'s sleep-only plan stops an app too, so it parks through `RobotSleep` for the same reason.
   Power-off is safer but not safe:
   `Daemon.stop` unwires the free-slot hook and sets `is_shutting_down`, which stops a reset still in its debounce,
   but not one already moving when the stop arrives.
+  The stop goes out two round trips after the slot clears — the stop's own re-read, then `daemon/stop` —
+  which lands well inside the 1.5 s on any network the app is usable on,
+  so that window is a sentence on `RobotSession.powerOff` rather than a wait.
 - Wake/sleep are multi-step protocols, not single calls: `motors/set_mode/enabled` → 300 ms → `move/play/wake_up`;
   sleep reverses it (animation first, `set_mode/disabled` only after it finishes). The play routes never touch the
   motor mode — an asleep robot accepts them, plays the sound, and does not move.

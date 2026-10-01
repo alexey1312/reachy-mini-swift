@@ -114,14 +114,36 @@ struct RobotShutdownTests {
 
         try await shutdown(client).perform()
 
+        // The second reading is `RobotSleep` asking whether the daemon will sleep
+        // the robot itself; one with no version to read will not.
         #expect(client.calls == [
             .daemonStatus,
             .currentAppStatus,
             .stopCurrentApp,
             .currentAppStatus,
+            .daemonStatus,
             .gotoSleep,
             .setMotorMode(.disabled),
         ])
+    }
+
+    /// The sleep-only plan stops the app first, and on 1.10.0 that release is a
+    /// sleep already on its way — so the plan parks through `RobotSleep` and plays
+    /// nothing into it (#166).
+    @Test("a startup app's sleep is left to a daemon that sleeps the robot itself")
+    func leavesTheStartupSleepToTheDaemon() async throws {
+        let client = StubAppsClient()
+        client.running = StubAppsClient.status(name: "dance_party")
+        client.startupAppName = "dance_party"
+        client.daemonVersion = "1.11.0"
+        client.idleResetAfterReads = 2
+
+        try await shutdown(client).perform()
+
+        #expect(client.calls.contains(.stopCurrentApp))
+        #expect(client.calls.contains(.gotoSleep) == false)
+        #expect(client.calls.contains(.setMotorMode(.disabled)) == false)
+        #expect(client.calls.contains(.stopDaemon(gotoSleep: true)) == false)
     }
 
     /// Nothing is left listening on a backend that is already down, and a sleep

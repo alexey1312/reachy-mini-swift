@@ -51,6 +51,16 @@ public extension RobotSession {
     /// the motors taken out from under it and dies on its next command — a
     /// traceback nobody asked for, in place of the app the user deliberately left
     /// running. `releaseRunningApp()` is where the waiting is explained.
+    ///
+    /// **From 1.10.0 that stop is itself a sleep (#166).** Freeing the app slot
+    /// schedules the daemon's `reset_to_sleep()` 1.5 s later, and no motion or
+    /// motor route cancels it — so a `goto_sleep` of our own would not replace it,
+    /// it would run beside it, and `set_mode/disabled` could cut the torque while
+    /// the daemon's trajectory is still moving. Where ``daemonParksAfterApps``
+    /// holds, the sleep is therefore the daemon's, watched under the
+    /// `.goingToSleep` already claimed here. Unlike the parking after an app, a
+    /// reset that never comes is chased: the user asked for sleep, and nobody else
+    /// has taken the robot. One who has — an app holding it again — keeps it.
     func sleep() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
@@ -60,10 +70,13 @@ public extension RobotSession {
         powerTransition = .goingToSleep
         defer { powerTransition = nil }
         appLifecycle.releaseWakeOwnership()
+        let attemptID = connectionAttemptID
         do {
             try assertSupportedDaemon()
             await releaseMove()
-            await releaseRunningApp()
+            if await releaseRunningApp(), daemonParksAfterApps {
+                guard await watchIdleReset(client: client, attemptID: attemptID) == .timedOut else { return }
+            }
             try await RobotPower(client: client, configuration: configuration).sleep()
         } catch {
             report(error)
@@ -86,6 +99,15 @@ public extension RobotSession {
     /// is that step, and it waits: the daemon parks the robot as part of this
     /// teardown, and doing so while the app is still handing it back is what the
     /// wait exists to prevent.
+    ///
+    /// **From 1.10.0 that release also schedules the daemon's own sleep, and here
+    /// the stop is what cancels it** — `Daemon.stop` unwires the free-slot hook and
+    /// sets `is_shutting_down`, which ends a reset still inside its 1.5 s debounce.
+    /// The stop leaves two round trips after the slot clears (the stop's own
+    /// re-read, then this request), so on any network this app is usable on it
+    /// lands inside that window. A reset already moving when it arrives is not
+    /// cancelled and runs beside the teardown's own `reset_to_sleep()`; that takes
+    /// a stop delayed past 1.5 s, and is a sentence here rather than a wait (#166).
     ///
     /// What comes back is the daemon's own HTTP server, which survives all of this —
     /// and that is also why `phase` stays `.connected` and the connect gate is never
@@ -200,15 +222,19 @@ extension RobotSession {
     /// Neither a refusal nor a timeout aborts anything. Parking the robot matters
     /// more than proof that the app let go, the same trade `waitForMoveToFinish`
     /// makes; the failure goes on the screen and the transition carries on.
-    func releaseRunningApp() async {
-        guard runningApp?.isBusy == true else { return }
+    ///
+    /// Answers whether an app let go of the robot because of this call — the one
+    /// case in which a 1.10.0 daemon has a sleep of its own on the way.
+    @discardableResult
+    func releaseRunningApp() async -> Bool {
+        guard runningApp?.isBusy == true else { return false }
         do {
             try await stopCurrentApp()
         } catch {
             report(error)
-            return
+            return false
         }
-        await waitForRunningAppToStop()
+        return await waitForRunningAppToStop()
     }
 
     /// Polls until the daemon stops naming an app as holding the robot.
@@ -222,13 +248,16 @@ extension RobotSession {
     /// waiting rather than concluding that the app is gone — the rule
     /// `RunningAppModel` learned the hard way, where timing a stale reading turned a
     /// Wi-Fi blip into a wedged daemon.
-    func waitForRunningAppToStop() async {
+    ///
+    /// Answers whether the slot was seen clear.
+    func waitForRunningAppToStop() async -> Bool {
         let deadline = ContinuousClock.now + configuration.appStopTimeout
         while runningApp?.isBusy == true, !Task.isCancelled {
-            guard ContinuousClock.now < deadline else { return }
+            guard ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: configuration.appStopPollInterval)
             try? await refreshCurrentApp()
         }
+        return runningApp?.isBusy != true
     }
 
     /// Polls the daemon's authoritative running-move list until `uuid` is gone.

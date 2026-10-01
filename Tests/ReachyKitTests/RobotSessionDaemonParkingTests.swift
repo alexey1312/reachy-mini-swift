@@ -139,6 +139,100 @@ struct RobotSessionDaemonParkingTests {
         session.disconnect()
     }
 
+    // MARK: - A deliberate sleep with an app running (#166)
+
+    /// Go to sleep stops the app first, and on a parking daemon that stop is itself
+    /// a sleep 1.5 s later. The session watches it under the transition it already
+    /// holds and sends nothing of its own.
+    @Test("Go to sleep over a running app leaves the sleep to the daemon")
+    func aSleepOverAnAppIsTheDaemons() async throws {
+        let client = AppLifecycleClient(daemonVersion: Self.parkingDaemon)
+        let session = await AppLifecycle.connected(client)
+        _ = try await session.startApp(named: AppLifecycle.installedApp)
+
+        // Nothing in a sleep reads the daemon's status before the watch does.
+        let readsBefore = client.statusReadCount
+        let sleeping = Task { await session.sleep() }
+        await AppLifecycle.waitUntil(client.statusReadCount > readsBefore)
+        #expect(client.recordedSteps.contains(.stopApp))
+        #expect(session.powerTransition == .goingToSleep)
+        client.park()
+        await sleeping.value
+
+        #expect(client.recordedSteps == [.startApp(AppLifecycle.installedApp), .stopApp])
+        #expect(session.isAwake == false)
+        #expect(session.powerTransition == nil)
+        session.disconnect()
+    }
+
+    /// The user asked for sleep, so a reset that never comes is chased — the one
+    /// place the session parts from `doesNotChaseAMissingReset`.
+    @Test("a reset that never comes is chased with the sleep that was asked for")
+    func aSleepChasesAMissingReset() async throws {
+        let client = AppLifecycleClient(daemonVersion: Self.parkingDaemon)
+        let session = await AppLifecycle.connected(client, idleResetTimeout: .milliseconds(200))
+        _ = try await session.startApp(named: AppLifecycle.installedApp)
+
+        await session.sleep()
+
+        #expect(client.recordedSteps == [
+            .startApp(AppLifecycle.installedApp),
+            .stopApp,
+            .gotoSleep,
+            .motorMode(.disabled),
+        ])
+        session.disconnect()
+    }
+
+    /// Starting an app cancels the reset daemon-side, and whoever started it after
+    /// Go to sleep was pressed is the later instruction. Sleeping under it is the
+    /// bug the release exists to prevent.
+    @Test("an app taking the robot during that wait keeps it")
+    func anAppTakingTheRobotKeepsIt() async throws {
+        let client = AppLifecycleClient(daemonVersion: Self.parkingDaemon)
+        let session = await AppLifecycle.connected(client)
+        _ = try await session.startApp(named: AppLifecycle.installedApp)
+
+        // Taken once the watch is running, not before the release has seen the
+        // slot clear — that would be an app that never let go, which is another test.
+        let readsBefore = client.statusReadCount
+        let sleeping = Task { await session.sleep() }
+        await AppLifecycle.waitUntil(client.statusReadCount > readsBefore)
+        client.setRunning(.preview(.running))
+        try await session.refreshCurrentApp()
+        await sleeping.value
+
+        #expect(client.recordedSteps.contains(.gotoSleep) == false)
+        #expect(session.isAwake)
+        session.disconnect()
+    }
+
+    /// Only a release schedules the reset. **The duration is the assertion**
+    /// (project rule 7): a sleep that waited anyway would end at the 12 s deadline
+    /// and then send exactly these steps.
+    @Test(
+        "with no app released the sleep is played at once",
+        arguments: [
+            ("1.11.0" as String?, false, false),
+            ("1.9.0", true, false),
+            ("1.11.0", true, true),
+        ]
+    )
+    func playsTheSleepWhereNoResetIsComing(version: String?, withApp: Bool, overRelay: Bool) async throws {
+        let client = AppLifecycleClient(daemonVersion: version)
+        let session = await AppLifecycle.connected(client, overRelay: overRelay)
+        if withApp {
+            _ = try await session.startApp(named: AppLifecycle.installedApp)
+        }
+
+        let started = ContinuousClock.now
+        await session.sleep()
+
+        #expect(started.duration(to: .now) < .seconds(5))
+        #expect(Array(client.recordedSteps.suffix(2)) == [.gotoSleep, .motorMode(.disabled)])
+        session.disconnect()
+    }
+
     // MARK: - Where the session keeps its own parking
 
     @Test(

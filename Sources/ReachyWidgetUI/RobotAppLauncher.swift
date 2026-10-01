@@ -242,10 +242,16 @@ public extension RobotSession.Configuration {
     /// what the wait is for. It is still the right cut — an intent killed halfway
     /// through a thirty-second wait leaves the robot awake with its app already
     /// gone, and nothing written down anywhere.
+    ///
+    /// `idleResetTimeout` is cut so that `RobotSleep` can still chase a reset that
+    /// never came inside `RobotPowerCommand.executionTimeout`. Nine seconds still
+    /// clears the reset's 7.2 s worst case, counted from the slot freeing — which
+    /// is where the wait starts, since the release ends on seeing it free.
     static var widgetIntent: Self {
         var configuration = Self()
         configuration.moveCompletionTimeout = .seconds(4)
         configuration.appStopTimeout = .seconds(6)
+        configuration.idleResetTimeout = .seconds(9)
         return configuration
     }
 }

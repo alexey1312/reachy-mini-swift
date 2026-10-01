@@ -46,6 +46,16 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
     var stoppingReads = 0
     private var remainingStoppingReads = 0
     private var appHeldTheRobotAtParking = false
+    /// Reported in the status. Absent by default, which every gate reads as a
+    /// version it cannot read — so every sequence written before 1.10.0 mattered
+    /// keeps its shape.
+    var daemonVersion: String?
+    var noMedia: Bool?
+    /// The daemon's own sleep once a stop frees the slot (1.10.0+): this many
+    /// readings after the stop still find the robot awake, and every one after them
+    /// finds it parked. `nil` is a daemon whose reset never comes.
+    var idleResetAfterReads: Int?
+    private var resetCountdown: Int?
 
     /// Whether the robot was parked — by the animation or by the daemon's own
     /// teardown — while the daemon still named an app as holding it.
@@ -145,6 +155,7 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
         lock.withLock {
             remainingStoppingReads = stoppingReads
             running = nil
+            resetCountdown = idleResetAfterReads
         }
     }
 
@@ -153,12 +164,18 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
     /// A torn-down backend reports `backend_status: null`, not a mode — `daemon.stop()`
     /// sets `self.backend = None`, so there is nothing left to report a mode about.
     private var status: Components.Schemas.DaemonStatus {
-        let running = lock.withLock { isBackendRunning }
-        let mode = isAwake ? "enabled" : "disabled"
+        let (running, parkedByReset) = lock.withLock { () -> (Bool, Bool) in
+            guard let countdown = resetCountdown else { return (isBackendRunning, false) }
+            resetCountdown = max(countdown - 1, 0)
+            return (isBackendRunning, countdown == 0)
+        }
+        let mode = isAwake && !parkedByReset ? "enabled" : "disabled"
         let backend = running ? #"{"motor_control_mode":"\#(mode)","error":null}"# : "null"
+        let version = daemonVersion.map { #""version":"\#($0)","# } ?? ""
+        let media = noMedia.map { #""no_media":\#($0),"# } ?? ""
         let json = """
         {"robot_name":"testbot","state":"\(running ? "running" : "stopped")","wireless_version":true,
-         "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,
+         "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,\(version)\(media)
          "backend_status":\(backend)}
         """
         // swiftlint:disable:next force_try

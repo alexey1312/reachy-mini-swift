@@ -21,23 +21,34 @@ struct RobotAppRelease: Sendable {
         self.configuration = configuration
     }
 
+    /// What the release found and did.
+    enum Outcome: Equatable, Sendable {
+        /// Nothing held the robot, so nothing was stopped.
+        case idle
+        /// An app was stopped, and the daemon stopped naming it — the one case in
+        /// which a 1.10.0 daemon has a sleep of its own on the way (`RobotSleep`).
+        case released
+        /// The stop was refused, or the app never let go inside the budget.
+        case held
+    }
+
     /// Stops the app holding the robot and waits for the daemon to let go of it.
     ///
-    /// Answers whether the robot is free, and no caller aborts on `false`: parking
-    /// the body matters more than proof that the app let go, and an intent has one
-    /// sentence which belongs to the transition rather than to this.
+    /// No caller aborts on `.held`: parking the body matters more than proof that
+    /// the app let go, and an intent has one sentence which belongs to the
+    /// transition rather than to this.
     ///
     /// An app that already finished is not stopped again — `isBusy` is what says
     /// the robot is still held, and an unfamiliar state counts as held.
     @discardableResult
-    func perform() async -> Bool {
-        guard let running = try? await apps.currentAppStatus(), running.isBusy else { return true }
+    func perform() async -> Outcome {
+        guard let running = try? await apps.currentAppStatus(), running.isBusy else { return .idle }
         do {
             try await apps.stopCurrentApp()
         } catch {
-            return false
+            return .held
         }
-        return await waitForRelease()
+        return await waitForRelease() ? .released : .held
     }
 
     /// **A 200 from `stop-current-app` does not mean the app is gone.** The daemon
