@@ -263,6 +263,30 @@ pre code {
   color: rgb(255 255 255 / 78%);
 }
 
+/* The disclaimer sits under the name rather than only in the footer: since Pollen ships an
+   app of its own, being taken for the official one is the risk worth a line above the fold.
+   Same translucent white as .cta-secondary, so it reads as part of the hero, not a button. */
+.hero-badge {
+  margin: 0 auto 1rem;
+  max-width: none;
+}
+
+.hero-badge a {
+  display: inline-block;
+  padding: 0.25rem 0.875rem;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hero-badge a:hover {
+  text-decoration: underline;
+}
+
 .cta-row {
   display: flex;
   flex-wrap: wrap;
@@ -388,6 +412,30 @@ pre code {
 
 .more {
   font-weight: 600;
+}
+
+/* ---------- positioning ---------- */
+
+/* The demo below it brings its own top padding; two full paddings back to back left a
+   gap twice the height of any other between sections. */
+.positioning {
+  padding-bottom: 0;
+}
+
+/* ---------- plain lists in prose ---------- */
+
+.points {
+  max-width: var(--measure);
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.points li {
+  margin-bottom: 0.625rem;
+}
+
+.points li::marker {
+  color: var(--accent);
 }
 
 /* ---------- demo video ---------- */

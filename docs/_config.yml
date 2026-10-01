@@ -7,8 +7,8 @@
 # README and this site from the same blobs.
 title: Hey Reachy
 description: >-
-  Control your Reachy Mini — a native iPhone, iPad and Mac client for the
-  Reachy Mini Wireless robot.
+  An unofficial, native iPhone, iPad and Mac app for the Reachy Mini robots —
+  not affiliated with Pollen Robotics or Hugging Face.
 url: https://alexey1312.github.io
 baseurl: /reachy-mini-swift
 lang: en

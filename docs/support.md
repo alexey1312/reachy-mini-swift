@@ -14,7 +14,8 @@ fastest route is usually an issue rather than an email.
 - **A Reachy Mini, or none at all.** The app is a pure network client for the robot's daemon: on a **Wireless** robot
   that daemon runs on the robot itself, and on a **Lite** one it runs on the computer the robot is plugged into —
   which is also where its Wi-Fi, its updates and its caches live, so those cards are not shown for it. With no robot,
-  the Connect screen's **Simulator** choice starts one the app carries: the robot's own shape and movement, with no
+  **Start the simulator**, under Developer on the Connect screen,
+  starts one the app carries: the robot's own shape and movement, with no
   camera, no app store and no Wi-Fi behind it. There is still no account to create.
 - **Daemon 1.9.0 or newer.** Newer 1.x daemons connect with a compatibility warning; older or different-major versions
   are refused before any command is sent.
@@ -50,8 +51,10 @@ up over that.
 **Nothing loads after a network change.** Robots are identified by hardware id rather than by address, so the same
 robot on a new IP is still the same robot; pull to refresh, or reconnect from the Connect screen.
 
-**The 3D scene is missing on a remote session.** A session through the Hugging Face relay carries commands and the
-camera, but not the 3D scene — its URDF and meshes are fetched over plain HTTP, which the relay does not carry.
+**Files or Wi-Fi settings are missing on a remote session.**
+A session through the Hugging Face relay carries commands, the camera and the 3D scene,
+which it draws from the app's own copy of the robot.
+The file browser and Wi-Fi setup have no route over the relay and stay on the local network.
 
 ## A note on your network
 

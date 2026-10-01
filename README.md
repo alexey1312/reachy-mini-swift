@@ -12,6 +12,17 @@ run in simulation — or no robot at all, with the simulator the app carries its
 [![App Store](https://img.shields.io/itunes/v/6799644194?label=App%20Store&logo=apple&logoColor=white&color=0D96F6)](https://apps.apple.com/app/hey-reachy/id6799644194)
 [![TestFlight](https://img.shields.io/badge/TestFlight-public%20beta-0D96F6?logo=apple&logoColor=white)](https://testflight.apple.com/join/CGjefT9a)
 
+> [!IMPORTANT]
+> **Unofficial —
+> not affiliated with, endorsed by or supported by Pollen Robotics or Hugging Face.**
+> Hey Reachy is not Pollen's own Reachy Mini app for iPhone and Android,
+> nor its [desktop app](https://github.com/pollen-robotics/reachy-mini-desktop-app),
+> and it is not a fork of either:
+> it is an independent Swift client
+> for the robot daemon's documented HTTP/WebSocket API.
+> The upstream repositories are used as a behavioral specification,
+> not as a source of code.
+
 <p align="center">
   <a href="https://alexey1312.github.io/reachy-mini-swift/">
     <img src="docs/media/demo.gif" width="400" alt="A Reachy Mini Wireless moving while the 3D twin on the iPad follows it" />
@@ -24,11 +35,29 @@ developer side of the same project.
 
 **Project page:** [blog.kakoulin.com/apps/reachy-mini-swift](https://blog.kakoulin.com/apps/reachy-mini-swift)
 
-> [!NOTE]
-> Unofficial project, not affiliated with Pollen Robotics. This is **not a fork** of the official
-> [desktop app](https://github.com/pollen-robotics/reachy-mini-desktop-app) — it is an independent Swift client for
-> the robot daemon's documented HTTP/WebSocket API. The upstream repositories are used as a behavioral specification,
-> not as a source of code.
+## Beside Pollen's own app
+
+Pollen Robotics publishes an official app for Reachy Mini on iPhone and Android —
+[Reachy Mini on the App Store](https://apps.apple.com/app/id6766823749) —
+and calls it the main way to use the robot.
+It reaches the robot through the Hugging Face relay,
+signed in with a Hugging Face account.
+Hey Reachy is a separate app, and this is where it differs:
+
+- **Native on iPhone, iPad and Mac** —
+  the Mac app has a menu bar item, widgets,
+  and a way to a daemon running on that computer.
+- **The local network, with no account** —
+  it talks to the robot's daemon directly.
+  A Hugging Face sign-in is optional:
+  it is for installing robot apps and for the relay,
+  which Hey Reachy supports too.
+- **A simulator inside the app**, so trying it needs no robot.
+- **Native teleop, camera and 3D twin**,
+  on the local network and through the relay.
+- **Diagnostics and SFTP** —
+  live state charts, the daemon's log, recovery over Bluetooth, a file browser.
+- **Widgets, Siri and Control Center.**
 
 ## What it does
 
@@ -68,8 +97,10 @@ runs ahead of the release. Minimum iOS 18 and macOS 15. Each
 [release](https://github.com/alexey1312/reachy-mini-swift/releases) also carries a notarized Mac zip, signed with a
 Developer ID.
 
-**A robot is no longer the price of admission.** Every tab is still behind a live session, but the connect screen's
-third segment starts one against the simulator the app carries.
+**A robot is no longer the price of admission.**
+Every tab is still behind a live session,
+but **Start the simulator**, under Developer on the connect screen,
+starts one against the simulator the app carries.
 
 Feedback goes through TestFlight or as an [issue](https://github.com/alexey1312/reachy-mini-swift/issues). The
 Bluetooth onboarding path is the one worth breaking first — see [Status](#status). Privacy:
@@ -144,8 +175,11 @@ you how on first run.
 
 Two different things, and which one you want depends on what you are working on:
 
-- **The app's own simulator** — the `Simulator` segment on the connect screen. No daemon, no network, no Python, and
-  the only one of the two that runs on a phone. Use it for the UI, the 3D viewer and the kinematics.
+- **The app's own simulator** —
+  **Start the simulator**, under Developer on the connect screen.
+  No daemon, no network, no Python,
+  and the only one of the two that runs on a phone.
+  Use it for the UI, the 3D viewer and the kinematics.
 - **A real daemon in MuJoCo simulation** — `./bin/mise run sim-daemon`; the tested daemon baseline is **1.11.0**. Use
   it for anything about the _protocol_: it is upstream's own code answering. The daemon's OpenAPI spec is committed
   at `Sources/ReachyKit/openapi.json` and refreshed with `./bin/mise run update-spec`.
@@ -189,7 +223,10 @@ simulator. Open, and stated honestly:
   upstream, so treat it as unstable.
 - The Stewart platform's passive joints are computed client-side for the 3D view — the daemon reports them only
   under the Placo kinematics engine.
-- A remote session carries commands and the camera but not the 3D scene, whose URDF and STL are HTTP-only.
+- A remote session carries commands, the camera and the 3D scene,
+  which it draws from the app's own copy of the robot
+  because the relay cannot fetch the URDF and STL.
+  SFTP and Wi-Fi setup have no route over it and stay on the local network.
 - **The Lite model is reachable, not finished.** Nothing here has met one: the flavour, the absent settings and the
   caption they carry are written against the daemon's own flags and verified against `sim-daemon`.
 

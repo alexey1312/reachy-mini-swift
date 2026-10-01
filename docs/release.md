@@ -41,7 +41,8 @@ here.
 
 3. **App Store Connect app record** — My Apps → New App:
    - Name: **Hey Reachy**; if taken, fall back to “Hey Reachy — robot remote”.
-   - Subtitle: **Control your Reachy Mini**.
+   - Subtitle: whatever `metadata/app-info/en-US.json` carries — now
+     **Unofficial app for Reachy Mini**, which says so where search shows it.
    - Bundle id `com.alexey1312.ReachyMini`.
    - The description must state it is an unofficial client for Reachy Mini by
      Pollen Robotics. A public TestFlight link goes through Beta App Review, so
