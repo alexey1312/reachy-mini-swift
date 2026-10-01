@@ -708,6 +708,18 @@ Start.
   which is the pattern to copy: seed an app that is installed in its own right,
   because fixing the shared fixture would move references belonging to other screens.
 
+- **Over the relay the store is Discover alone, and the page knows less (#158).**
+  `AppStoreModel+Relay.swift` holds the fork, keyed on `isOverRelay` (`session.canInstallFromCatalogue`),
+  so every preview built on a client without that capability renders exactly as before.
+  Nothing lists what a relayed robot has installed, so `sections` drops Installed rather than fill it with
+  this visit's installs, and `relayTwin(of:)` stands in for the list with the two things that are known:
+  the app the robot says is running — whose name is the entry point to start it by —
+  and an install this visit confirmed, started by its slug, the name the daemon itself assumes.
+  Install waits for one answer with no log, so `AppInstallModel.streamsLog` swaps the console for a sentence,
+  and a silence reads as unconfirmed rather than failed, because asking again is free.
+  Update, Start on wake-up and Remove are HTTP; the page says so where they would be (`lanOnlyNote`),
+  and Restart is gone from the page and the dock because the relay has no verb for it.
+
 ## An app's own settings
 
 `AppSettingsScreen` is **the only `WKWebView` in this app**, and the only screen that is not built out of the design

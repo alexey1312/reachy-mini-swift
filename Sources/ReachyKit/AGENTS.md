@@ -281,6 +281,27 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     indistinguishable over the relay. `errorDescription` composes the identical sentence, and a test pins it: no
     screen's wording changed. `ConversationFailure` is the shared vocabulary both arms throw, with `-32601` mapped
     in exactly one initialiser so the two cannot drift.
+- **The relay has a store of its own, and it is narrower than the LAN's on purpose (#158).**
+  `RobotAppsClient` carries two flags that part only over the relay:
+  `offersAppStore` is the daemon's own store — installed list, jobs, removals, updates, the startup app —
+  and `installsFromCatalogue` is `apps.install`, one call answered at the end.
+  `RobotSession.canBrowseApps` is either; `canInstallFromCatalogue` carries the 1.10.0 gate.
+  - **The catalogue is the Hub's, read by this device**, because the relay has no listing verb:
+    `HubAppCatalogue` runs the very query `apps.install` searches, so every card is installable by name,
+    and `RemoteRobotConnection.availableApps()` answers with it.
+    That puts it through `RobotSession.appCatalogue()`, which is why that function **persists only when
+    `canManageApps`** and `warmCatalogues` **warms only then**:
+    the record on disk is the daemon's own list, installed rows and all,
+    and over the relay it would be a list nothing can confirm, or overwritten by one that has nothing installed.
+    An install over the relay still forgets that record, for the reason every LAN job does.
+  - **The relay's status reply carries no `source_kind`**, so a running app is decoded from its three fields
+    rather than as an `AppInfo`, which threw for every running app until this change —
+    the reply shapes are in `.claude/rules/daemon-api.md`.
+    Every relay test double had built the status itself, which is how that shipped:
+    `RemoteRobotAppsTests` decodes the daemon's own bytes.
+  - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
+    and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
+    unreachable only while the decoding bug kept the relayed dock empty.
 - **`FirstWakeUpClient` is relay-only, and that is the daemon's doing, not a gap here.**
   The robot keeps one `first_wake_up_completed` flag that Pollen's apps gate their first-run wizard on (#157),
   and it is answered on the data channel alone:

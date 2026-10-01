@@ -41,7 +41,11 @@ extension RobotSession {
         // An attempt that was superseded while the disk answered may not write into
         // the session — the same guard every other awaited step in `settle` takes.
         guard isAttemptLive(attemptID) else { return }
-        if let catalogue, appCatalogueCache == nil {
+        // The apps record is the daemon's own store, which only a transport that
+        // serves it may show. Over the relay it would put a list on screen that
+        // nothing there can confirm, and answer `appCatalogue()` with it instead of
+        // asking the Hub.
+        if let catalogue, appCatalogueCache == nil, canManageApps {
             appCatalogueCache = catalogue.apps
         }
         if let index, moveCache.isEmpty {

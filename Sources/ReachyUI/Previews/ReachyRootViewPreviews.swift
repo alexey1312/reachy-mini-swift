@@ -193,11 +193,11 @@ import SwiftUI
     )
 }
 
-// The store is not merely unreached over the relay — the data channel carries no app command at all —
-// so the screen names that instead of claiming no robot is connected.
+// A relayed robot older than 1.10 has no app command on its data channel at all, so the screen names
+// that instead of claiming no robot is connected. From 1.10 the relay installs by name (#158).
 #Preview("Root — apps need the local network") {
     PreviewScene.root(
-        .preview(address: nil, link: .remote, client: PreviewRemoteRobotClient()),
+        .preview(status: .preview(version: "1.9.0"), address: nil, link: .remote, client: PreviewRemoteRobotClient()),
         viewport: .preview(address: nil),
         tab: .apps,
         hfAccount: PreviewScene.account(in: .signedIn(username: "alexey1312"))

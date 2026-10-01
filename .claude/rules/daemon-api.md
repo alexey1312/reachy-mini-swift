@@ -297,6 +297,33 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `ConversationClient`/`ConversationChannel` is the capability, with `ConversationRPCClient` (LAN) and
   `RemoteConversation` (relay) as its two arms; `RobotSession.canControlConversation` carries the version gate,
   because 1.9.0 mounts no relay and each verb would spend a full reply budget finding that out.
+- **The relay's own `apps.*` is four verbs, and its replies are not the REST shapes.**
+  `status`, `start`, `stop` and `install` (`jsonrpc_relay.py:_handle_apps`, unchanged on `main` since #1266) —
+  no list, no restart, no remove, no update, no startup app.
+  `status` and `start` answer `{state, error, info: {name, description, url}}`:
+  **no `source_kind`**, which `AppInfo` requires, and no `extra`.
+  Decoding `info` as an `AppInfo` therefore threw for every running app,
+  so until #158 the relayed dock never showed one and a relayed start the robot obeyed reported a failure.
+  `RemoteRobotConnection.AppStatusReply.Info` reads the three fields and files the app as `installed`,
+  which is what `AppManager.start_app` calls every running app.
+- **`apps.install {name}` is `ensure_startup_app_installed`, and that decides what can be offered (#158).**
+  It matches `name` against the installed list by `a.name == name`,
+  then against `hf_space.list_all_apps()` — `HfApi.list_spaces(filter="reachy_mini_python_app",
+  sort="likes", limit=500)` with the robot's own token — and installs the match.
+  So the name is the **Space slug**, JS apps are never found,
+  and neither are four of the eleven curated `app-list.json` entries (measured 2026-10-01:
+  `marionette`, `marionette-js`, `emotions`, `telepresence`) that only the LAN's HTTP install reaches.
+  It is install-if-missing: an app already there is a no-op answered at once.
+  Success is `{"installed": true}`; a refusal is `install_failed`, one reason for "not in the catalog" and a failed
+  `pip` alike, told apart only by the sentence.
+  There is no job, no log and no progress — one reply, minutes away on a first install —
+  and the frame runs in its own task (`run_coroutine_threadsafe` per frame in `daemon.py`), so `apps.status` keeps
+  answering meanwhile and the install carries on whether the caller waits or not.
+  `HubAppCatalogue` lists exactly that query from the phone, so every card is one the robot can find;
+  `RemoteRobotConnection` waits 180 s and reads every silence — including the silent-relay probe's verdict —
+  as an install whose outcome is unknown, never as a failure.
+  **Pollen's mobile app does not call it**: as of 0.11 it lists JS apps from the website's `/api/js-apps` and
+  iframes them at their Space URL, so nothing upstream exercises this verb but the daemon's own tests.
 - **The relay's own failure vocabulary**, which a screen has to branch on: `not_running` with code **-32000** when no
   app is running, `app_unavailable` when its `/rpc` cannot be reached or the connection dropped mid-call, and
   `method_not_found` / -32601 for a verb the app's build does not have. Those are three different screens — the app

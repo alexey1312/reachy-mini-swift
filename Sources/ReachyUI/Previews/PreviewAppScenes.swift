@@ -114,6 +114,7 @@ extension PreviewScene {
         offersConversationControls: Bool = true,
         isReachable: Bool = true,
         busy: Bool = false,
+        offersRestart: Bool = true,
         wedged: Bool = false,
         actionFailure: String? = nil,
         placement: ReachyAccessoryPlacement = .standalone
@@ -125,6 +126,7 @@ extension PreviewScene {
             offersConversationControls: offersConversationControls,
             isReachable: isReachable,
             busy: busy,
+            offersRestart: offersRestart,
             wedged: wedged,
             actionFailure: actionFailure,
             expand: {},

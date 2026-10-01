@@ -1,16 +1,73 @@
 import Foundation
 
-/// The app that is running, over the relay.
+/// The robot's apps, over the relay.
 extension RemoteRobotConnection: RobotAppsClient {
-    // MARK: The running app
-
     // Daemon 1.10.0 put the apps API behind JSON-RPC on this channel and routes by
     // namespace: it answers `apps.*` itself and relays everything else to the app.
-    // Only the three verbs about the app *already running* are here — browsing,
-    // installing and removing stayed on HTTP, which is what `offersAppStore` says.
+    // It answers four verbs — `status`, `start`, `stop` and `install` — and that
+    // is the whole surface: the installed list, removals, updates and the startup
+    // app stay HTTP, which is what `offersAppStore` says.
 
-    /// No catalogue over this channel, so no store to show.
+    /// Not the daemon's store: no installed list, and no jobs to follow.
     public nonisolated var offersAppStore: Bool {
+        false
+    }
+
+    // MARK: Installing
+
+    public nonisolated var installsFromCatalogue: Bool {
+        true
+    }
+
+    /// The Hub's catalogue rather than the robot's: the relay has no listing verb,
+    /// and this is the list `apps.install` searches — see `HubAppCatalogue`.
+    public func availableApps() async throws -> [RobotApp] {
+        try await catalogue.apps()
+    }
+
+    /// `apps.install {name}`: install-if-missing, from the catalogue, in a task of
+    /// its own on the robot so `apps.status` keeps answering meanwhile
+    /// (`jsonrpc_relay.py`, `ensure_startup_app_installed`).
+    ///
+    /// **The name is the catalogue's**, the Space slug, because that is what the
+    /// daemon matches: `a.name == name` against the installed list first, then
+    /// against `list_all_apps`. Nothing about the install is reported but its end —
+    /// `{"installed": true}`, or a refusal with `install_failed` that covers "not in
+    /// the catalog" and a failed `pip` alike.
+    ///
+    /// **A silence is not a failure here**, so all three ways of hearing nothing end
+    /// as `.timedOut`. The install carries on on the robot whether anybody waits or
+    /// not, and `.relaySilent` in particular would be the wrong diagnosis: the probe
+    /// behind it finds the plain protocol answering — it is, the robot is merely
+    /// still in `pip` — and would tell the reader to restart the robot, which is
+    /// the one thing that kills the install. Asking again later costs nothing,
+    /// because an installed app turns the next call into a no-op.
+    ///
+    /// Three minutes is three of the LAN install's budgets
+    /// (`AppJobMonitor.Configuration.install`). A longer wait buys a few more
+    /// confirmed installs at the price of a sheet held open, and the price of a
+    /// shorter one is only a second tap.
+    public func installFromCatalogue(named name: String) async throws -> AppJobMonitor.Outcome {
+        do {
+            try await control.call("apps.install", params: ["name": .string(name)], timeout: installTimeout)
+            return .succeeded
+        } catch let failure as RemoteControlChannel.Failure {
+            switch failure {
+            case let .rpc(_, message, _), let .robot(message):
+                return .failed(message)
+            case .timedOut, .closed, .relaySilent:
+                return .timedOut
+            }
+        }
+    }
+
+    // MARK: The running app
+
+    /// No `apps.restart`. Stop-then-start is not a safe stand-in either: `apps.stop`
+    /// answers only once the daemon's whole stop is over, return to zero included,
+    /// which can outlast the reply budget — and a start sent on that timeout would
+    /// race a slot still taken.
+    public nonisolated var offersRestart: Bool {
         false
     }
 
@@ -40,7 +97,7 @@ extension RemoteRobotConnection: RobotAppsClient {
     /// nothing runs.
     private struct AppStatusReply: Decodable {
         let state: String
-        let info: RobotApp?
+        let info: Info?
         let error: String?
 
         /// Nil for `idle`, which is the daemon saying there is no app rather than
@@ -48,7 +105,32 @@ extension RemoteRobotConnection: RobotAppsClient {
         /// answers with a literal `null`.
         var appStatus: RobotAppStatus? {
             guard state != "idle", let info else { return nil }
-            return RobotAppStatus(app: info, state: .init(wire: state), error: error)
+            return RobotAppStatus(app: info.app, state: .init(wire: state), error: error)
+        }
+
+        /// The relay's own cut of the app: `_status_dict` sends `name`,
+        /// `description` and `url`, and stops there.
+        ///
+        /// **Not a `RobotApp`, and that was a bug.** `AppInfo` requires
+        /// `source_kind`, which this reply never carries, so decoding the app
+        /// straight into one threw `keyNotFound` for every running app — the dock
+        /// read nothing over the relay, and a start the robot had obeyed reported a
+        /// failure. Every test double built the status itself, which is how it
+        /// passed. `installed` is the daemon's own word for it: `AppManager.start_app`
+        /// files every running app that way.
+        struct Info: Decodable {
+            let name: String
+            let description: String?
+            let url: String?
+
+            var app: RobotApp {
+                RobotApp(Components.Schemas.AppInfo(
+                    name: name,
+                    sourceKind: .installed,
+                    description: description,
+                    url: url
+                ))
+            }
         }
     }
 }

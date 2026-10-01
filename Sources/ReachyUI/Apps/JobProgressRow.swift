@@ -44,6 +44,21 @@ struct JobProgressRow: View {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .foregroundStyle(Tone.warning.style)
             }
+        case .unconfirmed:
+            Label {
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    Text(.reachy("Not confirmed yet"))
+                    Text(.reachy(
+                        // swiftlint:disable:next line_length
+                        "The robot did not confirm the install in time. It may still be working on it — installing again later does nothing if it already has."
+                    ))
+                    .font(Typography.status)
+                    .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "clock.badge.questionmark")
+                    .foregroundStyle(Tone.warning.style)
+            }
         }
     }
 }
