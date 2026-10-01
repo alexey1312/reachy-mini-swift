@@ -113,15 +113,7 @@ struct AppDetailSheet: View {
                 Section(.reachy("Progress")) {
                     JobProgressRow(state: job)
                     if install.isBusy || !install.log.entries.isEmpty {
-                        LogConsoleView(
-                            model: install.log,
-                            source: app.title,
-                            // The socket only wakes on a new line, so silence here
-                            // is normal rather than a stall — `AppJobMonitor` is
-                            // polling regardless.
-                            emptyDescription: String(localized: .reachy("Waiting for the robot to report progress…"))
-                        )
-                        .frame(minHeight: 160)
+                        progressLog
                     }
                 }
             } else {
@@ -284,10 +276,12 @@ struct AppDetailSheet: View {
             // raises on `STOPPING`, and restart calls stop first. `WedgedAppNotice`
             // above says why they are out, so this is a disabled control with a
             // reason attached rather than one without.
-            Button(.reachy("Restart"), systemImage: "arrow.clockwise") {
-                Task { await runningApp.restart(session: session) }
+            if session.canRestartApp {
+                Button(.reachy("Restart"), systemImage: "arrow.clockwise") {
+                    Task { await runningApp.restart(session: session) }
+                }
+                .disabled(runningApp.busy || !isReachable || isWedged)
             }
-            .disabled(runningApp.busy || !isReachable || isWedged)
 
             Button(.reachy("Stop"), systemImage: "stop.fill", role: .destructive) {
                 Task { await runningApp.stop(session: session) }
@@ -334,15 +328,19 @@ struct AppDetailSheet: View {
                 if let transition = session.powerTransition {
                     PowerTransitionRow(transition: transition)
                 }
-                if model.hasUpdate(app) {
-                    Button(.reachy("Update"), systemImage: "arrow.down.circle") {
-                        perform(.update(installed))
+                if model.isOverRelay {
+                    lanOnlyNote
+                } else {
+                    if model.hasUpdate(app) {
+                        Button(.reachy("Update"), systemImage: "arrow.down.circle") {
+                            perform(.update(installed))
+                        }
                     }
-                }
-                Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
-                    .disabled(model.busy)
-                Button(.reachy("Remove"), systemImage: "trash", role: .destructive) {
-                    confirmingRemoval = true
+                    Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
+                        .disabled(model.busy)
+                    Button(.reachy("Remove"), systemImage: "trash", role: .destructive) {
+                        confirmingRemoval = true
+                    }
                 }
             }
         } footer: {
@@ -390,7 +388,7 @@ struct AppDetailSheet: View {
         guard !previewMode else { return }
         Task {
             await install.perform(operation)
-            await model.reloadInstalled(session: session)
+            await model.reloadInstalled(session: session, after: install.state)
         }
     }
 }

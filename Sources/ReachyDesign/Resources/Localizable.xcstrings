@@ -16038,35 +16038,6 @@
         }
       }
     },
-    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network to browse and install. An app already running still shows below, and can be stopped there.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Relay überträgt die Befehle des Roboters und seine Kamera, nicht seinen App-Store. Verbinden Sie sich im selben Netzwerk, um zu stöbern und zu installieren. Eine bereits laufende App wird unten weiterhin angezeigt und kann dort gestoppt werden."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El relé transporta los comandos del robot y su cámara, no su tienda de aplicaciones. Conéctese a la misma red para explorar e instalar. Una aplicación que ya se está ejecutando sigue apareciendo abajo y puede detenerse ahí."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le relais transporte les commandes du robot et sa caméra, pas sa logithèque. Connectez-vous au même réseau pour parcourir et installer. Une application déjà en cours reste affichée en bas et peut y être arrêtée."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ретранслятор несёт команды робота и его камеру, но не магазин приложений. Подключитесь к той же сети, чтобы смотреть и устанавливать. Уже запущенное приложение по-прежнему видно ниже, и там же его можно остановить."
-          }
-        }
-      }
-    },
     "The robot could not join": {
       "extractionState": "manual",
       "localizations": {
@@ -21573,6 +21544,267 @@
           "stringUnit": {
             "state": "translated",
             "value": "Видеосоединение так и не установилось, даже со второй попытки."
+          }
+        }
+      }
+    },
+    "The robot did not confirm the install in time. It may still be working on it — installing again later does nothing if it already has.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hat die Installation nicht rechtzeitig bestätigt. Vielleicht arbeitet er noch daran – eine spätere erneute Installation bewirkt nichts, wenn die App schon da ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot no confirmó la instalación a tiempo. Puede que siga en ello: volver a instalar más tarde no hace nada si la app ya está."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot n'a pas confirmé l'installation à temps. Il y travaille peut-être encore — relancer l'installation plus tard ne fait rien si l'app est déjà là."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот не подтвердил установку вовремя. Возможно, он ещё устанавливает — повторная установка позже ничего не сделает, если приложение уже есть."
+          }
+        }
+      }
+    },
+    "Over Hugging Face": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über Hugging Face"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A través de Hugging Face"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via Hugging Face"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Через Hugging Face"
+          }
+        }
+      }
+    },
+    "Install and start apps from here. What is installed, updates and removal need the robot's own network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von hier aus kannst du Apps installieren und starten. Die Liste der installierten Apps, Updates und das Entfernen brauchen das eigene Netzwerk des Roboters."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde aquí puedes instalar e iniciar apps. Ver lo instalado, actualizar y eliminar requieren la red del propio robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installez et lancez des apps d'ici. La liste des apps installées, les mises à jour et la suppression nécessitent le réseau du robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отсюда можно устанавливать и запускать приложения. Список установленных, обновления и удаление доступны только в сети самого робота."
+          }
+        }
+      }
+    },
+    "This device could not reach Hugging Face. Refresh once it is back online.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät konnte Hugging Face nicht erreichen. Aktualisiere, sobald es wieder online ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo no pudo conectar con Hugging Face. Actualiza cuando vuelva a estar en línea."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil n'a pas pu joindre Hugging Face. Actualisez quand il sera de nouveau en ligne."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это устройство не смогло связаться с Hugging Face. Обновите, когда оно снова будет в сети."
+          }
+        }
+      }
+    },
+    "Hugging Face lists no apps the robot can install.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face listet keine Apps, die der Roboter installieren kann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face no muestra ninguna app que el robot pueda instalar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face ne répertorie aucune app que le robot puisse installer."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На Hugging Face нет приложений, которые робот может установить."
+          }
+        }
+      }
+    },
+    "Over Hugging Face the robot reports only the end of an install, not its progress. A first install can take a few minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über Hugging Face meldet der Roboter nur das Ende einer Installation, nicht ihren Fortschritt. Eine Erstinstallation kann einige Minuten dauern."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A través de Hugging Face, el robot solo informa del final de una instalación, no de su progreso. Una primera instalación puede tardar unos minutos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via Hugging Face, le robot ne signale que la fin d'une installation, pas sa progression. Une première installation peut prendre quelques minutes."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Через Hugging Face робот сообщает только о завершении установки, а не о её ходе. Первая установка может занять несколько минут."
+          }
+        }
+      }
+    },
+    "Updating or removing this app, and starting it on wake-up, need the robot's own network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App zu aktualisieren, zu entfernen oder beim Aufwachen zu starten geht nur im eigenen Netzwerk des Roboters."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar o eliminar esta app, o iniciarla al despertar, requiere la red del propio robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mettre à jour ou supprimer cette app, ou la lancer au réveil, nécessite le réseau du robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить или удалить это приложение, а также запускать его при пробуждении можно только в сети самого робота."
+          }
+        }
+      }
+    },
+    "This robot's software is older than 1.10, the first that installs and runs apps over Hugging Face. Connect on the same network to browse and install, or to update the robot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Software dieses Roboters ist älter als 1.10, die erste Version, die Apps über Hugging Face installiert und startet. Verbinde dich im selben Netzwerk, um Apps zu durchsuchen und zu installieren oder den Roboter zu aktualisieren."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software de este robot es anterior a la 1.10, la primera que instala e inicia apps a través de Hugging Face. Conéctate a la misma red para explorar e instalar, o para actualizar el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel de ce robot est antérieur à la 1.10, la première à installer et lancer des apps via Hugging Face. Connectez-vous au même réseau pour parcourir et installer, ou pour mettre à jour le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО этого робота старше версии 1.10 — первой, которая устанавливает и запускает приложения через Hugging Face. Подключитесь к той же сети, чтобы смотреть и устанавливать приложения или обновить робота."
+          }
+        }
+      }
+    },
+    "Not confirmed yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nicht bestätigt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún sin confirmar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore confirmé"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока не подтверждено"
           }
         }
       }

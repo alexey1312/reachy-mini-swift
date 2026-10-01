@@ -40,6 +40,7 @@ struct RunningAppDock: View {
                 offersConversationControls: conversation.offersControls,
                 isReachable: model.isReachable(session),
                 busy: model.busy,
+                offersRestart: session.canRestartApp,
                 wedged: model.wedged != nil,
                 actionFailure: model.lastError,
                 expand: { model.isExpanded = true },

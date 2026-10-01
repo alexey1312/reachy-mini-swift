@@ -20,7 +20,9 @@ struct AppsTab: View {
         @Bindable var router = router
         return NavigationStack {
             Group {
-                if session.canManageApps {
+                // The relay's store as well as the daemon's: from 1.10.0 a relayed
+                // robot installs from the Hub's catalogue by name.
+                if session.canBrowseApps {
                     AppStoreScreen(
                         session: session,
                         runningApp: runningApp,

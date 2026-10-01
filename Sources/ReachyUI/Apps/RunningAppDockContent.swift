@@ -24,6 +24,8 @@ struct RunningAppDockContent: View {
     var offersConversationControls = false
     var isReachable = true
     var busy = false
+    /// False over the relay, which has no restart verb — see `RobotSession.canRestartApp`.
+    var offersRestart = true
     /// The transition has outlasted its deadline: only the robot's software can end
     /// it now. See ``RunningAppModel/wedged``.
     var wedged = false
@@ -100,7 +102,9 @@ struct RunningAppDockContent: View {
                 }
                 stopButton
             } else {
-                restartButton
+                if offersRestart {
+                    restartButton
+                }
                 stopButton
             }
         }

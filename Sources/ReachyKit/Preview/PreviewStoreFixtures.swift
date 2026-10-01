@@ -134,6 +134,24 @@ import ReachyJSON
         )
     }
 
+    public extension AppUpdatesSummary {
+        /// One update pending, for the app named. Moved here from `AppStoreModel`
+        /// when that file reached SwiftLint's 400-line ceiling: it is a store
+        /// fixture, and the store fixtures live here.
+        static func preview(appName: String) -> AppUpdatesSummary {
+            let json = """
+            {"apps_with_updates": [{"app_name": "\(appName)", "space_id": "pollen-robotics/\(appName)",
+              "installed_sha": "a1b2c3", "latest_sha": "d4e5f6", "update_available": true}],
+             "apps_checked": 2, "apps_skipped": 0}
+            """
+            // swiftlint:disable:next force_try
+            return try! AppUpdatesSummary(JSONCodec.daemon.decode(
+                Components.Schemas.AppUpdatesResponse.self,
+                from: Data(json.utf8)
+            ))
+        }
+    }
+
     public extension RobotAppStatus {
         /// On the status rather than on a screen's model, for the same reason
         /// `RobotApp.preview` is: Prefire copies each preview body into a generated

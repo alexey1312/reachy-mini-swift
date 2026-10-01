@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import ReachyDesign
-import ReachyJSON
 import ReachyKit
 
 /// Drives the robot's app store: what is installed, what could be, and what is
@@ -23,7 +22,7 @@ final class AppStoreModel {
 
     /// Held so `runningApp` can read through to it. The mutating calls still take a
     /// session of their own — collapsing them is a separate change.
-    private let session: RobotSession
+    let session: RobotSession
 
     private(set) var installed: [RobotApp] = []
     private(set) var catalogue: [RobotApp] = []
@@ -51,6 +50,10 @@ final class AppStoreModel {
     /// Coalesces overlapping loads: a slow catalogue must not overwrite the result
     /// of a refresh the user asked for afterwards (`MovesModel`'s pattern).
     private var loadID: UUID?
+
+    /// Ids this visit installed over the relay, which keeps no list to read back.
+    /// See `relayTwin(of:)`.
+    private(set) var installedOverRelay: Set<String> = []
 
     private let pins: PinnedAppStore
     /// Mirrors the store so `@Observable` sees a pin land. Reading the store in
@@ -97,7 +100,7 @@ final class AppStoreModel {
     /// thing on either side — and an installed app whose metadata the daemon lost
     /// answers `.community`, which is the honest reading of an unattributed app.
     var visibleApps: [RobotApp] {
-        let apps = switch section {
+        let apps = switch shownSection {
         case .installed: installed
         case .discover: discoverNeedsHFSignIn ? [] : catalogue
         }
@@ -156,7 +159,7 @@ final class AppStoreModel {
         if app.isInstalled {
             return app
         }
-        return installed.first { app.matches(installed: $0) }
+        return installed.first { app.matches(installed: $0) } ?? relayTwin(of: app)
     }
 
     func isInstalled(_ app: RobotApp) -> Bool {
@@ -248,6 +251,9 @@ final class AppStoreModel {
         // rather than blanking the dock, which is what a mid-restart daemon
         // deserves.
         _ = try? await session.currentApp()
+        // The relay carries none of the three below — the lock, the startup app and
+        // the update check are all HTTP — and asking would collect three refusals.
+        guard !isOverRelay else { return }
         // Read first, assign behind the same guard as the catalogue: a refresh
         // started meanwhile must not have its decoration overwritten by this
         // older load finishing last.
@@ -303,7 +309,16 @@ final class AppStoreModel {
         startupApp = try? await session.startupApp()
     }
 
-    func reloadInstalled(session: RobotSession) async {
+    /// Over the relay nothing can be re-read, so the job's own outcome is the
+    /// record: an install the robot confirmed is an installed app for the rest of
+    /// this visit.
+    func reloadInstalled(session: RobotSession, after job: AppInstallModel.State) async {
+        guard !isOverRelay else {
+            if case let .succeeded(.install(app)) = job {
+                installedOverRelay.insert(app.id)
+            }
+            return
+        }
         installed = await (try? session.installedApps(refresh: true)) ?? installed
         _ = try? await session.currentApp()
         startupApp = try? await session.startupApp()
@@ -347,9 +362,11 @@ final class AppStoreModel {
             loading: Bool = false,
             error: String? = nil,
             pinned: [String] = [],
-            needsHFSignIn: Bool = false
+            needsHFSignIn: Bool = false,
+            installedOverRelay: [String] = []
         ) -> AppStoreModel {
             let model = AppStoreModel(session: session ?? .preview())
+            model.installedOverRelay = Set(installedOverRelay)
             model.section = section
             // Assigned, not toggled through the store: a preview renders the state it
             // was handed and must not write to the reader's own `UserDefaults`.
@@ -374,18 +391,4 @@ final class AppStoreModel {
         }
     }
 
-    extension AppUpdatesSummary {
-        static func preview(appName: String) -> AppUpdatesSummary {
-            let json = """
-            {"apps_with_updates": [{"app_name": "\(appName)", "space_id": "pollen-robotics/\(appName)",
-              "installed_sha": "a1b2c3", "latest_sha": "d4e5f6", "update_available": true}],
-             "apps_checked": 2, "apps_skipped": 0}
-            """
-            // swiftlint:disable:next force_try
-            return try! AppUpdatesSummary(JSONCodec.daemon.decode(
-                Components.Schemas.AppUpdatesResponse.self,
-                from: Data(json.utf8)
-            ))
-        }
-    }
 #endif

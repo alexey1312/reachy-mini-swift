@@ -21,17 +21,32 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// Asked once and held: neither changes for the life of a session, and the
     /// status poll runs every three seconds.
     private var identityCache: (version: String, hardwareID: String)?
+    /// What the robot can be asked to install by name, read off the Hub by this
+    /// device — see `RemoteRobotConnection+Apps`.
+    let catalogue: HubAppCatalogue
+    /// How long `apps.install` is waited for. Not the reply budget: a first
+    /// install is `uv pip install` on the robot, minutes rather than seconds.
+    let installTimeout: Duration
 
-    public init(control: RemoteControlChannel, robotName: String? = nil) {
+    public init(
+        control: RemoteControlChannel,
+        robotName: String? = nil,
+        catalogue: HubAppCatalogue = HubAppCatalogue(),
+        installTimeout: Duration = .seconds(180)
+    ) {
         self.control = control
         self.robotName = robotName
+        self.catalogue = catalogue
+        self.installTimeout = installTimeout
     }
 
     public init(
         channel: any RemoteDataChannel,
         robotName: String? = nil,
         timeout: Duration = .seconds(10),
-        openingTimeout: Duration = .seconds(30)
+        openingTimeout: Duration = .seconds(30),
+        catalogue: HubAppCatalogue = HubAppCatalogue(),
+        installTimeout: Duration = .seconds(180)
     ) {
         self.init(
             control: RemoteControlChannel(
@@ -39,7 +54,9 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
                 timeout: timeout,
                 openingTimeout: openingTimeout
             ),
-            robotName: robotName
+            robotName: robotName,
+            catalogue: catalogue,
+            installTimeout: installTimeout
         )
     }
 

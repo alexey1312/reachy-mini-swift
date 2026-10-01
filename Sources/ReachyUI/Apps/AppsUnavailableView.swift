@@ -10,10 +10,11 @@ import SwiftUI
 /// the "Your Reachies" button offered as the way out led straight back to the
 /// state they were already in.
 ///
-/// And the store is not merely unreached over the relay: the data channel carries
-/// no app command at all and the daemon's HTTP API is not exposed outside its
-/// network, so the local network is the only way in. Saying so is the honest
-/// alternative to an action that cannot work.
+/// Over the relay this is now the case of a robot too old to answer: daemon
+/// 1.10.0 put `apps.install` and the running-app verbs on the data channel, and
+/// before it the channel carries no app command at all. The daemon's HTTP API is
+/// not exposed outside its network, so for such a robot the local network is the
+/// only way in. Saying so is the honest alternative to an action that cannot work.
 struct AppsUnavailableView: View {
     let isRemote: Bool
     let findRobot: () -> Void
@@ -42,7 +43,7 @@ struct AppsUnavailableView: View {
             String(
                 localized: .reachy(
                     // swiftlint:disable:next line_length
-                    "The relay carries the robot's commands and its camera, not its app store. Connect on the same network to browse and install. An app already running still shows below, and can be stopped there."
+                    "This robot's software is older than 1.10, the first that installs and runs apps over Hugging Face. Connect on the same network to browse and install, or to update the robot."
                 )
             )
         } else {

@@ -14,6 +14,22 @@ public extension RobotSession {
         (client as? any RobotAppsClient)?.offersAppStore == true
     }
 
+    /// Whether this robot installs by name over the relay — daemon 1.10.0's
+    /// `apps.install`, with the Hub's catalogue in place of the robot's.
+    ///
+    /// The store a relayed session can show is that much and no more: a catalogue
+    /// to browse and an Install that waits for its answer. What is installed, the
+    /// updates, the removals and the startup app stay HTTP. Gated on the version
+    /// like ``canControlRunningApp``, and for the same reason.
+    var canInstallFromCatalogue: Bool {
+        (client as? any RobotAppsClient)?.installsFromCatalogue == true && !predatesRelayCommands
+    }
+
+    /// Whether there is a store to show at all — the daemon's own, or the relay's.
+    var canBrowseApps: Bool {
+        canManageApps || canInstallFromCatalogue
+    }
+
     /// Whether the app already running can be watched and stopped from here.
     ///
     /// A narrower question than the store, and the relay answers yes: daemon 1.10.0
@@ -25,6 +41,12 @@ public extension RobotSession {
         client is any RobotAppsClient && !predatesRelayCommands
     }
 
+    /// Whether Restart has anything behind it. A client that never said otherwise
+    /// can, which keeps every surface that predates the relay exactly as it was.
+    var canRestartApp: Bool {
+        (client as? any RobotAppsClient)?.offersRestart != false
+    }
+
     /// The whole catalogue, installed apps included — the daemon's own
     /// `list-available` without a source kind.
     func appCatalogue(refresh: Bool = false) async throws -> [RobotApp] {
@@ -34,7 +56,13 @@ public extension RobotSession {
         let apps = try await withAppsClient { try await $0.availableApps() }
         appCatalogueCache = apps
         recordInstalled(apps.filter(\.isInstalled))
-        await persistCatalogue(apps)
+        // Only the daemon's own catalogue is worth keeping: the record on disk is
+        // what the robot listed on its own network, installed rows and all, and the
+        // relay's Hub listing written over it would warm the next LAN visit with a
+        // store that has nothing installed.
+        if canManageApps {
+            await persistCatalogue(apps)
+        }
         return apps
     }
 
@@ -153,6 +181,22 @@ public extension RobotSession {
 
     func updateApp(named name: String) async throws -> String {
         try await startingJob { try await $0.updateApp(named: name) }
+    }
+
+    /// Installs a catalogue app over the relay, and answers how it ended.
+    ///
+    /// Named by its slug, which is what the robot looks the app up by. The stored
+    /// catalogue goes first, as it does for every LAN job: the robot's app list is
+    /// changing from this moment, and a record of it taken before is wrong rather
+    /// than old. The Hub listing in memory stays — an install does not change it.
+    func installFromCatalogue(_ app: RobotApp) async throws -> AppJobMonitor.Outcome {
+        guard let client else { throw ReachyKitError.notConnected }
+        guard canInstallFromCatalogue, let appsClient = client as? any RobotAppsClient else {
+            throw ReachyKitError.appsUnavailable
+        }
+        installedAppsCache = nil
+        await forgetPersistedCatalogue()
+        return try await appsClient.installFromCatalogue(named: app.slug)
     }
 
     /// Follows one job to its end over the socket *and* the poll — see

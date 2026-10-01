@@ -8,14 +8,26 @@ import Foundation
 /// `/wifi/*` at all, so the capability split is what lets a screen ask whether a
 /// thing is possible instead of finding out from an error.
 public protocol RobotAppsClient: Sendable {
-    /// Whether this transport can browse and change what is installed.
+    /// Whether this transport serves the daemon's own store: its catalogue, what
+    /// is installed, and the jobs that install, update and remove.
     ///
     /// Conformance is no longer the whole answer. Daemon 1.10.0 put `apps.*` on
     /// the data channel — start, stop, status and install — so a relayed session
-    /// can run an app and say which one is running, while the catalogue, the
+    /// can run an app and say which one is running, while the installed list, the
     /// removals and the update jobs stay HTTP. This separates "can control the
     /// app that is there" from "can change which apps are there".
     var offersAppStore: Bool { get }
+
+    /// Whether this transport installs by name and waits for the end, rather than
+    /// starting a job — the relay's `apps.install`. False wherever
+    /// ``offersAppStore`` is true: a transport that has the daemon's job API uses
+    /// it, because a job can be followed and a single reply cannot.
+    var installsFromCatalogue: Bool { get }
+
+    /// Whether the daemon restarts an app in one request. The relay has no such
+    /// verb — `apps.*` is start, stop, status and install — so a Restart there is
+    /// a control with nothing behind it.
+    var offersRestart: Bool { get }
 
     /// Everything the daemon can offer, catalogue and installed together.
     func availableApps() async throws -> [RobotApp]
@@ -35,6 +47,15 @@ public protocol RobotAppsClient: Sendable {
     func updateApp(named name: String) async throws -> String
     func appJob(id jobID: String) async throws -> DaemonJob
 
+    /// Installs the catalogue's app of that name unless the robot has it, and
+    /// answers once the robot says how it went.
+    ///
+    /// An outcome rather than a job id: there is nothing to follow, only one reply,
+    /// minutes away on a first install. `.timedOut` is the robot saying nothing in
+    /// time, which leaves the install unknown rather than failed — it carries on
+    /// on the robot whether anybody waits or not.
+    func installFromCatalogue(named name: String) async throws -> AppJobMonitor.Outcome
+
     /// Cached daemon-side for five minutes unless forced.
     func appUpdates(force: Bool) async throws -> AppUpdatesSummary
 
@@ -49,6 +70,14 @@ public protocol RobotAppsClient: Sendable {
 public extension RobotAppsClient {
     /// True unless a transport says otherwise: every daemon serves `/api/apps/*`.
     var offersAppStore: Bool {
+        true
+    }
+
+    var installsFromCatalogue: Bool {
+        false
+    }
+
+    var offersRestart: Bool {
         true
     }
 
@@ -93,6 +122,10 @@ public extension RobotAppsClient {
     }
 
     func appJob(id _: String) async throws -> DaemonJob {
+        throw URLError(.unsupportedURL)
+    }
+
+    func installFromCatalogue(named _: String) async throws -> AppJobMonitor.Outcome {
         throw URLError(.unsupportedURL)
     }
 

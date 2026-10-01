@@ -49,15 +49,25 @@ struct AppStoreScreen: View {
     var body: some View {
         @Bindable var model = model
         List {
-            Section {
-                Picker(.reachy("Section"), selection: $model.section) {
-                    ForEach(AppStoreModel.Section.allCases) { section in
-                        Text(section.title).tag(section)
+            // One section has no choice to offer, and a one-segment control is a
+            // label pretending to be a switch.
+            if model.sections.count > 1 {
+                Section {
+                    Picker(.reachy("Section"), selection: $model.section) {
+                        ForEach(model.sections) { section in
+                            Text(section.title).tag(section)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowBackground(Color.clear)
                 }
-                .pickerStyle(.segmented)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                .listRowBackground(Color.clear)
+            }
+
+            if model.isOverRelay {
+                Section {
+                    relayNotice
+                }
             }
 
             if model.isHeldRemotely {
@@ -126,6 +136,7 @@ struct AppStoreScreen: View {
             switch state {
             case .succeeded, .daemonRestarted: .success
             case .failed: .error
+            case .unconfirmed: .warning
             case .idle, .running: nil
             }
         }
@@ -275,11 +286,15 @@ struct AppStoreScreen: View {
         if !model.searchText.isEmpty {
             ContentUnavailableView.search(text: model.searchText)
         } else if model.lastError != nil {
+            // Over the relay the catalogue is read by this device, so it is this
+            // device's connection that failed — the robot was never asked.
             ContentUnavailableView(
                 .reachy("Store unavailable"),
                 systemImage: "wifi.exclamationmark",
                 description: Text(
-                    .reachy("The robot could not reach Hugging Face. Refresh once it is back online.")
+                    model.isOverRelay
+                        ? .reachy("This device could not reach Hugging Face. Refresh once it is back online.")
+                        : .reachy("The robot could not reach Hugging Face. Refresh once it is back online.")
                 )
             )
             // Below the error on purpose: a filter over a catalogue that never arrived
@@ -294,7 +309,7 @@ struct AppStoreScreen: View {
                 Button(.reachy("Show all apps")) { model.scope = .all }
             }
         } else {
-            switch model.section {
+            switch model.shownSection {
             case .installed:
                 ContentUnavailableView(
                     .reachy("No apps installed"),
@@ -305,9 +320,35 @@ struct AppStoreScreen: View {
                 ContentUnavailableView(
                     .reachy("Nothing to show"),
                     systemImage: "square.stack.3d.up.slash",
-                    description: Text(.reachy("The robot found no apps on Hugging Face."))
+                    description: Text(
+                        model.isOverRelay
+                            ? .reachy("Hugging Face lists no apps the robot can install.")
+                            : .reachy("The robot found no apps on Hugging Face.")
+                    )
                 )
             }
+        }
+    }
+
+    /// Why this store has no Installed section and no Remove button: over the
+    /// relay the robot installs and starts by name and says nothing else about its
+    /// apps. Said once at the top, where the missing segment would have been,
+    /// rather than discovered one disabled control at a time.
+    private var relayNotice: some View {
+        Label {
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                Text(.reachy("Over Hugging Face"))
+                    .font(Typography.subtitle.weight(.semibold))
+                Text(.reachy(
+                    // swiftlint:disable:next line_length
+                    "Install and start apps from here. What is installed, updates and removal need the robot's own network."
+                ))
+                .font(Typography.status)
+                .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: "antenna.radiowaves.left.and.right")
+                .foregroundStyle(.tint)
         }
     }
 

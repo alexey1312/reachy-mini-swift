@@ -61,6 +61,11 @@ final class AppInstallModel {
         /// The daemon restarted mid-job and took its job register with it. The work
         /// may well have finished — the installed list is the only way to know.
         case daemonRestarted(Operation)
+        /// The robot said nothing within the budget, over the relay. Not a failure:
+        /// the install carries on there whether anybody waits or not, and asking
+        /// again costs nothing once it has finished. The LAN keeps `.failed` for the
+        /// same silence, because there the installed list is one tap away.
+        case unconfirmed(Operation)
     }
 
     private(set) var state: State = .idle
@@ -100,11 +105,19 @@ final class AppInstallModel {
         return false
     }
 
+    /// Whether a job here reports its log as it runs. Over the relay it does not:
+    /// `apps.install` answers once, at the end, and the screen has to say so rather
+    /// than show a console waiting for lines that never come.
+    var streamsLog: Bool {
+        !session.canInstallFromCatalogue
+    }
+
     var operation: Operation? {
         switch state {
         case .idle: nil
         case let .running(operation), let .succeeded(operation),
-             let .failed(operation, _), let .daemonRestarted(operation):
+             let .failed(operation, _), let .daemonRestarted(operation),
+             let .unconfirmed(operation):
             operation
         }
     }
@@ -113,6 +126,11 @@ final class AppInstallModel {
         state = .running(operation)
         announceStart(of: operation)
         log.clear()
+
+        if case let .install(app) = operation, session.canInstallFromCatalogue {
+            await installOverRelay(app, operation: operation)
+            return
+        }
 
         let jobID: String
         do {
@@ -144,6 +162,27 @@ final class AppInstallModel {
     func dismiss() {
         state = .idle
         log.clear()
+    }
+
+    /// The relay's install: one call, one answer, no job id and no log — the same
+    /// outcomes a LAN job ends in, so the same two mappings apply.
+    ///
+    /// Except for a silence. On the LAN a job that outlived its budget is followed
+    /// by an installed list the reader can go and check; over the relay there is
+    /// none, and what is true instead is that asking again costs nothing — the
+    /// daemon installs only what is missing. So it is `.unconfirmed` on screen
+    /// rather than `.failed`, and the notification keeps `.unanswered`, which says
+    /// exactly that much.
+    private func installOverRelay(_ app: RobotApp, operation: Operation) async {
+        let outcome: AppJobMonitor.Outcome
+        do {
+            outcome = try await session.installFromCatalogue(app)
+        } catch {
+            fail(on: error, operation: operation)
+            return
+        }
+        state = outcome == .timedOut ? .unconfirmed(operation) : Self.state(for: outcome, operation: operation)
+        announce(Self.result(for: outcome))
     }
 
     private func start(_ operation: Operation) async throws -> String {
