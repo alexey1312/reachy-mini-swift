@@ -767,6 +767,11 @@ Start.
   which kept the 13 previews without a button byte-identical and moved the 9 with one.
   The badges themselves still fall back to one per line rather than a letter per line
   at text sizes where even the full column is too narrow.
+  **Each badge sets its glyph against its word itself (`BadgeLabelStyle`).**
+  Left to the `Form` row, a `Label` puts its icon in a column of its own,
+  so the seal stood 21 pt from "Official" and the heart 14 pt after it, with its own 214 22 pt away —
+  the heart read as part of "Official". Measured off the reference by ink columns, not by eye;
+  now 7 pt inside a badge and 15 pt between two.
 
 - **Over the relay the store is Discover alone, and the page knows less (#158).**
   `AppStoreModel+Relay.swift` holds the fork, keyed on `isOverRelay` (`session.canInstallFromCatalogue`),
