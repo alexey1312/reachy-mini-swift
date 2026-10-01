@@ -314,10 +314,13 @@
             supportsRename: Bool = true,
             // Defaulted: nil is the Link row before the first poll ever answered.
             roundTrip: Duration? = .milliseconds(12),
+            // The root draws the first run in place of the shell while this holds (#169).
+            offersFirstRun: Bool = false,
             client: any RobotAPIClient = PreviewRobotClient()
         ) -> RobotSession {
             let session = RobotSession { _ in client }
             session.supportsRename = supportsRename
+            session.firstRun.isOffered = offersFirstRun
             // Claimed without connecting: the capability flags a screen asks about
             // (`canConfigureWiFi`, `canManageApps`, `canLinkHuggingFace`) are all
             // "does this client speak that protocol", and a nil client answers no

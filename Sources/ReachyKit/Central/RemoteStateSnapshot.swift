@@ -14,6 +14,12 @@ struct RemoteStateSnapshot: Decodable {
     let bodyYaw: Double?
     /// `(left, right)`, radians.
     let antennas: [Double]?
+    /// The seven head motors as the robot measured them, `[body_yaw, stewart_1 …
+    /// stewart_6]` — the socket's `head_joints` under another name. Daemon 1.10.0
+    /// added it so a peer can check the pose motor by motor, which is what the
+    /// first run's rest-position check does (#169); before that it is absent and the
+    /// scene solves the cranks from the pose instead.
+    let headJointPositions: [Double]?
     /// Absent on a robot with no ReSpeaker, and on a daemon before 1.10.0 — which
     /// is why it is optional rather than merely quiet.
     let doa: DoaSnapshot?
@@ -33,6 +39,7 @@ struct RemoteStateSnapshot: Decodable {
         case headPose = "head_pose"
         case bodyYaw = "body_yaw"
         case antennas
+        case headJointPositions = "head_joint_positions"
         case doa
     }
 
@@ -44,6 +51,7 @@ struct RemoteStateSnapshot: Decodable {
         guard headPose != nil || bodyYaw != nil || antennas != nil || doa != nil else { return nil }
         return RobotStateFrame(
             bodyYaw: bodyYaw,
+            headJoints: headJointPositions,
             antennas: antennas,
             headPose: headPose.map { .matrix($0.flatMap(\.self)) },
             directionOfArrival: doa.map {

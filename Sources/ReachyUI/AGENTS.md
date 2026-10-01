@@ -796,6 +796,64 @@ purpose so no Hugging Face credential passes through one of ours.)
   carrying no metadata at all is not an oversight either: it is what a local app with no Hub card looks like, which
   is the one case `describedFromInstalled` still cannot describe.
 
+## The first run (#169)
+
+`FirstRun/` — `FirstRunFlow`, `FirstRunModel` and one view per step:
+welcome, name, motors, camera, microphone, speaker, done.
+`RobotSession.offersFirstRun` decides whether it is drawn, and `ReachyKit/AGENTS.md` says when that is read and written.
+
+- **In place of the shell, not over it.**
+  The root's fork draws the flow where `ReachyTabShell` would be,
+  for two reasons that each rule out a cover:
+  Pollen's apps keep the robot asleep until their wizard has run and every Wake up button lives in the shell,
+  and the shell's viewport would mount a `RealityView` beside the flow's twin.
+  Nothing else in the root changes — the sheets, the lifecycle and the call stay above both.
+  `RobotCommands` and the Home Screen's quick actions can still wake the robot underneath;
+  that is somebody choosing to, not the app doing it for them.
+- **Finishing and skipping are one call**, `RobotSession.finishFirstRun()`,
+  and it is what swaps the flow for the shell.
+  So **Skip setup** is in the toolbar of every step but the last, and nothing in the flow navigates anywhere itself.
+- **On the LAN the root opens the robot's own data channel, and holds it only while it is owed.**
+  `FirstRunLANLink` is the closure `RobotSession.firstRunServices.openLANChannel` calls during a connect:
+  a `RemoteRobotLink(address:)` on the robot's `:8443` signaling, started, and handed back once its data channel
+  opens — or dropped after eight seconds, which is what the connect gate waits at most.
+  When the robot turns out to be new, the same link is the camera step's picture and the channel the end writes to.
+  `RootFirstRunLink` closes it as soon as nothing holds it: a connect no longer reading, and no run on screen.
+  The opener is set in `ReachyRootView.init` on the session built beside it, so `@State` keeps the pair together;
+  previews never connect, so they never open anything.
+- **On the LAN the pose comes off the daemon's socket; over the relay it is polled.**
+  `FirstRunStateReader` answers one frame per ask from `RobotStateStream`, five a second with the head motors, the
+  antennas and the voice — joined, because the socket's own frame decodes no `doa`
+  (`StateStreamUpdate.hearing` reads the generated half). It never answers the same frame twice:
+  a socket gone quiet reads as a failed frame, which is what the checks count before they give up.
+- **The twin is the flow's own `RobotSceneModel`, built on first use** — over the LAN socket, or over a polled
+  `RemoteStateStream` on the relay.
+  Not the viewport's:
+  the `pose` channel hands its frames to one reader, and the viewport claims it once the shell appears,
+  so a second `RemotePoseStream` here would be competing for it.
+  Built lazily by `FirstRunModel.startTwin()` because the root re-runs `FirstRunFlow.init` on every phase change,
+  and a scene model carries a RealityKit lighting rig.
+  Over the relay it is polled at five frames a second, beside the sleep-position check's own four:
+  `RemoteControlChannel` queues per command name, so the two polls wait behind each other and never in front of a wake-up.
+- **Two checks read the robot; the rest are a person's judgement**, as in Pollen's wizard.
+  The sleep-position check holds Wake up until `SleepPosition` passes, and fails open where the robot cannot answer —
+  no `head_joint_positions` on a 1.9.x snapshot, or three failed reads before any arrived.
+  The microphone check is the robot's own array reporting `speech_detected` twice in a row,
+  not a meter on this device's copy of the audio — this app has none,
+  and the question is whether the _robot_ hears.
+  `doa: null` four frames running reads as unsupported, which is firmware below 2.1.0 as often as no array.
+- **The speaker step shares `AudioSettingsModel` with Settings**, so the rule that the slider writes only when a gesture ends lives in one place,
+  and its test sound now plays over the relay as well (`RemoteRobotConnection+TestSound.swift`).
+- **The steps reuse `OnboardingStepScaffold`** rather than a copy — the same heading, form and pinned actions.
+  The name step reuses the onboarding's copy and `RobotNameField`'s footer word for word.
+- **What the references can and cannot hold.**
+  Every step and every state a reader can land in has a `First run —` preview,
+  plus `Root — first run over the relay` for the fork itself.
+  The twin is a `RealityView` and the camera a Metal layer, so both capture blank:
+  those references cover the words, the checklist and the buttons around them,
+  and `FirstRunModelTests` covers the gate, the listening and the name.
+  Whether a limp head really settles inside the bands on every unit is a hardware question no test here can answer.
+
 ## Hosted JS apps — the #159 prototype
 
 `JSApps/`, compiled in `DEBUG` only and reached from Settings → Advanced → Web apps.

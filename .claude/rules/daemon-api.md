@@ -644,13 +644,43 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   - **No REST route exists on any daemon up to `main`** (551679d, 2026-09-30).
     The open desktop wizard (reachy-mini-desktop-app#225) calls `GET /api/first-wake-up/status`
     and falls back when it 404s — a route proposed and never merged, so do not code against its shape.
-  - **`/ws/sdk` executes the command and answers nothing.**
+  - **`/ws/sdk` executes the command and answers nothing**, on `main` as much as on 1.11.0.
     `WSServer._handle_command` hands `process_command` a `send` that does nothing,
     so `set_first_wake_up` over the LAN socket really is stored, with no way to learn that it was,
     and `get_first_wake_up` has no answer to give.
     This app does not write it that way: an unconfirmable write to the robot's own state is worse than none.
+  - **The LAN's way in is the robot's own WebRTC data channel.**
+    `media_server.py` builds the `data` channel for every consumer peer, whichever signaling it arrived through,
+    and hands its messages to `process_command` — so a peer on the robot's own `:8443` socket
+    asks for the flag exactly as one from central does (`RemoteRobotLink(address:)`, #169).
+    It costs a peer connection, which is why the session opens one only for a robot this device has not settled.
   - **A daemon before 1.10.0 answers an unknown command with `{"error": "Invalid command: …"}` and no `command`**,
     so a waiter keyed on the echo never matches and sits out the whole reply budget.
     Gate on the version (`predatesRelayCommands`), never on the reply.
-  - The session writes it after the first wake-up it performs over the relay
-    (`RobotSession+FirstWakeUp.swift`), reading first so a marked robot costs no write.
+  - **The session reads it during a connect, before the gate comes down, and writes it where the first run ends**
+    (`RobotSession+FirstRun.swift`, #169).
+    `false` sets `offersFirstRun`, and the root draws the first run in place of the shell;
+    finishing or skipping it is the only write, and a disconnect halfway through leaves the robot new.
+    Over the relay it is read on every connect.
+    On the LAN it is read over the data channel above, bounded at eight seconds,
+    and where that channel does not open this device's own record decides (`FirstRunRecordStore`):
+    a robot it has never met, or one whose run it started and did not finish, is offered the run.
+    A robot settled either way — marked by its flag, or seen through here — is never opened a channel for again.
+    #157 wrote it after the first wake this app performed instead — the first run wakes the robot partway through,
+    so that write would have ended the run's claim before its last step, and it is gone.
+- **The data channel plays the daemon's test sound, under another name.**
+  `POST /api/volume/test-sound` is `backend.play_sound("impatient1.wav")` and nothing else (`routers/volume.py`),
+  and the data channel has carried `play_sound {file}` into that same method since 1.9.0 —
+  checked at the `v1.9.0`, `v1.10.0`, `v1.11.0` tags and `main` —
+  answering `{"status": "ok", "command": "play_sound"}`.
+  So `RemoteRobotConnection` is a `TestSoundClient` (`RemoteRobotConnection+TestSound.swift`),
+  and the relay's Test sound button plays the identical file.
+  Like the route, the reply says nothing about whether anything was heard: without a media server it is a no-op.
+- **The relay's state snapshot carries the head motors one by one from 1.10.0**, as `head_joint_positions` —
+  seven values, body yaw first, the socket's `head_joints` under another name
+  (`StateSnapshot` in `io/protocol.py`, added so a peer can check the pose motor by motor).
+  `antennas` already is the two motor values, right then left.
+  `RemoteStateSnapshot` maps it onto `RobotStateFrame.headJoints`,
+  so the relayed twin now draws the measured cranks rather than solving them from the pose,
+  and the first run's sleep-position check reads it (`SleepPosition`).
+  A 1.9.x snapshot has no such field, and the check reads that as unavailable rather than out of place.

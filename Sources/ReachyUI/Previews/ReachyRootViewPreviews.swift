@@ -166,6 +166,21 @@ import SwiftUI
     )
 }
 
+// A relayed robot that has never been woken: the first run stands in for the shell, with no tab bar
+// and no Wake up button anywhere until it ends (#169).
+#Preview("Root — first run over the relay") {
+    PreviewScene.root(
+        .preview(
+            status: .preview(motorMode: .disabled),
+            address: nil,
+            link: .remote,
+            offersFirstRun: true,
+            client: PreviewRemoteRobotClient()
+        ),
+        remoteLink: .preview()
+    )
+}
+
 // The Live tab over the relay shows the camera the link already holds, rather than one it would dial.
 #Preview("Root — relay live tab") {
     let link = RemoteRobotLink.preview()

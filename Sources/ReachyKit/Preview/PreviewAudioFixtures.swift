@@ -20,11 +20,14 @@
         public func playTestSound() async throws {}
     }
 
-    /// The levels and not the test sound, which is what `RemoteRobotConnection`
-    /// speaks: `get_volume` and `set_volume` ride the data channel, the test sound is
-    /// a LAN route. So `Presence — over the relay` keeps its Audio section and draws
-    /// no Test sound button — the button it used to draw could only ever fail.
-    extension PreviewRemoteRobotClient: AudioLevelClient {
+    /// The levels and the test sound, which is what `RemoteRobotConnection` speaks:
+    /// `get_volume` and `set_volume` ride the data channel, and so does `play_sound`,
+    /// the one call the LAN's test-sound route makes (#169). So `Presence — over the
+    /// relay` draws the Audio section with its Test sound button, as a relayed robot
+    /// does — it once drew none, on the belief that the relay had no way to play it.
+    extension PreviewRemoteRobotClient: AudioLevelClient, TestSoundClient {
+        public func playTestSound() async throws {}
+
         public func volume() async throws -> AudioLevel {
             AudioLevel(percent: 50)
         }

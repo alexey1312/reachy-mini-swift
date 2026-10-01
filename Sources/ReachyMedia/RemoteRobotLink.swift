@@ -35,6 +35,19 @@ public final class RemoteRobotLink {
         )
     }
 
+    /// The same pieces for a robot on this network: its own signaling socket on
+    /// :8443 in place of central.
+    ///
+    /// The robot's media server builds the `data` channel for every peer, whichever
+    /// signaling it arrived through, and hands its messages to the same
+    /// `process_command` the relay reaches — so the commands this link speaks are the
+    /// relay's, word for word. The LAN has the daemon's HTTP API for nearly all of
+    /// them; what it does not have is the first wake-up flag, and that is what this
+    /// exists for (#169).
+    public convenience init(address: RobotAddress) throws {
+        try self.init(camera: CameraSession(address: address), robotName: nil)
+    }
+
     private init(camera: CameraSession, robotName: String?) {
         self.camera = camera
         client = RemoteRobotConnection(channel: camera.dataChannel, robotName: robotName)
@@ -49,6 +62,20 @@ public final class RemoteRobotLink {
 
     public func stop() {
         camera.stop()
+    }
+
+    /// Waits for the data channel to open, and says whether it did in time.
+    ///
+    /// A command sent before then is not refused — it waits out the channel's opening
+    /// budget, thirty seconds — so a caller that would rather not hold anything that
+    /// long asks this first.
+    public func waitUntilOpen(within deadline: Duration) async -> Bool {
+        let end = ContinuousClock.now + deadline
+        while !camera.dataChannel.isOpen {
+            guard ContinuousClock.now < end, !Task.isCancelled else { return false }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return true
     }
 }
 

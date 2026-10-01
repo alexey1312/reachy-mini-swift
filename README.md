@@ -76,6 +76,11 @@ Hey Reachy is a separate app, and this is where it differs:
   daemon's job socket.
 - **Bluetooth setup** — PIN-authenticated onboarding that sends Wi-Fi credentials over an encrypted BLE channel,
   plus a recovery console for a robot that fell off the network.
+- **First run** — a robot that has never been woken is met with a guided first wake-up,
+  over the local network or the relay:
+  a sleep-position check that catches swapped motor cables before the motors are powered,
+  then its camera, microphones, speaker and name.
+  Finishing or skipping it tells the robot, so Pollen's own apps do not greet it as new.
 - **Remote access** — reach a robot from outside its network through the Hugging Face relay. The daemon's port is
   never exposed.
 - **Files** — an SFTP browser for the robot's filesystem.
@@ -228,6 +233,13 @@ simulator. Open, and stated honestly:
   which it draws from the app's own copy of the robot
   because the relay cannot fetch the URDF and STL.
   SFTP and Wi-Fi setup have no route over it and stay on the local network.
+- **The first run has not met a robot yet.**
+  Its sleep-position targets are the cranks that hold the daemon's own sleep pose,
+  the values Pollen's mobile app checks, and its tolerances are that app's;
+  whether a limp head settles there on every unit is a hardware question.
+  On the local network the robot's flag is read over its own WebRTC data channel,
+  because no daemon serves it over HTTP;
+  where that channel does not open, the app goes by its own record of the robot.
 - **The Lite model is reachable, not finished.** Nothing here has met one: the flavour, the absent settings and the
   caption they carry are written against the daemon's own flags and verified against `sim-daemon`.
 

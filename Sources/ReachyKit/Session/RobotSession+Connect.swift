@@ -96,6 +96,10 @@ public extension RobotSession {
             supportsRename = handshake.supportsRename
                 || (client is any RobotRenameClient && !predatesRelayCommands)
             if case let .lan(address) = link {
+                // Before `remember`, which is what makes every robot known: the first run's
+                // fallback offers itself to a robot this device is meeting now (#169).
+                firstRun.isNewToDevice = !KnownRobots.all.contains { $0.key == handshake.identity.deduplicationKey }
+                    || KnownRobots.pendingProvisionedHardwareID == handshake.identity.hardwareID
                 KnownRobots.lastAddress = address
                 KnownRobots.remember(identity: handshake.identity, address: address)
                 // A robot set up over Bluetooth has arrived under its own identity. This is
@@ -220,6 +224,11 @@ extension RobotSession {
 
             switch verdict {
             case .ready:
+                // Before the gate comes down, for the reason `warmCatalogues` is: the
+                // fork below the root picks the first run or the shell on `.connected`,
+                // and a flag learned a moment later would flash the shell first.
+                await readFirstRun(using: client, identity: identity)
+                guard isAttemptLive(attemptID) else { return false }
                 return finishConnected(identity: identity)
             case .backendDown:
                 return haltOnUnavailableBackend(identity: identity)

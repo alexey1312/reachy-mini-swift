@@ -16,10 +16,12 @@ public protocol AudioLevelClient: Sendable {
     func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel
 }
 
-/// The daemon's test sound, split from the levels because the relay has the one and
-/// not the other: its data channel carries `get_volume` and `set_volume` but no test
-/// sound, which is `POST /api/volume/test-sound` on the LAN alone. It too was a
-/// throwing default, so over the relay the button answered with -1002.
+/// The daemon's test sound, split from the levels because a client can have the one
+/// and not the other: the in-app simulator has neither, and the relay used to be
+/// read as having only the levels. It carries no route named after the test sound,
+/// but it does carry `play_sound`, which is all that route calls — see
+/// `RemoteRobotConnection+TestSound.swift` (#169). It too was a throwing default, so
+/// over the relay the button once answered with -1002.
 public protocol TestSoundClient: Sendable {
     func playTestSound() async throws
 }
@@ -32,7 +34,7 @@ public extension RobotSession {
         client is any AudioLevelClient
     }
 
-    /// True over the LAN alone.
+    /// True over the LAN and the relay, false for the in-app simulator.
     var canPlayTestSound: Bool {
         client is any TestSoundClient
     }

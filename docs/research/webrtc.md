@@ -68,7 +68,11 @@ which is why `set_first_wake_up` is not sent that way (`.claude/rules/daemon-api
 So the reply shapes for those commands can be verified **only through a real peer connection**.
 That is why the relay features in this app are covered by unit tests and previews and not by a
 live check: the app drives the data channel over the Hugging Face relay, and a LAN session opens
-one it deliberately does not command over.
+one it deliberately does not command over —
+with one exception since #169:
+the first wake-up flag has no other way in on the LAN,
+so a connect to a robot this device has not settled opens a peer on `:8443` to ask for it
+(`media_server.py` builds the `data` channel for every consumer, local or central).
 
 Two findings that came out of the same session and are worth keeping:
 
