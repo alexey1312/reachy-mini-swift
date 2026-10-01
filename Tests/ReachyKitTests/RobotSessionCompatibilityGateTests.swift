@@ -5,9 +5,10 @@ import Testing
 /// A daemon below the baseline used to throw out of the handshake, leaving the user
 /// on a "Try again" button that could never work. It is now a halt the update flow
 /// can act on — while ADR 0001 still forbids sending that daemon any command.
-private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, @unchecked Sendable {
+private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, DaemonUpdateClient, @unchecked Sendable {
     private let lock = NSLock()
     private var commands: [String] = []
+    private var channels: [Bool] = []
     private let version: String
     private let wireless: Bool
 
@@ -18,6 +19,11 @@ private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, @unchecke
 
     var sentCommands: [String] {
         lock.withLock { commands }
+    }
+
+    /// The `pre_release` flag of every update call, check and start alike, in order.
+    var updateChannels: [Bool] {
+        lock.withLock { channels }
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -76,6 +82,16 @@ private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, @unchecke
     func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel {
         lock.withLock { commands.append("setMicrophoneVolume") }
         return AudioLevel(percent: percent, platform: "test", device: "test")
+    }
+
+    func availableUpdate(preRelease: Bool) async throws -> DaemonUpdateAvailability {
+        lock.withLock { channels.append(preRelease) }
+        return .available(current: version, latest: "1.11.0")
+    }
+
+    func startUpdate(preRelease: Bool) async throws -> String {
+        lock.withLock { channels.append(preRelease) }
+        return "job-1"
     }
 }
 
@@ -179,5 +195,41 @@ struct PreReleaseReadinessTests {
     @Test("an unreported version keeps the channel open")
     func openWithoutAVersion() {
         #expect(RobotSession.preview(status: .preview()).refusesPreReleaseUpdates == false)
+    }
+
+    /// The stored choice is app-wide, so a beta picked for a newer robot reaches every
+    /// robot after it. 1.8.2 halts on the update step, which is the session
+    /// `DaemonUpdateScreen` is handed; 1.9.0 connects, which is the settings card's (#153).
+    @Test(
+        "a daemon below 1.10.0 is asked the stable question whatever the stored choice",
+        .timeLimit(.minutes(1)),
+        arguments: ["1.8.2", "1.9.0"]
+    )
+    func asksTheStableChannelBelowTheRankingFix(version: String) async throws {
+        let client = OldDaemonClient(version: version)
+        let session = RobotSession { _ in client }
+        await session.connect(to: RobotAddress(host: "10.0.0.9"))
+        #expect(session.lastStatus?.version == version)
+
+        _ = try await session.availableUpdate(preRelease: true)
+        _ = try await session.startUpdate(preRelease: true)
+
+        #expect(client.updateChannels == [false, false])
+    }
+
+    @Test(
+        "from 1.10.0 the beta choice reaches the daemon as made",
+        .timeLimit(.minutes(1)),
+        arguments: ["1.10.0", "1.11.0"]
+    )
+    func passesTheChoiceThroughFromTheFix(version: String) async throws {
+        let client = OldDaemonClient(version: version)
+        let session = RobotSession { _ in client }
+        await session.connect(to: RobotAddress(host: "10.0.0.9"))
+
+        _ = try await session.availableUpdate(preRelease: true)
+        _ = try await session.startUpdate(preRelease: false)
+
+        #expect(client.updateChannels == [true, false])
     }
 }

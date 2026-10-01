@@ -133,7 +133,8 @@ public extension RobotSession {
     /// outranks `1.10.0rc5`: `/update/available` answers "up to date" and
     /// `/update/start` refuses with 400. The daemon-side fix ships in the very
     /// version those robots cannot reach, so the toggle is inert until a stable
-    /// update carries them past it.
+    /// update carries them past it — and the session sends the stable question
+    /// whatever the toggle says (`availableUpdate(preRelease:)`).
     var refusesPreReleaseUpdates: Bool {
         DaemonCompatibilityPolicy.isKnownOlder(than: "1.10.0", reported: lastStatus?.version)
     }
