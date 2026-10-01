@@ -1,16 +1,19 @@
 ---
 layout: default
-title: Control your Reachy Mini
+title: An unofficial app for Reachy Mini
 ---
 
 <section class="hero">
   <div class="hero-inner">
     <img class="hero-icon" src="media/icon.png" width="128" height="128" alt="Hey Reachy app icon" />
     <h1>Hey Reachy</h1>
+    <p class="hero-badge">
+      <a href="#not-official">Unofficial — not affiliated with Pollen Robotics or Hugging Face</a>
+    </p>
     <p class="lede">
       Joystick teleop, the robot's camera and two-way audio, a live 3D twin, recorded moves, a soundboard and the
-      robot app store — for the Reachy Mini on your desk. Wireless, Lite, or no robot at all: the app carries a
-      simulator of its own.
+      robot app store — for the Reachy Mini on your desk, straight over your own network with no account to create.
+      Wireless, Lite, or no robot at all: the app carries a simulator of its own.
     </p>
     <p class="cta-row">
       <a class="cta" href="https://apps.apple.com/app/hey-reachy/id6799644194">Download on the App Store</a>
@@ -19,8 +22,49 @@ title: Control your Reachy Mini
         Notarized Mac build
       </a>
     </p>
-    <p class="hero-meta">One app for iPhone, iPad and Mac · iOS 18 or macOS 15 · free and open source</p>
+    <p class="hero-meta">One native app for iPhone, iPad and Mac · iOS 18 or macOS 15 · free and open source</p>
   </div>
+</section>
+
+<section class="wrap positioning" id="not-official">
+  <h2>Not Pollen's own app</h2>
+  <p>
+    Pollen Robotics publishes an official app for Reachy Mini on iPhone and Android, and calls it the main way to use
+    the robot. It reaches the robot through the Hugging Face relay, signed in with a Hugging Face account. If that is
+    the app you were looking for, it is
+    <a href="https://apps.apple.com/app/id6766823749">Reachy Mini on the App Store</a>.
+  </p>
+  <p>
+    Hey Reachy is a different app, written by an independent developer, and it is not affiliated with, endorsed by or
+    supported by Pollen Robotics or Hugging Face. It is built in Swift for Apple's platforms, and this is where it
+    differs:
+  </p>
+  <ul class="points">
+    <li>
+      <strong>Native on iPhone, iPad and Mac.</strong> On a Mac it is a Mac app in its own right, with a menu bar
+      item, widgets in Notification Center, and a way to the robot software running on that computer.
+    </li>
+    <li>
+      <strong>Your own network, with no account.</strong> It finds the robot over Bonjour or at an address you type and
+      talks to its daemon directly. A Hugging Face sign-in is optional: it is for installing robot apps, and for the
+      relay, which Hey Reachy uses too — to reach your robots from outside their network.
+    </li>
+    <li>
+      <strong>A simulator inside the app.</strong> No robot, no network and nothing to install, on every platform.
+    </li>
+    <li>
+      <strong>Teleop, camera and a 3D twin.</strong> A joystick for the head, the antennas and the body, the robot's
+      camera with two-way audio, and a RealityKit model of the robot that mirrors it as it moves.
+    </li>
+    <li>
+      <strong>Diagnostics and files.</strong> The control loop and the robot's processor, memory and temperature
+      charted live, the daemon's own log, recovery over Bluetooth, and an SFTP browser for its filesystem.
+    </li>
+    <li>
+      <strong>Widgets, Siri and Control Center.</strong> Widgets for the robot's status and its apps; wake, sleep,
+      moves, apps and sounds from Siri and Shortcuts, and from Control Center on iPhone and iPad.
+    </li>
+  </ul>
 </section>
 
 <section class="wrap demo" id="demo">
@@ -48,10 +92,10 @@ title: Control your Reachy Mini
       has not reworked the daemon for Lite yet, so expect that half to keep moving.
     </p>
     <p>
-      <strong>And you can look around without a robot at all.</strong> The Connect screen's third choice starts a
-      simulator the app carries with it — the robot's own shape, moved by the same maths, on iPhone, iPad and Mac,
-      with nothing to install. It has no camera, no app store and no Wi-Fi, because those belong to a machine that is
-      not there. There is still no account to create.
+      <strong>And you can look around without a robot at all.</strong> <em>Start the simulator</em>, under Developer
+      on the Connect screen, opens a session with a robot the app carries with it — the robot's own shape, moved by
+      the same maths, on iPhone, iPad and Mac, with nothing to install. It has no camera, no app store and no Wi-Fi,
+      because those belong to a machine that is not there. There is still no account to create.
     </p>
   </div>
 </section>
@@ -131,8 +175,8 @@ title: Control your Reachy Mini
     <li>
       <h3>Remote access</h3>
       <p>
-        Reach your robots from outside their network through the Hugging Face relay. Commands travel on a brokered
-        WebRTC data channel; the daemon's port is never exposed.
+        Reach your robots from outside their network through the Hugging Face relay, with teleop, the camera and the
+        3D twin. Commands travel on a brokered WebRTC data channel; the daemon's port is never exposed.
       </p>
     </li>
   </ul>
