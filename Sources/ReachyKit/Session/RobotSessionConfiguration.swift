@@ -4,7 +4,7 @@ import Foundation
 ///
 /// In a file of its own for the reason `RunningAppModel.Configuration` is:
 /// `RobotSession` reached SwiftLint's length limit, and this is the half that is
-/// values rather than behaviour — eleven budgets, none of which does anything.
+/// values rather than behaviour — twelve budgets, none of which does anything.
 /// `RobotPower`, `RobotAppRelease` and every intent-side protocol take one too, so
 /// it is also the piece with the most readers outside the session.
 ///
@@ -48,6 +48,15 @@ public extension RobotSession {
         /// Upstream's job-polling cadence, for the same reason it uses it: somebody
         /// is watching their robot and waiting for it to move.
         public var appStopPollInterval: Duration = .milliseconds(500)
+        /// How long the daemon's own sleep after an app may take before a robot
+        /// still awake is read as one it decided to leave awake.
+        ///
+        /// Read off 1.11.0's `reset_to_sleep()` rather than guessed: 1.5 s of
+        /// debounce, at most 1.5 s lifting the head to zero, 0.2 s, the 2 s sleep
+        /// trajectory and the 2 s `goto_sleep()` waits before cutting the motors —
+        /// 7.2 s from the slot freeing, which this session notices some way into.
+        /// The rest is headroom for the reads around it.
+        public var idleResetTimeout: Duration = .seconds(12)
         /// Connect-time readiness budget. We never start a backend during connect,
         /// so a stopped one is reported at once — this only covers the window
         /// between `state == running` and `backend.ready`.

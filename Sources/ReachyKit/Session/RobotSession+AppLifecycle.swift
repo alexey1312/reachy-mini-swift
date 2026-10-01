@@ -43,13 +43,15 @@ struct AppLifecycleState: Equatable, Sendable {
 /// Waking the robot so a starting app can move it, and putting the robot back
 /// when that app lets go.
 ///
-/// **Neither half is the daemon's, and the reasons differ.** `apps/start-app` is
-/// not behind the `get_backend` dependency, so it answers 200 at a robot with no
-/// backend at all and starts the app over disabled motors at a sleeping one —
-/// where every motion command is accepted and silently swallowed. And while
-/// `AppManager.stop_current_app` ends with a return-to-zero of its own, it is not
-/// observed on hardware, and the crash path has none at all: `monitor_process`
-/// releases the robot-app lock in its `finally` and does nothing else.
+/// **The start is never the daemon's, and the release was not until 1.10.0.**
+/// `apps/start-app` is not behind the `get_backend` dependency, so it answers 200
+/// at a robot with no backend at all and starts the app over disabled motors at a
+/// sleeping one — where every motion command is accepted and silently swallowed.
+/// And while `AppManager.stop_current_app` ends with a return-to-zero of its own,
+/// it is not observed on hardware, and before 1.10.0 the crash path has none at
+/// all: `monitor_process` releases the robot-app lock in its `finally` and does
+/// nothing else. From 1.10.0 that release schedules the daemon's own sleep, which
+/// is what ``daemonParksAfterApps`` is about.
 extension RobotSession {
     /// Whether `restart-current-app` is between its two halves.
     ///
@@ -112,10 +114,89 @@ extension RobotSession {
             appLifecycle.releaseWakeOwnership()
             return
         }
+        // The daemon is about to put the robot to sleep whoever woke it, so the
+        // promise is paid either way — and anything sent from here would be the
+        // same two-motions bug, one level down.
+        if daemonParksAfterApps {
+            appLifecycle.releaseWakeOwnership()
+            await followDaemonParking(client: client)
+            return
+        }
         if appLifecycle.takeWakeOwnership() != nil {
             await sleep()
         } else {
             await returnToBase(client: client)
+        }
+    }
+
+    /// Whether the daemon puts the robot to sleep by itself once an app lets go.
+    ///
+    /// From 1.10.0 a freed app slot calls `request_idle_reset()`, which waits
+    /// `IDLE_RESET_DEBOUNCE_S` (1.5 s) and then runs `reset_to_sleep()`: the head
+    /// lifts to the zero pose, the sleep animation plays and the motors are cut.
+    /// Only an app starting, a remote session taking the slot or a data-channel
+    /// frame cancels it — no motion or motor route does — so a `goto` or a sleep
+    /// sent from here over the LAN does not replace that motion, it runs alongside
+    /// it.
+    ///
+    /// Three conditions, each imposed by the daemon's own code:
+    /// - **1.10.0 or newer, known rather than guessed.** A version this client
+    ///   cannot read keeps the parking it always had, like every gate built on
+    ///   `DaemonCompatibilityPolicy`.
+    /// - **A media server.** The reset runs on the loop `setup_media_server`
+    ///   builds, and `request_idle_reset()` returns at once without one — so a
+    ///   `--no-media` daemon leaves the robot wherever the app did.
+    /// - **Not over the relay.** There every command is a data-channel frame, and
+    ///   `_handle_webrtc_message` cancels a pending or running reset before it does
+    ///   anything else, so the session's own parking pre-empts the daemon's cleanly
+    ///   instead of racing it. Watching the reset would cancel it as well: the
+    ///   relayed status is a `get_state` frame.
+    var daemonParksAfterApps: Bool {
+        !isRemote && lastStatus?.noMedia != true
+            && DaemonCompatibilityPolicy.isKnownAtLeast("1.10.0", reported: lastStatus?.version)
+    }
+
+    /// Shows the daemon's own parking as the transition it is, and sends nothing.
+    ///
+    /// Without it the screen goes on saying "Awake" for the seven-odd seconds the
+    /// daemon takes and up to a poll interval after — with Go to sleep, the
+    /// joystick and the moves all live, and every one of them a second motion the
+    /// reset will not yield to. `.goingToSleep` is what the robot is visibly doing,
+    /// and it holds those controls off and reaches the widget through the same
+    /// mirror as a sleep somebody asked for.
+    ///
+    /// Ends on the first reading that says asleep, on an app holding the robot
+    /// again — starting one cancels the reset daemon-side — or at
+    /// `Configuration.idleResetTimeout`. A robot still awake by then is one the
+    /// daemon chose to leave alone, and it is left alone here too: parking it
+    /// late would put the head down under whoever cancelled the reset.
+    private func followDaemonParking(client: any RobotAPIClient) async {
+        let attemptID = connectionAttemptID
+        // Read afresh rather than off `lastStatus`, which can be a poll interval
+        // old: an app that put the robot to sleep itself leaves the daemon nothing
+        // to do (`_already_idle`), and announcing a transition over that would be
+        // the stale state this exists to remove, inverted.
+        guard let status = try? await client.daemonStatus(), isAttemptLive(attemptID) else { return }
+        lastStatus = status
+        guard status.isAwake, powerTransition == nil else { return }
+        powerTransition = .goingToSleep
+        defer {
+            // A disconnect has already cleared it, and a new attempt may own it now.
+            if connectionAttemptID == attemptID {
+                powerTransition = nil
+            }
+        }
+        let deadline = ContinuousClock.now + configuration.idleResetTimeout
+        while ContinuousClock.now < deadline {
+            try? await Task.sleep(for: configuration.appStopPollInterval)
+            guard isAttemptLive(attemptID), runningApp?.isBusy != true else { return }
+            // A reading that never arrived is not evidence either way.
+            guard let status = try? await client.daemonStatus() else { continue }
+            guard isAttemptLive(attemptID) else { return }
+            lastStatus = status
+            if !status.isAwake {
+                return
+            }
         }
     }
 

@@ -34,6 +34,11 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
     /// How long `gotoNeutral` takes to answer. The parking must not be awaited by
     /// whoever asked for the stop, and only a slow one can prove that.
     private let neutralDelay: Duration
+    /// Reported in the status, which is where the session's version gates read it.
+    /// Absent by default, which every gate treats as a version it cannot read.
+    private let daemonVersion: String?
+    private let noMedia: Bool?
+    private var statusReads = 0
 
     init(
         running: RobotAppStatus? = nil,
@@ -41,7 +46,9 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
         motorMode: Components.Schemas.MotorControlMode = .enabled,
         stoppingReads: Int = 0,
         startFailure: (any Error)? = nil,
-        neutralDelay: Duration = .zero
+        neutralDelay: Duration = .zero,
+        daemonVersion: String? = nil,
+        noMedia: Bool? = nil
     ) {
         runningStatus = running
         self.state = state
@@ -49,6 +56,8 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
         self.stoppingReads = stoppingReads
         self.startFailure = startFailure
         self.neutralDelay = neutralDelay
+        self.daemonVersion = daemonVersion
+        self.noMedia = noMedia
     }
 
     var recordedSteps: [Step] {
@@ -64,17 +73,27 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
         lock.withLock { runningStatus = status }
     }
 
+    /// The robot asleep with nobody here asking — an app that parked it itself, or
+    /// the daemon's own idle reset reaching its last step.
     func park() {
         lock.withLock { motorMode = .disabled }
     }
 
+    /// How many times anything has asked for the daemon's status.
+    var statusReadCount: Int {
+        lock.withLock { statusReads }
+    }
+
     private var status: Components.Schemas.DaemonStatus {
-        lock.withLock { .preview(state: state, motorMode: motorMode) }
+        lock.withLock {
+            statusReads += 1
+            return .preview(state: state, motorMode: motorMode, version: daemonVersion, noMedia: noMedia)
+        }
     }
 
     func handshake() async throws -> RobotConnection.Handshake {
         .init(
-            identity: RobotIdentity(hardwareID: "hw-1", name: "testbot", daemonVersion: "1.9.0"),
+            identity: RobotIdentity(hardwareID: "hw-1", name: "testbot", daemonVersion: daemonVersion ?? "1.9.0"),
             status: status
         )
     }
@@ -178,17 +197,26 @@ enum AppLifecycle {
 
     static func connected(
         _ client: AppLifecycleClient,
-        daemonStartTimeout: Duration = .seconds(90)
+        daemonStartTimeout: Duration = .seconds(90),
+        idleResetTimeout: Duration = .seconds(12),
+        appStopPollInterval: Duration = .milliseconds(10),
+        overRelay: Bool = false
     ) async -> RobotSession {
         var config = RobotSession.Configuration()
         config.pollInterval = .seconds(30)
         config.movePollInterval = .milliseconds(10)
         config.moveCompletionTimeout = .milliseconds(200)
         config.appStopTimeout = .milliseconds(300)
-        config.appStopPollInterval = .milliseconds(10)
+        config.appStopPollInterval = appStopPollInterval
         config.daemonStartTimeout = daemonStartTimeout
+        config.idleResetTimeout = idleResetTimeout
         let session = RobotSession(configuration: config) { _ in client }
-        await session.connect(to: RobotAddress(host: "10.0.0.9"))
+        if overRelay {
+            // A transport handed over already built is what a relayed robot is.
+            await session.connect(using: client)
+        } else {
+            await session.connect(to: RobotAddress(host: "10.0.0.9"))
+        }
         return session
     }
 

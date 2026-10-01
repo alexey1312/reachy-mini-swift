@@ -131,7 +131,7 @@ extension View {
     ///
     /// An `onChange` over an `Equatable` fact, the same idiom `widgetReload` is, and
     /// for the same reason: the write follows the fact rather than being remembered
-    /// at each of the six places that assign `powerTransition`.
+    /// at each of the seven places that assign `powerTransition`.
     func powerTransitionMirror(session: RobotSession, isPreview: Bool) -> some View {
         onChange(
             of: RobotPowerFacts(transition: session.powerTransition, error: session.robotError)
