@@ -5,8 +5,8 @@ import SwiftUI
 
 /// Entry point for the shared UI. It owns what outlives a screen — the session,
 /// the account and its robot list, the viewport, the running-app dock and the
-/// router — and chooses between exactly two things: connecting, or being
-/// connected.
+/// router — and chooses between connecting and being connected, with the first run
+/// standing in for the latter while a relayed robot reads as never woken.
 ///
 /// The tab bar lives below this rather than in the app target because every tab
 /// shares one `RobotSession` and one `ViewportModel`. The app target's own
@@ -47,6 +47,9 @@ public struct ReachyRootView<Developer: View>: View {
     /// What the gate's rail is showing. Owned here rather than by the gate because
     /// the fork below is what destroys the gate, and this is what defers that fork.
     @State private var progress: ConnectProgressModel
+    /// The robot's own data channel on the LAN, opened during a connect to read its
+    /// first wake-up flag and kept while the first run it found is on screen (#169).
+    @State private var firstRunLAN: FirstRunLANLink
 
     private let developer: Developer
 
@@ -78,6 +81,11 @@ public struct ReachyRootView<Developer: View>: View {
         _runningApp = State(initialValue: runningApp ?? RunningAppModel())
         _router = State(initialValue: ReachyRouter(tab: tab))
         _remoteLink = State(initialValue: remoteLink)
+        // Handed to this session alone: a later init's session is thrown away by `@State`,
+        // and so is the link built beside it, so the pair always matches.
+        let firstRunLAN = FirstRunLANLink()
+        _firstRunLAN = State(initialValue: firstRunLAN)
+        session.firstRunServices.openLANChannel = { address in await firstRunLAN.open(address) }
         let account = hfAccount ?? HFAccount(store: KeychainHFTokenStore())
         _hfAccount = State(initialValue: account)
         _remoteRobots = State(initialValue: remoteRobots ?? Self.yourReachies(for: account))
@@ -104,7 +112,11 @@ public struct ReachyRootView<Developer: View>: View {
 
     public var body: some View {
         Group {
-            if isConnectedEnough {
+            if isConnectedEnough, session.offersFirstRun {
+                // In place of the shell, not over it: the robot stays asleep until the
+                // run wakes it, and only the shell carries Wake up buttons (#169).
+                FirstRunFlow(session: session, remoteLink: session.isRemote ? remoteLink : firstRunLAN.link)
+            } else if isConnectedEnough {
                 ReachyTabShell(
                     session: session,
                     viewport: viewport,
@@ -174,6 +186,7 @@ public struct ReachyRootView<Developer: View>: View {
                 remoteLink: $remoteLink
             )
         )
+        .modifier(RootFirstRunLink(session: session, lan: firstRunLAN))
         .modifier(
             RootCallLifecycle(
                 session: session,

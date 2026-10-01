@@ -42,8 +42,8 @@ struct AudioSettingsSection: View {
                 if model.canTuneProfile {
                     profilePicker
                 }
-                // LAN only: the relay's data channel carries the levels and no test
-                // sound, and a button that can only fail is worse than none.
+                // Both transports play it — the relay through `play_sound` — and the
+                // simulator has no speaker; a button that can only fail is worse than none.
                 if session.canPlayTestSound {
                     Button(.reachy("Test sound")) {
                         Task { await model.playTestSound(session: session) }

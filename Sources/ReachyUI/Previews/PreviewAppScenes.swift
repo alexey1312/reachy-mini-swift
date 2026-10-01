@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyMedia
 @testable import ReachyUI
 import SwiftUI
 
@@ -188,6 +189,31 @@ extension PreviewScene {
             runningApp: RobotAppStatus(app: .previewConversation, state: .running)
         )
         return ConversationVoiceSheet(app: .previewConversation, session: session, model: model)
+            .preview()
+    }
+
+    /// A relayed robot that has never been woken, asleep by default — the session the
+    /// first run is offered over (#169).
+    static func firstRunSession(
+        awake: Bool = false,
+        powerTransition: RobotSession.PowerTransition? = nil,
+        error: String? = nil
+    ) -> RobotSession {
+        .preview(
+            status: .preview(motorMode: awake ? .enabled : .disabled),
+            address: nil,
+            link: .remote,
+            error: error,
+            powerTransition: powerTransition,
+            offersFirstRun: true,
+            client: PreviewRemoteRobotClient()
+        )
+    }
+
+    /// One step of the first run, parked. `remoteLink` carries the camera the camera
+    /// step draws; every other step ignores it.
+    static func firstRun(_ model: FirstRunModel, remoteLink: RemoteRobotLink? = nil) -> some View {
+        FirstRunFlow(session: model.session, remoteLink: remoteLink, model: model)
             .preview()
     }
 }

@@ -171,6 +171,10 @@ public final class RobotSession {
     /// Answered by the handshake, not by the version string: `/api/daemon/robot-name`
     /// postdates 1.9.0, and the name field is greyed out rather than left to fail on save.
     public internal(set) var supportsRename = true
+    /// Whether this connection offers the first run, and where finishing it writes (#169).
+    var firstRun = FirstRunState()
+    /// What outlives a connection: the LAN channel the UI opens, and this device's record.
+    public var firstRunServices = FirstRunServices()
     public internal(set) var moveActivity: MoveActivity?
 
     public var currentMove: MovePlayback? {
@@ -312,6 +316,7 @@ public final class RobotSession {
         lastStatus = nil
         compatibility = nil
         supportsRename = true
+        firstRun = FirstRunState()
         moveActivity = nil
         powerTransition = nil
         // Assigned rather than passed through `recordRunning`, which is what keeps

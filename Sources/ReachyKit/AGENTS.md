@@ -27,9 +27,11 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   The audio levels and the test sound were defaults throwing `URLError(.unsupportedURL)`,
   Settings drew its Audio section for the in-app simulator because that one reports its backend ready,
   and the section printed "NSURLErrorDomain error -1002" —
-  while over the relay the Test sound button, which has no data-channel command behind it, answered the same.
-  They are `AudioLevelClient` and `TestSoundClient` now, gated by `canAdjustAudio` and `canPlayTestSound`;
-  a capability the next client may lack belongs on a protocol of its own the same way.
+  while over the relay the Test sound button answered the same.
+  They are `AudioLevelClient` and `TestSoundClient` now, gated by `canAdjustAudio` and `canPlayTestSound`.
+  The relay was first read as having no test sound and is a `TestSoundClient` too since #169:
+  the LAN route only calls `play_sound("impatient1.wav")`, which the data channel carries by name.
+  A capability the next client may lack belongs on a protocol of its own the same way.
 - Bluetooth layers as `BLETransport` (CoreBluetooth behind a seam; `FakeBLETransport` is the only stand-in, since the
   robot's GATT service is Linux/BlueZ) → `BLECommandPump` (one command at a time, write→read→maybe-notify) →
   `BLELink` (`@MainActor @Observable`, the screens' state). One link per transport: the response characteristic
@@ -312,13 +314,30 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
     and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
     unreachable only while the decoding bug kept the relayed dock empty.
-- **`FirstWakeUpClient` is relay-only, and that is the daemon's doing, not a gap here.**
+- **`FirstWakeUpClient` is the data channel's alone, and that is the daemon's doing, not a gap here.**
   The robot keeps one `first_wake_up_completed` flag that Pollen's apps gate their first-run wizard on (#157),
-  and it is answered on the data channel alone:
-  no daemon up to `main` has a REST route, and `/ws/sdk` runs `set_first_wake_up` while answering nothing,
-  so over the LAN a write could not be confirmed and a read could not be made.
-  `RobotSession.wake()` writes it after a wake that worked, read first so a marked robot costs no write,
-  **after** `powerTransition` is released — the robot is already standing,
-  and a 1.10-reporting build without the command would otherwise hold "Waking up" for the whole reply budget.
-  Nothing is reported on failure: `robotError` is power and connection, and the owner never sees this flag.
+  and it is answered by `process_command` alone:
+  no daemon up to `main` has a REST route, and `/ws/sdk` runs `set_first_wake_up` while answering nothing.
+  **The LAN reaches it through a data channel of its own** —
+  the robot builds one for a peer on its `:8443` signaling exactly as for one from central —
+  which the UI opens through `FirstRunServices.openLANChannel`, because a peer connection is `ReachyMedia`.
+  Where that does not open in eight seconds, `FirstRunRecordStore` is the fallback the owner chose:
+  a robot this device meets for the first time (captured in `settle` before `KnownRobots.remember`, or one set up
+  over Bluetooth a moment ago) is offered the run, one left pending is offered it again, and one settled either way
+  is never opened a channel for again — so the WebRTC wait is a once-per-robot-per-device cost.
+  **The session reads it inside `settle`, before `phase = .connected`, for the reason `warmCatalogues` runs there**:
+  the root's fork picks the first run or the shell on `.connected`,
+  and a flag learned a moment later would draw the shell and then take it away (#169).
+  `offersFirstRun` is the result, gated on `predatesRelayCommands` —
+  a 1.9.x robot is not worth a peer connection, and on the LAN its record decides;
+  a failed read over the relay offers nothing, and no failure is reported.
+  `finishFirstRun()` is the only write, and it withdraws the offer **before** writing,
+  so a relay gone quiet cannot hold the owner on the last screen over bookkeeping they never see.
+  `wake()` no longer writes it — #157 had it do so, and the first run wakes the robot partway through.
   When a route lands, `RobotConnection` conforms and nothing above the protocol moves.
+- **`SleepPosition` is the one check that can see a wiring mistake before the motors are powered** (#169).
+  It compares the snapshot's `head_joint_positions` and `antennas` with the cranks that hold `SLEEP_HEAD_POSE` —
+  not the daemon's `SLEEP_HEAD_JOINT_POSITIONS`, a more forward-tilted pose some 47° away on two neck motors —
+  and `SleepPositionTests` re-derives those targets through `StewartIK`, so they are a cache of a solve.
+  The bands and the hysteresis are Pollen's mobile app's, the swap rule the desktop wizard's;
+  both apps' figures are hardware guesses until a unit settles on them.
