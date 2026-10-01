@@ -140,8 +140,22 @@ The kill switch is server-side, in the moderation the catalogue already applies.
 
 All three come before web apps leave the flag —
 and the Python store owes the same three,
-since it too lists Spaces written by strangers and offers none of them today.
+since it too lists Spaces written by strangers.
 `JSApp.reportURL` is the link.
+
+**The Python store has them now**, and the web apps inherit them rather than build them again.
+`HubSpacePage` builds the page and report links for both catalogues;
+`AppModerationStore` keeps the hidden authors and the version of the notice agreed to,
+per device rather than per robot.
+In the store, Discover is what is moderated —
+the notice stands in front of it on the first visit,
+and a hidden author's cards leave it —
+while Installed is left alone, because hiding there would strand an app on the robot
+with no page to remove it from.
+Report is on every page with a Space id.
+What web apps add is a **bump of `noticeVersion`**:
+their notice has to say that the page receives a Hugging Face sign-in,
+which the Python store's does not.
 
 ### 5. The page is loaded on its own in a `WKWebView`, not in an iframe of ours
 
@@ -214,7 +228,8 @@ Safari's Web Inspector attaches to the page in `DEBUG` builds.
   the three missing conditions, the hand-over, the leave, and a failed app.
 - Leaving the flag costs, beyond that:
   the Web apps section on the Apps tab,
-  the consent, report and hide (for both catalogues),
+  the consent, report and hide wired to its cards
+  (built for the Python store, decision 4, with a `noticeVersion` bump for the token),
   and the phase that keeps the shell up while the robot is lent.
 - Nothing about a shipped build changes in this step:
   the ReachyKit half is unreachable from it, and the ReachyUI half is not compiled into it.

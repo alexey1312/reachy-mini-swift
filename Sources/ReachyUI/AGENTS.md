@@ -767,6 +767,50 @@ Start.
   Update, Start on wake-up and Remove are HTTP; the page says so where they would be (`lanOnlyNote`),
   and Restart is gone from the page and the dock because the relay has no verb for it.
 
+## Report, hide and the notice (App Review 1.2)
+
+`AppModeration`, `AppModerationActions`, `CommunityAppsNotice`, `HiddenAuthorsScreen`,
+and `AppModerationStore` / `HubSpacePage` in ReachyKit.
+ADR 0006's decision 4 says the Python store owes guideline 1.2's three things as much as the web apps do,
+because Discover lists strangers' Spaces too;
+this is that half, and it ships.
+
+- **Discover is moderated and Installed is not.**
+  Hiding an author takes their cards out of Discover and nothing else:
+  Installed is what is on the robot, and hiding there would leave an app with no page left to stop or remove it from.
+  So `canHideAuthor(of:)` answers false for an installed row even when it names an author —
+  `installedWithAuthorNoHide` is there because the fixture's installed app has no card,
+  and the guard could be deleted with every other test still green (checked by mutating it).
+  Report is offered on every page with a Space id: it is the Hub's own form,
+  and an app worth reporting does not stop being one once installed.
+- **The notice is not part of `visibleApps`, and the sign-in gate is.**
+  Folding it in would make every store test agree to a notice first.
+  The screen draws no rows while `showsCommunityNotice` is true —
+  a row under an overlay is a stranger's app shown before the agreement the overlay asks for —
+  and suppresses the loading label, which would otherwise draw under the notice on a first visit.
+- **Hide asks nothing and leaves the page.**
+  The way back is the row Discover adds while it is hiding anything,
+  and the filter menu whenever anybody is hidden; both open `HiddenAuthorsScreen`.
+  An empty Discover whose every card is hidden says so (`AppStoreEmptyState`)
+  rather than blaming the robot's search.
+- **The notice is versioned, not a flag** (`AppModerationStore.noticeVersion`).
+  Bump it when it comes to say something materially new — web apps receiving a token is the change expected —
+  and every reader sees it again.
+- **Previews never read the reader's choices.**
+  `AppStoreModel.preview` takes `AppModeration.preview()`, accepted and hiding nobody,
+  so no reference taken before the notice existed came out as the notice,
+  and somebody who hid an author on the simulator the suite runs on cannot move a reference.
+  The notice, an author hidden, every card hidden and the list in both its states are captured;
+  the row's context menu is not, and cannot be.
+  Adopting it moved exactly what was predicted — the 21 previews of the app's page, 84 references,
+  for two rows and a footer under View on Hugging Face — and no store list and no root capture.
+  `App detail — waking up to start` carries `PowerTransitionRow`'s spinner,
+  so it was recorded in a full run: recorded in a run of four classes it failed the next full one
+  on a 20 × 20 px square, the spinner's phase and nothing else.
+- `AppStoreModel+Rows.swift` and `AppStoreEmptyState.swift` are moves, not features:
+  `AppStoreModel.swift` and `AppStoreScreen.swift` were at SwiftLint's file and type limits,
+  and `--strict` fails the build on either.
+
 ## An app's own settings
 
 `AppSettingsScreen` is **the only `WKWebView` in this app**, and the only screen that is not built out of the design

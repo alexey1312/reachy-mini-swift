@@ -204,6 +204,35 @@
         }
       }
     },
+    "A report goes to Hugging Face, which moderates every Space.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Meldung geht an Hugging Face, das jeden Space moderiert."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las denuncias llegan a Hugging Face, que modera todos los Spaces."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un signalement est transmis à Hugging Face, qui modère chaque Space."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жалоба уходит в Hugging Face, который модерирует все Spaces."
+          }
+        }
+      }
+    },
     "A robot drawn from its own description, with no hardware and no physics. The joystick moves it, and the 3D model follows exactly as it would over the network.": {
       "extractionState": "manual",
       "localizations": {
@@ -548,6 +577,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дополнительно"
+          }
+        }
+      }
+    },
+    "Agree and continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zustimmen und fortfahren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceptar y continuar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accepter et continuer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Принять и продолжить"
           }
         }
       }
@@ -954,6 +1012,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложения устанавливаются на робота, поэтому нужен подключённый робот."
+          }
+        }
+      }
+    },
+    "Apps by authors you hid are left out of Discover.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps von Autoren, die du ausgeblendet hast, erscheinen nicht in Entdecken."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las apps de los autores que ocultaste no aparecen en Descubrir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les apps des auteurs que vous avez masqués n'apparaissent pas dans Découvrir."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложения скрытых вами авторов не показываются в Обзоре."
+          }
+        }
+      }
+    },
+    "Apps from the community": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps aus der Community"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps de la comunidad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps de la communauté"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложения сообщества"
+          }
+        }
+      }
+    },
+    "Apps in Discover are published on Hugging Face by their authors, not by this app, and run on your robot with its camera, microphone and motors. Objectionable apps are not welcome: report one from its page and Hugging Face reviews it, or hide its author's apps on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Apps in Entdecken veröffentlichen ihre Autoren auf Hugging Face, nicht diese App, und sie laufen auf deinem Roboter mit seiner Kamera, seinem Mikrofon und seinen Motoren. Anstößige Apps sind hier nicht willkommen: Melde eine auf ihrer Seite, dann prüft Hugging Face sie, oder blende die Apps ihres Autors auf diesem Gerät aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las apps de Descubrir las publican sus autores en Hugging Face, no esta app, y se ejecutan en tu robot con su cámara, su micrófono y sus motores. Las apps ofensivas no son bienvenidas: denuncia una desde su página y Hugging Face la revisará, u oculta las apps de su autor en este dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les apps de Découvrir sont publiées sur Hugging Face par leurs auteurs, pas par cette app, et s'exécutent sur votre robot avec sa caméra, son micro et ses moteurs. Les apps inappropriées n'ont pas leur place ici : signalez-en une depuis sa page et Hugging Face l'examinera, ou masquez les apps de son auteur sur cet appareil."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложения в Обзоре публикуют на Hugging Face их авторы, а не это приложение, и они работают на вашем роботе с его камерой, микрофоном и моторами. Недопустимым приложениям здесь не место: пожалуйтесь на приложение с его страницы, и Hugging Face его проверит, или скройте приложения его автора на этом устройстве."
           }
         }
       }
@@ -4264,6 +4409,35 @@
         }
       }
     },
+    "Every app here is by an author you hid.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jede App hier stammt von einem Autor, den du ausgeblendet hast."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las apps de aquí son de autores que ocultaste."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les apps ici viennent d'auteurs que vous avez masqués."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все приложения здесь — от авторов, которых вы скрыли."
+          }
+        }
+      }
+    },
     "Every app is deleted, with the Python environment they share. Each app's own settings and credentials go too, and reinstalling does not bring those back.": {
       "extractionState": "manual",
       "localizations": {
@@ -5627,6 +5801,64 @@
         }
       }
     },
+    "Hidden authors": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendete Autoren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autores ocultos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auteurs masqués"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрытые авторы"
+          }
+        }
+      }
+    },
+    "Hide an author from one of their apps in Discover.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blende einen Autor über eine seiner Apps in Entdecken aus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oculta a un autor desde una de sus apps en Descubrir."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masquez un auteur depuis l'une de ses apps dans Découvrir."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть автора можно со страницы любого его приложения в Обзоре."
+          }
+        }
+      }
+    },
     "Hide at the leading edge": {
       "extractionState": "manual",
       "localizations": {
@@ -5681,6 +5913,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скрыть у заднего края"
+          }
+        }
+      }
+    },
+    "Hide this author's apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps dieses Autors ausblenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar las apps de este autor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masquer les apps de cet auteur"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть приложения автора"
           }
         }
       }
@@ -5855,6 +6116,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hugging Face"
+          }
+        }
+      }
+    },
+    "Hugging Face content policy": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaltsrichtlinie von Hugging Face"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Política de contenido de Hugging Face"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politique de contenu de Hugging Face"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правила контента Hugging Face"
           }
         }
       }
@@ -8639,6 +8929,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Приложений пока нет. Откройте Reachy Mini, чтобы загрузить приложения робота."
+          }
+        }
+      }
+    },
+    "No hidden authors": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine ausgeblendeten Autoren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay autores ocultos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun auteur masqué"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет скрытых авторов"
           }
         }
       }
@@ -11568,6 +11887,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Заменить…"
+          }
+        }
+      }
+    },
+    "Report this app": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App melden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denunciar esta app"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signaler cette app"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пожаловаться на приложение"
           }
         }
       }
@@ -17136,6 +17484,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось прочитать описание робота для симулятора."
+          }
+        }
+      }
+    },
+    "Their apps are left out of Discover on this device. Apps already on the robot stay installed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Apps erscheinen auf diesem Gerät nicht in Entdecken. Apps, die schon auf dem Roboter sind, bleiben installiert."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sus apps no aparecen en Descubrir en este dispositivo. Las apps que ya están en el robot siguen instaladas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leurs apps n'apparaissent pas dans Découvrir sur cet appareil. Les apps déjà sur le robot restent installées."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Их приложения не показываются в Обзоре на этом устройстве. Уже установленные на роботе приложения остаются на месте."
           }
         }
       }

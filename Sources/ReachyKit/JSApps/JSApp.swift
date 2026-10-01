@@ -64,21 +64,13 @@ public struct JSApp: Sendable, Equatable, Identifiable {
     /// The Space's own page on the Hub — where its README, its author and its
     /// report link live.
     public var cardURL: URL? {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "huggingface.co"
-        components.path = "/spaces/\(id)"
-        return components.url
+        HubSpacePage.url(for: id)
     }
 
     /// The Hub's own report form for this Space, the one upstream opens from its
     /// "Report this app" item (App Review 1.2; ADR 0006).
     public var reportURL: URL? {
-        guard let cardURL, var components = URLComponents(url: cardURL, resolvingAgainstBaseURL: false) else {
-            return nil
-        }
-        components.queryItems = [URLQueryItem(name: "report", value: "true")]
-        return components.url
+        HubSpacePage.reportURL(for: id)
     }
 
     /// Scopes the app asks for that the narrow token does not carry.

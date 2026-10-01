@@ -31,6 +31,14 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The list a Hide is undone from, as the store's sheet presents it.
+    static func hiddenAuthors(_ moderation: AppModeration) -> some View {
+        NavigationHost {
+            HiddenAuthorsScreen(moderation: moderation) {}
+        }
+        .preview()
+    }
+
     /// The one page about an app, previewed on its own: it carries the whole
     /// install flow — a snapshot of it is the only view of a job in flight — and,
     /// when the session says this app holds the robot, the process controls and the
