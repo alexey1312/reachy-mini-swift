@@ -70,10 +70,17 @@ struct FirstRunStateReaderTests {
 
     /// Answering the same frame twice would let a socket that went quiet look alive
     /// for ever — the checks would go on concluding from a robot nobody is reading.
+    ///
+    /// The production timeout, not a short one, and the cost is two seconds of a
+    /// silent second ask. The same budget also bounds the *first* ask, which has to
+    /// succeed: it runs from the moment `next()` opens the socket, through this
+    /// suite's `waitUntil` poll and a hop onto the main actor, to the frame landing.
+    /// At 200 ms that failed CI on a loaded runner with `.notConnected` (#183's
+    /// run) — rule 7's timeout cut short by the very load it has to absorb.
     @Test("a second ask waits for a newer frame, and a silent socket fails it")
     func waitsForANewerFrame() async throws {
         let stream = HandFedStream()
-        let reader = FirstRunStateReader(stream: stream, frameTimeout: .milliseconds(200))
+        let reader = FirstRunStateReader(stream: stream)
 
         let first = Task { try await reader.next() }
         await waitUntil("the socket is open") { stream.askedFor != nil }
