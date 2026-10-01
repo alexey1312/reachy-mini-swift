@@ -87,6 +87,40 @@ import SwiftUI
     PreviewScene.appStore(.preview(), model: .preview(section: .installed, scope: .privateSpaces))
 }
 
+// MARK: - Report, hide and the notice (App Review 1.2)
+
+// The first visit to Discover. No row renders under the notice — a row behind an
+// overlay is a stranger's app shown before the agreement the overlay asks for.
+#Preview("Apps — community notice") {
+    PreviewScene.appStore(.preview(), model: .preview(moderation: AppModeration.preview(noticeAccepted: false)))
+}
+
+// Chess Coach and Lab Notebook are both by "someone", so hiding that author leaves
+// Pollen's two — and the row under them that says why, and leads back.
+#Preview("Apps — an author hidden") {
+    PreviewScene.appStore(.preview(), model: .preview(moderation: AppModeration.preview(hiddenAuthors: ["someone"])))
+}
+
+// Every card is by the hidden author, so the empty Discover is the reader's own
+// doing and has to say so rather than blame the robot.
+#Preview("Apps — every app hidden") {
+    PreviewScene.appStore(
+        .preview(),
+        model: .preview(
+            catalogue: Array(RobotApp.previewCatalogue.suffix(2)),
+            moderation: AppModeration.preview(hiddenAuthors: ["someone"])
+        )
+    )
+}
+
+#Preview("Hidden authors") {
+    PreviewScene.hiddenAuthors(AppModeration.preview(hiddenAuthors: ["someone", "spam-spaces"]))
+}
+
+#Preview("Hidden authors — none") {
+    PreviewScene.hiddenAuthors(AppModeration.preview())
+}
+
 // MARK: - Detail sheet
 
 #Preview("App detail — not installed") {

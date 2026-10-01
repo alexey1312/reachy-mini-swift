@@ -156,11 +156,16 @@ struct AppDetailSheet: View {
                 }
             }
 
-            if let spaceID = app.spaceID, let url = URL(string: "https://huggingface.co/spaces/\(spaceID)") {
+            // Report and hide sit with the Space's page: all three are about whoever wrote it.
+            if let spaceURL = app.spaceURL {
                 Section {
-                    Link(destination: url) {
+                    Link(destination: spaceURL) {
                         Label(.reachy("View on Hugging Face"), systemImage: "arrow.up.forward.square")
                     }
+                    AppModerationActions(app: app, moderation: model.moderation, afterHiding: dismiss)
+                        .disabled(install.isBusy)
+                } footer: {
+                    Text(.reachy("A report goes to Hugging Face, which moderates every Space."))
                 }
             }
         }

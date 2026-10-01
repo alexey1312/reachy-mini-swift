@@ -60,9 +60,14 @@ final class AppStoreModel {
     /// `visibleApps` would leave the list stale until something else redrew it.
     private var pinnedIDs: [String] = []
 
-    init(session: RobotSession, pins: PinnedAppStore = PinnedAppStore()) {
+    /// Report, hide and the notice — see `AppModeration` and `AppStoreModel+Moderation.swift`.
+    let moderation: AppModeration
+
+    /// `moderation` is `nil` rather than a defaulted value, for `AppStoreScreen`'s reason.
+    init(session: RobotSession, pins: PinnedAppStore = PinnedAppStore(), moderation: AppModeration? = nil) {
         self.session = session
         self.pins = pins
+        self.moderation = moderation ?? AppModeration()
         if let robotID = session.connectedRobotID {
             pinnedIDs = pins.pinned(for: robotID)
         }
@@ -99,10 +104,11 @@ final class AppStoreModel {
     /// the card the daemon saved for it, so "official" and "private" mean the same
     /// thing on either side — and an installed app whose metadata the daemon lost
     /// answers `.community`, which is the honest reading of an unattributed app.
+    /// A hidden author leaves Discover alone (`AppModeration`).
     var visibleApps: [RobotApp] {
         let apps = switch shownSection {
         case .installed: installed
-        case .discover: discoverNeedsHFSignIn ? [] : catalogue
+        case .discover: discoverNeedsHFSignIn ? [] : catalogue.filter { !moderation.isHidden($0) }
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let matched = apps.filter { scope.admits($0) && (query.isEmpty || $0.matchesSearch(query)) }
@@ -150,45 +156,6 @@ final class AppStoreModel {
     /// fewer rows than they expect is never looking at a pin.
     var isFiltering: Bool {
         scope != .all || sort != .recommended
-    }
-
-    /// The installed row a catalogue card stands for. Everything the daemon does to
-    /// an app — start, stop, remove, update, auto-start — is keyed by *that* name,
-    /// which the Space author chose independently of the slug.
-    func installedTwin(of app: RobotApp) -> RobotApp? {
-        if app.isInstalled {
-            return app
-        }
-        return installed.first { app.matches(installed: $0) } ?? relayTwin(of: app)
-    }
-
-    func isInstalled(_ app: RobotApp) -> Bool {
-        installedTwin(of: app) != nil
-    }
-
-    func hasUpdate(_ app: RobotApp) -> Bool {
-        guard let updates, let twin = installedTwin(of: app) else { return false }
-        return updates.hasUpdate(for: twin) || updates.hasUpdate(for: app)
-    }
-
-    func isRunning(_ app: RobotApp) -> Bool {
-        guard let runningApp, let twin = installedTwin(of: app) else { return false }
-        return runningApp.app.name == twin.name
-    }
-
-    func isStartupApp(_ app: RobotApp) -> Bool {
-        guard let startupApp, let twin = installedTwin(of: app) else { return false }
-        return startupApp == twin.name
-    }
-
-    /// Someone is driving this robot from outside the LAN. Worth distinguishing
-    /// from a local app: the user cannot simply stop it from here.
-    var isHeldRemotely: Bool {
-        lock?.state == .remoteSession
-    }
-
-    var lockHolder: String? {
-        lock?.holderName
     }
 
     /// Fetches the catalogue, and over warmed rows does it silently.
@@ -363,9 +330,12 @@ final class AppStoreModel {
             error: String? = nil,
             pinned: [String] = [],
             needsHFSignIn: Bool = false,
-            installedOverRelay: [String] = []
+            installedOverRelay: [String] = [],
+            moderation: AppModeration? = nil
         ) -> AppStoreModel {
-            let model = AppStoreModel(session: session ?? .preview())
+            // The notice is accepted unless asked otherwise, so that no reference of
+            // Discover taken before it existed comes out as the notice instead.
+            let model = AppStoreModel(session: session ?? .preview(), moderation: moderation ?? .preview())
             model.installedOverRelay = Set(installedOverRelay)
             model.section = section
             // Assigned, not toggled through the store: a preview renders the state it

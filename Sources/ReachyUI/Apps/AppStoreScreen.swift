@@ -21,6 +21,7 @@ struct AppStoreScreen: View {
     @State private var model: AppStoreModel
     @State private var install: AppInstallModel
     @State private var selected: RobotApp?
+    @State private var showsHiddenAuthors = false
     @Environment(\.reachyPreviewMode) private var previewMode
     /// This app's own session, which is where a replacement token for the robot
     /// comes from. Optional because a preview host has none.
@@ -85,7 +86,9 @@ struct AppStoreScreen: View {
             }
 
             Section {
-                ForEach(model.visibleApps) { app in
+                // Nothing under the notice: a row behind an overlay is a stranger's
+                // app shown before the agreement the overlay asks for.
+                ForEach(model.showsCommunityNotice ? [] : model.visibleApps) { app in
                     Button {
                         selected = app
                     } label: {
@@ -114,19 +117,33 @@ struct AppStoreScreen: View {
                             }
                         }
                         pinButton(for: app)
+                        AppModerationActions(app: app, moderation: model.moderation)
                     }
+                }
+            }
+
+            if model.hidesSomeOfDiscover {
+                Section {
+                    hiddenAuthorsButton
+                } footer: {
+                    Text(.reachy("Apps by authors you hid are left out of Discover."))
                 }
             }
         }
         .overlay {
-            if model.section == .discover, model.discoverNeedsHFSignIn {
+            if model.showsCommunityNotice {
+                CommunityAppsNotice { model.moderation.acceptNotice() }
+            } else if model.section == .discover, model.discoverNeedsHFSignIn {
                 signInGate
             } else if model.visibleApps.isEmpty, !model.isContentLoading {
-                emptyState
+                AppStoreEmptyState(model: model)
             }
         }
         .readablePage()
-        .contentLoading(isPresented: model.isContentLoading, title: .reachy("Browsing the robot app aisle…"))
+        .contentLoading(
+            isPresented: model.isContentLoading && !model.showsCommunityNotice,
+            title: .reachy("Browsing the robot app aisle…")
+        )
         .navigationTitle(.reachy("Apps"))
         .searchable(text: $model.searchText, prompt: String(localized: .reachy("Search apps")))
         .refreshable { await reload(refresh: true) }
@@ -158,6 +175,12 @@ struct AppStoreScreen: View {
                 ) { selected = nil }
             }
             .presentationDetents([.medium, .large])
+            .reachySheet()
+        }
+        .sheet(isPresented: $showsHiddenAuthors) {
+            NavigationStack {
+                HiddenAuthorsScreen(moderation: model.moderation) { showsHiddenAuthors = false }
+            }
             .reachySheet()
         }
         // A page somebody asked for from outside this screen — `.system.open`, or a
@@ -251,6 +274,16 @@ struct AppStoreScreen: View {
         }
     }
 
+    /// The way to the list of hidden authors — from Discover's own row and from the
+    /// filter menu, one definition so the two cannot drift.
+    private var hiddenAuthorsButton: some View {
+        Button {
+            showsHiddenAuthors = true
+        } label: {
+            Label(.reachy("Hidden authors"), systemImage: "eye.slash")
+        }
+    }
+
     /// One menu holding two inline `Picker`s, which is what buys the checkmarks,
     /// the VoiceOver wording and the platform's own menu chrome for free. A pair of
     /// hand-rolled rows would have to earn each of those back.
@@ -270,6 +303,12 @@ struct AppStoreScreen: View {
                 }
             }
             .pickerStyle(.inline)
+
+            // Whenever anybody is hidden, not only while Discover is hiding one of
+            // their apps: the way back must not depend on the catalogue's mood.
+            if !model.moderation.hiddenAuthors.isEmpty {
+                Section { hiddenAuthorsButton }
+            }
         } label: {
             Label(
                 .reachy("Filter and sort"),
@@ -279,55 +318,6 @@ struct AppStoreScreen: View {
             )
         }
         .help(Text(.reachy("Filter and sort")))
-    }
-
-    @ViewBuilder
-    private var emptyState: some View {
-        if !model.searchText.isEmpty {
-            ContentUnavailableView.search(text: model.searchText)
-        } else if model.lastError != nil {
-            // Over the relay the catalogue is read by this device, so it is this
-            // device's connection that failed — the robot was never asked.
-            ContentUnavailableView(
-                .reachy("Store unavailable"),
-                systemImage: "wifi.exclamationmark",
-                description: Text(
-                    model.isOverRelay
-                        ? .reachy("This device could not reach Hugging Face. Refresh once it is back online.")
-                        : .reachy("The robot could not reach Hugging Face. Refresh once it is back online.")
-                )
-            )
-            // Below the error on purpose: a filter over a catalogue that never arrived
-            // is not why the list is empty, and saying so would send the reader to
-            // clear a filter that was never the problem.
-        } else if model.scope != .all {
-            ContentUnavailableView {
-                Label(.reachy("Nothing matches this filter"), systemImage: "line.3.horizontal.decrease.circle")
-            } description: {
-                Text(.reachy("No app in this section is filed under that heading."))
-            } actions: {
-                Button(.reachy("Show all apps")) { model.scope = .all }
-            }
-        } else {
-            switch model.shownSection {
-            case .installed:
-                ContentUnavailableView(
-                    .reachy("No apps installed"),
-                    systemImage: "square.stack.3d.up.slash",
-                    description: Text(.reachy("Browse Discover to install one from Hugging Face."))
-                )
-            case .discover:
-                ContentUnavailableView(
-                    .reachy("Nothing to show"),
-                    systemImage: "square.stack.3d.up.slash",
-                    description: Text(
-                        model.isOverRelay
-                            ? .reachy("Hugging Face lists no apps the robot can install.")
-                            : .reachy("The robot found no apps on Hugging Face.")
-                    )
-                )
-            }
-        }
     }
 
     /// Why this store has no Installed section and no Remove button: over the
