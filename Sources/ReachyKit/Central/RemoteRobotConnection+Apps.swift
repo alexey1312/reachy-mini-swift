@@ -35,19 +35,24 @@ extension RemoteRobotConnection: RobotAppsClient {
     /// `{"installed": true}`, or a refusal with `install_failed` that covers "not in
     /// the catalog" and a failed `pip` alike.
     ///
-    /// **A silence is not a failure here**, so all three ways of hearing nothing end
-    /// as `.timedOut`. The install carries on on the robot whether anybody waits or
-    /// not, and `.relaySilent` in particular would be the wrong diagnosis: the probe
-    /// behind it finds the plain protocol answering — it is, the robot is merely
-    /// still in `pip` — and would tell the reader to restart the robot, which is
-    /// the one thing that kills the install. Asking again later costs nothing,
-    /// because an installed app turns the next call into a no-op.
+    /// **A silence is not a failure here, unless the relay itself is dead.** The
+    /// install carries on on the robot whether anybody waits or not, and asking
+    /// again costs nothing once it has finished, so a robot still in `pip` ends as
+    /// `.timedOut`. But `.relaySilent` alone cannot tell that robot from one whose
+    /// JSON-RPC relay died after a backend restart (pollen-robotics/reachy_mini#1421):
+    /// both leave the plain protocol answering. One `apps.status` on the reply budget
+    /// does — the relay runs every frame in a task of its own, so a live one answers
+    /// at once while `pip` runs. It is asked twice: **before** the install, so a dead
+    /// relay costs ten seconds rather than a sheet held for three minutes, and after a
+    /// silence, for a relay that died mid-install. Only a dead relay is thrown, with
+    /// the advice to restart that `.relaySilent` carries.
     ///
     /// Three minutes is three of the LAN install's budgets
     /// (`AppJobMonitor.Configuration.install`). A longer wait buys a few more
     /// confirmed installs at the price of a sheet held open, and the price of a
     /// shorter one is only a second tap.
     public func installFromCatalogue(named name: String) async throws -> AppJobMonitor.Outcome {
+        try await control.call("apps.status")
         do {
             try await control.call("apps.install", params: ["name": .string(name)], timeout: installTimeout)
             return .succeeded
@@ -55,7 +60,17 @@ extension RemoteRobotConnection: RobotAppsClient {
             switch failure {
             case let .rpc(_, message, _), let .robot(message):
                 return .failed(message)
-            case .timedOut, .closed, .relaySilent:
+            case .closed:
+                return .timedOut
+            case .timedOut, .relaySilent:
+                do {
+                    try await control.call("apps.status")
+                } catch RemoteControlChannel.Failure.relaySilent {
+                    throw RemoteControlChannel.Failure.relaySilent
+                } catch {
+                    // Nothing answers at all: the robot or the link is gone, which
+                    // says nothing about the install either way.
+                }
                 return .timedOut
             }
         }

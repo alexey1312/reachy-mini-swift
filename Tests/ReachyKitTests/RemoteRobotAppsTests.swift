@@ -65,16 +65,58 @@ struct RemoteRobotAppsTests {
         #expect(started.state == .starting)
     }
 
+    /// Answers every `apps.status` by its id, the way a live relay does while
+    /// `apps.install` runs in a task of its own — `limit` times, after which it goes
+    /// as quiet as a relay that died.
+    private func answeringStatus(on fake: FakeDataChannel, limit: Int = .max) -> Task<Void, Never> {
+        Task {
+            var seen = 0
+            var answered = 0
+            while !Task.isCancelled {
+                let sent = fake.sent
+                while seen < sent.count {
+                    let frame = Self.rpc(sent[seen])
+                    seen += 1
+                    guard answered < limit, let frame, frame.method == "apps.status" else { continue }
+                    answered += 1
+                    let idle = #""result":{"state":"idle","info":null,"error":null}"#
+                    let reply = #"{"jsonrpc":"2.0","id":\#(frame.id),\#(idle)}"#
+                    fake.emit(reply)
+                }
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+        }
+    }
+
+    /// One JSON-RPC frame this side sent, read back for its routing.
+    private struct SentCall {
+        let method: String
+        let id: Int
+        let name: String?
+    }
+
+    private static func rpc(_ frame: String) -> SentCall? {
+        guard let object = try? JSONSerialization.jsonObject(with: Data(frame.utf8)) as? [String: Any],
+              let method = object["method"] as? String, let id = object["id"] as? Int
+        else { return nil }
+        return SentCall(method: method, id: id, name: (object["params"] as? [String: Any])?["name"] as? String)
+    }
+
+    private func installFrame(on fake: FakeDataChannel) async throws -> SentCall {
+        await waitUntil("the install is on the wire") { fake.sent.contains { Self.rpc($0)?.method == "apps.install" } }
+        return try #require(fake.sent.compactMap(Self.rpc).first { $0.method == "apps.install" })
+    }
+
     @Test("an install names the app the way the daemon looks it up")
     func sendsTheInstall() async throws {
         let (connection, fake) = connection()
+        let relay = answeringStatus(on: fake)
+        defer { relay.cancel() }
 
         async let outcome = connection.installFromCatalogue(named: "reachy_mini_radio")
-        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
-        let sent = try JSONSerialization.jsonObject(with: Data(#require(fake.sent.first).utf8)) as? [String: Any]
-        #expect(sent?["method"] as? String == "apps.install")
-        #expect((sent?["params"] as? [String: Any])?["name"] as? String == "reachy_mini_radio")
-        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"installed":true}}"#)
+        let install = try await installFrame(on: fake)
+        #expect(install.name == "reachy_mini_radio")
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(install.id),"result":{"installed":true}}"#)
 
         #expect(try await outcome == .succeeded)
     }
@@ -84,11 +126,13 @@ struct RemoteRobotAppsTests {
     @Test("a refused install carries the robot's own sentence")
     func reportsARefusal() async throws {
         let (connection, fake) = connection()
+        let relay = answeringStatus(on: fake)
+        defer { relay.cancel() }
 
         async let outcome = connection.installFromCatalogue(named: "nowhere")
-        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        let install = try await installFrame(on: fake)
         fake.emit(
-            #"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"#
+            #"{"jsonrpc":"2.0","id":\#(install.id),"error":{"code":-32000,"#
                 + #""message":"could not install app 'nowhere' (not in the catalog)","#
                 + #""data":{"reason":"install_failed"}}}"#
         )
@@ -98,15 +142,49 @@ struct RemoteRobotAppsTests {
 
     /// A robot still in `pip` answers the plain protocol perfectly well, which is
     /// exactly what the silent-relay probe looks for. Reporting that would tell the
-    /// reader to restart the robot — the one thing that ends the install.
+    /// reader to restart the robot — the one thing that ends the install. The relay
+    /// still answering `apps.status` is what says it is only busy.
     @Test("an install the robot is still working on is unknown, not a broken relay")
     func silenceIsUnknown() async throws {
-        let (connection, _) = connection(
+        let (connection, fake) = connection(
             ["get_version": #"{"version": "1.11.0"}"#],
             installTimeout: .milliseconds(300)
         )
+        let relay = answeringStatus(on: fake)
+        defer { relay.cancel() }
 
         #expect(try await connection.installFromCatalogue(named: "reachy_mini_radio") == .timedOut)
+    }
+
+    /// pollen-robotics/reachy_mini#1421: after a backend restart every JSON-RPC call
+    /// times out while plain commands answer. Found before the install, it costs the
+    /// reply budget and sends nothing — not a sheet held for the install's.
+    @Test("a dead relay is reported before anything is installed")
+    func reportsADeadRelay() async throws {
+        let (connection, fake) = connection(
+            ["get_version": #"{"version": "1.11.0"}"#],
+            timeout: .milliseconds(300)
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.relaySilent) {
+            _ = try await connection.installFromCatalogue(named: "reachy_mini_radio")
+        }
+        #expect(!fake.sent.contains { Self.rpc($0)?.method == "apps.install" })
+    }
+
+    @Test("a relay that dies during the install is reported, not left unconfirmed")
+    func reportsARelayThatDiedMidInstall() async throws {
+        let (connection, fake) = connection(
+            ["get_version": #"{"version": "1.11.0"}"#],
+            timeout: .milliseconds(300),
+            installTimeout: .milliseconds(300)
+        )
+        let relay = answeringStatus(on: fake, limit: 1)
+        defer { relay.cancel() }
+
+        await #expect(throws: RemoteControlChannel.Failure.relaySilent) {
+            _ = try await connection.installFromCatalogue(named: "reachy_mini_radio")
+        }
     }
 
     /// The reply budget would end a first install ten seconds in. Measured rather
@@ -115,13 +193,15 @@ struct RemoteRobotAppsTests {
     @Test("an install waits on its own budget, not the reply budget")
     func waitsOnTheInstallBudget() async throws {
         let (connection, fake) = connection(timeout: .milliseconds(100), installTimeout: .seconds(30))
+        let relay = answeringStatus(on: fake)
+        defer { relay.cancel() }
 
         let clock = ContinuousClock()
         let start = clock.now
         async let outcome = connection.installFromCatalogue(named: "reachy_mini_radio")
-        await waitUntil("the call is on the wire") { !fake.sent.isEmpty }
+        let install = try await installFrame(on: fake)
         try await Task.sleep(for: .milliseconds(500))
-        fake.emit(#"{"jsonrpc":"2.0","id":1,"result":{"installed":true}}"#)
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(install.id),"result":{"installed":true}}"#)
 
         #expect(try await outcome == .succeeded)
         #expect(clock.now - start >= .milliseconds(500))

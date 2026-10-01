@@ -26,7 +26,11 @@ extension AppStoreModel {
     /// two things stand in for the list.
     ///
     /// - **The app the robot says is running.** Its name is the daemon's own entry
-    ///   point, so it is the name to start it by again.
+    ///   point, so it is the name to start it by again. The relay's status carries
+    ///   no Space id, so the match is by name — exact when any card has that exact
+    ///   name, and only otherwise by the daemon's normalised spelling, so that
+    ///   `face_tracking` running never lights up a `face-tracking` card beside a
+    ///   `face_tracking` one.
     /// - **An install this visit made.** The catalogue card itself answers, which
     ///   makes the slug the name Start sends. That is the daemon's own assumption —
     ///   `ensure_startup_app_installed` checks the installed list by the very name
@@ -38,8 +42,11 @@ extension AppStoreModel {
     /// Installed off the relay.
     func relayTwin(of app: RobotApp) -> RobotApp? {
         guard isOverRelay else { return nil }
-        if let running = runningApp?.app, running.name == app.name || app.matches(installed: running) {
-            return running
+        if let running = runningApp?.app {
+            let named = catalogue.contains { $0.name == running.name }
+            if named ? app.name == running.name : app.matches(installed: running) {
+                return running
+            }
         }
         return installedOverRelay.contains(app.id) ? app : nil
     }

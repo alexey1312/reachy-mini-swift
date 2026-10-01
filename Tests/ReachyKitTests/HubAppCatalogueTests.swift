@@ -96,6 +96,22 @@ struct HubAppCatalogueTests {
         #expect(ids == ["cdeplanne/wake_me_up", "pollen-robotics/reachy_mini_radio", "someone/popular"])
     }
 
+    /// The daemon resolves a name to the first Space with it in likes order, so a
+    /// fork's card would install somebody else's app and then read as installed. 32
+    /// slugs were shared like this on 2026-10-01.
+    @Test("a slug shared by several Spaces is offered once, as the one the robot would install")
+    func listsEachSlugOnce() async throws {
+        let (catalogue, _) = catalogue(spaces: [
+            Self.space("pollen-robotics/reachy_mini_conversation_app", likes: 176),
+            Self.space("someone/popular", likes: 90),
+            Self.space("dillera/reachy_mini_conversation_app", likes: 3),
+        ])
+
+        let ids = try await catalogue.apps().map(\.spaceID)
+
+        #expect(ids == ["pollen-robotics/reachy_mini_conversation_app", "someone/popular"])
+    }
+
     /// Best effort, as it is on the robot: without its curation the store is still
     /// the whole catalogue, in the Hub's order.
     @Test("a curated list that does not load leaves the Hub's order")

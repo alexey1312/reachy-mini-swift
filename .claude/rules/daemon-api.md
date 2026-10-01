@@ -313,6 +313,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   So the name is the **Space slug**, JS apps are never found,
   and neither are four of the eleven curated `app-list.json` entries (measured 2026-10-01:
   `marionette`, `marionette-js`, `emotions`, `telepresence`) that only the LAN's HTTP install reaches.
+  **A slug names whichever Space the daemon meets first**: `next(a for a in catalog if a.name == name)` over the
+  likes-ordered list, and 32 slugs were shared by 97 of 471 Spaces (four `reachy_mini_conversation_app`s), so a
+  fork cannot be installed this way at all — `HubAppCatalogue` offers each slug once, as the Space the robot would take.
   It is install-if-missing: an app already there is a no-op answered at once.
   Success is `{"installed": true}`; a refusal is `install_failed`, one reason for "not in the catalog" and a failed
   `pip` alike, told apart only by the sentence.
@@ -320,8 +323,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and the frame runs in its own task (`run_coroutine_threadsafe` per frame in `daemon.py`), so `apps.status` keeps
   answering meanwhile and the install carries on whether the caller waits or not.
   `HubAppCatalogue` lists exactly that query from the phone, so every card is one the robot can find;
-  `RemoteRobotConnection` waits 180 s and reads every silence — including the silent-relay probe's verdict —
-  as an install whose outcome is unknown, never as a failure.
+  `RemoteRobotConnection` waits 180 s and reads a silence as an install whose outcome is unknown, never as a failure —
+  unless the relay itself is dead (#1421), which one `apps.status` on the reply budget tells apart, because a live
+  relay answers it while `pip` runs. It asks before the install and again after a silence.
   **Pollen's mobile app does not call it**: as of 0.11 it lists JS apps from the website's `/api/js-apps` and
   iframes them at their Space URL, so nothing upstream exercises this verb but the daemon's own tests.
 - **The relay's own failure vocabulary**, which a screen has to branch on: `not_running` with code **-32000** when no

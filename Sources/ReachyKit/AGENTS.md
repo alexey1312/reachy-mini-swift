@@ -289,6 +289,8 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   - **The catalogue is the Hub's, read by this device**, because the relay has no listing verb:
     `HubAppCatalogue` runs the very query `apps.install` searches, so every card is installable by name,
     and `RemoteRobotConnection.availableApps()` answers with it.
+    Each slug is listed once, as the most-liked Space carrying it, because that is the one the daemon resolves:
+    a fork's card would install somebody else's app and then read as installed.
     That puts it through `RobotSession.appCatalogue()`, which is why that function **persists only when
     `canManageApps`** and `warmCatalogues` **warms only then**:
     the record on disk is the daemon's own list, installed rows and all,
@@ -299,6 +301,10 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     the reply shapes are in `.claude/rules/daemon-api.md`.
     Every relay test double had built the status itself, which is how that shipped:
     `RemoteRobotAppsTests` decodes the daemon's own bytes.
+  - **A silence after `apps.install` is unknown, but a dead relay is not**, and `.relaySilent` cannot tell the two:
+    both leave the plain protocol answering. One `apps.status` can, since the relay runs each frame in a task of its
+    own — asked before the install, so pollen-robotics/reachy_mini#1421 costs ten seconds rather than a sheet held
+    for three minutes, and after a silence, for a relay that died meanwhile.
   - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
     and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
     unreachable only while the decoding bug kept the relayed dock empty.

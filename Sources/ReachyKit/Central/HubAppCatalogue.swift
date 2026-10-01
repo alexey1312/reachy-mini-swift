@@ -23,6 +23,13 @@ import ReachyJSON
 /// - **Private Spaces are absent.** The robot searches with its own token and this
 ///   device asks without one, so a private Space could be listed here only by
 ///   guessing which account the robot is linked to.
+/// - **A slug is listed once.** The daemon takes the first Space with that name in
+///   its likes-ordered list (`next(a for a in catalog if a.name == name)`), and 32
+///   slugs were shared by 97 of 471 Spaces on 2026-10-01 — four
+///   `reachy_mini_conversation_app`s, four `clawbody`s. A fork's card would install
+///   somebody else's Space and then read as installed itself, so only the Space the
+///   robot would resolve is offered. Ties in likes are ordered by the Hub, the same
+///   answer the robot gets from the same query.
 ///
 /// The curated list is read only for its order: the daemon puts those entries
 /// first (`list_all_available_apps`), and `AppStoreModel.Sort.recommended` is
@@ -76,7 +83,8 @@ public struct HubAppCatalogue: Sendable {
     public func apps() async throws -> [RobotApp] {
         async let curated = curatedIDs()
         let spaces = try await listing()
-        let apps = spaces.compactMap(Self.app)
+        var slugs = Set<String>()
+        let apps = spaces.compactMap(Self.app).filter { slugs.insert($0.name).inserted }
         let order = await curated
         let first = order.compactMap { id in apps.first { $0.spaceID == id } }
         let rest = apps.filter { app in !order.contains { $0 == app.spaceID } }

@@ -13,6 +13,7 @@ private final class RelayAppsClient: RobotAPIClient, RobotAppsClient, @unchecked
     private(set) var httpOnlyReads = 0
     var outcome: AppJobMonitor.Outcome = .succeeded
     var running: RobotAppStatus?
+    var catalogue: [RobotApp] = [.preview(name: "reachy_mini_radio"), .preview(name: "face-tracking")]
 
     var offersAppStore: Bool {
         false
@@ -42,7 +43,7 @@ private final class RelayAppsClient: RobotAPIClient, RobotAppsClient, @unchecked
     }
 
     func availableApps() async throws -> [RobotApp] {
-        [.preview(name: "reachy_mini_radio"), .preview(name: "face-tracking")]
+        catalogue
     }
 
     func installFromCatalogue(named name: String) async throws -> AppJobMonitor.Outcome {
@@ -169,6 +170,26 @@ struct AppStoreRelayTests {
         let card = try #require(model.catalogue.first { $0.name == "face-tracking" })
 
         #expect(model.installedTwin(of: card)?.name == "face_tracking")
+    }
+
+    /// The relay's status carries no Space id, so the running app is matched by
+    /// name — and an exact name beats the daemon's normalised one, or two cards
+    /// would both read as running.
+    @Test("the running app lights up the card with its exact name, not every near-spelling")
+    func prefersTheExactName() async {
+        let client = RelayAppsClient()
+        client.catalogue = [.preview(name: "face-tracking", author: "someone"), .preview(name: "face_tracking")]
+        client.running = RobotAppStatus(
+            app: RobotApp(Components.Schemas.AppInfo(name: "face_tracking", sourceKind: .installed)),
+            state: .running
+        )
+        let session = await relayed(client)
+        let model = AppStoreModel(session: session)
+        await model.load(session: session)
+
+        let lit = model.catalogue.filter { model.isRunning($0) }.map(\.name)
+
+        #expect(lit == ["face_tracking"])
     }
 
     @Test("a relayed install answers once, with no job and no log")
