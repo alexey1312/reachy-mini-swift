@@ -147,6 +147,20 @@ public struct ReachyRootView<Developer: View>: View {
                 connect: connectRemotely
             )
         )
+        #if DEBUG
+        // The #159 prototype's host: above the gate, for the reason `RootSheets` is.
+        .modifier(
+            RootJSAppHost(
+                session: session,
+                hfAccount: hfAccount,
+                releaseRelay: {
+                    session.disconnect()
+                    stopRemoteLink()
+                },
+                reconnect: connectRemotely
+            )
+        )
+        #endif
         .modifier(
             RootLifecycle(
                 session: session,

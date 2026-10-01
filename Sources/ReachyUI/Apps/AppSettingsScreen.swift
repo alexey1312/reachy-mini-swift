@@ -12,9 +12,11 @@ import WebKit
 /// against Conversation App 1.0's `/rpc` (`personalities.*`, `voices.*`,
 /// `backend.config`) and would leave every other app with no settings at all.
 ///
-/// The only `WKWebView` in the app. `WebAuthenticationBrowser` is not one — that
-/// is `ASWebAuthenticationSession`, which runs out of process precisely so this
-/// app never holds a Hugging Face credential in a web view.
+/// The only `WKWebView` in a shipped build — the hosted JS apps of ADR 0006 are a
+/// `DEBUG` prototype. `WebAuthenticationBrowser` is not one either: that is
+/// `ASWebAuthenticationSession`, which runs out of process precisely so this app
+/// never holds the account's Hugging Face credential in a web view. A hosted JS app
+/// is handed a narrow one of its own (ADR 0006), and this page none at all.
 struct AppSettingsScreen: View {
     /// What the page is doing. `ready` carries nothing because the web view is
     /// the whole of it.

@@ -44,6 +44,24 @@ public struct HFOAuthConfiguration: Sendable, Equatable {
         scopes: reachyMiniScopes
     )
 
+    /// What a hosted JS app is handed, and nothing more (ADR 0006): who the user is,
+    /// which is all central asks of a token. The account's own token also carries
+    /// `write-repos` and `manage-repos`, and a page from a stranger's Space has no
+    /// business with either.
+    ///
+    /// Same client, same redirect, a second authorization: the Hub issues a token
+    /// for exactly the scopes requested, and Safari's session makes it a consent
+    /// rather than a password.
+    public static let webAppScopes = "openid profile"
+
+    /// The narrow sign-in for hosted web apps. Its token is held in memory only,
+    /// by whoever asked for it — never in the Keychain beside the account's.
+    public static let reachyMiniWebApps = Self(
+        clientID: reachyMini.clientID,
+        redirectURI: reachyMini.redirectURI,
+        scopes: webAppScopes
+    )
+
     /// A build that has not registered an OAuth app of its own — a fork, or this
     /// one before the client id above existed. Named rather than spelled out at
     /// each use so previews and tests can reach it with a leading dot: Prefire
