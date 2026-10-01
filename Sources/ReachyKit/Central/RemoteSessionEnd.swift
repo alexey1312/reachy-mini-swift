@@ -30,6 +30,15 @@ public struct RemoteSessionEnd: Equatable, Sendable {
         }
     }
 
+    /// The robot's own negotiation watchdog gave up on the session: ICE had not
+    /// connected within its deadline, or the peer connection failed
+    /// (`SESSION_FAILED_REASON_*` in the daemon's `media_server.py`). Not a refusal —
+    /// nobody else holds the robot, and the next attempt often goes through, which is
+    /// why the camera counts it as a stalled attempt instead of showing the code.
+    public var isNegotiationStall: Bool {
+        reason == "ice_negotiation_timeout" || reason == "peer_connection_failed"
+    }
+
     /// Whether trying again in a moment could work. A robot busy with something
     /// that ends will free itself; one that was deliberately taken will not, and
     /// retrying is how two devices fight over it.

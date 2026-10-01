@@ -7,8 +7,9 @@ import ReachyKit
 /// events, answers the robot's offer, and exposes the remote video track plus
 /// a mic toggle (client mic → robot speaker; the robot's offer is sendrecv).
 ///
-/// Self-healing: any failure (ICE, watchdog, socket) drops the peer connection
-/// and forces the signaling client to reconnect, which re-negotiates a session.
+/// Self-healing, within a budget: a negotiation that does not reach a connected
+/// peer in time is started over once, and a second stall in a row is reported as
+/// `.stalled` rather than retried for ever — `CameraSession+Negotiation.swift`.
 @MainActor
 @Observable
 public final class CameraSession {
@@ -16,13 +17,26 @@ public final class CameraSession {
         case connecting
         /// Signaling is up but the daemon has no media producer (sim before acquire).
         case waitingForProducer
+        /// The peer connection is connected — ICE found a path and DTLS finished on it,
+        /// so media can flow. Not merely a video track named in the offer: libwebrtc
+        /// announces that track while it applies the offer, before the robot has even
+        /// seen an answer, and taking that for a stream is what once left a dead
+        /// negotiation on screen as a black picture with no spinner.
         case streaming
+        /// Negotiation stalled on the first attempt and again on the one retry after it,
+        /// so nothing more is tried until `retry()`. Apart from `failed` because trying
+        /// again is the remedy here, where for a robot somebody else took it is the
+        /// opposite — so only this one offers it.
+        case stalled
         case failed(String)
     }
 
-    public private(set) var phase: Phase = .connecting
+    /// `internal(set)`, like `isMicEnabled` and `micPermission`, only so the extensions
+    /// in their own files can move it — the negotiation, and the previews. This file is
+    /// at SwiftLint's length limit. Outside the module all three read as they always did.
+    public internal(set) var phase: Phase = .connecting
     public private(set) var videoTrack: RTCVideoTrack?
-    public private(set) var isMicEnabled = false
+    public internal(set) var isMicEnabled = false
 
     /// Gain applied to this device's microphone before the robot hears it, where 1 is
     /// unchanged. libwebrtc takes 0…10 and clamps outside that.
@@ -40,16 +54,17 @@ public final class CameraSession {
     }
 
     /// Whether `start()` has run and `stop()` has not — what "the camera is
-    /// still up" means to the audio handover when a call ends over it.
+    /// still up" means to the audio handover when a call ends over it. True through
+    /// `.stalled` too: the session holds the audio session until it is stopped.
     var isRunning: Bool {
-        eventsTask != nil
+        isStarted
     }
 
     /// What the OS says about recording. Published because a refusal used to be
     /// swallowed here: `setMicEnabled(true)` returned early and wrote nothing, so the
     /// button redrew itself unchanged and unmuting did nothing, forever, unexplained.
     /// The viewport reads this to say why instead.
-    public private(set) var micPermission: PermissionState = .undetermined
+    public internal(set) var micPermission: PermissionState = .undetermined
 
     /// The session's control surface. Exists from construction and stays the same
     /// object across re-negotiations, so a `RemoteControlChannel` built on it
@@ -71,9 +86,6 @@ public final class CameraSession {
     /// `data`, where a lost frame would matter.
     public let poseChannel = WebRTCDataChannel()
 
-    /// Not `.streaming` for this long after an offer → drop and re-negotiate (upstream value).
-    private static let streamTimeout: Duration = .seconds(10)
-
     private static let factory: RTCPeerConnectionFactory = {
         RTCInitializeSSL()
         return RTCPeerConnectionFactory(
@@ -82,9 +94,12 @@ public final class CameraSession {
         )
     }()
 
-    private let signaling: any RobotSignaling
-    private let connection: RobotConnection?
-    private var peerConnection: RTCPeerConnection?
+    let signaling: any RobotSignaling
+    let connection: RobotConnection?
+    /// How long an attempt has to connect. A `var` for the tests, which shorten the
+    /// stalls they cause and lengthen the attempts they expect to go through.
+    @ObservationIgnored var negotiationDeadline: Duration
+    private(set) var peerConnection: RTCPeerConnection?
     private var delegateAdapter: PeerConnectionDelegateAdapter?
     private var micTrack: RTCAudioTrack?
     /// Held so ``micVolume`` can move after the track is attached. The peer owns the
@@ -93,8 +108,18 @@ public final class CameraSession {
     /// `@ObservationIgnored` because `deinit` reads it: the macro would turn a
     /// tracked property into a MainActor-isolated accessor, which a nonisolated
     /// `deinit` may not call — a stored property it may.
-    @ObservationIgnored private var eventsTask: Task<Void, Never>?
-    private var watchdogTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var isStarted = false
+    /// The current signaling subscription. Nil before `start()`, after `stop()`, and
+    /// while `.stalled` — a session that gave up is not still asking. Ignored by
+    /// observation for the reason `isStarted` is.
+    @ObservationIgnored var eventsTask: Task<Void, Never>?
+    /// The carrier's half of the last subscription, still being ended. A new
+    /// subscription waits for it, or an `endSession` meant for the stalled session
+    /// could land on its replacement.
+    var ending: Task<Void, Never>?
+    var deadlineTask: Task<Void, Never>?
+    /// Attempts that stalled since the peer last connected, or since `start()`.
+    var stalledAttempts = 0
 
     private struct LocalCandidate {
         var sdp: String
@@ -111,29 +136,37 @@ public final class CameraSession {
     public init(address: RobotAddress) throws {
         signaling = try CameraSignalingClient(address: address)
         connection = try? RobotConnection(address: address)
+        negotiationDeadline = Self.defaultNegotiationDeadline
     }
 
     /// Anywhere else: whatever is carrying signaling — over the Hugging Face relay
     /// there is no HTTP API to reach, and nothing to acquire.
-    public init(signaling: any RobotSignaling) {
+    public convenience init(signaling: any RobotSignaling) {
+        self.init(signaling: signaling, negotiationDeadline: Self.defaultNegotiationDeadline)
+    }
+
+    /// The deadline is a parameter for the tests alone: they stall on purpose, twice,
+    /// and cannot wait the real one out each time.
+    init(signaling: any RobotSignaling, negotiationDeadline: Duration) {
         self.signaling = signaling
         connection = nil
+        self.negotiationDeadline = negotiationDeadline
     }
 
     /// The backstop for an owner that drops the session without `stop()`. The
-    /// `weak self` in `start()` is what lets this run at all — but on its own it
+    /// `weak self` in `subscribe()` is what lets this run at all — but on its own it
     /// only half-closes the leak: `eventsTask` keeps consuming, and against an
     /// unreachable robot the captured signaling client redials the socket every
     /// half-second for as long as the app lives, with the `guard let self` never
     /// reached because a dead host yields no events. A stopped (or never
-    /// started) session has `eventsTask == nil` and nothing to undo — previews
+    /// started) session has `isStarted == false` and nothing to undo — previews
     /// construct sessions constantly and must not touch the shared audio session.
     ///
     /// `signaling` is bound before the `Task` so the closure never captures
     /// `self`, which a `deinit` may not escape (`RobotFilesModel` sets the idiom).
     deinit {
-        guard let eventsTask else { return }
-        eventsTask.cancel()
+        guard isStarted else { return }
+        eventsTask?.cancel()
         dataChannel.close()
         poseChannel.close()
         let signaling = signaling
@@ -142,35 +175,26 @@ public final class CameraSession {
     }
 
     public func start() {
-        guard eventsTask == nil else { return }
+        guard !isStarted else { return }
+        isStarted = true
         // Read before anyone can tap, so a mic already refused in Settings shows as
         // refused rather than as an ordinary muted button waiting to be pressed.
         refreshMicPermission()
         MediaAudioSession.shared.cameraSessionStarted()
-        // `weak self`: `handle` captures the session, so a strong capture keeps
-        // `self → eventsTask → self` alive for as long as the signaling stream
-        // runs — an owner that drops the session without `stop()` would leak it
-        // and its socket (`RobotSceneModel.startStreaming` makes the same trade).
-        eventsTask = Task { [weak self, signaling, connection] in
-            // Sim registers no producer until media is acquired; harmless elsewhere.
-            try? await connection?.acquireMedia()
-            for await event in await signaling.events() {
-                guard let self else { return }
-                await handle(event)
-            }
-        }
+        stalledAttempts = 0
+        subscribe()
     }
 
     public func stop() {
-        eventsTask?.cancel()
-        eventsTask = nil
+        isStarted = false
+        unsubscribe()
+        disarmDeadline()
+        stalledAttempts = 0
         teardownPeer()
         dataChannel.close()
         poseChannel.close()
         MediaAudioSession.shared.cameraSessionStopped()
         phase = .connecting
-        let signaling = signaling
-        Task { await signaling.disconnect() } // best-effort endSession; ws close also suffices
     }
 
     public func setMicEnabled(_ enabled: Bool) {
@@ -200,11 +224,13 @@ public final class CameraSession {
 
     // MARK: - Signaling events
 
-    private func handle(_ event: SignalingEvent) async {
+    func handle(_ event: SignalingEvent) async {
         switch event {
         case .waitingForProducer:
             if phase != .streaming {
                 phase = .waitingForProducer
+                // Nothing to negotiate with is not a stall — the robot says so itself.
+                disarmDeadline()
             }
         case let .offer(_, sdp):
             await accept(offerSDP: sdp)
@@ -221,12 +247,23 @@ public final class CameraSession {
             // is drawn on: a lull leaves its commands waiting, an ending fails them.
             guard let reason else {
                 phase = .connecting
+                // Still one attempt, on the clock it already had, if any.
+                armDeadlineIfIdle()
                 return
             }
+            let end = RemoteSessionEnd(reason: reason)
+            // The robot's own watchdog gave up on this attempt — the same stall,
+            // seen from the other end, and as worth one more try.
+            guard !end.isNegotiationStall else {
+                negotiationStalled()
+                return
+            }
+            disarmDeadline()
             dataChannel.close()
             poseChannel.close()
-            phase = .failed(RemoteSessionEnd(reason: reason).message)
+            phase = .failed(end.message)
         case let .failed(message):
+            disarmDeadline()
             teardownPeer()
             dataChannel.close()
             poseChannel.close()
@@ -237,6 +274,7 @@ public final class CameraSession {
     private func accept(offerSDP: String) async {
         teardownPeer()
         phase = .connecting
+        armDeadlineIfIdle()
 
         let configuration = RTCConfiguration()
         configuration.sdpSemantics = .unifiedPlan
@@ -248,18 +286,25 @@ public final class CameraSession {
         guard let peer = Self.factory.peerConnection(
             with: configuration, constraints: Self.noConstraints, delegate: adapter
         ) else {
+            disarmDeadline()
             phase = .failed("Could not create peer connection")
             return
         }
         delegateAdapter = adapter
         peerConnection = peer
 
+        // Each `guard peer === peerConnection` is a restart that landed during the
+        // await before it: this peer is closed and its attempt over, and nothing it
+        // goes on to do may touch the one that replaced it.
         do {
             try await peer.setRemoteDescription(RTCSessionDescription(type: .offer, sdp: offerSDP))
+            guard peer === peerConnection else { return }
             attachMicTrack(to: peer)
             let answer = try await peer.answer(for: Self.noConstraints)
             try await peer.setLocalDescription(answer)
+            guard peer === peerConnection else { return }
             await signaling.send(answerSDP: answer.sdp)
+            guard peer === peerConnection else { return }
             answerSent = true
             for candidate in pendingLocalCandidates {
                 await signaling.send(
@@ -270,11 +315,11 @@ public final class CameraSession {
             }
             pendingLocalCandidates = []
         } catch {
+            guard peer === peerConnection else { return }
+            disarmDeadline()
             phase = .failed(error.localizedDescription)
             teardownPeer()
-            return
         }
-        startWatchdog()
     }
 
     // MARK: - Peer connection callbacks (from the delegate adapter)
@@ -288,20 +333,10 @@ public final class CameraSession {
         Task { await signaling.send(candidate: sdp, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid) }
     }
 
+    /// Held from the moment the offer names it, so the view is attached before the
+    /// first frame — but it is no evidence of a stream; `peer(_:changedTo:)` decides that.
     func handleRemote(videoTrack: RTCVideoTrack) {
         self.videoTrack = videoTrack
-        phase = .streaming
-        watchdogTask?.cancel()
-        watchdogTask = nil
-    }
-
-    /// ICE failed or the stream never arrived: drop everything and force the
-    /// signaling socket closed — its reconnect loop negotiates a fresh session.
-    func restartSession() {
-        teardownPeer()
-        phase = .connecting
-        let signaling = signaling
-        Task { await signaling.disconnect() }
     }
 
     // MARK: - Internals
@@ -325,16 +360,6 @@ public final class CameraSession {
         micTrack = track
     }
 
-    private func startWatchdog() {
-        watchdogTask?.cancel()
-        watchdogTask = Task {
-            guard await (try? Task.sleep(for: Self.streamTimeout)) != nil else { return }
-            if phase != .streaming {
-                restartSession()
-            }
-        }
-    }
-
     /// The robot opens two: `data` for commands and `pose` for the live state it
     /// pushes. Anything else belongs to neither and is left alone.
     ///
@@ -350,9 +375,9 @@ public final class CameraSession {
         }
     }
 
-    private func teardownPeer() {
-        watchdogTask?.cancel()
-        watchdogTask = nil
+    /// The peer and everything hung on it. Not the deadline: that belongs to the
+    /// attempt, which can outlive one peer — a LAN lull drops the peer and keeps going.
+    func teardownPeer() {
         dataChannel.detachPeer()
         poseChannel.detachPeer()
         peerConnection?.close()
@@ -369,31 +394,3 @@ public final class CameraSession {
         RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
     }
 }
-
-#if DEBUG
-    public extension CameraSession {
-        /// A session parked in one phase. Constructing one is inert — `start()` is what opens the
-        /// signaling socket and builds the peer connection, and it is never called here.
-        ///
-        /// `phase` is `private(set)`, so this has to live in the same file.
-        ///
-        /// `micPermission` is a parameter because a refused microphone is a state the
-        /// viewport renders differently and no preview could otherwise reach: the real
-        /// value is only ever written by `start()`, which a preview must not call.
-        static func preview(
-            _ phase: Phase,
-            micPermission: PermissionState = .undetermined,
-            isMicEnabled: Bool = false
-        ) -> CameraSession {
-            // A well-formed host cannot fail to produce a signaling client, and nothing dials it.
-            // swiftlint:disable:next force_try
-            let session = try! CameraSession(address: RobotAddress(host: "192.168.1.42"))
-            session.phase = phase
-            session.micPermission = micPermission
-            // No track exists without a peer connection, so this is the flag alone —
-            // which is all the button and the chrome row read.
-            session.isMicEnabled = isMicEnabled
-            return session
-        }
-    }
-#endif

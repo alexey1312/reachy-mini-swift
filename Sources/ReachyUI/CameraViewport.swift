@@ -36,6 +36,16 @@ struct CameraViewport: View {
                 systemImage: "video",
                 description: Text(.reachy("The robot has not registered a video stream yet."))
             )
+        case .stalled:
+            // The one ending that offers a retry: the session already made its own
+            // and gave up, so the next is the reader's to ask for.
+            ContentUnavailableView {
+                Label(.reachy("Camera unavailable"), systemImage: "video.slash")
+            } description: {
+                Text(.reachy("The video connection did not finish setting up, even on a second try."))
+            } actions: {
+                Button(.reachy("Try again"), action: session.retry)
+            }
         case let .failed(message):
             ContentUnavailableView(
                 .reachy("Camera unavailable"),

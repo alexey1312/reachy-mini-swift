@@ -8,7 +8,8 @@ import ReachyJSON
 /// Flow: `welcome` → `setPeerStatus(listener)` → `list` → pick a producer
 /// (prefer `meta.name == "reachymini"`; the simulator names its camera
 /// differently, so any producer is accepted as fallback) → `startSession` →
-/// forward `sdp`/`ice`. Reconnects forever until the events consumer cancels.
+/// forward `sdp`/`ice`. Reconnects forever until the events consumer cancels, and a
+/// consumer that cancels and subscribes again gets a fresh socket and a fresh session.
 public actor CameraSignalingClient {
     public static let defaultPort = 8443
     static let preferredProducerName = "reachymini"
@@ -110,7 +111,7 @@ public actor CameraSignalingClient {
             } catch {
                 socket.cancel(with: .goingAway, reason: nil)
             }
-            self.socket = nil
+            forget(socket)
             if sessionID != nil || producerID != nil {
                 continuation.yield(.sessionEnded(reason: nil))
             }
@@ -172,6 +173,16 @@ public actor CameraSignalingClient {
             break // outbound-only types; a server never sends these to a listener
         case .sessionRejected, .sessionStateChanged:
             break // the central relay's vocabulary; the robot's own socket has neither
+        }
+    }
+
+    /// Only ours to clear. A consumer that starts over cancels one stream and opens
+    /// the next at once, and the old loop can wake from its cancelled `receive()`
+    /// after the new one has already put its own socket here — clearing that one would
+    /// leave every later send going nowhere.
+    private func forget(_ finished: URLSessionWebSocketTask) {
+        if socket === finished {
+            socket = nil
         }
     }
 

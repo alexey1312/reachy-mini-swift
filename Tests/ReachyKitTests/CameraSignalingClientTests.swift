@@ -160,6 +160,50 @@ struct CameraSignalingClientTests {
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
         #expect(fake.connectionCount == 2)
     }
+
+    /// What `CameraSession` does to a stalled attempt: drop the stream, end the
+    /// session, subscribe again at once. The second subscription must come up with
+    /// its own socket and its own session, and what it sends must reach the server —
+    /// the first loop winds down while the second is starting, and the socket the
+    /// second one sends on is not the first one's to clear.
+    @Test("a consumer that starts over gets a fresh socket and a fresh session", .timeLimit(.minutes(1)))
+    func startsOverOnResubscribe() async throws {
+        let fake = try FakeSignalingServer { message, server in
+            switch message {
+            case .setPeerStatus:
+                server.send(listenerReady)
+            case .list:
+                server.send(.producerList([.init(id: "prod-1", name: "reachymini")]))
+            case let .startSession(peerID):
+                let session = "sess-\(server.received(.startSession(peerID: peerID)))"
+                server.send(.sessionStarted(peerID: peerID, sessionID: session))
+                server.send(.sdp(sessionID: session, type: "offer", sdp: "v=0 offer"))
+            default:
+                break
+            }
+        }
+        defer { fake.stop() }
+
+        let client = try await makeClient(port: fake.readyPort())
+        // A consumer of its own, so it can be cancelled the way the session cancels one.
+        let (seen, forward) = AsyncStream.makeStream(of: SignalingEvent.self)
+        let first = Task {
+            for await event in await client.events() {
+                forward.yield(event)
+            }
+        }
+        var firstEvents = seen.makeAsyncIterator()
+        #expect(await firstEvents.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
+        first.cancel()
+        await client.disconnect()
+
+        var events = await client.events().makeAsyncIterator()
+        #expect(await events.next() == .offer(sessionID: "sess-2", sdp: "v=0 offer"))
+        #expect(fake.received(.endSession(sessionID: "sess-1", reason: nil)) == 1)
+        await client.send(answerSDP: "v=0 answer")
+        await fake.waitFor(.sdp(sessionID: "sess-2", type: "answer", sdp: "v=0 answer"))
+        #expect(fake.connectionCount == 2)
+    }
 }
 
 /// Scripted gst-style signaling server: sends `welcome` to every connection,

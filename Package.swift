@@ -192,6 +192,13 @@ let package = Package(
             dependencies: ["ReachySimulator", "ReachyKit"]
         ),
         .testTarget(
+            name: "ReachyMediaTests",
+            // `WebRTC` by name because the tests stand up the robot's half of a session
+            // themselves — a second peer connection in the same process, offering the way
+            // the robot's `webrtcsink` does.
+            dependencies: ["ReachyMedia", "ReachyKit", .product(name: "WebRTC", package: "WebRTC")]
+        ),
+        .testTarget(
             name: "ReachySSHTests",
             dependencies: ["ReachySSH"]
         ),

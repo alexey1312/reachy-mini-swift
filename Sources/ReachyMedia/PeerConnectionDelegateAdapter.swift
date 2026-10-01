@@ -29,10 +29,13 @@ final class PeerConnectionDelegateAdapter: NSObject, RTCPeerConnectionDelegate, 
         }
     }
 
-    func peerConnection(_: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-        guard newState == .failed else { return }
+    /// The connection state rather than ICE's: it is `connected` only once DTLS has
+    /// finished on top of ICE, and `failed` when either one gives up — so one callback
+    /// says both when the stream is real and when its attempt has stalled.
+    func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCPeerConnectionState) {
+        let peer = ObjectIdentifier(peerConnection)
         Task { @MainActor [owner] in
-            owner?.restartSession()
+            owner?.peer(peer, changedTo: newState)
         }
     }
 
@@ -45,7 +48,9 @@ final class PeerConnectionDelegateAdapter: NSObject, RTCPeerConnectionDelegate, 
         }
     }
 
-    // Required by the protocol; nothing to do.
+    // Required by the protocol; nothing to do. ICE's own state included: its failure
+    // reaches the connection state too, and reacting to both would count it twice.
+    func peerConnection(_: RTCPeerConnection, didChange _: RTCIceConnectionState) {}
     func peerConnection(_: RTCPeerConnection, didChange _: RTCSignalingState) {}
     func peerConnection(_: RTCPeerConnection, didAdd _: RTCMediaStream) {}
     func peerConnection(_: RTCPeerConnection, didRemove _: RTCMediaStream) {}

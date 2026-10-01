@@ -21547,6 +21547,35 @@
           }
         }
       }
+    },
+    "The video connection did not finish setting up, even on a second try.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Videoverbindung kam nicht zustande, auch nicht beim zweiten Versuch."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión de vídeo no llegó a establecerse, ni siquiera en un segundo intento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion vidéo n'a pas pu s'établir, même à la seconde tentative."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видеосоединение так и не установилось, даже со второй попытки."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
