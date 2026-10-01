@@ -213,7 +213,9 @@ extension PreviewScene {
     ) -> some View {
         NavigationHost {
             DaemonUpdateScreen(
-                session: .preview(),
+                // The version the handshake halted on, which is what a real session
+                // holds here — and what closes the beta channel (#153).
+                session: .preview(status: .preview(version: requirement.reported)),
                 requirement: requirement,
                 model: .preview(state: state)
             )

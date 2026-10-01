@@ -46,6 +46,12 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
   decode JSON first and ignore its `logs`, or every line doubles. The job ends with `systemctl restart`, which kills
   the daemon before a terminal `done`: the socket closing is completion, confirmed by reconnecting and comparing
   versions. `available_version: "unknown"` means the ROBOT could not reach PyPI, not that the check failed.
+- **`pre_release=true` is broken below 1.10.0**, on `/update/available` and `/update/start` alike.
+  Those daemons rank PyPI's pre-release list as strings, so `1.9.0rc1` outranks `1.10.0rc5`:
+  the check answers "up to date" while a newer candidate exists, and the start refuses with 400.
+  The fix ships in 1.10.0 itself, so only a stable update gets such a robot past it.
+  The client's choice is one app-wide setting, so `RobotSession.availableUpdate` and `startUpdate`
+  send `false` to any daemon `refusesPreReleaseUpdates` names, whatever they were handed (#153).
 - The daemon's own source is installed at `.venv-sim/lib/python3.12/site-packages/reachy_mini/` — read
   `daemon/app/routers/*.py` and `daemon/app/services/bluetooth/` there rather than guessing a shape. It is a
   specification (project rule 1), never code to port.

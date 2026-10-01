@@ -20,14 +20,19 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
     /// job that outlives the client's whole budget.
     private let repeatsLastStatus: Bool
     private var infoCalls = 0
+    /// Below 1.10.0 the session asks the stable question whatever the model passes
+    /// (#153, `PreReleaseReadinessTests`), so a beta test needs a newer daemon.
+    private let version: String
 
     init(
+        version: String = "1.9.0",
         availability: DaemonUpdateAvailability,
         availabilityError: Error? = nil,
         startError: Error? = nil,
         jobStatuses: [DaemonJob.Status] = [],
         repeatsLastStatus: Bool = false
     ) {
+        self.version = version
         self.availability = availability
         self.availabilityError = availabilityError
         self.startError = startError
@@ -46,14 +51,14 @@ private final class UpdateStubClient: RobotAPIClient, DaemonUpdateClient, @unche
     private var status: Components.Schemas.DaemonStatus {
         let json = """
         {"robot_name": "testbot", "state": "running", "wireless_version": true,
-         "desktop_app_daemon": false, "version": "1.9.0", "backend_status": null}
+         "desktop_app_daemon": false, "version": "\(version)", "backend_status": null}
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))
     }
 
     func handshake() async throws -> RobotConnection.Handshake {
-        .init(identity: RobotIdentity(hardwareID: "hw", name: "testbot", daemonVersion: "1.9.0"), status: status)
+        .init(identity: RobotIdentity(hardwareID: "hw", name: "testbot", daemonVersion: version), status: status)
     }
 
     func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
@@ -140,7 +145,10 @@ struct SystemUpdateModelTests {
 
     @Test("the beta toggle is carried into the daemon call")
     func passesPreReleaseToTheDaemon() async {
-        let client = UpdateStubClient(availability: .available(current: "1.9.0", latest: "1.10.0rc1"))
+        let client = UpdateStubClient(
+            version: "1.10.0",
+            availability: .available(current: "1.10.0", latest: "1.11.0rc1")
+        )
         let model = await makeModel(client)
 
         await model.check(preRelease: true)

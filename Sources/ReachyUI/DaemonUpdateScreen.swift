@@ -52,9 +52,16 @@ struct DaemonUpdateScreen: View {
             }
 
             if requirement.canSelfUpdate {
-                Section(.reachy("Update")) {
+                Section {
                     statusRow
                     actions
+                } header: {
+                    Text(.reachy("Update"))
+                } footer: {
+                    // Every robot this screen is shown to today: the floor is 1.9.0
+                    // and the beta channel opens at 1.10.0. Gated rather than dropped,
+                    // so a floor raised past 1.10.0 brings the switch back on its own.
+                    PreReleaseToggle.RefusalNote(session: session)
                 }
             }
 
@@ -101,11 +108,7 @@ struct DaemonUpdateScreen: View {
 
     @ViewBuilder
     private var actions: some View {
-        Toggle(.reachy("Include pre-release versions"), isOn: $preRelease)
-            .disabled(model?.isBusy ?? true)
-            .onChange(of: preRelease) { _, newValue in
-                Task { await model?.check(preRelease: newValue) }
-            }
+        PreReleaseToggle(session: session, model: model, preRelease: $preRelease)
 
         if case .available = state {
             // The one thing this screen exists for, drawn as the answer to the

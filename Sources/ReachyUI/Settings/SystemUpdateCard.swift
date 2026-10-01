@@ -22,11 +22,7 @@ struct SystemUpdateCard: View {
     var body: some View {
         Section {
             statusRow
-            Toggle(.reachy("Include pre-release versions"), isOn: $preRelease)
-                .disabled((model?.isBusy ?? true) || session.refusesPreReleaseUpdates)
-                .onChange(of: preRelease) { _, newValue in
-                    Task { await model?.check(preRelease: newValue) }
-                }
+            PreReleaseToggle(session: session, model: model, preRelease: $preRelease)
             actions
         } header: {
             Text(.reachy("System update"))
@@ -36,12 +32,7 @@ struct SystemUpdateCard: View {
             // anywhere.
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text(.reachy("The robot downloads updates itself and restarts when one finishes."))
-                if session.refusesPreReleaseUpdates {
-                    Text(.reachy(
-                        // swiftlint:disable:next line_length
-                        "Pre-release versions need daemon 1.10.0. An older robot finds the wrong version and refuses to install it."
-                    ))
-                }
+                PreReleaseToggle.RefusalNote(session: session)
             }
         }
         .task {
