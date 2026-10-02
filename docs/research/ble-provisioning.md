@@ -7,6 +7,12 @@ no Bluetooth at all. So none of this is confirmed until a real Wireless unit say
 
 **Status: OPEN.** Nothing below has run against hardware yet.
 
+This file is the tracker.
+Issue #156 carried the same run and was closed on 2026-10-02 without one,
+because nothing in it can be done without a Wireless unit at hand;
+the three checks it added are under **Since daemon 1.10** below.
+Record each measurement beside its box, the way `.claude/rules/daemon-api.md` records its own.
+
 ## Step 0 — the one that gates everything
 
 The sealed `WIFI_CONNECT_ENC` payload runs to roughly 208–260 bytes. At the default iOS ATT MTU of 185 a single write
@@ -46,6 +52,29 @@ missing in that case is only the screen that sends the phone to the robot's acce
 - [ ] `…cdef7` equals `GET /api/daemon/hardware-id`, so the robot set up over Bluetooth is recognised when it appears
       on the LAN.
 - [ ] `…cdef6` lists exactly the scripts in the robot's `commands/` directory, comma-and-space joined, `.sh` stripped.
+
+## Since daemon 1.10
+
+Written against the stubs like everything above, and added from #156.
+
+- [ ] `SET_NAME <name>` on a 1.10+ robot renames it,
+      and the new name is what `GET /api/daemon/status` and the relay report afterwards.
+- [ ] `SET_NAME` on a 1.9.x robot comes back as `ECHO: SET_NAME <name>`,
+      and onboarding says the name waits for Settings rather than reporting a failure.
+- [ ] `UPDATE_CHECK PRE` offers the pre-release where plain `UPDATE_CHECK` does not,
+      and `UPDATE_START PRE` installs that one.
+- [ ] **A reconnect in the middle of the flow asks for the PIN again.**
+      The daemon binds the PIN session to the connection that entered it
+      (GHSA-993g-hgjh-whmf, merged 2026-09-30, and already in 1.11.0's `bluetooth_service.py`):
+      `_on_central_disconnected` zeroes the session on any disconnect,
+      and a `CMD_*` must come from the same device.
+      `BLEPinSession.invalidate()` already assumes this,
+      and `BLEProtocolTests` holds it against the stub
+      ("reconnecting always needs the PIN again, even inside the 300 s window");
+      what the robot does is the open half.
+      Drop the link between the PIN and the Wi-Fi join, reconnect,
+      and confirm `WIFI_CONNECT_ENC` answers `ERROR: Not connected. Please authenticate first.`
+      until the PIN is entered again.
 
 ## Recovery scripts
 
