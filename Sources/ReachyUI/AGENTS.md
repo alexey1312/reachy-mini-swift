@@ -925,7 +925,22 @@ welcome, name, motors, camera, microphone, speaker, done.
   The SDK sees `window.parent === window`, boots from the URL fragment without `host:init`,
   and posts its protocol to its own window,
   where `JSAppHostBridge`'s document-start script forwards `embed:*` to Swift.
-  `JSAppHostLiveTests` proves that against a real Space when `REACHY_JS_APP_LIVE` is set.
+  `JSAppHostLiveTests` proves that against a real Space when `REACHY_JS_APP_LIVE` is set,
+  on macOS through `swift test` and on an iOS simulator through `xcodebuild test` (its doc comment has the line).
+- **Under the page, the gate is live — and over the LAN it reconnects.**
+  Releasing the relay session drops the root back to `ConnectionScreen`,
+  whose `CandidateSweep` starts on appear and dials known and Bonjour addresses with `automatically: true`.
+  A robot on the same Wi-Fi is therefore connected again over the LAN while the page holds it,
+  and the daemon admits that: its `robot_app_lock` gates central sessions and local Python apps,
+  never a LAN client.
+  The prototype leaves this in place, since it is a measurement;
+  the shipping phase that keeps the shell up while the robot is lent must also keep the sweep from dialling.
+- **The hand-over keys on hardware id, so a simulated daemon cannot be lent.**
+  The daemon derives that id from the Pollen audio board's USB serial and omits it without one,
+  so `mise run sim-daemon` registers on central (it does, given a Hugging Face token on the Mac)
+  but is listed without an id: `JSAppsPrototypeModel` reports it as not listed,
+  and `RootJSAppHost.open` releases nothing.
+  Matching it by name or peer id instead would break project rule 4 for a robot that does not exist.
 - **`RootJSAppHost` is mounted on the root, above the gate**, for the reason `RootSheets` is:
   over the relay this app's session is ended before the page loads,
   the phase leaves `.connected`, and the shell — with the screen the app was opened from — is thrown away.
