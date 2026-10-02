@@ -4,7 +4,8 @@
   the decisions below stand,
   and the questions marked **Open** are measured with the prototype on a robot before this is Accepted
 - Date: 2026-10-01
-- Issue: #159
+- Issue: #159, closed on 2026-10-02 with the run on a robot still to do;
+  **What a run on a robot has to answer** below is the tracker from here on
 
 ## Context
 
@@ -123,12 +124,33 @@ and the daemon refuses a second central session (`robot_busy_local`, `robot_busy
   The prototype reconnects through the connect gate, visibly, because how long that takes on a real robot
   is what decides whether a dedicated `RobotSession` phase is worth its cost.
   The expectation is that it is, since the gate is a full-screen change on every app closed.
-- **Open:** what the gate does underneath the page once the relay session has ended —
-  its candidate sweep may well reconnect to the same robot over the LAN while the page holds it,
-  which is one more reason for the dedicated phase.
-- **Open:** whether the LAN camera's own WebRTC session holds the daemon's lock against the page,
-  and what a page gets while a Python app is running on the robot
-  (upstream's relay gives it a control-only session, and starting a Python app tears remote sessions down).
+- **Answered from the daemon's source, and not yet on a robot**
+  (`reachy_mini` 1.11.0: `daemon/robot_app_lock.py`, `media/central_signaling_relay.py`, `apps/manager.py`).
+  - `robot_app_lock` serialises two things and only two: central sessions and local Python apps.
+    A LAN client takes no part in it, the camera's WebRTC session included,
+    so the page's central session is admitted beside a LAN camera,
+    and `webrtcsink` gives each consumer a session of its own.
+    Whether the robot's CM4 encodes two streams at once is what a robot adds.
+  - The gate underneath the page **does** reconnect over the LAN when the robot is on the same Wi-Fi:
+    `CandidateSweep` starts dialling the moment `ConnectionScreen` appears,
+    and the daemon admits it for the same reason.
+    That settles it for the shipping phase,
+    which has to keep the sweep from dialling while the robot is lent.
+  - While a Python app runs, central admits the page as a **control-only** session:
+    it drives the robot over the data channel, takes no lock, and the app keeps the slot.
+    The other way round depends on the door.
+    `POST /api/apps/start-app/{name}`, which this app's LAN Apps tab calls, evicts the page with `endSession`;
+    `apps.start` over the data channel keeps the session that asked;
+    and the startup app's no-evict start is refused while the page holds the slot.
+- **The hand-over has fifteen seconds.**
+  A session ended on purpose frees the slot with `expect_handoff`,
+  and the daemon then waits `IDLE_RESET_HANDOFF_GRACE_S`, 15 s, before putting the robot to sleep —
+  1.5 s after a drop.
+  The page's session taking the slot cancels it.
+  The prototype spends that window waiting for central to list the robot free (up to 20 s),
+  loading the page, and letting the page set up its own WebRTC session,
+  so a slow hand-over shows as the robot going to sleep and the page waking it again.
+  How much of the fifteen is left is a number step 2 reads off a robot.
 
 ### 4. Report, hide the author, and consent — for both catalogues
 
@@ -176,7 +198,12 @@ which is as far as such a run can go.
 So the page booted from the fragment with no `host:init`,
 its messages reached Swift through the bridge,
 and `window.location.hash` no longer held the credentials afterwards.
-The same on iOS is step 2 below.
+
+**The same on iOS, measured on 2026-10-02** in an iPhone 17 Pro simulator on iOS 27.0.
+The test now compiles wherever WebKit does,
+and `xcodebuild test` reaches the iOS half that `swift test` cannot (its doc comment has the line).
+It passed in 11 s:
+`embed:ready`, the page moving on without `host:init`, and the fragment wiped.
 
 - **A non-persistent data store**, so nothing one app stored is there for the next.
 - **The Space's origin and nothing else** for the page itself;
@@ -219,6 +246,23 @@ declared scopes, each on its own row so a run can say which one failed.
 5. Steps 2 and 4 on a Mac.
 
 Safari's Web Inspector attaches to the page in `DEBUG` builds.
+
+**What a simulator can stand in for, checked on 2026-10-02.**
+`mise run sim-daemon` registers on central by itself when the Mac holds a Hugging Face token
+(`huggingface_hub.get_token()`):
+it logged `Remote access enabled as 'reachy_mini'` twenty seconds after it started.
+So the first half of step 1 runs against it —
+central answering the narrow token with a listing rather than a refusal is decision 1's measurement,
+and with the simulated robot online that listing should not be empty.
+What no script can supply is the consent itself, given in the browser by the account's owner.
+Steps 2 and 3 cannot use it.
+A simulated daemon has no hardware id —
+`utils/hardware_id.py` derives one from the Pollen audio board's USB serial and omits it without one —
+so central lists it without an id,
+and the prototype, which finds and hands over a robot by hardware id alone (project rule 4),
+neither finds it nor releases it.
+Step 3's question is answered from source under decision 3; a robot only confirms it.
+Step 4 needs the robot's own microphone and speaker.
 
 ## Consequences
 

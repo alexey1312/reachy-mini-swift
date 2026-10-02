@@ -1,4 +1,4 @@
-#if DEBUG && os(macOS)
+#if DEBUG && canImport(WebKit)
     import Foundation
     import ReachyKit
     @testable import ReachyUI
@@ -17,6 +17,18 @@
     /// further — which is past everything this test is about.
     ///
     /// `REACHY_JS_APP_LIVE=1 swift test --filter JSAppHostLiveTests`
+    ///
+    /// **It runs on iOS as well, which `swift test` cannot reach.** iOS is where the
+    /// hosting ships first, and its WebKit is a different build from the Mac's.
+    /// `xcodebuild` forwards a `TEST_RUNNER_`-prefixed variable to the test process
+    /// with the prefix dropped:
+    ///
+    /// ```
+    /// TEST_RUNNER_REACHY_JS_APP_LIVE=1 xcodebuild test -scheme ReachyMini-Package \
+    ///   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+    ///   -only-testing:ReachyUITests/JSAppHostLiveTests \
+    ///   -skipPackagePluginValidation -skipMacroValidation
+    /// ```
     @MainActor
     @Suite(
         "JS app host, live",
