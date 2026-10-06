@@ -130,13 +130,21 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
     /// title names its own colour, `font(nil)` hands the explanation back the body text
     /// a row gave it, and `textCase(nil)` keeps the words as written. The insets keep
     /// it where it was: 4 pt in from the edge of the cards below.
+    ///
+    /// The colours are `Color.primary` and `Color.secondary`, not `.primary` and
+    /// `.secondary`. The hierarchical styles resolve against the style around them,
+    /// and a header's is already secondary: the title came out grey and the
+    /// explanation fainter still, so every step read as disabled. The weight is
+    /// stated for the same reason: a header sets one, `font(nil)` does not reset it,
+    /// and the explanation came out semibold.
     private var heading: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             Text(title)
                 .font(Typography.screenTitle.bold())
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.primary)
             Text(message)
-                .foregroundStyle(.secondary)
+                .fontWeight(.regular)
+                .foregroundStyle(Color.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .font(nil)
