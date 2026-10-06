@@ -908,6 +908,9 @@ welcome, name, motors, camera, microphone, speaker, done.
   and its test sound now plays over the relay as well (`RemoteRobotConnection+TestSound.swift`).
 - **The steps reuse `OnboardingStepScaffold`** rather than a copy — the same heading, form and pinned actions.
   The name step reuses the onboarding's copy and `RobotNameField`'s footer word for word.
+  The scaffold holds its form and its footer to `Metrics.readableForm`, centred,
+  because in place of the shell the run has the whole display:
+  on an iPad the steps drew ~1180 pt buttons and one-line paragraphs.
 - **What the references can and cannot hold.**
   Every step and every state a reader can land in has a `First run —` preview,
   plus `Root — first run over the relay` for the fork itself.

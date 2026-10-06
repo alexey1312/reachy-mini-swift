@@ -91,6 +91,14 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             content()
         }
         .formStyle(.grouped)
+        // The column `readablePage()` holds the tab forms to, for the reason it gives.
+        // The first run replaces the shell rather than covering it, so on an iPad it
+        // had the whole display: one-line paragraphs and buttons ~1180 pt wide. The
+        // onboarding sheet is about as wide as the column already, so it barely moves.
+        // Spelled out rather than called, because the backdrop has to go outside the
+        // footer as well.
+        .frame(maxWidth: Metrics.readableForm)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Space.sm) {
                 actions()
@@ -100,6 +108,8 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             // and the way-outs under it as words — reported together from a device.
             .controlSize(.large)
             .padding()
+            // The same column as the form, so the buttons end where the cards do.
+            .frame(maxWidth: Metrics.readableForm)
             .frame(maxWidth: .infinity)
             // `.page` and not `.scrim`, which is what this was. A scrim carries
             // glass, glass renders a light surface whatever is behind it, and this
