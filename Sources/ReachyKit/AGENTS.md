@@ -333,6 +333,9 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   a failed read over the relay offers nothing, and no failure is reported.
   `finishFirstRun()` is the only write, and it withdraws the offer **before** writing,
   so a relay gone quiet cannot hold the owner on the last screen over bookkeeping they never see.
+  `isWritingFirstRunFlag` is true for the length of the write,
+  because on the LAN the write travels on the channel the root closes once nothing holds it.
+  This device records the robot as settled only after the robot confirms the write.
   `wake()` no longer writes it — #157 had it do so, and the first run wakes the robot partway through.
   When a route lands, `RobotConnection` conforms and nothing above the protocol moves.
 - **`SleepPosition` is the one check that can see a wiring mistake before the motors are powered** (#169).

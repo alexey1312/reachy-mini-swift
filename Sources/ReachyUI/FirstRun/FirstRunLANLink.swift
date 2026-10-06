@@ -127,7 +127,8 @@ final class FirstRunStateReader {
 }
 
 /// Closes the LAN channel once nothing is owed it: held while a connect may still be
-/// reading the flag over it, and while the first run that reading found is on screen.
+/// reading the flag over it, while the first run that reading found is on screen, and
+/// while the end of that run is on its way to the robot over it.
 struct RootFirstRunLink: ViewModifier {
     let session: RobotSession
     let lan: FirstRunLANLink
@@ -140,7 +141,9 @@ struct RootFirstRunLink: ViewModifier {
     }
 
     private var holdsLink: Bool {
-        if session.offersFirstRun {
+        // The offer goes before the write does, so the screen does not wait on the
+        // robot. Closing on the offer alone cut the channel under the write.
+        if session.offersFirstRun || session.isWritingFirstRunFlag {
             return true
         }
         switch session.phase {

@@ -881,6 +881,8 @@ welcome, name, motors, camera, microphone, speaker, done.
   opens — or dropped after eight seconds, which is what the connect gate waits at most.
   When the robot turns out to be new, the same link is the camera step's picture and the channel the end writes to.
   `RootFirstRunLink` closes it as soon as nothing holds it: a connect no longer reading, and no run on screen.
+  The end of the run holds it too (`RobotSession.isWritingFirstRunFlag`):
+  the offer goes before the write, and closing on the offer alone cut the channel under the write.
   The opener is set in `ReachyRootView.init` on the session built beside it, so `@State` keeps the pair together;
   previews never connect, so they never open anything.
 - **On the LAN the pose comes off the daemon's socket; over the relay it is polled.**

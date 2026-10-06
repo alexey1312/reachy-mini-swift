@@ -27,6 +27,9 @@ public struct FirstRunServices {
 /// One connection's worth of the first run's gate.
 struct FirstRunState {
     var isOffered = false
+    /// The run is over on screen and its end is still on its way to the robot. The
+    /// LAN link is held for this too: the write travels on its data channel.
+    var isWritingFlag = false
     /// Where finishing writes the robot's flag: the relay's client, or the LAN data
     /// channel opened to read it. `nil` when the robot could not be asked, and only
     /// this device's record is written.
@@ -170,28 +173,57 @@ extension RobotSession {
         }
     }
 
+    /// Whether the end of the first run is still on its way to the robot.
+    ///
+    /// The shell is already on screen by then. On the LAN the write travels on the
+    /// data channel the root opened for the run, so the root holds that channel
+    /// open until this is false (`RootFirstRunLink`).
+    public var isWritingFirstRunFlag: Bool {
+        firstRun.isWritingFlag
+    }
+
     /// The first run is over, finished or skipped: the shell takes its place at once
     /// and the robot is told it has met its owner.
     ///
     /// The offer is withdrawn **before** the write, not after it: a channel that has
     /// gone quiet would otherwise hold the owner on the last screen for a whole reply
-    /// budget over bookkeeping they never see. A write that fails is logged and leaves
-    /// the robot reading new, which is the honest outcome — the next connect offers the
-    /// run again where it can ask, and skipping it costs one tap.
+    /// budget over bookkeeping they never see. ``isWritingFirstRunFlag`` covers the
+    /// write instead, so the LAN channel it travels on stays open until it returns.
+    ///
+    /// This device records the robot as settled only once the robot confirms. A write
+    /// that fails is logged and leaves the robot reading new, here and on the robot,
+    /// which is the honest outcome — the next connect offers the run again, and
+    /// skipping it costs one tap. Without a channel there is nothing to confirm, and
+    /// the record is all there is.
     public func finishFirstRun() async {
         guard firstRun.isOffered else { return }
         firstRun.isOffered = false
-        if let robot = firstRun.robot {
-            firstRunServices.records.record(.settled, for: robot)
+        let robot = firstRun.robot
+        guard let flag = firstRun.flag else {
+            settleRecord(for: robot)
+            return
         }
-        guard let flag = firstRun.flag else { return }
+        let attemptID = connectionAttemptID
+        firstRun.isWritingFlag = true
+        defer {
+            // A disconnect has already cleared it, and a new connection owns it now.
+            if connectionAttemptID == attemptID {
+                firstRun.isWritingFlag = false
+            }
+        }
         do {
             guard try await flag.setFirstWakeUpCompleted(true) else {
                 Self.firstRunLog.error("the robot could not store its first wake-up")
                 return
             }
+            settleRecord(for: robot)
         } catch {
             _ = Self.message(for: error)
         }
+    }
+
+    private func settleRecord(for robot: String?) {
+        guard let robot else { return }
+        firstRunServices.records.record(.settled, for: robot)
     }
 }

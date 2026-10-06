@@ -105,6 +105,49 @@ struct RobotSessionFirstRunLANTests {
         #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
     }
 
+    /// The offer goes first so the screen does not wait on the robot. The write still
+    /// travels on the LAN channel, so the root has to hold the channel open for it —
+    /// and this device may call the robot settled only once the robot says it is.
+    @Test("finishing holds the channel for the write and settles only on the robot's answer")
+    func settlesAfterTheRobotConfirms() async throws {
+        let robot = LANRobot()
+        let opener = Opener(completed: false)
+        let session = await connect(robot, opener: opener)
+        let channel = try #require(opener.channel)
+        channel.removeReply(for: "set_first_wake_up")
+
+        let finishing = Task { await session.finishFirstRun() }
+        await waitUntil { opener.sent("set_first_wake_up") == 1 }
+
+        #expect(!session.offersFirstRun, "the shell is not held for the write")
+        #expect(session.isWritingFirstRunFlag, "the channel the write travels on is held")
+        #expect(records.state(for: robot.identity.deduplicationKey) == .pending)
+
+        channel.emit(#"{"command":"set_first_wake_up","status":"ok","is_completed":true}"#)
+        await finishing.value
+
+        #expect(!session.isWritingFirstRunFlag)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
+    }
+
+    /// A write the robot could not store leaves it new on the robot, so this device
+    /// must not call it settled either: the next connect offers the run again.
+    @Test("a write the robot refused leaves the robot pending on this device")
+    func keepsARefusedWritePending() async {
+        let robot = LANRobot()
+        let opener = Opener(completed: false)
+        let session = await connect(robot, opener: opener)
+        opener.channel?.removeReply(for: "set_first_wake_up")
+        let finishing = Task { await session.finishFirstRun() }
+        await waitUntil { opener.sent("set_first_wake_up") == 1 }
+
+        opener.channel?.emit(#"{"command":"set_first_wake_up","status":"error","is_completed":false}"#)
+        await finishing.value
+
+        #expect(!session.offersFirstRun)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .pending)
+    }
+
     /// Set up in Pollen's app, or by this app on another device: the robot says so, and
     /// this device remembers, so the channel is opened once rather than on every connect.
     @Test("a robot whose channel says it was woken is settled and never asked again")
