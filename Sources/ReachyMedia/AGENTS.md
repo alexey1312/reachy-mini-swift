@@ -152,10 +152,12 @@ it is the phase that waits.
   The phase stays `.stalled`, Try again included, until the robot answers —
   a robot still away moves nothing on screen —
   and `retry()` during a probe ends that probe's subscription first, because a carrier serves one at a time.
-  **A probe never calls `acquireMedia()`.**
+  **Only `start()` and `retry()` call `acquireMedia()`** — not the quick retry after the first stall, and not a probe.
   On a robot whose camera an app released for direct access,
-  `POST /api/media/acquire` is a takeover, not a nudge,
-  and a probe repeats on its own schedule.
+  `POST /api/media/acquire` is a takeover, not a nudge.
+  The quick retry used to send it, and so took the camera back about 15 s after an app let go of it;
+  a probe would do the same on its own schedule.
+  `CameraSessionNegotiationTests` counts the asks through `MediaAcquiring`.
   Over the relay there is no probe:
   each would be an ask to central that nobody made, against a service that rate-limits asks.
 - **Starting over overlaps the old attempt, and three things keep it from leaking into the new one.**

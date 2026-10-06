@@ -254,6 +254,32 @@ struct CameraSessionNegotiationTests {
         await waitUntil("the probe is let go of") { await signaling.disconnects == 3 }
     }
 
+    /// `POST /api/media/acquire` takes the camera back from an app that released it, so
+    /// only an attempt somebody asked for may send it: the first, and Try again. The quick
+    /// retry used to send it too, and took the camera from an app 15 s after it let go.
+    @Test("only start and Try again acquire media")
+    func onlyRequestedAttemptsAcquireMedia() async {
+        let acquirer = CountingAcquirer()
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.patience, connection: acquirer)
+        session.probeDelay = Self.stall
+        session.start()
+        defer { session.stop() }
+        // An attempt acquires before it subscribes, so each count is settled by then.
+        await waitUntil("subscribed") { await signaling.subscriptions == 1 }
+        #expect(await acquirer.calls == 1)
+
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("the attempt is started over") { await signaling.subscriptions == 2 }
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("a probe subscribes") { await signaling.subscriptions == 3 }
+        #expect(await acquirer.calls == 1)
+
+        session.retry()
+        await waitUntil("a fresh subscription") { await signaling.subscriptions == 4 }
+        #expect(await acquirer.calls == 2)
+    }
+
     /// Over the relay a probe would be an ask to central that nobody made, against a
     /// service that rate-limits asks.
     @Test("only a session on the LAN probes")
@@ -359,21 +385,4 @@ struct CameraSessionNegotiationTests {
         #expect(session.phase == .failed(RemoteSessionEnd(reason: "install_id_takeover").message))
         #expect(await signaling.subscriptions == 1)
     }
-}
-
-@MainActor
-func waitUntil(
-    _ description: String,
-    timeout: Duration = .seconds(20),
-    _ condition: () async -> Bool,
-    sourceLocation: SourceLocation = #_sourceLocation
-) async {
-    let deadline = ContinuousClock.now.advanced(by: timeout)
-    while ContinuousClock.now < deadline {
-        if await condition() {
-            return
-        }
-        try? await Task.sleep(for: .milliseconds(10))
-    }
-    Issue.record("timed out waiting until \(description)", sourceLocation: sourceLocation)
 }

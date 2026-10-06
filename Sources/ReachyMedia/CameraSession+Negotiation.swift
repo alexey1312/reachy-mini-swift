@@ -51,17 +51,18 @@ extension CameraSession {
         }
         stalledAttempts = 0
         phase = .connecting
-        subscribe()
+        subscribe(acquiringMedia: true)
     }
 
     // MARK: - Attempts
 
     /// Asks the carrier for a session and starts that attempt's clock.
     ///
-    /// A probe does not acquire media. The simulator registers no producer until it
-    /// is asked to, but on a robot whose camera an app released for direct access the
-    /// same request takes the camera back — and a probe is something nobody asked for.
-    func subscribe(acquiringMedia: Bool = true) {
+    /// Only an attempt somebody asked for acquires media: `start()` and `retry()`. The
+    /// simulator registers no producer until it is asked to, but on a robot whose camera
+    /// an app released for direct access the same request takes the camera back — and
+    /// neither the quick retry after a stall nor a probe is anybody's request.
+    func subscribe(acquiringMedia: Bool) {
         let ending = ending
         let acquirer = acquiringMedia ? connection : nil
         // `weak self`: `handle` captures the session, so a strong capture keeps
@@ -110,7 +111,7 @@ extension CameraSession {
             return
         }
         phase = .connecting
-        subscribe()
+        subscribe(acquiringMedia: false)
     }
 
     /// The peer connection's own verdict, from the delegate adapter. `id` names the peer
@@ -200,3 +201,12 @@ extension CameraSession {
         first * (1 << min(max(stalledProbes, 0), probeDoublings))
     }
 }
+
+/// The one thing an attempt asks of the daemon's HTTP API. A seam rather than
+/// `RobotConnection` itself so the tests can count who asks, because an attempt that
+/// nobody requested must not.
+protocol MediaAcquiring: Sendable {
+    func acquireMedia() async throws
+}
+
+extension RobotConnection: MediaAcquiring {}

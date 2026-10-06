@@ -95,7 +95,7 @@ public final class CameraSession {
     }()
 
     let signaling: any RobotSignaling
-    let connection: RobotConnection?
+    let connection: (any MediaAcquiring)?
     /// How long an attempt has to connect. A `var` for the tests, which shorten the
     /// stalls they cause and lengthen the attempts they expect to go through.
     @ObservationIgnored var negotiationDeadline: Duration
@@ -148,11 +148,11 @@ public final class CameraSession {
         self.init(signaling: signaling, negotiationDeadline: Self.defaultNegotiationDeadline)
     }
 
-    /// The deadline is a parameter for the tests alone: they stall on purpose, twice,
-    /// and cannot wait the real one out each time.
-    init(signaling: any RobotSignaling, negotiationDeadline: Duration) {
+    /// For the tests alone: they stall on purpose and cannot wait the real deadline out,
+    /// and they count which attempts acquire media where a robot would be sent a POST.
+    init(signaling: any RobotSignaling, negotiationDeadline: Duration, connection: (any MediaAcquiring)? = nil) {
         self.signaling = signaling
-        connection = nil
+        self.connection = connection
         self.negotiationDeadline = negotiationDeadline
     }
 
@@ -185,7 +185,7 @@ public final class CameraSession {
         refreshMicPermission()
         MediaAudioSession.shared.cameraSessionStarted()
         stalledAttempts = 0
-        subscribe()
+        subscribe(acquiringMedia: true)
     }
 
     public func stop() {
