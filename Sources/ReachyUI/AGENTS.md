@@ -952,6 +952,13 @@ welcome, name, motors, camera, microphone, speaker, done.
 - **`RootJSAppHost` is mounted on the root, above the gate**, for the reason `RootSheets` is:
   over the relay this app's session is ended before the page loads,
   the phase leaves `.connected`, and the shell — with the screen the app was opened from — is thrown away.
+- **Only the page's own document speaks for the app.** The injected script forwards a message only when
+  `event.source` is the window itself and `event.origin` is its own, and the handler drops any script message
+  that is not from the main frame at the Space's host (`JSAppHostBridge.admits`):
+  `window.webkit.messageHandlers` is there in every frame, and a frame the page embeds is somebody else's code.
+  `JSAppHostBridgeTests` runs the script in a bare `JSContext`, so it needs no WebKit.
+- **Opening is guarded by a flag of its own** (`RootJSAppHost.isOpening`), because over the relay
+  `freeRobot` can take twenty seconds with `hosted` still nil, and a second tap would open the app twice.
 - **Closing waits for `embed:left`**, because that is the page putting the robot to sleep;
   `JSAppHostModel.leave()` gives it 9.5 s, the reference host's bound.
 - **The token is the narrow one** (`HFOAuthConfiguration.reachyMiniWebApps`), in memory,
