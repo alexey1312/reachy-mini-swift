@@ -232,6 +232,7 @@ public final class CameraSession {
                 // Nothing to negotiate with is not a stall — the robot says so itself.
                 disarmDeadline()
             }
+        case .sessionRequested: sessionRequested()
         case let .offer(_, sdp):
             await accept(offerSDP: sdp)
         case let .remoteCandidate(_, candidate, sdpMLineIndex, sdpMid):

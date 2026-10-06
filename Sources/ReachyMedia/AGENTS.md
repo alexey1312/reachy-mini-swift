@@ -122,6 +122,10 @@ it is the phase that waits.
   (`defaultNegotiationDeadline`, in `CameraSession+Negotiation.swift`).
   The clock covers every step — the offer that never comes, the answer the robot never gets, ICE stuck in
   `checking` — and stops only for `.waitingForProducer`, which is the robot answering rather than stalling.
+  **It starts again at `.sessionRequested`**, which both carriers send when they ask a producer for a session.
+  A producer that registers after the wait — a robot just woken, a media server restarted —
+  is otherwise a peer status that only the signaling client sees,
+  and a robot that then never offered sat in `.waitingForProducer` for ever, with no deadline and no retry.
 - **On the LAN this deadline is the only thing that ends a stall.**
   The daemon (1.10+) has a 12 s watchdog of its own,
   but it reports a stuck peer to central only — as `ice_negotiation_timeout` or `peer_connection_failed`;

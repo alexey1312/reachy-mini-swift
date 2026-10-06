@@ -18,6 +18,10 @@ public enum SignalingEvent: Sendable, Equatable {
     /// Signaling is up but nothing is producing yet — the simulator before media
     /// is acquired, or a robot whose relay has not registered.
     case waitingForProducer
+    /// A producer is there and the carrier asked it for a session, so an offer is
+    /// owed. After `waitingForProducer` this is the only sign that the wait is over —
+    /// the robot registered late, just woken or with its media server restarted.
+    case sessionRequested
     case offer(sessionID: String, sdp: String)
     case remoteCandidate(sessionID: String, candidate: String, sdpMLineIndex: Int32, sdpMid: String?)
     /// The session ended. `reason` exists only over the relay, where central says

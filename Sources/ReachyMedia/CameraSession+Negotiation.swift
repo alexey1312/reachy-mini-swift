@@ -120,9 +120,19 @@ extension CameraSession {
         }
     }
 
-    /// For a step inside an attempt that may or may not have a clock running: an offer
-    /// after the robot said it had no producer starts one, an offer within an attempt
-    /// keeps the one it has.
+    /// The carrier asked a producer for a session, so an offer is owed. After a wait
+    /// that is the robot back — registered late, just woken, its media server
+    /// restarted — and the clock the wait stopped starts again here: a producer that
+    /// appears and then never offers is a stall like any other, not a wait for ever.
+    func sessionRequested() {
+        guard phase == .waitingForProducer else { return }
+        phase = .connecting
+        armDeadlineIfIdle()
+    }
+
+    /// For a step inside an attempt that may or may not have a clock running: a session
+    /// asked for, or an offer, after the robot said it had no producer starts one; the
+    /// same step within an attempt keeps the one it has.
     func armDeadlineIfIdle() {
         guard deadlineTask == nil else { return }
         armDeadline()

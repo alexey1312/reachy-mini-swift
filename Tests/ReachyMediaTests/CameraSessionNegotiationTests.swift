@@ -200,6 +200,23 @@ struct CameraSessionNegotiationTests {
         #expect(ContinuousClock.now - offered >= deadline)
     }
 
+    /// A robot whose producer registers after the session started waiting — just woken,
+    /// or its media server restarted — and then never offers. The wait stopped the
+    /// clock, so the session request has to start it again, or nothing ends this one.
+    @Test("a producer that appears late and never offers is a stall")
+    func lateProducerThatNeverOffersIsAStall() async {
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.stall)
+        session.start()
+        defer { session.stop() }
+        await waitUntil("subscribed") { await signaling.subscriptions == 1 }
+
+        await signaling.deliver(.waitingForProducer)
+        await waitUntil("the session waits") { session.phase == .waitingForProducer }
+        await signaling.deliver(.sessionRequested)
+        await waitUntil("the attempt is started over") { await signaling.subscriptions == 2 }
+    }
+
     /// Over the relay the robot's own watchdog says it first, with a reason code. That
     /// is the same stall seen from the other end, and spends the same budget.
     @Test("the robot's own watchdog over the relay counts as a stall")
