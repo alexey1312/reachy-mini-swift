@@ -176,6 +176,62 @@ struct RobotSessionFirstRunLANTests {
         #expect(session.offersFirstRun)
     }
 
+    // MARK: - A connect that ends while the channel opens
+
+    /// Holds the channel's opening until the test lets it go, then reports that it did
+    /// not open — the eight seconds a real one can take, at the test's pace.
+    @MainActor
+    private final class HeldOpener {
+        private(set) var opened = 0
+        private var waiter: CheckedContinuation<Void, Never>?
+
+        func open(_: RobotAddress) async -> (any FirstWakeUpClient)? {
+            opened += 1
+            await withCheckedContinuation { waiter = $0 }
+            return nil
+        }
+
+        func letGo() {
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    /// A disconnect resets the session's first-run state while the channel opens. The
+    /// stale attempt used to read that reset as "met before" and settle a robot that
+    /// never saw its first run, so no later connect ever asked it again.
+    @Test("a connect that ends while the channel opens records nothing about the robot")
+    func anEndedConnectRecordsNothing() async {
+        let robot = LANRobot()
+        let held = HeldOpener()
+        let session = RobotSession { _ in robot }
+        session.firstRunServices = FirstRunServices(
+            openLANChannel: { @MainActor address in await held.open(address) },
+            records: records
+        )
+        let connecting = Task { await session.connect(to: RobotAddress(host: "192.168.1.77")) }
+        await waitUntil { held.opened == 1 }
+
+        session.disconnect()
+        held.letGo()
+        await connecting.value
+
+        #expect(records.state(for: robot.identity.deduplicationKey) == nil)
+        #expect(!session.offersFirstRun)
+        let opener = Opener(completed: false)
+        let next = await connect(robot, opener: opener)
+        #expect(next.offersFirstRun, "the next connect asks the robot")
+        #expect(opener.opened.count == 1)
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(condition())
+    }
+
     // MARK: - What is never asked
 
     /// 1.9.x has no such command on its channel; a peer connection to ask it would only

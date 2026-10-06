@@ -227,7 +227,7 @@ extension RobotSession {
                 // Before the gate comes down, for the reason `warmCatalogues` is: the
                 // fork below the root picks the first run or the shell on `.connected`,
                 // and a flag learned a moment later would flash the shell first.
-                await readFirstRun(using: client, identity: identity)
+                await readFirstRun(using: client, identity: identity, attemptID: attemptID)
                 guard isAttemptLive(attemptID) else { return false }
                 return finishConnected(identity: identity)
             case .backendDown:

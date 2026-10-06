@@ -85,18 +85,30 @@ extension RobotSession {
     /// A failed read offers nothing over the relay — a robot that cannot answer is not
     /// shown a setup it may long since have had — and is never reported: `robotError`
     /// is the robot's connection and power alone (`RobotSessionErrorOwnershipTests`).
-    func readFirstRun(using client: any RobotAPIClient, identity: RobotIdentity) async {
-        firstRun = FirstRunState(isNewToDevice: firstRun.isNewToDevice)
+    ///
+    /// **An attempt that ends during a read writes nothing.** Opening the LAN channel
+    /// takes up to eight seconds and the read up to a reply budget more, and a
+    /// disconnect in that time resets `firstRun`. A stale attempt that went on would
+    /// read the reset state as a robot this device has met, and settle a new robot
+    /// that never saw its first run.
+    func readFirstRun(using client: any RobotAPIClient, identity: RobotIdentity, attemptID: UUID) async {
+        let isNewToDevice = firstRun.isNewToDevice
+        firstRun = FirstRunState(isNewToDevice: isNewToDevice)
         switch link {
         case .remote:
             // A 1.9.x daemon on the relay has no such command and would hold the gate
             // for the whole reply budget saying so.
             guard !predatesRelayCommands, let flag = client as? any FirstWakeUpClient,
-                  let completed = await completed(asking: flag), !completed
+                  let completed = await completed(asking: flag), isAttemptLive(attemptID), !completed
             else { return }
             offer(writingTo: flag)
         case let .lan(address):
-            await readFirstRunOverLAN(address: address, robot: identity.deduplicationKey)
+            await readFirstRunOverLAN(
+                address: address,
+                robot: identity.deduplicationKey,
+                isNewToDevice: isNewToDevice,
+                attemptID: attemptID
+            )
         case .none, .simulated:
             return
         }
@@ -104,7 +116,12 @@ extension RobotSession {
 
     /// The robot's own flag where its channel opens, this device's record where it
     /// does not — and a robot settled either way is never asked again.
-    private func readFirstRunOverLAN(address: RobotAddress, robot: String) async {
+    private func readFirstRunOverLAN(
+        address: RobotAddress,
+        robot: String,
+        isNewToDevice: Bool,
+        attemptID: UUID
+    ) async {
         guard let open = firstRunServices.openLANChannel else { return }
         let records = firstRunServices.records
         let recorded = records.state(for: robot)
@@ -112,15 +129,20 @@ extension RobotSession {
         firstRun.robot = robot
         // The command arrived with 1.10.0; an older daemon is not worth a peer
         // connection, and its record decides.
-        if !predatesRelayCommands, let flag = await open(address), let completed = await completed(asking: flag) {
-            guard !completed else {
-                records.record(.settled, for: robot)
+        if !predatesRelayCommands, let flag = await open(address) {
+            let completed = await completed(asking: flag)
+            guard isAttemptLive(attemptID) else { return }
+            if let completed {
+                guard !completed else {
+                    records.record(.settled, for: robot)
+                    return
+                }
+                offer(writingTo: flag)
                 return
             }
-            offer(writingTo: flag)
-            return
         }
-        guard recorded == .pending || firstRun.isNewToDevice else {
+        guard isAttemptLive(attemptID) else { return }
+        guard recorded == .pending || isNewToDevice else {
             // Met before and never offered: set up already, as far as this device can
             // tell, and not worth a channel that did not open on every connect.
             records.record(.settled, for: robot)
