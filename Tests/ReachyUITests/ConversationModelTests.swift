@@ -80,17 +80,34 @@ struct ConversationModelTests {
         #expect(model.lastError != nil)
     }
 
-    /// An arriving `not_running` is the app itself saying it is gone. That one may.
-    @Test("an arriving not-running concludes the app stopped")
+    /// An arriving `not_running` from the daemon's relay says no app is running. That
+    /// one may conclude.
+    @Test("the relay's not-running concludes the app stopped")
     func concludesFromNotRunning() async {
         let model = model(interrupt: { _, _ in
-            throw ConversationFailure.rejected(code: -32000, reason: .notRunning, message: "no app is running")
+            throw ConversationFailure(relay: .rpc(code: -32000, message: "no app is running", reason: "not_running"))
         })
         model.receive(.opened)
 
         await model.interrupt(app: Self.app, session: session())
 
         #expect(model.phase == .unavailable(.appStopped))
+    }
+
+    /// The app raises the same reason itself whenever its voice backend is not
+    /// connected — at startup, and through the reconnect a personality change starts.
+    /// That is a wait, not an ending, and the screen primes again.
+    @Test("the app's own not-running waits for the backend again")
+    func waitsAgainOnTheAppsOwnNotRunning() async {
+        let model = model(interrupt: { _, _ in
+            throw ConversationFailure(code: -32000, message: "no active session", reason: "not_running")
+        })
+        model.receive(.opened)
+
+        await model.interrupt(app: Self.app, session: session())
+
+        #expect(model.phase == .preparing)
+        #expect(model.primingRound == 1)
     }
 
     /// There is nothing a reader could do about a build that has no such method, so the

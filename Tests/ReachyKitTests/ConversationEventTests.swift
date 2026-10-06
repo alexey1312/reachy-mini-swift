@@ -181,6 +181,24 @@ struct ConversationFailureTests {
         #expect(failure.reason == .notRunning)
     }
 
+    /// The app raises `not_running` itself, with the same code, whenever its voice
+    /// backend is not connected. Only the relay's own sentence means no app at all,
+    /// and on the LAN there is no relay to have said it.
+    @Test("the app's own not-running is a backend not connected, on either path")
+    func mapsTheAppsOwnNotRunning() {
+        let lan = ConversationFailure(code: -32000, message: "no active session", reason: "not_running")
+        let relayed = ConversationFailure(
+            relay: .rpc(code: -32000, message: "no active session", reason: "not_running")
+        )
+        let lanWithTheRelaysWords = ConversationFailure(
+            code: -32000, message: "no app is running", reason: "not_running"
+        )
+
+        #expect(lan.reason == .backendNotConnected)
+        #expect(relayed.reason == .backendNotConnected)
+        #expect(lanWithTheRelaysWords.reason == .backendNotConnected)
+    }
+
     @Test("the relay's app-unavailable is carried")
     func mapsAppUnavailable() {
         let failure = ConversationFailure(

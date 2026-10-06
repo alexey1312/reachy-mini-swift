@@ -119,9 +119,11 @@ extension ConversationModel {
     ///
     /// `-32601` is not reported: an app build without the method cannot grow one
     /// mid-session, so there is nothing a reader could act on and the controls go
-    /// instead. `not_running` is a verdict — the app is gone — and it is the one thing
-    /// here allowed to reach that conclusion, because it *arrived*. Everything else lands
-    /// in `lastError`, which the screen renders in a slot of its own.
+    /// instead. The relay's `not_running` is a verdict — no app is running — and it is
+    /// the one thing here allowed to reach that conclusion, because it *arrived*. The
+    /// app's own `not_running` is not: its backend is reconnecting, so the screen waits
+    /// again. Everything else lands in `lastError`, which the screen renders in a slot
+    /// of its own.
     private func run(_ session: RobotSession, _ work: () async throws -> Void) async {
         // The dock and this screen both stay up over an unreachable robot on purpose,
         // so their controls have to refuse rather than reach for a socket that cannot
@@ -153,6 +155,12 @@ extension ConversationModel {
             switch reason {
             case .notRunning:
                 phase = .unavailable(.appStopped)
+            case .backendNotConnected:
+                // The app is there and its backend is not — at startup, or through the
+                // reconnect a personality change starts. Wait for it again.
+                phase = .preparing
+                primingRound += 1
+                record(failure: failure)
             case .appUnavailable:
                 phase = .unavailable(.appUnavailable)
             case .loopUnavailable:
