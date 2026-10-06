@@ -609,6 +609,10 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   A change handler fires when a stick moves, and a held turn is the case where nothing moves.
   The scene gate is the same hazard again: the system stops delivering a controller's input in the background,
   and a stick last read as held would go on turning the body with nobody at the controls.
+  The scene gate alone does not cover a Mac window left visible behind another app:
+  the scene stays `.active` there and the input stops all the same.
+  So the hub also lets go when the app resigns active and drives nothing until it is in front again
+  (`setAppActive(_:)`).
 - **Captures never see a real controller.**
   `ControllerScreen` reads `.shared` only outside `reachyPreviewMode`,
   so a controller paired to the Mac running the suite cannot put the legend into a root reference;
