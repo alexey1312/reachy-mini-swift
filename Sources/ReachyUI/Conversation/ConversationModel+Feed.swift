@@ -59,8 +59,8 @@ extension ConversationModel {
     /// The feed stopped after having worked.
     ///
     /// Draws a gap rather than a verdict: a dropped socket is not evidence the app is
-    /// gone, and the transport reconnects on its own. Only an arriving `not_running` —
-    /// or a status read that answered — may say more than this.
+    /// gone, and the transport reconnects on its own. Only the relay's arriving
+    /// `not_running` — or a status read that answered — may say more than this.
     func noteFeedLost() {
         guard phase == .live else { return }
         phase = .interrupted

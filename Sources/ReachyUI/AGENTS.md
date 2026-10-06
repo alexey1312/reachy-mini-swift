@@ -1517,6 +1517,12 @@ and an elapsed timer conclude nothing — the transport reconnects on its own an
 may be behind a blip. Only an arriving `not_running` says the app is gone; `.closed`
 draws a gap and stops there. `ConversationModelTests.doesNotConcludeFromATimeout` is what
 holds it.
+And only the relay's `not_running` says so.
+The app sends the same reason, with the same code, while its voice backend is not connected —
+at startup, and through the reconnect a personality change starts.
+`ConversationFailure` reads that one as `backendNotConnected`,
+and the screen narrates preparing and waits for `backend_connected` again
+(`ConversationModelTests.waitsAgainOnTheAppsOwnNotRunning`).
 
 **The dock's sheet stopped collapsing, and it was measured against the other host.**
 `RunningAppModifier` used to read `visibleStatus` inside its `.sheet` content while
