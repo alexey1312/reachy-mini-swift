@@ -81,6 +81,30 @@ struct MoveEntityQueryTests {
         #expect(listed.map(\.dataset) == [dances, "someone/experimental"])
     }
 
+    /// Both recordings carry hundreds of frames that share one timestamp, and the
+    /// daemon snaps the head across each such burst. Their clean twins stay.
+    @Test("the picker and Siri leave out the recordings that snap the head")
+    func withholdsTheBrokenRecordings() async throws {
+        let music = "Anne-Charlotte/music"
+        let query = query([
+            music: [
+                "michael-jackson-thriller-official-video-shortene",
+                "michael-jackson-thriller",
+                "queen-we-will-rock-you-official",
+                "queen-we-will-rock-you",
+            ],
+            // The list is per dataset: the same stem elsewhere is somebody else's.
+            "someone/experimental": ["queen-we-will-rock-you-official"],
+        ])
+
+        let listed = try await query.suggestedEntities()
+        #expect(listed.filter { $0.dataset == music }.map(\.move) == [
+            "michael-jackson-thriller", "queen-we-will-rock-you",
+        ])
+        #expect(listed.contains { $0.dataset == "someone/experimental" })
+        #expect(try await query.entities(matching: "thriller").map(\.move) == ["michael-jackson-thriller"])
+    }
+
     @Test("an empty index offers an empty picker rather than throwing")
     func offersNothingQuietly() async throws {
         #expect(try await query([:]).suggestedEntities().isEmpty)

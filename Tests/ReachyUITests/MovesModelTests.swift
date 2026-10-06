@@ -242,6 +242,24 @@ struct MovesModelTests {
         #expect(!model.isContentLoading)
     }
 
+    /// The daemon snaps the head across each burst of frames that share one
+    /// timestamp, and these two recordings carry hundreds of them.
+    @Test("the Music library leaves out the recordings that snap the head")
+    func withholdsTheBrokenRecordings() {
+        let model = MovesModel.preview(
+            moves: [
+                "michael-jackson-thriller-official-video-shortene",
+                "michael-jackson-thriller",
+                "queen-we-will-rock-you-official",
+                "queen-we-will-rock-you",
+            ],
+            selection: 2
+        )
+
+        #expect(model.selectedLibrary.dataset == "Anne-Charlotte/music")
+        #expect(model.moves == ["michael-jackson-thriller", "queen-we-will-rock-you"])
+    }
+
     @Test("play forwards the selected library and restores button state")
     func play() async {
         let client = MovesUIClient()

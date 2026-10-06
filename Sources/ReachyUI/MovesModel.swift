@@ -69,8 +69,9 @@ final class MovesModel {
     }
 
     /// Derived from `selection`, so the rows can never belong to another library.
+    /// `MoveLibrary.offered` leaves out the recordings that snap the head.
     var moves: [String] {
-        movesByDataset[selectedLibrary.dataset] ?? []
+        MoveLibrary.offered(movesByDataset[selectedLibrary.dataset] ?? [], in: selectedLibrary.dataset)
     }
 
     var loading: Bool {

@@ -279,6 +279,13 @@ the next pair.
     a second writer stamping `Date()` would re-date every library the app had merely read off disk — the index would
     then never expire. The cost of reading only is that a library nobody has opened in the app is absent from the
     picker.
+  - **Two Music recordings are withheld from every list, and `MoveLibrary.withheld` says why.**
+    `michael-jackson-thriller-official-video-shortene` and `queen-we-will-rock-you-official`
+    carry hundreds of frames that share one timestamp,
+    and the daemon's `RecordedMove.evaluate` snaps the head across each such burst — up to 27.5° in 10 ms.
+    `MoveLibrary.offered` filters the Moves screen and `suggestedEntities`,
+    and through it Siri's match, the widget's picker and the Spotlight index.
+    `entities(for:)` does not filter, so a shortcut saved earlier still resolves.
   - **`SoundEntityQuery` goes one step further and reads no cache either** — the list is this device's own library
     (`SoundLibraryStore`), so it is instant, needs no network from a process with seconds, and is the superset: the
     robot's copy is whatever survived its last restart. The cost is a sound that is _only_ on the robot, uploaded from
