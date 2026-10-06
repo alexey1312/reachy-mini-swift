@@ -35,6 +35,9 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     var failStopSound = false
     var failGotoNeutral = false
     private(set) var listCalls = 0
+    /// How often the running list was read — the connect-time adoption is the
+    /// first, and a test that starts a move elsewhere waits for it to pass.
+    private(set) var runningReads = 0
     private(set) var events: [String] = []
     private(set) var stopSoundCalls = 0
     private(set) var gotoNeutralCalls = 0
@@ -47,11 +50,17 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
         self.awake = awake
     }
 
-    /// The move task ends on its own — a dance that reached its last frame, or one
-    /// `_try_start_move` dropped. The daemon pops the uuid in `wrap_coro`'s
-    /// `finally`, so from here on `move/stop` for it is a `KeyError`.
+    /// The move task ends on its own — a dance that reached its last frame. The
+    /// daemon pops the uuid in `wrap_coro`'s `finally`, so from here on
+    /// `move/stop` for it is a `KeyError`.
     func finishMove() {
         lock.withLock { activeUUID = nil }
+    }
+
+    /// A move this session never asked for: the widget, another device, or a
+    /// launch before this one.
+    func startElsewhere(_ uuid: String) {
+        lock.withLock { activeUUID = uuid }
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -116,7 +125,8 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
 
     func runningMoveUUIDs() async throws -> Set<String> {
         let probe = lock.withLock {
-            running.isEmpty ? MoveProbe.running(activeUUID.map { [$0] } ?? []) : running.removeFirst()
+            runningReads += 1
+            return running.isEmpty ? MoveProbe.running(activeUUID.map { [$0] } ?? []) : running.removeFirst()
         }
         switch probe {
         case let .running(uuids): return uuids

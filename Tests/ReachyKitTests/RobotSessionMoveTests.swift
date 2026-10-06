@@ -189,7 +189,8 @@ struct RobotSessionMoveTests {
 
     @Test("a move that ends on its own parks the robot")
     func naturalCompletionParks() async throws {
-        let client = MoveRobotClient(running: [.running([]), .running([]), .running([])])
+        // Adoption on connect and the floor check before the play take one each.
+        let client = MoveRobotClient(running: [.running([]), .running([]), .running([]), .running([])])
         let session = try await session(client, movePoll: .milliseconds(20))
         try await session.playMove(dataset: "library", move: "wave")
         await waitUntil(client.gotoNeutralCalls == 1)
@@ -288,8 +289,9 @@ struct RobotSessionMoveTests {
     @Test("transient poll errors and a hit reset completion hysteresis")
     func naturalCompletionHysteresis() async throws {
         let client = MoveRobotClient(running: [
-            // The connect-time adoption probe consumes the first answer.
-            .running([]),
+            // The connect-time adoption probe consumes the first answer, and the
+            // floor check before the play the second.
+            .running([]), .running([]),
             .failure, .running([]), .running(["move-1"]), .running([]), .running([]),
         ])
         let session = try await session(client, movePoll: .milliseconds(20))

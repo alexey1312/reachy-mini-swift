@@ -27,6 +27,14 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// How long `apps.install` is waited for. Not the reply budget: a first
     /// install is `uv pip install` on the robot, minutes rather than seconds.
     let installTimeout: Duration
+    /// The handle for the run this connection dispatched, while it is still going.
+    ///
+    /// One slot, written by both `playMove` and `gotoNeutral`, so parking replaces
+    /// a dance's handle — and `stopMove` clears whichever is there, since the
+    /// command it sends stops whatever is playing anyway. Not `private`: the moves
+    /// live in `RemoteRobotConnection+Moves`, a sibling file, and an extension
+    /// cannot hold a stored property.
+    var playbackHandle: String?
 
     public init(
         control: RemoteControlChannel,
@@ -204,98 +212,6 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
         return ""
     }
 
-    // MARK: Recorded moves
-
-    //
-    // **The handles here are this app's, not the daemon's.** `play_recorded_move`
-    // is fire-and-forget: the ack means "dispatched", and nothing comes back to
-    // name the run. `stop_move` needs no name either — it interrupts whatever is
-    // playing, whoever started it. So a handle is minted here to answer the one
-    // question the session asks with it, "is the thing I started still going", and
-    // it is never sent anywhere. `is_move_running` is what answers it, and it says
-    // *whether*, never *which*.
-
-    /// The handle for the run this connection dispatched, while it is still going.
-    ///
-    /// One slot, written by both `playMove` and `gotoNeutral`, so parking replaces
-    /// a dance's handle — and `stopMove` clears whichever is there, since the
-    /// command it sends stops whatever is playing anyway.
-    private var playbackHandle: String?
-
-    /// No index route on this channel: the library comes off what this app kept
-    /// from the robot's own network. See ``MovePlaybackClient/offersMoveIndex``.
-    public nonisolated var offersMoveIndex: Bool {
-        false
-    }
-
-    /// The one place this transport is *ahead* of the HTTP one: a play there
-    /// blocks until the dataset is on the robot, while `play_recorded_move` is
-    /// fire-and-forget and would simply take a long time to start moving. Warming
-    /// first turns that into a wait the user does not sit through.
-    public func preload(dataset: String) async throws {
-        try await control.perform("preload_dataset", payload: ["dataset_name": .string(dataset)])
-    }
-
-    public func playMove(dataset: String, move: String) async throws -> String {
-        try await control.perform("play_recorded_move", payload: [
-            "move_name": .string(move),
-            "dataset_name": .string(dataset),
-        ])
-        let handle = UUID().uuidString
-        playbackHandle = handle
-        return handle
-    }
-
-    /// The handle this connection dispatched, while the robot reports a move
-    /// running. Empty otherwise — including for a handle from a previous launch,
-    /// which nothing here can recognise.
-    public func runningMoveUUIDs() async throws -> Set<String> {
-        guard let handle = playbackHandle else { return [] }
-        let running = try await control.perform(
-            "get_state",
-            correlation: .replyKey("state"),
-            expecting: StateReply.self
-        ).state.isMoveRunning
-        // The `await` above is a suspension point, and this is an actor: `stopMove`
-        // and `playMove` both run inside it. Answering for a handle that has since
-        // been replaced would clear the new dance's handle and let its monitor
-        // count two misses while the robot is still moving.
-        guard playbackHandle == handle else { return [] }
-        // `nil` is a daemon that cannot say, which is not "not running": treating
-        // the two alike ends playback the instant it starts.
-        guard let running else { return [handle] }
-        if !running {
-            playbackHandle = nil
-        }
-        return running ? [handle] : []
-    }
-
-    /// Stops whatever is playing. The handle is not sent — there is nowhere to send
-    /// it — so this stops a move somebody else started too, which is what the
-    /// command does and what the session wants of it.
-    public func stopMove(uuid _: String) async throws {
-        try await control.perform("stop_move", correlation: .replyKey("stopped"))
-        playbackHandle = nil
-    }
-
-    /// Walks the head, body and antennas back to the pose `gotoNeutral` sends over
-    /// HTTP — the same numbers, since the neutral is the robot's, not the route's.
-    public func gotoNeutral(duration: TimeInterval) async throws -> String {
-        try await control.perform("goto_target", payload: [
-            "head": .array([.number(0), .number(0), .number(0), .number(0), .number(0), .number(0)]),
-            "antennas": .array([.number(-0.1745), .number(0.1745)]),
-            "body_yaw": .number(0),
-            "duration": .number(duration),
-        ])
-        let handle = UUID().uuidString
-        playbackHandle = handle
-        return handle
-    }
-
-    /// Nothing to send: `stop_move` silences the move's own sound as it interrupts
-    /// it, so by the time this is reached the player is already quiet.
-    public func stopSound() async throws {}
-
     /// One pose reading, for a viewer that has no socket to open.
     ///
     /// Nil where the robot sent no pose at all, which is a robot with its backend
@@ -372,7 +288,7 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// is ``RemoteStateSnapshot``, the same type the pushed frames carry, so the
     /// polled path cannot drift from the pushed one — it used to, and that is why
     /// the hearing indicator was missing from it.
-    private struct StateReply: Decodable {
+    struct StateReply: Decodable {
         let state: State
 
         struct State: Decodable {

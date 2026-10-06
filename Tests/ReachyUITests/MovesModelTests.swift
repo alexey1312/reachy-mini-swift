@@ -89,8 +89,10 @@ final class MovesUIClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendab
         }
     }
 
+    /// Running once something was played, and not before: a play first stops
+    /// whatever the daemon lists, and this double cannot stop anything.
     func runningMoveUUIDs() async throws -> Set<String> {
-        ["ui-move"]
+        lock.withLock { played.isEmpty ? [] : ["ui-move"] }
     }
 }
 

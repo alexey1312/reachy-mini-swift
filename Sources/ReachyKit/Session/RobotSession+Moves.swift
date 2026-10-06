@@ -61,10 +61,10 @@ extension RobotSession {
     public func playMove(dataset: String, move: String) async throws {
         guard let client = movesClient else { throw ReachyKitError.movesUnavailable }
         // Whatever the robot is doing has to be off the daemon's task list before
-        // the new move is asked for: `play_move` takes its guard non-blocking
-        // (`backend/abstract.py`) and simply returns when something else is
-        // running, so a play issued over one is accepted, filed, and moves nothing.
-        await clearTheFloor(client: client)
+        // the new move is asked for. The daemon does not refuse a play over a
+        // running move — both run, and both write the head target — so a floor
+        // that will not clear throws here and the play is never sent.
+        try await clearTheFloor(client: client)
         let uuid = try await client.playMove(dataset: dataset, move: move)
         let playback = MovePlayback(uuid: uuid, identity: .init(dataset: dataset, move: move))
         moveActivity = .playing(playback)
@@ -94,23 +94,36 @@ extension RobotSession {
 
     /// Frees the daemon's move slot before a power transition claims it.
     ///
-    /// `goto_sleep` is a move task like any dance, so `_try_start_move` refuses it
-    /// while one is playing: the animation is skipped without a word and
+    /// `goto_sleep` is a move task like any dance, and the daemon runs it beside
+    /// one that is playing: the two write the head target in turn, and
     /// `set_mode/disabled` cuts the motors a moment later, mid-pose. This is the
     /// motion half of what `releaseRunningApp()` does for a running app — hand the
     /// robot back before parking it. Parking is skipped here because the
     /// transition *is* the parking.
+    ///
+    /// Asked even when this session remembers no move, because the daemon may run
+    /// one it never heard of. Best effort: a move that will not stop is no reason
+    /// to leave the robot awake.
     func releaseMove() async {
-        guard moveActivity != nil, let client = movesClient else { return }
-        await clearTheFloor(client: client)
+        guard let client = movesClient else { return }
+        try? await clearTheFloor(client: client)
     }
 
-    /// Ends whatever is running so a new move is not silently dropped.
+    /// Ends every move the daemon runs, so a new one does not play beside it.
+    ///
+    /// `play_move` guards the daemon's one move slot with a non-blocking
+    /// `RLock.acquire` (`backend/abstract.py`), and every HTTP, WebSocket and
+    /// data-channel route runs it as a coroutine on the one event-loop thread. The
+    /// lock is re-entrant on that thread, so the guard never refuses: a second play
+    /// starts, both write the head target at 100 Hz, and its `play_sound` restarts
+    /// the music. So `moveActivity` is not enough — a move from the widget, from
+    /// another device or from before a relaunch is stopped too. Throws when a move
+    /// will not stop, because a play sent over it is that collision.
     ///
     /// Parking is deliberately skipped: it is a move task of its own, so returning
-    /// to neutral here would occupy the robot for a second and have the daemon
-    /// refuse the very play this is clearing the way for.
-    private func clearTheFloor(client: any MovePlaybackClient) async {
+    /// to neutral here would put a `goto` beside the very play this clears the
+    /// way for.
+    private func clearTheFloor(client: any MovePlaybackClient) async throws {
         switch moveActivity {
         case .playing, .stopping:
             _ = await stopMove(parking: false)
@@ -121,6 +134,10 @@ extension RobotSession {
             moveActivity = nil
         case nil:
             break
+        }
+        // The sound player is a task of its own and outlives a stopped motion.
+        if try await client.stopRunningMoves() {
+            try? await client.stopSound()
         }
     }
 

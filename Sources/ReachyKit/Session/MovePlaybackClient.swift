@@ -43,6 +43,12 @@ public protocol MovePlaybackClient: Sendable {
     func playMove(dataset: String, move: String) async throws -> String
     func runningMoveUUIDs() async throws -> Set<String>
     func stopMove(uuid: String) async throws
+    /// Stops every move the daemon runs, whoever started it, and answers whether
+    /// there was one.
+    ///
+    /// A requirement rather than a loop over ``runningMoveUUIDs()`` at each call
+    /// site, because the relay cannot list a move it did not start itself.
+    func stopRunningMoves() async throws -> Bool
     /// Walks the robot back to its zero pose; returns the move task's UUID.
     func gotoNeutral(duration: TimeInterval) async throws -> String
     /// A move's music is a separate daemon task and outlives the motion, so ending
@@ -83,6 +89,24 @@ public extension MovePlaybackClient {
 
     func stopMove(uuid _: String) async throws {
         throw ReachyKitError.movesUnavailable
+    }
+
+    /// Lists the running tasks and stops each one, the way `RobotMovePlayer` does.
+    ///
+    /// `POST /api/move/stop` awaits the cancellation before it answers, so a stop
+    /// that returns proves its task has ended. A task that ends between the
+    /// listing and its stop is refused with a 500 (`stop_move_task` raises a bare
+    /// `KeyError`), so a refusal counts only while the task is still listed.
+    func stopRunningMoves() async throws -> Bool {
+        let running = try await runningMoveUUIDs()
+        for uuid in running.sorted() {
+            do {
+                try await stopMove(uuid: uuid)
+            } catch {
+                guard let still = try? await runningMoveUUIDs(), !still.contains(uuid) else { throw error }
+            }
+        }
+        return !running.isEmpty
     }
 
     func gotoNeutral(duration _: TimeInterval) async throws -> String {
