@@ -34,6 +34,15 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     var cancelStopMove = false
     var failStopSound = false
     var failGotoNeutral = false
+    /// The play's reply never arrives. The daemon answers only after it has loaded
+    /// the dataset, and it starts the move whether or not anybody still waits.
+    var playTimeout: PlayTimeout?
+
+    enum PlayTimeout {
+        case afterStarting
+        case beforeStarting
+    }
+
     private(set) var listCalls = 0
     /// How often the running list was read — the connect-time adoption is the
     /// first, and a test that starts a move elsewhere waits for it to pass.
@@ -100,12 +109,18 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     }
 
     func playMove(dataset: String, move: String) async throws -> String {
-        lock.withLock {
+        let (uuid, timeout) = lock.withLock {
             nextUUID += 1
-            activeUUID = "move-\(nextUUID)"
+            if playTimeout != .beforeStarting {
+                activeUUID = "move-\(nextUUID)"
+            }
             events.append("play:\(dataset):\(move)")
-            return activeUUID!
+            return ("move-\(nextUUID)", playTimeout)
         }
+        if timeout != nil {
+            throw URLError(.timedOut)
+        }
+        return uuid
     }
 
     func gotoNeutral(duration _: Double) async throws -> String {

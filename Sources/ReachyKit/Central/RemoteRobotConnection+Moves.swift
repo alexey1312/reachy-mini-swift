@@ -28,11 +28,20 @@ public extension RemoteRobotConnection {
     }
 
     func playMove(dataset: String, move: String) async throws -> String {
-        try await control.perform("play_recorded_move", payload: [
-            "move_name": .string(move),
-            "dataset_name": .string(dataset),
-        ])
         let handle = UUID().uuidString
+        do {
+            try await control.perform("play_recorded_move", payload: [
+                "move_name": .string(move),
+                "dataset_name": .string(dataset),
+            ])
+        } catch RemoteControlChannel.Failure.timedOut {
+            // The ack comes only once the robot has loaded the dataset, and a cold
+            // download outlasts the reply budget. The move may still start, so the
+            // handle stays for `runningMoveUUIDs` to confirm or clear — which is
+            // how `RobotSession.playMove` finds it.
+            playbackHandle = handle
+            throw RemoteControlChannel.Failure.timedOut
+        }
         playbackHandle = handle
         return handle
     }

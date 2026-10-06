@@ -2,7 +2,8 @@ import Foundation
 @testable import ReachyKit
 import Testing
 
-/// What the session does about moves it did not start.
+/// What the session does about moves it did not see start: ones from elsewhere,
+/// and one whose play timed out.
 ///
 /// The daemon guards its one move slot with a re-entrant lock, taken on the one
 /// event-loop thread every route runs on, so it never refuses a second play: both
@@ -79,6 +80,36 @@ struct RobotSessionMoveFloorTests {
 
         #expect(client.events.contains("stop:ended"))
         #expect(client.events.last == "play:library:wave")
+        session.disconnect()
+    }
+
+    /// The daemon loads the dataset before it answers a play, and a cold download
+    /// can outlast the request. It starts the move all the same, so reporting the
+    /// timeout would leave a dancing robot with no Stop button.
+    @Test("a play that timed out but started is adopted, under its own name")
+    func timedOutPlayThatStartedIsAdopted() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        client.playTimeout = .afterStarting
+
+        try await session.playMove(dataset: "library", move: "wave")
+
+        #expect(session.currentMove?.uuid == "move-1")
+        #expect(session.currentMove?.identity == .init(dataset: "library", move: "wave"))
+        session.disconnect()
+    }
+
+    @Test("a play that timed out and started nothing reports the timeout")
+    func timedOutPlayThatStartedNothingThrows() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        client.playTimeout = .beforeStarting
+
+        await #expect(throws: URLError.self) {
+            try await session.playMove(dataset: "library", move: "wave")
+        }
+
+        #expect(session.currentMove == nil)
         session.disconnect()
     }
 

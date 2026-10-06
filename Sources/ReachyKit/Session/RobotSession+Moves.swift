@@ -65,13 +65,18 @@ extension RobotSession {
         // running move — both run, and both write the head target — so a floor
         // that will not clear throws here and the play is never sent.
         try await clearTheFloor(client: client)
-        let uuid = try await client.playMove(dataset: dataset, move: move)
-        let playback = MovePlayback(uuid: uuid, identity: .init(dataset: dataset, move: move))
-        moveActivity = .playing(playback)
-        if let robotID = connectedRobotID {
-            playbacks.write(.init(robotID: robotID, uuid: uuid, dataset: dataset, move: move))
+        let identity = MovePlayback.Identity(dataset: dataset, move: move)
+        let uuid: String
+        do {
+            uuid = try await client.playMove(dataset: dataset, move: move)
+        } catch {
+            // A timeout is not a refusal. The daemon answers a play only after it
+            // has loaded the dataset, and it starts the move whether or not anybody
+            // still waits for the reply — so the robot is asked first.
+            guard Self.isTimeout(error), await adoptTimedOutPlay(identity, client: client) else { throw error }
+            return
         }
-        startMonitoring(.playing(playback), client: client)
+        follow(MovePlayback(uuid: uuid, identity: identity), client: client)
     }
 
     /// Re-reads the daemon's move list at once rather than waiting for the poll.
@@ -254,75 +259,13 @@ extension RobotSession {
         }
     }
 
-    /// Adopts whatever the daemon is already playing.
-    ///
-    /// `currentMove` is this process's memory of a command it issued, and a move
-    /// outlives the process: force-quit the app mid-dance and the robot is still
-    /// going on the next launch. The missing animation is the visible half. The
-    /// other half is that `play_move` takes its guard non-blocking
-    /// (`backend/abstract.py`), so a play issued over a move nobody here knows
-    /// about returns a fresh UUID and moves nothing — the screen would name a
-    /// dance the robot never started.
-    ///
-    /// `/api/move/running` carries UUIDs alone, so an adopted move has no
-    /// `identity` and the screen says so rather than guessing a name.
-    func restoreActiveMove(client: any MovePlaybackClient) {
-        moveRestoreTask?.cancel()
-        // `wake_up` and `goto_sleep` reach the daemon through `create_move_task`
-        // exactly as a dance does, so `/api/move/running` cannot tell them apart.
-        // A transition this session is driving is the one case where the answer is
-        // known to be ours and known not to be playback.
-        guard powerTransition == nil else { return }
-        let attemptID = connectionAttemptID
-        moveRestoreTask = Task {
-            guard let running = try? await client.runningMoveUUIDs() else { return }
-            guard !Task.isCancelled, connectionAttemptID == attemptID,
-                  powerTransition == nil, currentMove == nil
-            else { return }
-            guard let playback = adoptable(from: running) else {
-                playbacks.clear()
-                return
-            }
-            if playback.identity == nil {
-                // Adopted anonymously, so the stored record described something the
-                // daemon has since forgotten. Keeping it risks naming the *next*
-                // stranger after it.
-                playbacks.clear()
-            }
-            moveActivity = .playing(playback)
-            startMonitoring(.playing(playback), client: client)
-        }
-    }
-
-    /// Which of the daemon's running tasks to adopt, and whether it can be named.
-    ///
-    /// The persisted record is consulted first: a UUID this app wrote is the only
-    /// evidence anywhere that ties a running task to a dataset and a move name.
-    /// Anything else is adopted anonymously — sorted rather than "first", because
-    /// a `Set` has no order and two tasks can overlap for an instant
-    /// (`_try_start_move` refuses the second one's *work*, but `create_move_task`
-    /// files it either way).
-    private func adoptable(from running: Set<String>) -> MovePlayback? {
-        if let record = playbacks.current,
-           record.robotID == connectedRobotID,
-           running.contains(record.uuid)
-        {
-            return MovePlayback(
-                uuid: record.uuid,
-                identity: .init(dataset: record.dataset, move: record.move)
-            )
-        }
-        guard let uuid = running.sorted().first else { return nil }
-        return MovePlayback(uuid: uuid, identity: nil)
-    }
-
     /// Polls the daemon's authoritative running-task list so natural completion
     /// clears the UI. Two misses avoid racing task registration just after play.
     ///
     /// Parking is followed the same way rather than timed against
     /// `recentreDuration`: a `goto` can be cancelled or fail, and the phase has to
     /// end when the task does, not when its nominal duration is up.
-    private func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
+    func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
         movePollTask?.cancel()
         let uuid = activity.uuid
         movePollTask = Task { [configuration] in

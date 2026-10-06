@@ -49,6 +49,23 @@ struct RemoteRobotMovesTests {
         #expect(commands(channel) == ["get_state", "stop_move"])
     }
 
+    /// The ack waits for the robot to load the dataset, and a cold download
+    /// outlasts the reply budget while the move still starts. The handle is what
+    /// lets the session find that move again through `runningMoveUUIDs`.
+    @Test("a play whose ack never came is still found running")
+    func timedOutPlayKeepsItsHandle() async throws {
+        let channel = FakeDataChannel(replies: [
+            "get_state": #"{"state":{"motor_mode":"enabled","is_move_running":true}}"#,
+        ])
+        let connection = RemoteRobotConnection(channel: channel, timeout: .milliseconds(200))
+
+        await #expect(throws: RemoteControlChannel.Failure.timedOut) {
+            _ = try await connection.playMove(dataset: "Anne-Charlotte/music", move: "happy")
+        }
+
+        #expect(try await connection.runningMoveUUIDs().count == 1)
+    }
+
     @Test("an idle robot is sent no stop")
     func leavesAnIdleRobotAlone() async throws {
         let (connection, channel) = connection(moveRunning: false)
