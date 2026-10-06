@@ -12,10 +12,13 @@ picture, roughly a third of the bytes. Pillow cannot hand an existing palette to
 `quantize` on an RGBA image, so the frames are stacked into one tall montage,
 quantised together, and cut apart again — which is what makes them share a palette.
 
-**The frame rate is per file, not global.** At 408 px and a full palette, twelve of
-the sixteen fit at 15 fps and the rest do not; `builder-hammer` needs 10. So each
-sticker walks `BUDGET_LADDER` until one rung fits, and the script fails rather than
-shipping a file Apple will reject at upload.
+**The frame count is per file, and the frames are not evenly spaced.** A loop holds
+at most every second frame of the 30 fps source, and some loops do not fit that many
+under the limit. Each sticker starts at that maximum and drops one frame at a time
+until the file fits; the script fails rather than ship a file Apple will reject at
+upload. The frames it keeps are chosen by motion — a fast stretch gets more of them, a
+hold gets fewer — and each frame carries its exact delay, a whole number of source
+frames. So every sticker plays at the source's own speed, whatever its frame count.
 
 Usage: `mise run stickers:build`. Needs ffmpeg on PATH (deliberately not pinned —
 this runs by hand when the art changes, and its output is committed).
@@ -26,17 +29,21 @@ from __future__ import annotations
 import io
 import json
 import shutil
+import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageFilter, ImageStat
 
 ROOT = Path(__file__).resolve().parent.parent
 ART = ROOT / "art" / "stickers"
 
-# Apple's ceiling, and the one number this whole script is arranged around.
-MAX_STICKER_BYTES = 500 * 1024
+# Apple's ceiling, and the one number this whole script is arranged around. Apple
+# writes "500 KB" and does not say which kilobyte; 500 000 bytes is the stricter
+# reading, and App Store Connect gives its verdict only at upload.
+MAX_STICKER_BYTES = 500_000
 
 # `grid-size` is a pack-level property, so both packs commit to one size. Regular is
 # 408 px at @3x: a clean downscale from the 512 px source rather than an upscale, and
@@ -44,9 +51,25 @@ MAX_STICKER_BYTES = 500 * 1024
 GRID_SIZE = "regular"
 STICKER_PX = 408
 
-# Tried in order, first one under the limit wins. Frame rate goes first because a
-# dropped frame is less visible than a flattened palette on artwork this smooth.
-BUDGET_LADDER = [(15, 256), (12, 256), (10, 256), (10, 192), (8, 128)]
+# `animate.py` renders every loop at 30 fps, and every delay in an APNG here is a
+# whole number of those source frames.
+SOURCE_FPS = 30
+
+# The shortest delay is two source frames, 67 ms. One source frame would be 33 ms, and
+# ImageIO raises an APNG delay under 50 ms to 50 ms (measured: 33.3 ms reads back as
+# 50) — so that frame would play slow and the motion would lose its timing. This floor
+# also sets the largest step a fast motion can get: two source frames of it.
+MIN_GAP = 2
+# The longest is six source frames, 200 ms. A longer one would let a slow drift stand
+# still and then jump; at this length only a hold gets it.
+MAX_GAP = 6
+
+# The fewest frames a two-second loop may keep. Below this the script fails instead.
+MIN_FRAMES = 15
+
+# A full palette at every frame count. Colour is the last thing to give up: on artwork
+# this smooth a flattened palette shows more than a dropped frame.
+COLOURS = 256
 
 # name, emoji, still, animation, what the sticker shows, how it moves
 CHARACTERS = [
@@ -153,17 +176,23 @@ def require_ffmpeg() -> str:
     return ffmpeg
 
 
-def decode_frames(ffmpeg: str, source: Path, fps: int, size: int) -> list[Image.Image]:
-    """Decodes a VP9-with-alpha WebM into RGBA frames.
+def decode_frames(ffmpeg: str, source: Path, size: int) -> list[Image.Image]:
+    """Decodes every frame of a VP9-with-alpha WebM into RGBA, in order.
 
     The alpha rides in a side channel that ffprobe reports as `alpha_mode: 1` while
     calling the stream `yuv420p`, which reads like there is no transparency at all.
     There is; asking for `rgba` output gets it.
+
+    There is deliberately no `fps` filter. These WebMs carry a 1/1000 time base, and
+    over it `fps=15` keeps source frames 1, 2, 4, 7, 8, 10, 13 … instead of every
+    second one, so the motion runs at 0.5×, 1× and 1.5× speed in turn, five times a
+    second. `-fps_mode passthrough` gives each decoded frame once, and
+    `pick_frames` chooses which ones to keep.
     """
     raw = subprocess.run(
         [
             ffmpeg, "-v", "error", "-c:v", "libvpx-vp9", "-i", str(source),
-            "-vf", f"fps={fps},scale={size}:{size}:flags=lanczos",
+            "-fps_mode", "passthrough", "-vf", f"scale={size}:{size}:flags=lanczos",
             "-pix_fmt", "rgba", "-f", "rawvideo", "-",
         ],
         capture_output=True,
@@ -176,8 +205,68 @@ def decode_frames(ffmpeg: str, source: Path, fps: int, size: int) -> list[Image.
     ]
 
 
-def encode_apng(frames: list[Image.Image], fps: int, colors: int) -> bytes:
-    """Writes one shared-palette APNG.
+def motion_steps(frames: list[Image.Image]) -> list[float]:
+    """How far the outline moves from each source frame to the next, in pixels.
+
+    The alpha that changed, divided by the length of the outline: a shift by d pixels
+    uncovers about d pixels of area for each pixel of outline, so the ratio reads as a
+    mean displacement for a shift, a turn and a squash alike. The outline and not the
+    colours, because each character moves as rigid layers, so its outline carries all
+    of the motion. Against the analytic motion of the presets in `animate.py` it
+    correlates at 0.86 to 1.00 (measured on all sixteen). The last step wraps around to
+    the first frame: the loop has a seam, and the seam is a step like any other.
+    """
+    alphas = [frame.getchannel("A") for frame in frames]
+    steps = []
+    for current, following in zip(alphas, alphas[1:] + alphas[:1]):
+        changed = ImageStat.Stat(ImageChops.difference(current, following)).sum[0] / 255
+        solid = current.point(lambda value: 255 if value > 127 else 0)
+        outline = ImageChops.subtract(solid, solid.filter(ImageFilter.MinFilter(3)))
+        length = ImageStat.Stat(outline).sum[0] / 255
+        steps.append(changed / max(length, 1.0))
+    return steps
+
+
+def pick_frames(steps: list[float], count: int) -> list[int]:
+    """Chooses `count` source frames so that each displayed step moves about as far.
+
+    Each kept frame holds until the next one, for MIN_GAP to MAX_GAP source frames. Of
+    all such choices this takes the one with the smallest sum of each step's motion to
+    the fourth power: close to the smallest largest step, but it still spends every
+    frame where the motion is. Source frame 0 is always kept, so the first frame of the
+    file — the one a decoder without APNG support shows — is the pose the loop starts
+    from.
+    """
+    total = len(steps)
+    prefix = [0.0]
+    for step in steps:
+        prefix.append(prefix[-1] + step)
+    unreachable = float("inf")
+    # cost[k][j]: the best sum for k kept frames that cover source frames 0 ..< j.
+    cost = [[unreachable] * (total + 1) for _ in range(count + 1)]
+    previous = [[0] * (total + 1) for _ in range(count + 1)]
+    cost[0][0] = 0.0
+    for kept in range(1, count + 1):
+        for end in range(kept * MIN_GAP, total + 1):
+            for gap in range(MIN_GAP, MAX_GAP + 1):
+                start = end - gap
+                if start < 0 or cost[kept - 1][start] == unreachable:
+                    continue
+                candidate = cost[kept - 1][start] + (prefix[end] - prefix[start]) ** 4
+                if candidate < cost[kept][end]:
+                    cost[kept][end] = candidate
+                    previous[kept][end] = start
+    if cost[count][total] == unreachable:
+        raise ValueError(f"{count} frames cannot cover {total} with gaps {MIN_GAP}-{MAX_GAP}")
+    picked, end = [], total
+    for kept in range(count, 0, -1):
+        end = previous[kept][end]
+        picked.append(end)
+    return picked[::-1]
+
+
+def quantise(frames: list[Image.Image]) -> tuple[list[Image.Image], list[int]]:
+    """Gives the frames one shared palette: the frames as indices, and the RGBA table.
 
     Pillow's `quantize` refuses an externally supplied palette for an RGBA image, so
     the frames are stacked, quantised as a single picture, and sliced apart. That is
@@ -188,38 +277,133 @@ def encode_apng(frames: list[Image.Image], fps: int, colors: int) -> bytes:
     montage = Image.new("RGBA", (width, height * len(frames)))
     for index, frame in enumerate(frames):
         montage.paste(frame, (0, height * index))
-    quantised = montage.quantize(colors=colors, method=Image.FASTOCTREE, dither=Image.NONE)
+    quantised = montage.quantize(colors=COLOURS, method=Image.FASTOCTREE, dither=Image.NONE)
+    used = quantised.getextrema()[1] + 1
+    # The indices as a greyscale image, which ImageChops can compare.
+    indices = Image.frombytes("L", quantised.size, quantised.tobytes())
     sliced = [
-        quantised.crop((0, height * index, width, height * (index + 1)))
+        indices.crop((0, height * index, width, height * (index + 1)))
         for index in range(len(frames))
     ]
-    buffer = io.BytesIO()
-    sliced[0].save(
-        buffer,
-        format="PNG",
-        save_all=True,
-        append_images=sliced[1:],
-        duration=round(1000 / fps),
-        loop=0,
-        optimize=True,
-    )
-    return buffer.getvalue()
+    return sliced, quantised.getpalette("RGBA")[:used * 4]
 
 
-def build_animated(ffmpeg: str, source: Path, name: str) -> tuple[bytes, int, int]:
-    """Walks the ladder until a rung fits under Apple's limit."""
-    best = None
-    for fps, colors in BUDGET_LADDER:
-        payload = encode_apng(decode_frames(ffmpeg, source, fps, STICKER_PX), fps, colors)
-        if best is None or len(payload) < best[0]:
-            best = (len(payload), fps, colors)
+def merge_repeats(
+    frames: list[Image.Image], delays: list[int]
+) -> tuple[list[Image.Image], list[int]]:
+    """A frame equal to the one before it adds its delay to that frame instead."""
+    kept, held = [frames[0]], [delays[0]]
+    for frame, delay in zip(frames[1:], delays[1:]):
+        if ImageChops.difference(frame, kept[-1]).getbbox() is None:
+            held[-1] += delay
+        else:
+            kept.append(frame)
+            held.append(delay)
+    return kept, held
+
+
+def png_chunk(kind: bytes, body: bytes) -> bytes:
+    checksum = zlib.crc32(kind + body)
+    return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", checksum)
+
+
+def write_apng(frames: list[Image.Image], palette: list[int], delays: list[int]) -> bytes:
+    """Writes an APNG that loops for ever, each frame with its exact delay.
+
+    The chunks are written here and not by Pillow, because Pillow writes a delay in
+    whole milliseconds, and two source frames are 66.7 ms, not 67. Each `fcTL` here
+    holds its delay as a fraction — source frames over SOURCE_FPS — so the loop is
+    exactly as long as its source. A frame after the first stores only the rectangle
+    that changed, drawn over the frame before it, as Pillow's own encoder does.
+
+    Deflate is zlib at level 9. Zopfli was measured: about 6.5 % smaller, which fits one
+    to three more frames into the seven files under 30 frames, but leaves the largest
+    step of each one unchanged — MIN_GAP sets that. Its search took 131 s for those
+    seven files alone, against 28 s for this whole script.
+    """
+    width, height = frames[0].size
+    colours = bytes(value for index, value in enumerate(palette) if index % 4 != 3)
+    chunks = [
+        b"\x89PNG\r\n\x1a\n",
+        png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 3, 0, 0, 0)),
+        # Zero plays: loop for ever.
+        png_chunk(b"acTL", struct.pack(">II", len(frames), 0)),
+        png_chunk(b"PLTE", colours),
+        png_chunk(b"tRNS", bytes(palette[3::4])),
+    ]
+    sequence = 0
+    before = None
+    for frame, delay in zip(frames, delays):
+        if before is None:
+            box = (0, 0, width, height)
+        else:
+            box = ImageChops.difference(frame, before).getbbox()
+        left, top, right, bottom = box
+        span = right - left
+        rows = frame.crop(box).tobytes()
+        # Filter type 0 on every row: the PNG spec's advice for palette data.
+        data = zlib.compress(
+            b"".join(b"\x00" + rows[row * span:(row + 1) * span] for row in range(bottom - top)),
+            9,
+        )
+        # Dispose op 0 keeps the frame for the next one to draw over; blend op 0 replaces
+        # the rectangle, transparent pixels included.
+        chunks.append(png_chunk(b"fcTL", struct.pack(
+            ">IIIIIHHBB", sequence, span, bottom - top, left, top, delay, SOURCE_FPS, 0, 0
+        )))
+        sequence += 1
+        if before is None:
+            chunks.append(png_chunk(b"IDAT", data))
+        else:
+            chunks.append(png_chunk(b"fdAT", struct.pack(">I", sequence) + data))
+            sequence += 1
+        before = frame
+    chunks.append(png_chunk(b"IEND", b""))
+    return b"".join(chunks)
+
+
+def check_apng(
+    payload: bytes, frames: list[Image.Image], palette: list[int], delays: list[int]
+) -> None:
+    """Reads the file back with Pillow's APNG decoder, because the writer above is ours."""
+    image = Image.open(io.BytesIO(payload))
+    if image.n_frames != len(frames) or image.info.get("loop") != 0:
+        sys.exit(f"APNG reads back as {image.n_frames} frames, loop {image.info.get('loop')}")
+    for index, (frame, delay) in enumerate(zip(frames, delays)):
+        image.seek(index)
+        if abs(image.info["duration"] - 1000 * delay / SOURCE_FPS) > 0.01:
+            sys.exit(f"APNG frame {index} reads back as {image.info['duration']} ms")
+        written = Image.frombytes("P", frame.size, frame.tobytes())
+        written.putpalette(palette, "RGBA")
+        changed = ImageChops.difference(image.convert("RGBA"), written.convert("RGBA"))
+        if changed.getbbox() is not None:
+            sys.exit(f"APNG frame {index} reads back with other pixels than were written")
+
+
+def build_animated(ffmpeg: str, source: Path, name: str) -> tuple[bytes, list[int]]:
+    """Drops one frame at a time from every second source frame until the file fits."""
+    frames = decode_frames(ffmpeg, source, STICKER_PX)
+    steps = motion_steps(frames)
+    smallest = None
+    for count in range(len(frames) // MIN_GAP, MIN_FRAMES - 1, -1):
+        picked = pick_frames(steps, count)
+        delays = [
+            following - current
+            for current, following in zip(picked, picked[1:] + [len(frames)])
+        ]
+        indexed, palette = quantise([frames[index] for index in picked])
+        indexed, delays = merge_repeats(indexed, delays)
+        payload = write_apng(indexed, palette, delays)
+        if smallest is None or len(payload) < smallest[0]:
+            smallest = (len(payload), count)
         if len(payload) <= MAX_STICKER_BYTES:
-            return payload, fps, colors
-    size, fps, colors = best
+            check_apng(payload, indexed, palette, delays)
+            return payload, delays
+    size, count = smallest
     sys.exit(
-        f"{name}: no rung of BUDGET_LADDER fits under {MAX_STICKER_BYTES} bytes — the "
-        f"smallest was {size} bytes at {fps} fps / {colors} colours. Either add a "
-        f"lower rung or shorten the animation."
+        f"{name}: no frame count down to {MIN_FRAMES} fits under {MAX_STICKER_BYTES} "
+        f"bytes — the smallest was {size} bytes at {count} frames. Lower MIN_FRAMES or "
+        f"shorten the animation."
     )
 
 
@@ -310,7 +494,7 @@ def main() -> None:
             sticker = pack / f"{name}.sticker"
             sticker.mkdir()
             if spec["animated"]:
-                payload, fps, colors = build_animated(ffmpeg, ART / "animated" / animation, name)
+                payload, delays = build_animated(ffmpeg, ART / "animated" / animation, name)
                 # `.png`, not `.apng`, and the difference is a rejected upload rather than taste.
                 # An APNG *is* a PNG — same signature, with acTL/fcTL/fdAT as ancillary chunks a
                 # plain decoder skips — but App Store Connect validates the sticker's extension
@@ -318,12 +502,15 @@ def main() -> None:
                 # Xcode, actool and Messages all accept the animation under a `.png` name.
                 filename = f"{name}.png"
                 label = f"{described}, {motion}"
-                note = f"{len(payload) / 1024:6.1f} KB  {fps} fps  {colors} colours"
+                note = (
+                    f"{len(payload):7d} B  {len(delays):2d} frames  "
+                    f"delays {min(delays)}-{max(delays)}/{SOURCE_FPS} s"
+                )
             else:
                 payload = build_still(ART / still)
                 filename = f"{name}.png"
                 label = described
-                note = f"{len(payload) / 1024:6.1f} KB"
+                note = f"{len(payload):7d} B"
             if len(payload) > MAX_STICKER_BYTES:
                 sys.exit(f"{name}: {len(payload)} bytes is over Apple's {MAX_STICKER_BYTES}")
             (sticker / filename).write_bytes(payload)
