@@ -183,7 +183,13 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 - **A button is a target across everything it draws, and at least `Metrics.minimumHitTarget` tall.**
   Reported from a device as "the buttons at the bottom are super small and only the text is tappable",
   and it was two faults at once.
-  Three rules came out of it, and `ReachyActionButton` holds all three, so a call site states none of them:
+  The hit shape is invisible in a reference, because it changes no pixel;
+  the floor and the large size do move the footers, which is how to tell the rules are applied.
+  Whether glass also answers in the padding between the label and the capsule's edge is a device check.
+  The same code runs on macOS — the onboarding sheet's footer, the menu bar popover's last row — with no `#if`.
+  Three rules came out of it.
+  `ReachyActionButton` applies the hit shape and the 44 pt floor, so a call site writes neither,
+  and `OnboardingStepScaffold` applies the large size:
   1. **The hit shape goes inside the label, beside the width.**
      `.glassProminent` answers a tap only where its label draws,
      and a frame is empty space until `contentShape` says otherwise —
@@ -200,11 +206,6 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   3. **A footer pinned to the bottom of a page is `.controlSize(.large)`**,
      the size of a bottom button everywhere else on the platform.
      `OnboardingStepScaffold` sets it on the whole footer, so every step and the first run inherit it.
-     The hit shape is invisible in a reference, because it changes no pixel.
-     The floor and the large size do move the footers, which is how to tell the rules are applied.
-     Whether glass also answers in the padding between the label and the capsule's edge is a device check.
-     The same code runs on macOS, where the footer is a sheet's and the menu bar popover ends in a quiet row;
-     both take the same rules, with no `#if`.
 - **Every sheet's content carries `reachySheet()`, because on macOS nothing else gives it a width.** A sheet there is
   laid out at its content's _ideal_ size, and a `Form`, a `ScrollView` or a `NavigationStack` over one offers no ideal
   width — AppKit picks something cramped and clips what does not fit rather than laying it out again. So one axis is
