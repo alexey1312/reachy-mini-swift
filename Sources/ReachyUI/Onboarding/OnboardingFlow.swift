@@ -66,8 +66,8 @@ struct OnboardingFlow: View {
 /// A grouped `Form` rather than a `ScrollView` of loose views, which is what this was:
 /// every other screen in the app is one, and the steps that take input — a code, a
 /// network, a password — drew bordered text fields on a flat page that matched nothing
-/// else the reader had seen. The heading section is drawn on the page rather than in a
-/// row, the way the store's section picker is.
+/// else the reader had seen. The heading is drawn on the page rather than in a row: it
+/// is the header of a section with no rows.
 struct OnboardingStepScaffold<Content: View, Actions: View>: View {
     let title: String
     let message: String
@@ -76,19 +76,17 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
 
     var body: some View {
         Form {
+            // A header, not a row with a clear background, which is what this was.
+            // A row is clipped to its section's rounded corners whatever its
+            // background, and the 4 pt inset that was meant to clear them does not
+            // clear the radius iOS 26 draws: every step lost the top-left of its
+            // heading's first glyph and the bottom-left of its explanation's last
+            // line — "Did it move?" shaved at the D, "picture" read as "ɔicture".
+            // No cell clips a header, and a section with no rows draws no cell.
             Section {
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text(title)
-                        .font(Typography.screenTitle.bold())
-                    Text(message)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .listRowBackground(Color.clear)
-                // Not `EdgeInsets()`: flush with the cell's edge, the bold heading's
-                // first glyph was clipped by its own overhang — measured on the
-                // booted simulator, where "Before you start" lost the top of its B.
-                .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
+                EmptyView()
+            } header: {
+                heading
             }
             content()
         }
@@ -114,6 +112,25 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             .reachySurface(.page, ignoringSafeArea: .bottom)
         }
         .groupedPageBackground()
+    }
+
+    /// The look the heading had as a row, restated for a header. A header styles its
+    /// text — a smaller font, a secondary colour, and capitals on some systems — so the
+    /// title names its own colour, `font(nil)` hands the explanation back the body text
+    /// a row gave it, and `textCase(nil)` keeps the words as written. The insets keep
+    /// it where it was: 4 pt in from the edge of the cards below.
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text(title)
+                .font(Typography.screenTitle.bold())
+                .foregroundStyle(.primary)
+            Text(message)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(nil)
+        .textCase(nil)
+        .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
     }
 }
 
