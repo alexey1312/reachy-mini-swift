@@ -56,9 +56,10 @@ public extension RobotSession {
     /// it would run beside it, and `set_mode/disabled` could cut the torque while
     /// the daemon's trajectory is still moving. Where ``daemonParksAfterApps``
     /// holds, the sleep is therefore the daemon's, watched under the
-    /// `.goingToSleep` already claimed here. Unlike the parking after an app, a
-    /// reset that never comes is chased: the user asked for sleep, and nobody else
-    /// has taken the robot. One who has — an app holding it again — keeps it.
+    /// `.goingToSleep` already claimed here. The parking after an app chases a
+    /// reset that never comes only for a robot this session woke; this always
+    /// does: the user asked for sleep, and nobody else has taken the robot. One
+    /// who has — an app holding it again — keeps it.
     func sleep() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil

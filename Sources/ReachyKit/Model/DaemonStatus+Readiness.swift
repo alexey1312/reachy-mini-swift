@@ -35,9 +35,17 @@ public extension Components.Schemas.DaemonStatus {
     /// - **1.10.0 or newer, known rather than guessed.** A version this client
     ///   cannot read keeps the parking it always had, like every gate built on
     ///   `DaemonCompatibilityPolicy`.
-    /// - **A media server.** The reset runs on the loop `setup_media_server`
-    ///   builds, and `request_idle_reset()` returns at once without one — so a
-    ///   `--no-media` daemon leaves the robot wherever the app did.
+    /// - **A media server that the backend was wired to.** The reset runs on the
+    ///   loop `setup_media_server` builds, and `request_idle_reset()` returns at
+    ///   once without one. The daemon skips that setup for `--no-media`, for a
+    ///   media server that failed to start, and for a backend that starts while
+    ///   the media is released (`daemon.py`). No status field names the loop, so
+    ///   this reads the two that come nearest: `camera_specs_name`, which only a
+    ///   media server that was built fills in — the signal `hasCamera` reads — and
+    ///   `media_released`. The second is the state now, not at the backend's
+    ///   start, so a session that waits for a reset falls back to its own sleep
+    ///   when the wait times out and the robot is one it woke
+    ///   (`RobotSession.parkAfterApp`).
     ///
     /// A status cannot say which transport read it, and the relay is the third
     /// condition: every data-channel frame cancels the reset before it runs, so
@@ -45,6 +53,7 @@ public extension Components.Schemas.DaemonStatus {
     /// caller adds that one itself (`RobotSession.daemonParksAfterApps`,
     /// `RobotSleep`).
     var resetsToSleepAfterApps: Bool {
-        noMedia != true && DaemonCompatibilityPolicy.isKnownAtLeast("1.10.0", reported: version)
+        noMedia != true && cameraSpecsName?.isEmpty == false && mediaReleased != true
+            && DaemonCompatibilityPolicy.isKnownAtLeast("1.10.0", reported: version)
     }
 }

@@ -304,7 +304,7 @@ the next pair.
   From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no motion route cancels it,
   so on a LAN daemon with a media server a `goto` would be a second trajectory beside the daemon's.
   Deciding that costs no request: `RobotIntentTarget.VerifiedConnection` carries the handshake it verified,
-  and its status has the version and `no_media`.
+  and its status has the version and the media fields (`no_media`, `camera_specs_name`, `media_released`).
   The relay is excluded by type, as `RobotSleep` excludes it — there the `goto` cancels the reset and parks cleanly.
   The outcome says which happened (`Outcome.stopped(name:robotSleeps:)`),
   because `RobotAppCommand` records the snapshot off it:

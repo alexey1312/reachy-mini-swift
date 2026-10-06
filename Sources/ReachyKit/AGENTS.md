@@ -128,7 +128,13 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     `daemonParksAfterApps` decides — LAN, a version known to be ≥ 1.10.0, and a media server,
     which the reset needs and `--no-media` removes —
     and `followDaemonParking` shows the daemon's sleep as `.goingToSleep` until a reading says asleep.
-    It does not fall back to parking when the reset never comes: whoever cancelled it owns the robot.
+    The status cannot name the loop the reset runs on,
+    so the media server is read off `camera_specs_name` and `media_released`,
+    the state now rather than at the backend's start.
+    When the reset never comes, the session parks nothing for a robot somebody else woke:
+    whoever cancelled the reset owns the robot.
+    A robot it woke for the app gets the sleep it was owed,
+    because a daemon with no loop for the reset leaves it awake with its torque on.
     `sleep()` over a running app takes the same path (#166):
     the release it opens with is what schedules the reset,
     so it watches it under its own `.goingToSleep` through the same `watchIdleReset` —

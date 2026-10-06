@@ -38,6 +38,11 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
     /// Absent by default, which every gate treats as a version it cannot read.
     private let daemonVersion: String?
     private let noMedia: Bool?
+    /// `nil` derives the camera this robot would name; `""` is a media server that
+    /// was never built. This and `mediaReleased` decide whether the daemon has a
+    /// loop to run its idle reset on.
+    private let cameraSpecsName: String?
+    private let mediaReleased: Bool?
     private var statusReads = 0
 
     init(
@@ -48,7 +53,9 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
         startFailure: (any Error)? = nil,
         neutralDelay: Duration = .zero,
         daemonVersion: String? = nil,
-        noMedia: Bool? = nil
+        noMedia: Bool? = nil,
+        cameraSpecsName: String? = nil,
+        mediaReleased: Bool? = nil
     ) {
         runningStatus = running
         self.state = state
@@ -58,6 +65,8 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
         self.neutralDelay = neutralDelay
         self.daemonVersion = daemonVersion
         self.noMedia = noMedia
+        self.cameraSpecsName = cameraSpecsName
+        self.mediaReleased = mediaReleased
     }
 
     var recordedSteps: [Step] {
@@ -87,7 +96,14 @@ final class AppLifecycleClient: RobotAPIClient, MovePlaybackClient, RobotAppsCli
     private var status: Components.Schemas.DaemonStatus {
         lock.withLock {
             statusReads += 1
-            return .preview(state: state, motorMode: motorMode, version: daemonVersion, noMedia: noMedia)
+            return .preview(
+                state: state,
+                motorMode: motorMode,
+                cameraSpecsName: cameraSpecsName,
+                version: daemonVersion,
+                noMedia: noMedia,
+                mediaReleased: mediaReleased
+            )
         }
     }
 
