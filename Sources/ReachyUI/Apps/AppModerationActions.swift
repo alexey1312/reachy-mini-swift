@@ -12,10 +12,15 @@ import SwiftUI
 /// between a reader and the one control guideline 1.2 asks to be easy.
 struct AppModerationActions: View {
     let app: RobotApp
-    let moderation: AppModeration
+    /// The store rather than its `AppModeration` alone: whether Hide is offered
+    /// depends on what the robot has installed (`AppStoreModel.canHideAuthor(of:)`).
+    let store: AppStoreModel
     /// What the host does once the author is hidden. The page leaves: it is the page
     /// of an app the reader has just asked not to see.
     var afterHiding: () -> Void = {}
+
+    /// The glyph for a hidden author, here and on Discover's way back to them.
+    static let hideSymbol = "eye.slash.circle"
 
     var body: some View {
         if let reportURL = app.reportURL {
@@ -23,12 +28,15 @@ struct AppModerationActions: View {
                 Label(.reachy("Report this app"), systemImage: "flag")
             }
         }
-        if moderation.canHideAuthor(of: app) {
+        if store.canHideAuthor(of: app) {
             Button {
-                moderation.hideAuthor(of: app)
+                store.moderation.hideAuthor(of: app)
                 afterHiding()
             } label: {
-                Label(.reachy("Hide this author's apps"), systemImage: "eye.slash")
+                // `eye.slash` is half again as wide as its neighbours and stood 4.5 pt
+                // past the icon column's leading edge. The circled form is within 2 pt
+                // of the square and the flag above it, so the three make one column.
+                Label(.reachy("Hide this author's apps"), systemImage: AppModerationActions.hideSymbol)
             }
         }
     }

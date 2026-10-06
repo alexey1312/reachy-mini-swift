@@ -89,8 +89,10 @@ final class MovesUIClient: RobotAPIClient, MovePlaybackClient, @unchecked Sendab
         }
     }
 
+    /// Running once something was played, and not before: a play first stops
+    /// whatever the daemon lists, and this double cannot stop anything.
     func runningMoveUUIDs() async throws -> Set<String> {
-        ["ui-move"]
+        lock.withLock { played.isEmpty ? [] : ["ui-move"] }
     }
 }
 
@@ -240,6 +242,24 @@ struct MovesModelTests {
         #expect(!model.isContentLoading)
     }
 
+    /// The daemon snaps the head across each burst of frames that share one
+    /// timestamp, and these two recordings carry hundreds of them.
+    @Test("the Music library leaves out the recordings that snap the head")
+    func withholdsTheBrokenRecordings() {
+        let model = MovesModel.preview(
+            moves: [
+                "michael-jackson-thriller-official-video-shortene",
+                "michael-jackson-thriller",
+                "queen-we-will-rock-you-official",
+                "queen-we-will-rock-you",
+            ],
+            selection: 2
+        )
+
+        #expect(model.selectedLibrary.dataset == "Anne-Charlotte/music")
+        #expect(model.moves == ["michael-jackson-thriller", "queen-we-will-rock-you"])
+    }
+
     @Test("play forwards the selected library and restores button state")
     func play() async {
         let client = MovesUIClient()
@@ -325,9 +345,9 @@ struct MovesModelTests {
         session.disconnect()
     }
 
-    /// Every phase in which the daemon would refuse a play has to refuse the tap
-    /// first: `_try_start_move` drops one silently and answers with a fresh UUID,
-    /// so a row left live over a busy robot reports a dance that never started.
+    /// Every phase in which a play would run beside another move has to refuse
+    /// the tap: the daemon does not refuse a second play, it runs both, and the
+    /// two write the head target in turn.
     @Test("the library is tappable only when nothing else holds the robot")
     func rowAvailabilityByPhase() {
         let model = MovesModel.preview()
@@ -338,7 +358,12 @@ struct MovesModelTests {
         #expect(model.rowsAreEnabled(.preview(moveActivity: playing)))
         #expect(!model.rowsAreEnabled(.preview(moveActivity: .stopping(.preview(move: "wave")))))
         #expect(!model.rowsAreEnabled(.preview(moveActivity: .recentring(uuid: "goto"))))
+        // Parking asked for, its `goto` not yet answered.
+        #expect(!model.rowsAreEnabled(.preview(moveActivity: .recentring(uuid: nil))))
         #expect(!model.rowsAreEnabled(.preview(status: .preview(motorMode: .disabled))))
+        // The poll reads the robot awake once the motors are on, mid-animation.
+        #expect(!model.rowsAreEnabled(.preview(powerTransition: .wakingUp)))
+        #expect(!model.rowsAreEnabled(.preview(powerTransition: .goingToSleep)))
     }
 
     /// `stopMove` answers with a list rather than throwing, because both daemon

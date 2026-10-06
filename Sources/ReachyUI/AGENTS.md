@@ -289,8 +289,10 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   nothing, so it says "A move is running on the robot" with no row highlighted) and the second of parking, which
   offers no Stop because there is nothing left to stop. Showing the parking phase is not decoration — it holds the
   daemon's one move slot, so a screen silent about it would claim an idle robot while it was still travelling.
-  `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view: every phase in it is a phase where
-  `_try_start_move` would drop the play without a word.
+  `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view:
+  every phase in it is a phase where the daemon would run the play beside a move it already has —
+  stopping, parking, and a power transition, whose `wake_up` and `goto_sleep` are move tasks too.
+  The daemon never refuses a second play; see `Sources/ReachyKit/AGENTS.md`.
 - **The soundboard is two libraries on one screen, and every row says which one it is in.** `Sounds/` holds
   `SoundboardScreen` and `SoundboardModel`, pushed from the Moves tab rather than given a tab of its own — the five are
   unconditional, and "things the robot does when you ask" is the tab this already belongs to. The row is gated on
@@ -423,6 +425,12 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `toolbarColorScheme(.dark)` to keep the title readable (drop one and the title goes white-on-white or
   black-on-black); the camera's forced a white `Connecting…` for the same reason. `RTCMTLVideoView` clears its own
   unfilled area, so the video never needed the SwiftUI backdrop — that one only ever painted the safe-area insets.
+  **The camera's status is the exception that proves it: it carries a surface of its own, and an adaptive one.**
+  Before its first frame the renderer draws nothing,
+  so the connecting, waiting and stalled states read against whatever the host put behind the pane —
+  and `PreviewScene.pane` puts a pinned black there, where they recorded black on black.
+  A `.window` surface under the status, and only while the stream is down, reads the same on any host;
+  a forced dark appearance would have been the white `Connecting…` again.
 - **A representable wrapping a renderer owes SwiftUI a `sizeThatFits`, and the reference images cannot tell you it is
   missing.** `RTCMTLVideoView` reports the _stream's_ frame size as its intrinsic content size, and without a
   `sizeThatFits` the default forwards that through `systemLayoutSizeFitting` — so `CameraVideoView` sized itself to
@@ -609,6 +617,10 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   A change handler fires when a stick moves, and a held turn is the case where nothing moves.
   The scene gate is the same hazard again: the system stops delivering a controller's input in the background,
   and a stick last read as held would go on turning the body with nobody at the controls.
+  The scene gate alone does not cover a Mac window left visible behind another app:
+  the scene stays `.active` there and the input stops all the same.
+  So the hub also lets go when the app resigns active and drives nothing until it is in front again
+  (`setAppActive(_:)`).
 - **Captures never see a real controller.**
   `ControllerScreen` reads `.shared` only outside `reachyPreviewMode`,
   so a controller paired to the Mac running the suite cannot put the legend into a root reference;
@@ -767,11 +779,21 @@ Start.
   which kept the 13 previews without a button byte-identical and moved the 9 with one.
   The badges themselves still fall back to one per line rather than a letter per line
   at text sizes where even the full column is too narrow.
-  **Each badge sets its glyph against its word itself (`BadgeLabelStyle`).**
+  **Each badge sets its glyph against its word itself (`.reachyInline`, in `ReachyDesign`).**
   Left to the `Form` row, a `Label` puts its icon in a column of its own,
   so the seal stood 21 pt from "Official" and the heart 14 pt after it, with its own 214 22 pt away —
   the heart read as part of "Official". Measured off the reference by ink columns, not by eye;
-  now 7 pt inside a badge and 15 pt between two.
+  now 6 pt inside a badge and 15 pt between two.
+  **The header's Install or Start button takes the same style, and so does the Robot tab's Link row** —
+  every `Label` that is part of a row rather than the row's own label.
+  The button's glyph stood 18.5 pt from its word, the Link row's check 18 pt from "Connected",
+  and that row's separator started under "Connected" instead of at the row's inset,
+  which is why the row also pins `listRowSeparatorLeading` to its own leading edge.
+
+- **The install log is a console embedded in the page, and there it offers no search** (`LogConsoleView.isEmbedded`).
+  SwiftUI hoists `.searchable` to the bar of the page around the console,
+  and on an iPhone that put "Filter log" over the page's last row, "Hide this author's apps".
+  The console's toolbar items still reach the page's bar; only the search field is withheld.
 
 - **Over the relay the store is Discover alone, and the page knows less (#158).**
   `AppStoreModel+Relay.swift` holds the fork, keyed on `isOverRelay` (`session.canInstallFromCatalogue`),
@@ -782,8 +804,11 @@ Start.
   and an install this visit confirmed, started by its slug, the name the daemon itself assumes.
   Install waits for one answer with no log, so `AppInstallModel.streamsLog` swaps the console for a sentence,
   and a silence reads as unconfirmed rather than failed, because asking again is free.
-  Update, Start on wake-up and Remove are HTTP; the page says so where they would be (`lanOnlyNote`),
+  Update, Start on wake-up and Remove are HTTP;
+  the page says so in the footer of the section they would fill (`actionsFooter`),
   and Restart is gone from the page and the dock because the relay has no verb for it.
+  The note was a row of that section once, and with the three controls gone
+  it was a lone grey sentence in an empty card.
 
 ## Report, hide and the notice (App Review 1.2)
 
@@ -799,6 +824,10 @@ this is that half, and it ships.
   So `canHideAuthor(of:)` answers false for an installed row even when it names an author —
   `installedWithAuthorNoHide` is there because the fixture's installed app has no card,
   and the guard could be deleted with every other test still green (checked by mutating it).
+  **A card with an installed twin offers no hide either** (`AppStoreModel.canHideAuthor(of:)`),
+  and the relay is why: it has no Installed section, so the card of the app that runs or was just installed
+  is the only page that can start it. `installedTwinOffersNoHide` holds it.
+  On the LAN the same rule takes Hide off `App detail — installed`, whose card joins an installed row.
   Report is offered on every page with a Space id: it is the Hub's own form,
   and an app worth reporting does not stop being one once installed.
 - **The notice is not part of `visibleApps`, and the sign-in gate is.**
@@ -881,6 +910,8 @@ welcome, name, motors, camera, microphone, speaker, done.
   opens — or dropped after eight seconds, which is what the connect gate waits at most.
   When the robot turns out to be new, the same link is the camera step's picture and the channel the end writes to.
   `RootFirstRunLink` closes it as soon as nothing holds it: a connect no longer reading, and no run on screen.
+  The end of the run holds it too (`RobotSession.isWritingFirstRunFlag`):
+  the offer goes before the write, and closing on the offer alone cut the channel under the write.
   The opener is set in `ReachyRootView.init` on the session built beside it, so `@State` keeps the pair together;
   previews never connect, so they never open anything.
 - **On the LAN the pose comes off the daemon's socket; over the relay it is polled.**
@@ -908,6 +939,9 @@ welcome, name, motors, camera, microphone, speaker, done.
   and its test sound now plays over the relay as well (`RemoteRobotConnection+TestSound.swift`).
 - **The steps reuse `OnboardingStepScaffold`** rather than a copy — the same heading, form and pinned actions.
   The name step reuses the onboarding's copy and `RobotNameField`'s footer word for word.
+  The scaffold holds its form and its footer to `Metrics.readableForm`, centred,
+  because in place of the shell the run has the whole display:
+  on an iPad the steps drew ~1180 pt buttons and one-line paragraphs.
 - **What the references can and cannot hold.**
   Every step and every state a reader can land in has a `First run —` preview,
   plus `Root — first run over the relay` for the fork itself.
@@ -944,6 +978,13 @@ welcome, name, motors, camera, microphone, speaker, done.
 - **`RootJSAppHost` is mounted on the root, above the gate**, for the reason `RootSheets` is:
   over the relay this app's session is ended before the page loads,
   the phase leaves `.connected`, and the shell — with the screen the app was opened from — is thrown away.
+- **Only the page's own document speaks for the app.** The injected script forwards a message only when
+  `event.source` is the window itself and `event.origin` is its own, and the handler drops any script message
+  that is not from the main frame at the Space's host (`JSAppHostBridge.admits`):
+  `window.webkit.messageHandlers` is there in every frame, and a frame the page embeds is somebody else's code.
+  `JSAppHostBridgeTests` runs the script in a bare `JSContext`, so it needs no WebKit.
+- **Opening is guarded by a flag of its own** (`RootJSAppHost.isOpening`), because over the relay
+  `freeRobot` can take twenty seconds with `hosted` still nil, and a second tap would open the app twice.
 - **Closing waits for `embed:left`**, because that is the page putting the robot to sleep;
   `JSAppHostModel.leave()` gives it 9.5 s, the reference host's bound.
 - **The token is the narrow one** (`HFOAuthConfiguration.reachyMiniWebApps`), in memory,
@@ -1502,6 +1543,12 @@ and an elapsed timer conclude nothing — the transport reconnects on its own an
 may be behind a blip. Only an arriving `not_running` says the app is gone; `.closed`
 draws a gap and stops there. `ConversationModelTests.doesNotConcludeFromATimeout` is what
 holds it.
+And only the relay's `not_running` says so.
+The app sends the same reason, with the same code, while its voice backend is not connected —
+at startup, and through the reconnect a personality change starts.
+`ConversationFailure` reads that one as `backendNotConnected`,
+and the screen narrates preparing and waits for `backend_connected` again
+(`ConversationModelTests.waitsAgainOnTheAppsOwnNotRunning`).
 
 **The dock's sheet stopped collapsing, and it was measured against the other host.**
 `RunningAppModifier` used to read `visibleStatus` inside its `.sheet` content while
@@ -1565,6 +1612,10 @@ and a row on that tab that is always there.
 - **A visit is a change of tab; the prompt waits two seconds on it.**
   `reviewPrompt(tab:)` hangs on `ReachyTabShell`, the one place that sees the selection change,
   and counts arriving on Settings — not coming back to the app with Settings already showing.
+  Nor a reconnect with Settings showing: the root rebuilds the shell on every connect,
+  and the new one starts on the tab the router still holds.
+  It used `onChange(of:initial: true)`, so each rebuild counted a visit and started the dwell again;
+  `ReviewPromptArrival` now counts only a change of tab inside one shell.
   The two-second dwell is Apple's own, and it restarts on the scene phase,
   so a prompt is never timed across a trip to the background and shown the moment the app returns.
   The Settings tab exists only once a robot has answered,

@@ -66,8 +66,8 @@ struct OnboardingFlow: View {
 /// A grouped `Form` rather than a `ScrollView` of loose views, which is what this was:
 /// every other screen in the app is one, and the steps that take input — a code, a
 /// network, a password — drew bordered text fields on a flat page that matched nothing
-/// else the reader had seen. The heading section is drawn on the page rather than in a
-/// row, the way the store's section picker is.
+/// else the reader had seen. The heading is drawn on the page rather than in a row: it
+/// is the header of a section with no rows.
 struct OnboardingStepScaffold<Content: View, Actions: View>: View {
     let title: String
     let message: String
@@ -76,28 +76,40 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
 
     var body: some View {
         Form {
+            // A header, not a row with a clear background, which is what this was.
+            // A row is clipped to its section's rounded corners whatever its
+            // background, and the 4 pt inset that was meant to clear them does not
+            // clear the radius iOS 26 draws: every step lost the top-left of its
+            // heading's first glyph and the bottom-left of its explanation's last
+            // line — "Did it move?" shaved at the D, "picture" read as "ɔicture".
+            // No cell clips a header, and a section with no rows draws no cell.
             Section {
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text(title)
-                        .font(Typography.screenTitle.bold())
-                    Text(message)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .listRowBackground(Color.clear)
-                // Not `EdgeInsets()`: flush with the cell's edge, the bold heading's
-                // first glyph was clipped by its own overhang — measured on the
-                // booted simulator, where "Before you start" lost the top of its B.
-                .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
+                EmptyView()
+            } header: {
+                heading
             }
             content()
         }
         .formStyle(.grouped)
+        // The column `readablePage()` holds the tab forms to, for the reason it gives.
+        // The first run replaces the shell rather than covering it, so on an iPad it
+        // had the whole display: one-line paragraphs and buttons ~1180 pt wide. The
+        // onboarding sheet is about as wide as the column already, so it barely moves.
+        // Spelled out rather than called, because the backdrop has to go outside the
+        // footer as well.
+        .frame(maxWidth: Metrics.readableForm)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Space.sm) {
                 actions()
             }
+            // The size of a bottom button everywhere else on the platform. At the
+            // regular size the primary action read as a small bar under a thumb,
+            // and the way-outs under it as words — reported together from a device.
+            .controlSize(.large)
             .padding()
+            // The same column as the form, so the buttons end where the cards do.
+            .frame(maxWidth: Metrics.readableForm)
             .frame(maxWidth: .infinity)
             // `.page` and not `.scrim`, which is what this was. A scrim carries
             // glass, glass renders a light surface whatever is behind it, and this
@@ -106,23 +118,53 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             // So the effect backed no content and read as a grey strip stuck to the
             // bottom of the screen with a button in it. The page's own background
             // still hides what scrolls under it on the steps that do scroll, and
-            // says nothing on the ones that do not.
+            // says nothing on the ones that do not. `groupedPageBackground()` below
+            // is what makes it the grouped grey rather than a white band.
             .reachySurface(.page, ignoringSafeArea: .bottom)
         }
         .groupedPageBackground()
+    }
+
+    /// The look the heading had as a row, restated for a header. A header styles its
+    /// text — a smaller font, a secondary colour, and capitals on some systems — so the
+    /// title names its own colour, `font(nil)` hands the explanation back the body text
+    /// a row gave it, and `textCase(nil)` keeps the words as written. The insets keep
+    /// it where it was: 4 pt in from the edge of the cards below.
+    ///
+    /// The colours are `Color.primary` and `Color.secondary`, not `.primary` and
+    /// `.secondary`. The hierarchical styles resolve against the style around them,
+    /// and a header's is already secondary: the title came out grey and the
+    /// explanation fainter still, so every step read as disabled. The weight is
+    /// stated for the same reason: a header sets one, `font(nil)` does not reset it,
+    /// and the explanation came out semibold.
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text(title)
+                .font(Typography.screenTitle.bold())
+                .foregroundStyle(Color.primary)
+            Text(message)
+                .fontWeight(.regular)
+                .foregroundStyle(Color.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(nil)
+        .textCase(nil)
+        .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
     }
 }
 
 /// Renders itself only where stepping back means something: once the password is on its
 /// way to the robot, there is nothing to go back to.
+///
+/// Every way-out in a step's footer is this spelling — a quiet, full-width
+/// `ReachyActionButton` — so the row is one target the width of the footer and at least
+/// `Metrics.minimumHitTarget` tall, where `.plain` text answered only on its words.
 struct OnboardingBackButton: View {
     let model: OnboardingModel
 
     var body: some View {
         if model.canGoBack {
-            Button(.reachy("Back")) { model.back() }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+            ReachyActionButton(.reachy("Back"), emphasis: .quiet, fullWidth: true) { model.back() }
         }
     }
 }

@@ -117,7 +117,7 @@ struct AppStoreScreen: View {
                             }
                         }
                         pinButton(for: app)
-                        AppModerationActions(app: app, moderation: model.moderation)
+                        AppModerationActions(app: app, store: model)
                     }
                 }
             }
@@ -280,7 +280,7 @@ struct AppStoreScreen: View {
         Button {
             showsHiddenAuthors = true
         } label: {
-            Label(.reachy("Hidden authors"), systemImage: "eye.slash")
+            Label(.reachy("Hidden authors"), systemImage: AppModerationActions.hideSymbol)
         }
     }
 

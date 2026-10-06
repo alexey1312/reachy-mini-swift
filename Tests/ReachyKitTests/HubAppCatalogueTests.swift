@@ -76,6 +76,19 @@ struct HubAppCatalogueTests {
         #expect(!app.isInstalled)
     }
 
+    /// The id is the Hub's free text, so the page is built rather than interpolated
+    /// (rule 5): a character a URL cannot carry is escaped, not left to break it.
+    @Test("a Space's page is built with URLComponents, the way every other page is")
+    func buildsThePageURL() async throws {
+        let id = "someone/odd name"
+        let (catalogue, _) = catalogue(spaces: [Self.space(id)])
+
+        let app = try #require(try await catalogue.apps().first)
+
+        #expect(app.info.url == "https://huggingface.co/spaces/someone/odd%20name")
+        #expect(app.info.url == HubSpacePage.url(for: id)?.absoluteString)
+    }
+
     /// The daemon puts the curated list first, and `.recommended` is that order —
     /// so a curated entry ranks ahead of a more liked one. An entry the tagged list
     /// does not have is one `apps.install` could not find either, and is dropped

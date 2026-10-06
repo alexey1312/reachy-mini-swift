@@ -27,9 +27,10 @@ public actor RobotConnection {
     let wirelessSession: URLSession
     /// Everything the robot answers only after talking to Hugging Face: the app
     /// catalogue, which the daemon budgets at 30 s
-    /// (`apps/sources/hf_space.REQUEST_TIMEOUT`), and `/api/hf-auth/*`, whose
-    /// status route runs a `whoami` on every call. Under the 3.5 s health-poll
-    /// budget neither would ever load.
+    /// (`apps/sources/hf_space.REQUEST_TIMEOUT`), `/api/hf-auth/*`, whose
+    /// status route runs a `whoami` on every call, and the recorded-move index and
+    /// play, which download a dataset first. Under the 3.5 s health-poll budget
+    /// none of them would ever load.
     let hubSession: URLSession
     /// The generated client again, on that longer budget — the transport carries
     /// the timeout, so one `Client` cannot serve both.
@@ -240,16 +241,23 @@ public actor RobotConnection {
 
     // MARK: Recorded moves (dances / emotions / music libraries)
 
+    // `listMoves` and `playMove` go through `hubClient`, not the 3.5 s client.
+    // Both routes build `RecordedMoves(dataset)` before they answer, and that
+    // downloads a dataset the daemon has not cached from Hugging Face. Only the
+    // two Pollen libraries are preloaded (`DEFAULT_DATASETS`), and a cold load of
+    // the Music one took about 15 s. On the short budget the call timed out while
+    // the robot went on to play the move.
+
     /// Move names available in a HF dataset, e.g. `pollen-robotics/reachy-mini-dances-library`.
     public func listMoves(dataset: String) async throws -> [String] {
-        try await client.listRecordedMoveDatasetApiMoveRecordedMoveDatasetsListDatasetNameGet(
+        try await hubClient.listRecordedMoveDatasetApiMoveRecordedMoveDatasetsListDatasetNameGet(
             path: .init(datasetName: dataset)
         ).ok.body.json
     }
 
     /// Starts a recorded move; returns its UUID for `stopMove`.
     public func playMove(dataset: String, move: String) async throws -> String {
-        try await client.playRecordedMoveDatasetApiMovePlayRecordedMoveDatasetDatasetNameMoveNamePost(
+        try await hubClient.playRecordedMoveDatasetApiMovePlayRecordedMoveDatasetDatasetNameMoveNamePost(
             path: .init(datasetName: dataset, moveName: move)
         ).ok.body.json.uuid
     }

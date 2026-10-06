@@ -144,10 +144,10 @@ struct SimulatedRobotClientTests {
 
     // MARK: - One move slot
 
-    /// Recorded behaviour: a second `play_move` while one runs is accepted, answered
-    /// with a plausible UUID through `create_move_task`, and moves nothing. A
-    /// simulator that queued instead would make `RobotSession+Moves`' guards
-    /// untestable against it.
+    /// The simulator's rule: a second move while one runs is answered with an id
+    /// and moves nothing. The daemon runs it beside the first instead; either way
+    /// the caller is wrong, and a simulator that queued would hide that from
+    /// `RobotSession+Moves`' guards.
     @Test("a second move is answered with an id it never files")
     func secondMoveIsAnsweredAndIgnored() async throws {
         let client = try walkingClient()

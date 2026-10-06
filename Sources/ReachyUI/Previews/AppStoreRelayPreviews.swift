@@ -36,14 +36,10 @@ import SwiftUI
     )
 }
 
-#Preview("App detail — over the relay") {
-    let session = RobotSession.preview(address: nil, link: .remote, client: PreviewRelayStoreClient())
-    PreviewScene.appDetail(
-        session,
-        app: RobotApp.previewCatalogue[0],
-        model: .preview(session: session, installed: [])
-    )
-}
+// There is no capture of an app the robot does not have over the relay: nothing the
+// relay changes shows before Install is tapped, and `App detail — over the relay`
+// was byte-identical to `App detail — not installed` in all four captures. The
+// pages below are the ones the relay draws differently.
 
 // One answer at the end and nothing before it, so the console a LAN install shows
 // gives way to the sentence saying so.

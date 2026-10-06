@@ -108,14 +108,13 @@ struct FirstRunFlow: View {
     }
 }
 
-/// The plain secondary action every check carries: move on without answering.
+/// The quiet secondary action every check carries: move on without answering. Spelled
+/// the way every footer way-out is (`OnboardingBackButton`).
 struct FirstRunSkipButton: View {
     let model: FirstRunModel
 
     var body: some View {
-        Button(.reachy("Skip")) { model.advance() }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+        ReachyActionButton(.reachy("Skip"), emphasis: .quiet, fullWidth: true) { model.advance() }
     }
 }
 

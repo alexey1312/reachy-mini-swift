@@ -69,9 +69,12 @@ public struct RobotPowerCommand: Sendable {
         do {
             let operation = operation
             let robot = robot
+            // Handed down so a sleep that waits for the daemon's reset still has
+            // the time to chase it before this budget cancels the whole command.
+            let deadline = ContinuousClock.now + Self.executionTimeout
             let result = try await RobotIntentTarget.withTimeout(Self.executionTimeout) {
                 let target = try await RobotIntentTarget.connection(to: robot, timeout: 10)
-                let resumption = try await operation.run(on: target)
+                let resumption = try await operation.run(on: target, deadline: deadline)
                 return (target.robot, resumption)
             }
             record(result.1, robot: result.0, transitions: transitions)
@@ -174,15 +177,18 @@ private extension RobotPowerCommand.Operation {
     /// it; the wake path used to build `RobotPower` with no configuration at all and
     /// so inherited the session's 10-second move budget in a process that has
     /// seconds.
-    func run(on target: RobotIntentTarget.VerifiedConnection) async throws -> RobotPower.Resumption? {
+    func run(
+        on target: RobotIntentTarget.VerifiedConnection,
+        deadline: ContinuousClock.Instant
+    ) async throws -> RobotPower.Resumption? {
         switch self {
         case .wake:
             return try await RobotPower(client: target.client, configuration: .widgetIntent).resume()
         case .sleep:
-            try await RobotSleep(client: target.client).perform()
+            try await RobotSleep(client: target.client, deadline: deadline).perform()
             return nil
         case .powerOff:
-            try await RobotShutdown(client: target.client).perform()
+            try await RobotShutdown(client: target.client, deadline: deadline).perform()
             return nil
         }
     }

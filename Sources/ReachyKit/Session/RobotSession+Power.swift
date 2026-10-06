@@ -56,9 +56,10 @@ public extension RobotSession {
     /// it would run beside it, and `set_mode/disabled` could cut the torque while
     /// the daemon's trajectory is still moving. Where ``daemonParksAfterApps``
     /// holds, the sleep is therefore the daemon's, watched under the
-    /// `.goingToSleep` already claimed here. Unlike the parking after an app, a
-    /// reset that never comes is chased: the user asked for sleep, and nobody else
-    /// has taken the robot. One who has — an app holding it again — keeps it.
+    /// `.goingToSleep` already claimed here. The parking after an app chases a
+    /// reset that never comes only for a robot this session woke; this always
+    /// does: the user asked for sleep, and nobody else has taken the robot. One
+    /// who has — an app holding it again — keeps it.
     func sleep() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
@@ -214,8 +215,8 @@ extension RobotSession {
     /// clears its own slot on the last line of `stop_current_app`, past the
     /// return-to-zero it performs on the app's behalf (`apps/manager.py:283`,
     /// `:355`). Parking on top of that hand-back puts two motions on one robot, and
-    /// `play_move` takes its guard non-blocking (`backend/abstract.py:412`) — so
-    /// one of the two silently does nothing, and which one is not ours to choose.
+    /// the daemon runs both: `play_move`'s guard is a re-entrant lock taken on its
+    /// one event-loop thread, so it never refuses, and the two fight over the head.
     ///
     /// Neither a refusal nor a timeout aborts anything. Parking the robot matters
     /// more than proof that the app let go, the same trade `waitForMoveToFinish`

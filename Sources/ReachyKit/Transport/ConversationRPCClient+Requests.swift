@@ -1,7 +1,7 @@
 import Foundation
 
-/// The ten verbs the conversation app answers, over the multiplexed socket in
-/// ``ConversationRPCClient``.
+/// The ten calls this client makes to the conversation app, over the multiplexed
+/// socket in ``ConversationRPCClient``. The app answers more methods than these.
 ///
 /// Each is one line because the whole of the work — correlation, the deadline, the
 /// failure vocabulary — belongs to the socket rather than to the verb.

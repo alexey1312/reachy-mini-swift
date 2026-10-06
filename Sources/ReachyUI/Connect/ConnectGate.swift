@@ -50,15 +50,18 @@ extension View {
             .groupedPageBackground()
     }
 
-    /// The backdrop a grouped `Form` paints for itself, behind a whole page.
+    /// The backdrop a grouped `Form` paints for itself, behind a whole page — and the
+    /// word to every `.page` surface on it that this is the backdrop to match.
     ///
-    /// Only iOS has one to name: `.formStyle(.grouped)` on macOS lays out against
-    /// the window's own background and has nothing to match.
+    /// Only iOS has one to paint: `.formStyle(.grouped)` on macOS lays out against
+    /// the window's own background and has nothing to match. The word goes out on
+    /// both, and on macOS `PageBackdrop.grouped` is `.background`, as before.
     func groupedPageBackground() -> some View {
         #if os(iOS)
-            background(Color(.systemGroupedBackground))
+            background(PageBackdrop.grouped.style)
+                .environment(\.reachyPageBackdrop, .grouped)
         #else
-            self
+            environment(\.reachyPageBackdrop, .grouped)
         #endif
     }
 }

@@ -68,8 +68,8 @@ struct RootCallLifecycle: ViewModifier {
         RootViewportTarget.source(session: session, remoteLink: remoteLink)
     }
 
-    /// `.stalled` too: the session stopped asking after two attempts, and a call over
-    /// a session that is not trying any more has nothing left to carry it.
+    /// `.stalled` too: the session has spent its two attempts. On the LAN it still
+    /// probes, but as much as a minute apart, and a call cannot sit silent that long.
     private var cameraHasFailed: Bool {
         switch viewport.cameraSession?.phase {
         case .failed, .stalled: true

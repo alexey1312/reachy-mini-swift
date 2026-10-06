@@ -61,17 +61,22 @@ extension RobotSession {
     public func playMove(dataset: String, move: String) async throws {
         guard let client = movesClient else { throw ReachyKitError.movesUnavailable }
         // Whatever the robot is doing has to be off the daemon's task list before
-        // the new move is asked for: `play_move` takes its guard non-blocking
-        // (`backend/abstract.py`) and simply returns when something else is
-        // running, so a play issued over one is accepted, filed, and moves nothing.
-        await clearTheFloor(client: client)
-        let uuid = try await client.playMove(dataset: dataset, move: move)
-        let playback = MovePlayback(uuid: uuid, identity: .init(dataset: dataset, move: move))
-        moveActivity = .playing(playback)
-        if let robotID = connectedRobotID {
-            playbacks.write(.init(robotID: robotID, uuid: uuid, dataset: dataset, move: move))
+        // the new move is asked for. The daemon does not refuse a play over a
+        // running move — both run, and both write the head target — so a floor
+        // that will not clear throws here and the play is never sent.
+        try await clearTheFloor(client: client)
+        let identity = MovePlayback.Identity(dataset: dataset, move: move)
+        let uuid: String
+        do {
+            uuid = try await client.playMove(dataset: dataset, move: move)
+        } catch {
+            // A timeout is not a refusal. The daemon answers a play only after it
+            // has loaded the dataset, and it starts the move whether or not anybody
+            // still waits for the reply — so the robot is asked first.
+            guard Self.isTimeout(error), await adoptTimedOutPlay(identity, client: client) else { throw error }
+            return
         }
-        startMonitoring(.playing(playback), client: client)
+        follow(MovePlayback(uuid: uuid, identity: identity), client: client)
     }
 
     /// Re-reads the daemon's move list at once rather than waiting for the poll.
@@ -86,41 +91,63 @@ extension RobotSession {
     /// One miss settles it here, against the poll's two: this is asked after a gap
     /// rather than in the moments a play is still being registered.
     public func refreshMoveActivity() async {
-        guard let client = movesClient, let activity = moveActivity, !isStoppingMove else { return }
+        // A parking with no uuid yet is `recentre`'s, awaiting its own reply.
+        guard let client = movesClient, let activity = moveActivity, let uuid = activity.uuid,
+              !isStoppingMove
+        else { return }
         guard let running = try? await client.runningMoveUUIDs() else { return }
-        guard moveActivity?.uuid == activity.uuid, !running.contains(activity.uuid) else { return }
+        guard moveActivity?.uuid == uuid, !running.contains(uuid) else { return }
         await finish(activity, client: client)
     }
 
     /// Frees the daemon's move slot before a power transition claims it.
     ///
-    /// `goto_sleep` is a move task like any dance, so `_try_start_move` refuses it
-    /// while one is playing: the animation is skipped without a word and
+    /// `goto_sleep` is a move task like any dance, and the daemon runs it beside
+    /// one that is playing: the two write the head target in turn, and
     /// `set_mode/disabled` cuts the motors a moment later, mid-pose. This is the
     /// motion half of what `releaseRunningApp()` does for a running app — hand the
     /// robot back before parking it. Parking is skipped here because the
     /// transition *is* the parking.
+    ///
+    /// Asked even when this session remembers no move, because the daemon may run
+    /// one it never heard of. Best effort: a move that will not stop is no reason
+    /// to leave the robot awake.
     func releaseMove() async {
-        guard moveActivity != nil, let client = movesClient else { return }
-        await clearTheFloor(client: client)
+        guard let client = movesClient else { return }
+        try? await clearTheFloor(client: client)
     }
 
-    /// Ends whatever is running so a new move is not silently dropped.
+    /// Ends every move the daemon runs, so a new one does not play beside it.
+    ///
+    /// `play_move` guards the daemon's one move slot with a non-blocking
+    /// `RLock.acquire` (`backend/abstract.py`), and every HTTP, WebSocket and
+    /// data-channel route runs it as a coroutine on the one event-loop thread. The
+    /// lock is re-entrant on that thread, so the guard never refuses: a second play
+    /// starts, both write the head target at 100 Hz, and its `play_sound` restarts
+    /// the music. So `moveActivity` is not enough — a move from the widget, from
+    /// another device or from before a relaunch is stopped too. Throws when a move
+    /// will not stop, because a play sent over it is that collision.
     ///
     /// Parking is deliberately skipped: it is a move task of its own, so returning
-    /// to neutral here would occupy the robot for a second and have the daemon
-    /// refuse the very play this is clearing the way for.
-    private func clearTheFloor(client: any MovePlaybackClient) async {
+    /// to neutral here would put a `goto` beside the very play this clears the
+    /// way for.
+    private func clearTheFloor(client: any MovePlaybackClient) async throws {
         switch moveActivity {
         case .playing, .stopping:
             _ = await stopMove(parking: false)
         case let .recentring(uuid):
-            try? await client.stopMove(uuid: uuid)
+            if let uuid {
+                try? await client.stopMove(uuid: uuid)
+            }
             movePollTask?.cancel()
             movePollTask = nil
             moveActivity = nil
         case nil:
             break
+        }
+        // The sound player is a task of its own and outlives a stopped motion.
+        if try await client.stopRunningMoves() {
+            try? await client.stopSound()
         }
     }
 
@@ -204,9 +231,9 @@ extension RobotSession {
         }
         moveActivity = nil
         playbacks.clear()
-        // A move that refused to stop is still running, and `_try_start_move` would
-        // drop the parking anyway — so the only thing sending it would add is a
-        // phase on screen over a robot that never left the dance.
+        // A move that refused to stop is still running, and the daemon would run
+        // the parking beside it — two motions fighting over the head, under a
+        // phase on screen that claims the robot left the dance.
         let stopped = !result.failures.contains { $0.hasPrefix("Move:") }
         guard parking, stopped, isAwake else { return result.failures.sorted() }
         let parkingErrors = await recentre(client: client)
@@ -222,81 +249,29 @@ extension RobotSession {
     /// Not `private`: an app releasing the robot parks it the same way
     /// (`RobotSession+AppLifecycle`), and a second implementation of "go back to
     /// base" is the one that would drift from the phase this claims on screen.
+    ///
+    /// The phase is claimed before the `goto` is sent, not when it answers. In
+    /// between, the rows were live, and a dance tapped there played beside the
+    /// parking, because the daemon runs both. Over the relay that gap was the
+    /// whole walk: `goto_target` answers only once it has finished.
     func recentre(client: any MovePlaybackClient) async -> [String] {
+        let pending = MoveActivity.recentring(uuid: nil)
+        moveActivity = pending
         do {
             let uuid = try await client.gotoNeutral(duration: configuration.recentreDuration)
             // Anything that claimed the robot while the request was in flight owns
             // it now; adopting the parking task over that would hide a real move.
-            guard moveActivity == nil else { return [] }
+            guard moveActivity == pending else { return [] }
             moveActivity = .recentring(uuid: uuid)
             startMonitoring(.recentring(uuid: uuid), client: client)
             return []
         } catch {
+            if moveActivity == pending {
+                moveActivity = nil
+            }
             guard let message = Self.message(for: error) else { return [] }
             return ["Neutral: \(message)"]
         }
-    }
-
-    /// Adopts whatever the daemon is already playing.
-    ///
-    /// `currentMove` is this process's memory of a command it issued, and a move
-    /// outlives the process: force-quit the app mid-dance and the robot is still
-    /// going on the next launch. The missing animation is the visible half. The
-    /// other half is that `play_move` takes its guard non-blocking
-    /// (`backend/abstract.py`), so a play issued over a move nobody here knows
-    /// about returns a fresh UUID and moves nothing — the screen would name a
-    /// dance the robot never started.
-    ///
-    /// `/api/move/running` carries UUIDs alone, so an adopted move has no
-    /// `identity` and the screen says so rather than guessing a name.
-    func restoreActiveMove(client: any MovePlaybackClient) {
-        moveRestoreTask?.cancel()
-        // `wake_up` and `goto_sleep` reach the daemon through `create_move_task`
-        // exactly as a dance does, so `/api/move/running` cannot tell them apart.
-        // A transition this session is driving is the one case where the answer is
-        // known to be ours and known not to be playback.
-        guard powerTransition == nil else { return }
-        let attemptID = connectionAttemptID
-        moveRestoreTask = Task {
-            guard let running = try? await client.runningMoveUUIDs() else { return }
-            guard !Task.isCancelled, connectionAttemptID == attemptID,
-                  powerTransition == nil, currentMove == nil
-            else { return }
-            guard let playback = adoptable(from: running) else {
-                playbacks.clear()
-                return
-            }
-            if playback.identity == nil {
-                // Adopted anonymously, so the stored record described something the
-                // daemon has since forgotten. Keeping it risks naming the *next*
-                // stranger after it.
-                playbacks.clear()
-            }
-            moveActivity = .playing(playback)
-            startMonitoring(.playing(playback), client: client)
-        }
-    }
-
-    /// Which of the daemon's running tasks to adopt, and whether it can be named.
-    ///
-    /// The persisted record is consulted first: a UUID this app wrote is the only
-    /// evidence anywhere that ties a running task to a dataset and a move name.
-    /// Anything else is adopted anonymously — sorted rather than "first", because
-    /// a `Set` has no order and two tasks can overlap for an instant
-    /// (`_try_start_move` refuses the second one's *work*, but `create_move_task`
-    /// files it either way).
-    private func adoptable(from running: Set<String>) -> MovePlayback? {
-        if let record = playbacks.current,
-           record.robotID == connectedRobotID,
-           running.contains(record.uuid)
-        {
-            return MovePlayback(
-                uuid: record.uuid,
-                identity: .init(dataset: record.dataset, move: record.move)
-            )
-        }
-        guard let uuid = running.sorted().first else { return nil }
-        return MovePlayback(uuid: uuid, identity: nil)
     }
 
     /// Polls the daemon's authoritative running-task list so natural completion
@@ -305,9 +280,9 @@ extension RobotSession {
     /// Parking is followed the same way rather than timed against
     /// `recentreDuration`: a `goto` can be cancelled or fail, and the phase has to
     /// end when the task does, not when its nominal duration is up.
-    private func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
+    func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
         movePollTask?.cancel()
-        let uuid = activity.uuid
+        guard let uuid = activity.uuid else { return }
         movePollTask = Task { [configuration] in
             var consecutiveMisses = 0
             while !Task.isCancelled, moveActivity?.uuid == uuid {

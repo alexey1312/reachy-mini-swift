@@ -31,16 +31,23 @@ public enum ConversationFailure: Error, Equatable, Sendable {
 /// than reinvented. Open, because the set grows: an unrecognised one is carried as
 /// itself so a screen can still show the robot's own word.
 public enum ConversationReason: Equatable, Sendable {
-    /// No conversation session is live. From the app when nothing is connected, and
-    /// from the relay (with `-32000`) when no app is running at all.
+    /// No app is running at all: the daemon's relay says so (`-32000`, "no app is
+    /// running") when it has no app to relay to.
     case notRunning
+    /// The app is running and its voice backend is not connected — at startup, and
+    /// again through the reconnect a personality or backend change starts. The app
+    /// sends this as `not_running` too, from `conversation.say` and
+    /// `conversation.interrupt`; ``ConversationFailure/init(code:message:reason:relayed:)``
+    /// tells the two apart. Not a verdict: the backend comes back on its own.
+    case backendNotConnected
     /// The relay reached for the app's `/rpc` and could not get there, or the
     /// connection dropped with the call in flight. The app is there; it is not
     /// answering.
     case appUnavailable
-    /// The app is still coming up. Its own web client retries this every two seconds
-    /// against a ninety-second deadline, because that is how long the backend takes —
-    /// so a first failure carrying this is not a failure yet.
+    /// The app's event loop is not up yet. Only the personality and voice operations
+    /// raise it — `conversation.status` never does — and the app's own web client
+    /// retries any failure every two seconds against a ninety-second deadline
+    /// (`untilReady`), so a first failure carrying this is not a failure yet.
     case loopUnavailable
     case invalidParameters
     case profileLocked
@@ -65,14 +72,29 @@ public enum ConversationReason: Equatable, Sendable {
 }
 
 public extension ConversationFailure {
-    /// The one place `-32601` becomes ``methodNotFound``.
-    init(code: Int?, message: String, reason: String?) {
+    /// The one place `-32601` becomes ``methodNotFound``, and the one place the two
+    /// meanings of `not_running` are told apart.
+    ///
+    /// `relayed` says whether the daemon's relay stood between this client and the
+    /// app. The daemon raises `not_running` when no app is running; the app raises
+    /// the same reason, with the same `-32000`, whenever its voice backend is not
+    /// connected. On the LAN this client talks to the app alone, so it is always the
+    /// app's. Over the relay the daemon's own sentence is the only thing that
+    /// differs (`jsonrpc_relay.py`, `_ensure_app_ws`).
+    init(code: Int?, message: String, reason: String?, relayed: Bool = false) {
         guard code != -32601 else {
             self = .methodNotFound
             return
         }
-        self = .rejected(code: code, reason: reason.map(ConversationReason.init), message: message)
+        var mapped = reason.map(ConversationReason.init)
+        if mapped == .notRunning, !(relayed && message == Self.relayHasNoApp) {
+            mapped = .backendNotConnected
+        }
+        self = .rejected(code: code, reason: mapped, message: message)
     }
+
+    /// What the daemon's relay says when it has no running app to relay to.
+    private static let relayHasNoApp = "no app is running"
 
     /// The relay's failures in the same words as the app's own.
     ///
@@ -82,7 +104,7 @@ public extension ConversationFailure {
     init(relay failure: RemoteControlChannel.Failure) {
         switch failure {
         case let .rpc(code, message, reason):
-            self.init(code: code, message: message, reason: reason)
+            self.init(code: code, message: message, reason: reason, relayed: true)
         case .timedOut:
             self = .timedOut
         case .closed:

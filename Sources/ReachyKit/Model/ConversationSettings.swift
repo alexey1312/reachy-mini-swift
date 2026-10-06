@@ -105,6 +105,12 @@ public struct ConversationBackendStatus: Sendable, Equatable, Decodable {
     /// The app has what it needs to run — an API key or a Hugging Face connection.
     public let canProceed: Bool
     /// A live connection to the voice backend right now.
+    ///
+    /// An answer without `backend_connected` decodes as connected. The screen waits for
+    /// this flag before it goes live, so an app that does not send it would otherwise
+    /// wait out the whole startup budget and then read as not configured. Every app
+    /// that answers over `/rpc` sends it today; this keeps one that does not working
+    /// as it did before the screen waited (project rule 3).
     public let isConnected: Bool
     /// The app's own word for where it has got to: `not_started`, `connected`, and
     /// whatever it grows next. Carried rather than mapped — this client has no branch
@@ -133,7 +139,7 @@ public struct ConversationBackendStatus: Sendable, Equatable, Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             canProceed: container.decodeIfPresent(Bool.self, forKey: .canProceed) ?? false,
-            isConnected: container.decodeIfPresent(Bool.self, forKey: .backendConnected) ?? false,
+            isConnected: container.decodeIfPresent(Bool.self, forKey: .backendConnected) ?? true,
             connectionState: container.decodeIfPresent(String.self, forKey: .backendConnectionState),
             error: container.decodeIfPresent(String.self, forKey: .backendError),
             requiresRestart: container.decodeIfPresent(Bool.self, forKey: .requiresRestart) ?? false

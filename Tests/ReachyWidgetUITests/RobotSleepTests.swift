@@ -50,8 +50,8 @@ struct RobotSleepTests {
 
     /// A 200 from `stop-current-app` is not the app letting go — the daemon clears
     /// its own slot several awaits later, past the return-to-zero it performs on the
-    /// app's behalf. Playing over that puts two motions on one robot, and
-    /// `play_move` takes its guard non-blocking.
+    /// app's behalf. Playing over that puts two motions on one robot, and the
+    /// daemon runs both.
     @Test("the animation waits for the daemon to stop naming the app")
     func waitsForTheAppToLetGo() async throws {
         let client = StubAppsClient()
@@ -170,6 +170,26 @@ struct RobotSleepTests {
 
         try await sleep(client, idleResetTimeout: .milliseconds(200)).perform()
 
+        #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
+    }
+
+    /// An intent's whole command has fifteen seconds, counted from before the connect
+    /// and the release. A reset wait that ran its own nine left the chase no time, and
+    /// the command was cancelled with the motors still enabled. **The deadline is the
+    /// assertion** (project rule 7): a wait that ignored it ends in the same two calls,
+    /// twenty seconds in.
+    @Test("a reset that never comes is chased in time to disable the motors before the budget ends")
+    func chasesInsideTheBudget() async throws {
+        let client = parkingDaemon()
+        var configuration = RobotSession.Configuration.widgetIntent
+        configuration.appStopPollInterval = .milliseconds(10)
+        configuration.moveCompletionTimeout = .milliseconds(200)
+        configuration.idleResetTimeout = .seconds(20)
+        let deadline = ContinuousClock.now + .seconds(3)
+
+        try await RobotSleep(client: client, configuration: configuration, deadline: deadline).perform()
+
+        #expect(ContinuousClock.now < deadline)
         #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
     }
 

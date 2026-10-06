@@ -203,9 +203,11 @@ its path component. `check-updates?force=` is the only `force` anywhere in the d
 **Nor can a client cause it.** Two hypotheses were checked and both are dead: uvicorn 0.52.1 does **not** cancel the
 ASGI task when the client disconnects (`connection_lost` only sets `cycle.disconnected`, in both `h11_impl.py` and
 `httptools_impl.py`; the sole `.cancel()` is the keep-alive timer, and there is no `BaseHTTPMiddleware` in the chain),
-so our 35 s and 6 s budgets cannot abort a stop in flight. And `play_move` takes its guard **non-blocking** and
-simply returns when a move is running (`backend/abstract.py:412`), so nothing we hold — teleop, the state stream, the
-camera — can stall return-to-zero.
+so our 35 s and 6 s budgets cannot abort a stop in flight. And `play_move` never waits on its guard:
+`_try_start_move` takes a re-entrant lock **non-blocking**, on the one event-loop thread every route runs on,
+so it never even refuses (`backend/abstract.py`, see the move-task section below).
+Nothing we hold — teleop, the state stream, the camera — can stall return-to-zero;
+a move of ours would run beside it instead.
 
 **`POST /api/daemon/restart` does not clear it.** It restarts the motor backend, not the FastAPI process that holds
 the slot (`daemon/daemon.py:473-536`, whose own docstring says so). The only ways out are `systemctl restart
@@ -251,16 +253,22 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `user_personalities/` with no `profile.md` in it does that: `Failed to initialize tools`, exit code 1, and the
   settings that would fix it unreachable until the app starts. Fix that class of thing on the robot.
 - **Conversation App 1.0 speaks JSON-RPC 2.0 over WebSocket `/rpc`.** The REST `/api/v1/*` + SSE
-  `/api/v1/conversation_events` of v0.10.0 is retired, not extended. It ships with SDK `1.10.0rc2` **in the app's own
-  venv**, so `/rpc` answers on a robot whose daemon is still 1.9.0.
+  `/api/v1/conversation_events` of v0.10.0 is retired, not extended.
+  v1.0.1 requires `reachy-mini>=1.10.0rc5` **in the app's own venv**,
+  so `/rpc` answers on a robot whose daemon is still 1.9.0.
 - **Consume `conversation.turn` `{state}`, not `conversation.activity` `{reason}`.** The app's own web UI subscribes
   to `activity` and maps the raw reasons itself (`static/js/orb.js`); `turn` carries the mapped
   `listening / thinking / speaking / ready`, deduplicated server-side, and the comment beside it in `console.py` says
   it is there "for clients without that mapping (mobile)". Copying the frontend is the wrong instinct here.
   Also broadcast: `conversation.transcript` `{role, text, final}` and `conversation.level` `{role, rms}` — the
   latter throttled server-side to 15 Hz and scaled into `0…1`, with the app's own comment saying the cap is "so it
-  stays light on the DataChannel". Request methods: `conversation.status`, `conversation.mic`, `conversation.say`,
-  `conversation.interrupt`, `personalities.*`, `voices.*`, `backend.config`.
+  stays light on the DataChannel".
+  On v1.0.x the app answers 21 request methods:
+  `conversation.{status,mic,say,interrupt}`, `backend.config`,
+  `personalities.{list,all,load,avatar,save,delete,apply}`, `voices.{list,current,apply}`,
+  `profile_tools.{get,save,reset}` and `tool_spaces.{list,add,remove}`.
+  This client makes ten calls to nine of them (`ConversationRPCClient+Requests.swift`).
+  Upstream `main` adds `memory.*`, `language.*` and `vision.*`, which no release carries yet.
 - **`conversation.phase` is dead.** `_emit_phase` is defined in `console.py` and called from nowhere in the Space, so
   a client that waits for one waits for ever. It is in the broadcast list above only in the sense that the code to
   send it exists.
@@ -276,10 +284,20 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and the sent text never comes back. Anything naming this feature has to say "give Reachy something to respond to",
   never "have Reachy say…" — the same honesty test #121 applied to the `phone` App Intents schema. It also barges
   in, clearing whatever is queued for the speaker.
-- **The backend takes up to 90 seconds to come up**, and `loop_unavailable` is the documented reason meaning
-  "Reachy is still starting up". The app's own web client retries it every 2 s against a 90 s deadline
-  (`static/js/api.js:untilReady`). A client that treats the first failure as fatal is wrong; a transport that
-  swallows the reason hides the one state a screen has to narrate, so the retry belongs above the transport.
+- **The backend takes up to 90 seconds to come up, and `backend_connected` is what says it has.**
+  `conversation.status` answers from the moment the app is up,
+  and its `can_proceed` only says a Hugging Face connection is configured.
+  Until the backend connects, `conversation.say` and `conversation.interrupt` raise `not_running`
+  ("no active session") — at startup, and again through the reconnect a personality or backend change starts.
+  `loop_unavailable` comes only from the personality and voice operations, while the app's event loop is not up;
+  `conversation.status` never raises it.
+  The app's own web client retries any failure every 2 s against a 90 s deadline (`static/js/api.js:untilReady`).
+  Pollen's mobile app polls `conversation.status` every 1 s for up to 60 s until `backend_connected`,
+  shows `backend_error`, and treats `not_running` and `app_unavailable` as transient while the app boots
+  (`robot-conversation.ts:waitUntilReady`).
+  A client that treats the first failure as fatal is wrong;
+  a transport that swallows the reason hides the one state a screen has to narrate,
+  so the retry belongs above the transport.
 - **The error envelope is `{message, data: {reason}}` with a JSON-RPC `code`**, and the `reason` strings are a
   stable contract — `api.js` calls it "the stable reason" and maps about twenty of them to copy. Match those rather
   than inventing any.
@@ -333,6 +351,11 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `method_not_found` / -32601 for a verb the app's build does not have. Those are three different screens — the app
   is gone, the app is there and silent, this build cannot do it — and folding them into one sentence is what
   `RemoteControlChannel.Failure.rpc(code:message:reason:)` exists to stop.
+  The app raises `not_running` itself too, with the same code, while its backend is not connected (above),
+  and the relay passes that reply on unchanged.
+  So over the relay only the relay's own message, "no app is running", says that no app runs;
+  on the LAN there is no relay to have said it.
+  `ConversationFailure` maps the app's one to `backendNotConnected`, which a screen waits out.
 - **Removing an app does not stop it first.** `POST /apps/remove/{app_name}` clears the startup app if it matches and
   then queues `AppManager.remove_app`, which calls `uninstall_package` immediately — no `is_app_running()` check. The
   contrast is one method down: `update_app` *does* check and raises. So a running conversation app can be uninstalled
@@ -435,6 +458,21 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   recorded move are indistinguishable in `GET /api/move/running` — which returns `[{uuid}]` and no other field. There
   is no route that names a running move. `POST /api/move/stop` awaits the cancellation before answering, so a 200
   means the slot is already free.
+  - **The daemon never refuses a second move, and its own comment says it does.**
+    `play_move` opens with `if not self._try_start_move(): return`,
+    and `_try_start_move` is `threading.RLock().acquire(blocking=False)`.
+    Every HTTP, WebSocket and data-channel route runs `play_move` as a coroutine on the one event-loop thread,
+    so the lock is re-entrant there and the acquire always succeeds — on every version from 1.9 to `main`.
+    A second play therefore runs beside the first: both write the head target in turn at 100 Hz,
+    and the second `play_sound` restarts the music.
+    `_async_play_recorded_move` carries the comment "a double-tap is a no-op"; it is not.
+    The client stops every running move before a play — `RobotSession.clearTheFloor`, `RobotMovePlayer`.
+  - **Both recorded-move routes load the dataset before they answer**,
+    through `RecordedMoves(dataset)`, which downloads what is not cached.
+    Only `DEFAULT_DATASETS` — the two Pollen libraries — are preloaded at startup,
+    and a cold load of `Anne-Charlotte/music` took about 15 s.
+    A client that gives up first has not stopped the move: the daemon plays it once the load ends.
+    The data channel's `play_recorded_move` acks at the same point, after the load.
   - **A stop for a uuid the daemon no longer holds is a 500, not a 404**, and the uuid goes the instant the move's
     coroutine ends — `wrap_coro`'s `finally` pops it, while `stop_move_task` opens with a bare
     `raise KeyError(...)` that no exception handler catches. Measured against the Wireless unit on 2026-08-14: the
@@ -511,10 +549,17 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and there `parkAfterApp()` sends nothing.
   It holds `powerTransition = .goingToSleep` and reads the status every `appStopPollInterval`,
   letting go on the first reading that says asleep, on an app holding the robot again,
-  or at `idleResetTimeout` — 12 s against the reset's 7.2 s worst case — and it never chases a reset that did not come,
-  since whoever cancelled it owns the robot.
+  or at `idleResetTimeout` — 12 s against the reset's 7.2 s worst case — and it chases a reset that did not come
+  only for a robot it woke for the app, since otherwise whoever cancelled the reset owns the robot.
   The media server is a condition because the reset runs on the loop `setup_media_server` builds:
   `request_idle_reset()` returns at once without one, so a `--no-media` daemon (`no_media` in the status) parks nothing.
+  `Daemon.start` also skips that setup for a media server that failed to start
+  and for a backend that starts while the media is released (`daemon/daemon.py:435`).
+  No status field names the loop, so the gate also needs `camera_specs_name`,
+  which only a built media server fills in, and `media_released` to be false.
+  That is the state now, not at the backend's start: an app that released the media and died without
+  acquiring it again leaves `media_released` true over a loop that exists,
+  and the session then parks the robot beside the daemon's reset.
   Over the relay the session keeps its own parking.
   Each of its commands cancels the reset before running, so there they replace it rather than race it —
   and a relayed status read is a `get_state` frame, so watching the reset would cancel it too.
@@ -523,6 +568,8 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   so where it applies they watch the motors read disabled instead of playing a `goto_sleep` into it.
   Unlike the parking after an app, a reset that never comes is chased with the sleep that was asked for,
   after `idleResetTimeout` — 12 s, or 9 s for an intent, whose whole command has 15.
+  An intent's wait also ends at that command's deadline less the chase itself,
+  because the connect and the release spend part of the 15 first.
   The session lets the wait go when an app holds the robot again, since starting one cancels the reset;
   an intent would have to ask for that and does not.
   `RobotShutdown`'s sleep-only plan stops an app too, so it parks through `RobotSleep` for the same reason.
@@ -543,8 +590,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     the app manager is never told, so an app is still driving when the motors go and dies on its next command. Both
     the client's sleep and its power-off therefore stop the app first *and wait for the daemon to stop naming it* —
     a 200 from `stop-current-app` is not the app letting go (see the `stopping` section above), and parking on top
-    of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot, where `play_move`'s
-    non-blocking guard silently drops one of them. `RobotSession.releaseRunningApp` and `RobotAppRelease`.
+    of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot,
+    and the daemon runs both, because `play_move`'s guard never refuses. `RobotSession.releaseRunningApp` and
+    `RobotAppRelease`.
 - `daemon/start?wake_up=<bool>` returns a job id immediately and starts the backend in the background (409 while
   another job runs); poll `daemon/status` until `running`. With `wake_up=true` the daemon enables the motors itself.
   - **That flag is what lets a caller with no time wake a robot at all.** `motors/set_mode` is behind `get_backend`

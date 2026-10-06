@@ -130,6 +130,11 @@ import SwiftUI
     )
 }
 
+// No link, so no camera: what a LAN robot shows when its data channel did not open in time.
+#Preview("First run — no live view") {
+    PreviewScene.firstRun(.preview(session: PreviewScene.firstRunSession(awake: true), step: .camera))
+}
+
 #Preview("First run — listening") {
     PreviewScene.firstRun(.preview(session: PreviewScene.firstRunSession(awake: true), step: .microphone))
 }

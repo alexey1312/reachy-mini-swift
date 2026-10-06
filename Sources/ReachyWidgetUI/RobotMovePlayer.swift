@@ -5,17 +5,17 @@ import ReachyKit
 /// Playing one recorded move, with no session around it.
 ///
 /// The twin of `RobotSession.playMove`, and deliberately not the same code — the
-/// split `RobotAppLauncher` records at length. That one clears the floor against
-/// state it is already holding and reports each failure onto the Moves screen;
-/// this has neither, so it asks the daemon and has one sentence to answer with.
+/// split `RobotAppLauncher` records at length. That one also follows the move it
+/// started and reports each failure onto the Moves screen; this has no screen,
+/// so it has one sentence to answer with.
 ///
-/// **Two daemon facts shape the whole sequence, and both fail silently.** A play
+/// **Two daemon facts shape the whole sequence, and neither says a word.** A play
 /// route does not touch the motor mode, so an asleep robot accepts it, makes the
-/// sound and does not move; and `play_move` takes its guard non-blocking
-/// (`backend/abstract.py`), so a play issued over a running move is accepted,
-/// answered with a fresh UUID, and moves nothing. Waking and clearing the slot are
-/// therefore not politeness — without either, the intent reports success over a
-/// robot that did nothing at all.
+/// sound and does not move; and `play_move`'s guard never refuses a second play
+/// (a re-entrant lock, taken on the daemon's one event-loop thread), so a play
+/// issued over a running move runs beside it and the two fight over the head.
+/// Waking and clearing the slot are therefore not politeness — without them, the
+/// intent reports success over a robot that did nothing, or that jerks.
 public struct RobotMovePlayer: Sendable {
     public struct Outcome: Equatable, Sendable {
         /// The daemon's task id, which is the only handle on a running move —
@@ -121,9 +121,9 @@ public struct RobotMovePlayer: Sendable {
     /// Empties the daemon's move slot, and says whether anything was in it.
     ///
     /// **Parking is skipped between two moves on purpose.** A `goto` is a move task
-    /// of its own, so parking here would occupy the very slot the play about to be
-    /// issued needs — the same rule `RobotSession.clearTheFloor` follows, and the
-    /// reason a stop and a replacement cannot share one path without the flag.
+    /// of its own, so parking here would run beside the very play about to be
+    /// issued — the same rule `RobotSession.clearTheFloor` follows, and the reason
+    /// a stop and a replacement cannot share one path without the flag.
     ///
     /// The sound is stopped alongside the motion because the daemon's media player
     /// owns it separately: a move out of the music library goes on playing over the

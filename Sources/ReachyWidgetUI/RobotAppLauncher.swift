@@ -273,7 +273,9 @@ public extension RobotSession.Configuration {
     /// `idleResetTimeout` is cut so that `RobotSleep` can still chase a reset that
     /// never came inside `RobotPowerCommand.executionTimeout`. Nine seconds still
     /// clears the reset's 7.2 s worst case, counted from the slot freeing — which
-    /// is where the wait starts, since the release ends on seeing it free.
+    /// is where the wait starts, since the release ends on seeing it free. The cut
+    /// alone does not fit after a slow connect or release, so `RobotSleep` also
+    /// ends the wait at the command's own deadline less the chase.
     static var widgetIntent: Self {
         var configuration = Self()
         configuration.moveCompletionTimeout = .seconds(4)

@@ -162,7 +162,7 @@ struct AppDetailSheet: View {
                     Link(destination: spaceURL) {
                         Label(.reachy("View on Hugging Face"), systemImage: "arrow.up.forward.square")
                     }
-                    AppModerationActions(app: app, moderation: model.moderation, afterHiding: dismiss)
+                    AppModerationActions(app: app, store: model, afterHiding: dismiss)
                         .disabled(install.isBusy)
                 } footer: {
                     Text(.reachy("A report goes to Hugging Face, which moderates every Space."))
@@ -333,9 +333,7 @@ struct AppDetailSheet: View {
                 if let transition = session.powerTransition {
                     PowerTransitionRow(transition: transition)
                 }
-                if model.isOverRelay {
-                    lanOnlyNote
-                } else {
+                if !model.isOverRelay {
                     if model.hasUpdate(app) {
                         Button(.reachy("Update"), systemImage: "arrow.down.circle") {
                             perform(.update(installed))
@@ -349,16 +347,19 @@ struct AppDetailSheet: View {
                 }
             }
         } footer: {
-            if app.isPrivate, !canInstallPrivately {
-                Text(
-                    .reachy(
-                        "A private Space can only be installed once this robot is linked to your Hugging Face account."
+            actionsFooter {
+                if app.isPrivate, !canInstallPrivately {
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "A private Space can only be installed once this robot is linked to your Hugging Face account."
+                        )
                     )
-                )
-            } else if model.isHeldRemotely {
-                Text(.reachy("Someone is driving this robot over Hugging Face right now."))
-            } else if session.isBackendRunning, !session.isAwake, offersStart {
-                Text(.reachy("Reachy Mini is asleep. Starting an app wakes it up first."))
+                } else if model.isHeldRemotely {
+                    Text(.reachy("Someone is driving this robot over Hugging Face right now."))
+                } else if session.isBackendRunning, !session.isAwake, offersStart {
+                    Text(.reachy("Reachy Mini is asleep. Starting an app wakes it up first."))
+                }
             }
         }
     }

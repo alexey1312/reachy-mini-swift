@@ -199,6 +199,11 @@ struct RobotScreen: View {
                     roundTrip
                 }
             }
+            // The state is the row's value, not its label. Left to the row, its glyph
+            // took the row's icon column, 18 pt from the word, and the separator
+            // started under the word instead of at the row's inset.
+            .labelStyle(.reachyInline)
+            .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
             if let status = session.lastStatus {
                 LabeledContent(
                     .reachy("Software"),

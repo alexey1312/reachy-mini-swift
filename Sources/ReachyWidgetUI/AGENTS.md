@@ -235,16 +235,18 @@ screen, while an intent has seconds, one client, and one sentence. Say which is 
 the next pair.
 
 - **`RobotMovePlayer` exists because both of the daemon's move traps are silent.** A play route never touches the
-  motor mode, so an asleep robot accepts it, plays the sound and does not move; and `play_move` takes its guard
-  non-blocking, so a play issued over a running move is accepted, answered with a plausible UUID, and moves nothing.
-  Waking and clearing the slot are therefore not politeness — without either, the intent reports success over a robot
-  that did nothing. Both are pinned by mutation: delete the wake and `wakesBeforePlaying` goes red, delete
+  motor mode, so an asleep robot accepts it, plays the sound and does not move;
+  and `play_move`'s guard never refuses a second play —
+  it is a re-entrant lock, taken on the daemon's one event-loop thread —
+  so a play issued over a running move runs beside it, and the two fight over the head.
+  Waking and clearing the slot are therefore not politeness — without them, the intent reports success over a robot
+  that did nothing, or that jerks. Both are pinned by mutation: delete the wake and `wakesBeforePlaying` goes red, delete
   `clearTheFloor` and three tests do.
   - **The wake-up animation is a move task, so it is cleared like any other.** `RobotPower.wake()` waits for it, but
     that wait is bounded and returns normally when the budget passes; someone who asked for a dance asked for the
     dance, not for the stretch in front of it.
   - **Parking is skipped between two moves and performed after a stop**, which is the one flag `clearTheFloor` takes.
-    A `goto` is a move task of its own, so parking between them would occupy the slot the next play needs — the same
+    A `goto` is a move task of its own, so parking between them would run beside the next play — the same
     rule `RobotSession.clearTheFloor` follows.
   - **`RobotMoveCommand` keeps less bookkeeping than its two siblings, deliberately.** A move is not a state
     `RobotWidgetContent` draws, so there is no pending marker and no timeline reload for the move itself. What it
@@ -279,6 +281,13 @@ the next pair.
     a second writer stamping `Date()` would re-date every library the app had merely read off disk — the index would
     then never expire. The cost of reading only is that a library nobody has opened in the app is absent from the
     picker.
+  - **Two Music recordings are withheld from every list, and `MoveLibrary.withheld` says why.**
+    `michael-jackson-thriller-official-video-shortene` and `queen-we-will-rock-you-official`
+    carry hundreds of frames that share one timestamp,
+    and the daemon's `RecordedMove.evaluate` snaps the head across each such burst — up to 27.5° in 10 ms.
+    `MoveLibrary.offered` filters the Moves screen and `suggestedEntities`,
+    and through it Siri's match, the widget's picker and the Spotlight index.
+    `entities(for:)` does not filter, so a shortcut saved earlier still resolves.
   - **`SoundEntityQuery` goes one step further and reads no cache either** — the list is this device's own library
     (`SoundLibraryStore`), so it is instant, needs no network from a process with seconds, and is the superset: the
     robot's copy is whatever survived its last restart. The cost is a sound that is _only_ on the robot, uploaded from
@@ -297,6 +306,9 @@ the next pair.
   `RobotAppRelease.Outcome` says whether one happened,
   and `RobotSleep.park(after:)` then waits for the daemon's reset instead of playing a second sleep into it,
   chasing it only past `idleResetTimeout`, which `.widgetIntent` cuts to nine seconds so a chase still fits the 15.
+  Nine alone did not fit: the 15 start before the connect and the release, which spend part of them first.
+  So `RobotPowerCommand` hands its deadline down,
+  and the wait also ends early enough for the chase to disable the motors before it.
   `RobotShutdown`'s sleep-only plan parks through the same method.
   The relay is excluded by type, because a relayed status read would cancel the reset it watched.
 - **`RobotAppLauncher.stop()` sends nothing after the stop where the daemon parks the robot itself (#173),
@@ -304,7 +316,7 @@ the next pair.
   From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no motion route cancels it,
   so on a LAN daemon with a media server a `goto` would be a second trajectory beside the daemon's.
   Deciding that costs no request: `RobotIntentTarget.VerifiedConnection` carries the handshake it verified,
-  and its status has the version and `no_media`.
+  and its status has the version and the media fields (`no_media`, `camera_specs_name`, `media_released`).
   The relay is excluded by type, as `RobotSleep` excludes it — there the `goto` cancels the reset and parks cleanly.
   The outcome says which happened (`Outcome.stopped(name:robotSleeps:)`),
   because `RobotAppCommand` records the snapshot off it:

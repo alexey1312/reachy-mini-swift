@@ -96,16 +96,21 @@ public extension RobotSession {
             supportsRename = handshake.supportsRename
                 || (client is any RobotRenameClient && !predatesRelayCommands)
             if case let .lan(address) = link {
-                // Before `remember`, which is what makes every robot known: the first run's
-                // fallback offers itself to a robot this device is meeting now (#169).
-                firstRun.isNewToDevice = !KnownRobots.all.contains { $0.key == handshake.identity.deduplicationKey }
-                    || KnownRobots.pendingProvisionedHardwareID == handshake.identity.hardwareID
-                KnownRobots.lastAddress = address
-                KnownRobots.remember(identity: handshake.identity, address: address)
                 // A robot set up over Bluetooth has arrived under its own identity. This is
                 // the only place that sees a handshake, and identity is all there is to match
                 // on — it was provisioned at one address and turns up at another (rule 4).
-                if KnownRobots.pendingProvisionedHardwareID == handshake.identity.hardwareID {
+                // Only a hardware id the robot reported can match: the simulator and a robot
+                // without the Pollen audio device report none, and nil equal to nil made
+                // every such robot new to this device on every connect.
+                let wasProvisioned = handshake.identity.hardwareID
+                    .map { $0 == KnownRobots.pendingProvisionedHardwareID } ?? false
+                // Before `remember`, which is what makes every robot known: the first run's
+                // fallback offers itself to a robot this device is meeting now (#169).
+                firstRun.isNewToDevice = !KnownRobots.all.contains { $0.key == handshake.identity.deduplicationKey }
+                    || wasProvisioned
+                KnownRobots.lastAddress = address
+                KnownRobots.remember(identity: handshake.identity, address: address)
+                if wasProvisioned {
                     KnownRobots.pendingProvisionedHardwareID = nil
                 }
             }
@@ -227,7 +232,7 @@ extension RobotSession {
                 // Before the gate comes down, for the reason `warmCatalogues` is: the
                 // fork below the root picks the first run or the shell on `.connected`,
                 // and a flag learned a moment later would flash the shell first.
-                await readFirstRun(using: client, identity: identity)
+                await readFirstRun(using: client, identity: identity, attemptID: attemptID)
                 guard isAttemptLive(attemptID) else { return false }
                 return finishConnected(identity: identity)
             case .backendDown:

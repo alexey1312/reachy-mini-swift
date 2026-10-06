@@ -173,10 +173,12 @@ final class StubAppsClient: RobotAPIClient, RobotAppsClient, MovePlaybackClient,
         let backend = running ? #"{"motor_control_mode":"\#(mode)","error":null}"# : "null"
         let version = daemonVersion.map { #""version":"\#($0)","# } ?? ""
         let media = noMedia.map { #""no_media":\#($0),"# } ?? ""
+        // A simulator daemon names its camera `mujoco`. The idle reset needs the media
+        // server that name proves, so a status without one reads as a daemon with no reset.
         let json = """
         {"robot_name":"testbot","state":"\(running ? "running" : "stopped")","wireless_version":true,
          "desktop_app_daemon":false,"simulation_enabled":true,"mockup_sim_enabled":false,\(version)\(media)
-         "backend_status":\(backend)}
+         "camera_specs_name":"mujoco","backend_status":\(backend)}
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder().decode(Components.Schemas.DaemonStatus.self, from: Data(json.utf8))

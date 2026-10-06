@@ -120,7 +120,8 @@ public struct HubAppCatalogue: Sendable {
             name: slug,
             sourceKind: .hfSpace,
             description: space.shortDescription ?? "",
-            url: "https://huggingface.co/spaces/\(id)",
+            // Built, not interpolated (rule 5): the id is the Hub's free text.
+            url: HubSpacePage.url(for: id)?.absoluteString,
             extra: space.payload
         ))
     }

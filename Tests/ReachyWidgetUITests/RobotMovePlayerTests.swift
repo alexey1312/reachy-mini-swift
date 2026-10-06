@@ -5,7 +5,7 @@ import Testing
 
 /// The robot half of a move intent. Every test here is about one of the two ways
 /// the daemon fails silently: a play route that does not touch the motor mode, and
-/// a `_try_start_move` guard that refuses without saying so.
+/// a `_try_start_move` guard that never refuses, so two moves run at once.
 @Suite("Robot move player", .timeLimit(.minutes(1)))
 struct RobotMovePlayerTests {
     private let dataset = "pollen-robotics/reachy-mini-dances-library"
@@ -110,8 +110,8 @@ struct RobotMovePlayerTests {
 
     // MARK: - The move slot
 
-    /// `play_move` takes its guard non-blocking and answers with a plausible UUID
-    /// either way, so a play over a running move is accepted and moves nothing.
+    /// `play_move`'s guard never refuses a second play, so a play over a running
+    /// move runs beside it and the two fight over the head.
     @Test("a running move is stopped before the new one is played")
     func clearsTheSlotFirst() async throws {
         let client = StubMovesClient()

@@ -65,6 +65,23 @@ struct RemoteRobotAppsTests {
         #expect(started.state == .starting)
     }
 
+    /// The daemon answers `apps.stop` once its whole stop is over: up to 20 s for the
+    /// app to honour SIGINT, then the kill and a return to zero. On the reply budget a
+    /// slow exit failed the stop. The wait past the budget is the scenario itself, so
+    /// a loaded runner only makes it longer (project rule 7).
+    @Test("a stop waits past the reply budget for the app to exit")
+    func waitsForASlowStop() async throws {
+        let (connection, fake) = connection(timeout: .milliseconds(200))
+
+        async let stopped: Void = connection.stopCurrentApp()
+        await waitUntil("the stop is on the wire") { fake.sent.contains { Self.rpc($0)?.method == "apps.stop" } }
+        let stop = try #require(fake.sent.compactMap(Self.rpc).first { $0.method == "apps.stop" })
+        try await Task.sleep(for: .seconds(1))
+        fake.emit(#"{"jsonrpc":"2.0","id":\#(stop.id),"result":{"stopped":true}}"#)
+
+        try await stopped
+    }
+
     /// Answers every `apps.status` by its id, the way a live relay does while
     /// `apps.install` runs in a task of its own — `limit` times, after which it goes
     /// as quiet as a relay that died.

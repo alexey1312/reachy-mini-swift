@@ -16,7 +16,9 @@ import WebKit
     ///
     /// Only page-to-host types (`embed:*`) are forwarded: the host's own
     /// `host:leaving` arrives on the same window, through the same listener, and must
-    /// not come back as if the page had said it.
+    /// not come back as if the page had said it. And only what the page posted to
+    /// itself: a frame the page embeds can post to this window too, and that frame is
+    /// somebody else's code.
     enum JSAppHostBridge {
         static let handlerName = "reachyHost"
 
@@ -27,6 +29,7 @@ import WebKit
           var handler = handlers && handlers.\(handlerName);
           if (!handler) { return; }
           window.addEventListener('message', function (event) {
+            if (event.source !== window || event.origin !== window.location.origin) { return; }
             var data = event.data;
             if (!data || typeof data !== 'object') { return; }
             if (data.source !== '\(JSAppHostProtocol.source)') { return; }
@@ -36,6 +39,14 @@ import WebKit
           });
         })();
         """
+
+        /// Whether a script message speaks for the app: it comes from the page's own
+        /// document, at the Space's own host. `window.webkit.messageHandlers` is there
+        /// in every frame, so a frame the page embeds could post to the handler
+        /// directly and never pass through the script above.
+        static func admits(isMainFrame: Bool, host: String, allowedHost: String?) -> Bool {
+            isMainFrame && host == allowedHost
+        }
 
         /// Posts a host message into the page, where the SDK's own listener reads it.
         /// `json` is an object literal produced by `JSAppHostProtocol`, which is valid

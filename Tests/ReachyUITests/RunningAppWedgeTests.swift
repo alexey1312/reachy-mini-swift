@@ -223,4 +223,15 @@ struct RunningAppWedgeTests {
         #expect(starting.contains("never finished starting"))
         #expect(!starting.contains("already stopped"))
     }
+
+    /// The way out names the command as the recovery screen titles its row. It ended
+    /// in the script's file name, "RESTART_DAEMON", which no screen shows, so the
+    /// reader had to match a raw daemon word against a row in plain words.
+    @Test("the way out names the command by its row title, not its file name")
+    func namesTheCommandAsTheRecoveryScreenDoes() {
+        let restart = BLERecoveryScript.describing("RESTART_DAEMON")
+
+        #expect(WedgedAppNotice.wayOut.contains(BLERecoveryScriptCaption.title(for: restart)))
+        #expect(!WedgedAppNotice.wayOut.contains(restart.name))
+    }
 }

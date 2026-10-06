@@ -43,4 +43,27 @@ struct RobotConnectionMoveTests {
         #expect(head.count == 6)
         #expect(["x", "y", "z", "roll", "pitch", "yaw"].allSatisfy { head[$0] as? Double == 0 })
     }
+
+    /// Both routes build `RecordedMoves(dataset)` before they answer, which
+    /// downloads a dataset the daemon has not cached; a cold load of the Music
+    /// library took about 15 s. The server answers after four seconds — past the
+    /// 3.5 s health-poll budget and well inside the 35 s Hub one — so a route left
+    /// on the short client times out here, as it did while the robot went on to
+    /// play the move. No injected session: that would replace the very budget
+    /// under test.
+    @Test("the move index and the play wait out a dataset download")
+    func moveRoutesWaitOutADownload() async throws {
+        let server = try SlowHTTPServer(delay: .seconds(4)) { path in
+            path.hasPrefix("/api/move/play/") ? #"{"uuid": "move-1"}"# : #"["happy"]"#
+        }
+        defer { server.stop() }
+        let port = try await server.readyPort()
+        let connection = try RobotConnection(address: RobotAddress(host: "127.0.0.1", port: Int(port)))
+
+        async let moves = connection.listMoves(dataset: "Anne-Charlotte/music")
+        async let uuid = connection.playMove(dataset: "Anne-Charlotte/music", move: "happy")
+
+        #expect(try await moves == ["happy"])
+        #expect(try await uuid == "move-1")
+    }
 }

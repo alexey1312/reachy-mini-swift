@@ -36,7 +36,7 @@ final class ConversationModel {
         case backendUnconfigured
 
         enum Reason: Equatable {
-            /// The app answered that nothing is running, or the daemon did.
+            /// The daemon answered that no app is running, or the app was seen to stop.
             case appStopped
             /// The app is there and not answering.
             case appUnavailable
@@ -118,6 +118,9 @@ final class ConversationModel {
 
     /// When this screen started waiting for a backend that is still coming up.
     var preparingSince: Date?
+    /// Counts the times a command found the backend gone. Part of the screen's
+    /// priming key, so each one starts the wait for the backend again.
+    var primingRound = 0
 
     init(
         configuration: Configuration = Configuration(),
@@ -195,6 +198,7 @@ final class ConversationModel {
             turn: ConversationTurn? = nil,
             level: ConversationLevel? = nil,
             phase: Phase = .live,
+            backend: ConversationBackendStatus? = nil,
             isMicrophoneMuted: Bool = false,
             offersControls: Bool = true,
             draft: String = "",
@@ -202,7 +206,7 @@ final class ConversationModel {
         ) -> ConversationModel {
             let model = ConversationModel(
                 events: { _, _ in AsyncStream { $0.finish() } },
-                readStatus: { _, _ in ConversationBackendStatus(canProceed: true) },
+                readStatus: { _, _ in ConversationBackendStatus(canProceed: true, isConnected: true) },
                 readMicrophone: { _, _ in isMicrophoneMuted },
                 setMicrophone: { _, _, muted in muted },
                 interruptConversation: { _, _ in },
@@ -212,6 +216,7 @@ final class ConversationModel {
             model.turn = turn
             model.level = level
             model.phase = phase
+            model.backend = backend
             model.isMicrophoneMuted = isMicrophoneMuted
             model.offersControls = offersControls
             model.draft = draft

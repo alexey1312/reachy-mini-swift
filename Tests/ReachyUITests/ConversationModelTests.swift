@@ -19,7 +19,9 @@ struct ConversationModelTests {
     }
 
     private func model(
-        status: @escaping ConversationModel.ReadStatus = { _, _ in ConversationBackendStatus(canProceed: true) },
+        status: @escaping ConversationModel.ReadStatus = { _, _ in
+            ConversationBackendStatus(canProceed: true, isConnected: true)
+        },
         microphone: @escaping ConversationModel.ReadMicrophone = { _, _ in false },
         setMicrophone: @escaping ConversationModel.SetMicrophone = { _, _, muted in muted },
         interrupt: @escaping ConversationModel.Interrupt = { _, _ in },
@@ -80,17 +82,34 @@ struct ConversationModelTests {
         #expect(model.lastError != nil)
     }
 
-    /// An arriving `not_running` is the app itself saying it is gone. That one may.
-    @Test("an arriving not-running concludes the app stopped")
+    /// An arriving `not_running` from the daemon's relay says no app is running. That
+    /// one may conclude.
+    @Test("the relay's not-running concludes the app stopped")
     func concludesFromNotRunning() async {
         let model = model(interrupt: { _, _ in
-            throw ConversationFailure.rejected(code: -32000, reason: .notRunning, message: "no app is running")
+            throw ConversationFailure(relay: .rpc(code: -32000, message: "no app is running", reason: "not_running"))
         })
         model.receive(.opened)
 
         await model.interrupt(app: Self.app, session: session())
 
         #expect(model.phase == .unavailable(.appStopped))
+    }
+
+    /// The app raises the same reason itself whenever its voice backend is not
+    /// connected — at startup, and through the reconnect a personality change starts.
+    /// That is a wait, not an ending, and the screen primes again.
+    @Test("the app's own not-running waits for the backend again")
+    func waitsAgainOnTheAppsOwnNotRunning() async {
+        let model = model(interrupt: { _, _ in
+            throw ConversationFailure(code: -32000, message: "no active session", reason: "not_running")
+        })
+        model.receive(.opened)
+
+        await model.interrupt(app: Self.app, session: session())
+
+        #expect(model.phase == .preparing)
+        #expect(model.primingRound == 1)
     }
 
     /// There is nothing a reader could do about a build that has no such method, so the
@@ -223,7 +242,7 @@ struct ConversationModelTests {
                         code: -32000, reason: .loopUnavailable, message: "still starting"
                     )
                 }
-                return ConversationBackendStatus(canProceed: true)
+                return ConversationBackendStatus(canProceed: true, isConnected: true)
             },
             configuration: configuration
         )
@@ -232,6 +251,78 @@ struct ConversationModelTests {
 
         #expect(attempts.values.count == 3)
         #expect(model.phase == .live)
+    }
+
+    /// `can_proceed` only says a backend is configured. The app answers the status long
+    /// before the backend connects, and until it does `say` and `interrupt` refuse.
+    @Test("a configured backend is waited for until it connects")
+    func waitsForTheBackendToConnect() async {
+        let attempts = Sent()
+        var configuration = ConversationModel.Configuration()
+        configuration.retryInterval = .milliseconds(1)
+        let model = model(
+            status: { _, _ in
+                attempts.record(true)
+                return ConversationBackendStatus(canProceed: true, isConnected: attempts.values.count > 2)
+            },
+            configuration: configuration
+        )
+
+        await model.prime(app: Self.app, session: session())
+
+        #expect(attempts.values.count == 3)
+        #expect(model.phase == .live)
+    }
+
+    /// The relay cannot reach the app's `/rpc` until the app serves it, and the app's
+    /// own `not_running` means its backend is not up yet. Neither is an ending while the
+    /// app boots.
+    @Test("an app still booting is waited out, not concluded")
+    func waitsOutTheBoot() async {
+        let attempts = Sent()
+        var configuration = ConversationModel.Configuration()
+        configuration.retryInterval = .milliseconds(1)
+        let model = model(
+            status: { _, _ in
+                attempts.record(true)
+                switch attempts.values.count {
+                case 1:
+                    throw ConversationFailure(
+                        relay: .rpc(code: -32000, message: "cannot reach app /rpc", reason: "app_unavailable")
+                    )
+                case 2:
+                    throw ConversationFailure(code: -32000, message: "no active session", reason: "not_running")
+                default:
+                    return ConversationBackendStatus(canProceed: true, isConnected: true)
+                }
+            },
+            configuration: configuration
+        )
+
+        await model.prime(app: Self.app, session: session())
+
+        #expect(attempts.values.count == 3)
+        #expect(model.phase == .live)
+    }
+
+    /// Past the budget a configured backend that never connected is one the app could
+    /// not reach — a fix on the robot, like a missing key — and the app's own words
+    /// about it stay readable.
+    @Test("a backend that never connects says so, in the app's own words")
+    func reportsABackendThatNeverConnects() async {
+        var configuration = ConversationModel.Configuration()
+        configuration.startupBudget = 0
+        let model = model(
+            status: { _, _ in
+                ConversationBackendStatus(canProceed: true, connectionState: "disconnected", error: "TimeoutError")
+            },
+            configuration: configuration
+        )
+
+        await model.prime(app: Self.app, session: session())
+
+        #expect(model.phase == .backendUnconfigured)
+        #expect(model.backend?.error == "TimeoutError")
     }
 
     /// The budget is injected so this crosses it without waiting ninety seconds out

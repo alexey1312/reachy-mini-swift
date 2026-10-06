@@ -15,11 +15,16 @@ import SwiftUI
 struct HFSignInScreen: View {
     let session: RobotSession
     let model: HFSignInModel
+    /// Here rather than inside the card, so the screen can stop a device-code
+    /// sign-in when it goes away. The card is sections of this `Form`, and the
+    /// screen is the one view here whose disappearance means the card is gone.
+    @State private var robotLink = RobotHFLinkModel()
 
     var body: some View {
         Form {
-            HFAccountSection(session: session, model: model)
+            HFAccountSection(session: session, model: model, robotLink: robotLink)
         }
+        .onDisappear { robotLink.cancelDeviceLogin() }
         // The style every other `Form` in this target names, and the one this
         // screen was missing: macOS defaults a `Form` to `.columns`, which puts
         // each label in a right-aligned leading column — and in a sheet that

@@ -51,10 +51,102 @@ The lever is **palette mode**, not colour count: 256 colours written as an 8-bit
 indexed PNG beats 32 colours written as RGBA, on size _and_ on quality. Cutting the
 palette while staying in RGBA is the intuitive move and it is the wrong one.
 
-Because no single frame rate serves all sixteen, `BUDGET_LADDER` is walked per
-file — 15 fps, then 12, then 10, then a smaller palette — and the script exits
-non-zero rather than emitting a file Apple will refuse. Today nine land at 15 fps,
-six at 12, and `builder-hammer` alone at 10.
+No single frame count serves all sixteen.
+Each file starts at 30 frames — every second frame of the 30 fps source —
+and drops one frame at a time until it fits;
+below `MIN_FRAMES` (15) the script exits non-zero
+rather than emit a file Apple will refuse.
+Today nine files keep all 30 frames,
+and the other seven keep 20 to 28 (`builder` 20, `cowboy`, `farmer` and `hacker` 25,
+`explorer` and `fisherman` 27, `astronaut` 28).
+
+**The ceiling is 500 000 bytes, not 512 000.**
+Apple writes "500 KB" and does not say which kilobyte.
+The stricter reading costs 2 % of the budget,
+and App Store Connect gives its verdict only at upload.
+The largest file today is `explorer` at 499 507 bytes.
+
+## Every frame keeps its source time
+
+In the 0.7.0 pack, nine stickers played source frames at strides of 1, 2 and 3 in turn,
+six more at 2 and 3, and `magician` jumped at every loop.
+Three causes were in this script, each one found by measurement:
+
+- **ffmpeg's `fps` filter skips frames unevenly.**
+  The WebMs carry a 1/1000 time base,
+  and over it `fps=15` keeps source frames 1, 2, 4, 7, 8, 10, 13 …
+  instead of 0, 2, 4, 6 …
+  (checked with `-f framemd5` against a passthrough decode).
+  So the motion ran at 0.5×, 1× and 1.5× speed in turn, five times a second.
+  `fps=12` is 2:3 cadence by arithmetic, which is the same fault in a milder form.
+  The script now decodes every frame with `-fps_mode passthrough`
+  and chooses the frames itself.
+  `settb=1/30,setpts=N,fps=15` also gives 0, 2, 4 …,
+  but a fixed rate cannot help a file that does not fit 30 frames.
+- **A file under 30 frames spends them where the motion is.**
+  `motion_steps` measures how far the outline moves between two source frames,
+  and `pick_frames` keeps the frames that make each displayed step move about as far:
+  more of them in a fast stretch, fewer in a hold.
+  Each frame then holds for a whole number of source frames, 2 to 6,
+  so the motion keeps the source's own speed at any frame count.
+  Against the analytic motion in `art/stickers/animated/animate.py`,
+  the outline metric correlates at 0.86 to 1.00.
+  Source frame 0 is always kept, so the first frame is the pose the loop starts from.
+- **Each delay is a fraction, not a count of milliseconds.**
+  Pillow writes a delay in whole milliseconds — 67 for two source frames —
+  so a 30-frame loop played for 2.01 s.
+  The script now writes the APNG chunks itself,
+  with each `fcTL` delay as source frames over 30,
+  and reads each file back through Pillow before it keeps it.
+  ImageIO on macOS 27 reads all sixteen as exactly 2.0000 s, loop count 0.
+
+**The shortest delay is two source frames, and that is a floor, not a taste.**
+ImageIO raises an APNG delay under 50 ms to 50 ms —
+a test file with a 33.3 ms frame reads back as 50 ms —
+so a one-frame delay would play slow and break the timing.
+The same floor sets the largest step a fast motion can get:
+two source frames of it, whatever the byte budget.
+That is why there is no zopfli.
+It saves about 6.5 % and fits one to three more frames into the seven tight files,
+but leaves the largest step of each one unchanged,
+and its search alone took 131 s against 28 s for the whole script.
+
+The fourth cause was in the motion itself, and `animate.py` now fixes it:
+`magician-pop` had no exit, so its scale jumped from 1.0 to 0.55 at the seam,
+and three presets moved too fast for 15 fps
+(see "Плавность в iMessage" in `art/stickers/animated/README.md`).
+
+Measured on the 0.7.0 pack against this one.
+A _step_ is the mean colour difference between two displayed frames,
+premultiplied by alpha, over the visible pixels;
+the _seam_ is the step from the last frame to the first;
+_px_ is the largest step of the analytic motion, in pixels at 408 px.
+Neither pack has two equal frames in a row;
+`doctor` and `plumber` each have one pair inside a hold that differs by under 0.5.
+
+| sticker       | frames  | largest step / median | seam / median | px          | bytes             |
+| ------------- | ------- | --------------------- | ------------- | ----------- | ----------------- |
+| astronaut     | 24 → 28 | 1.71 → 1.57           | 1.52 → 1.43   | 6.9 → 5.1   | 420 560 → 488 099 |
+| builder       | 20 → 20 | 1.49 → 1.21           | 0.09 → 0.82   | 26.7 → 18.6 | 493 974 → 494 466 |
+| captain       | 30 → 30 | 1.80 → 1.27           | 1.80 → 1.23   | 13.0 → 8.9  | 446 224 → 445 997 |
+| cooking-chief | 30 → 30 | 1.42 → 1.15           | 1.18 → 1.08   | 14.7 → 12.2 | 493 790 → 492 657 |
+| cowboy        | 24 → 25 | 1.46 → 1.39           | 1.66 → 1.39   | 24.7 → 16.2 | 477 248 → 497 167 |
+| doctor        | 30 → 30 | 8.41 → 5.38           | 1.39 → 0.62   | 24.2 → 17.7 | 379 080 → 377 682 |
+| explorer      | 24 → 27 | 2.62 → 1.72           | 0.59 → 0.03   | 33.5 → 17.8 | 420 822 → 499 507 |
+| farmer        | 24 → 25 | 1.61 → 1.52           | 1.43 → 0.98   | 3.2 → 2.7   | 475 534 → 494 129 |
+| fisherman     | 24 → 27 | 3.33 → 2.71           | 1.56 → 1.06   | 35.4 → 21.7 | 434 958 → 488 529 |
+| hacker        | 24 → 25 | 1.40 → 1.08           | 1.39 → 1.06   | 6.7 → 4.6   | 467 711 → 487 144 |
+| jazzman       | 30 → 30 | 1.76 → 1.46           | 1.76 → 1.45   | 31.6 → 22.4 | 444 843 → 443 479 |
+| magician      | 30 → 30 | 5.21 → 1.84           | 5.98 → 0.84   | 76.2 → 15.1 | 411 202 → 379 464 |
+| plumber       | 30 → 30 | 1.87 → 1.34           | 1.74 → 1.28   | 7.7 → 5.9   | 476 852 → 477 251 |
+| rich          | 30 → 30 | 2.37 → 1.27           | 2.36 → 1.27   | 9.4 → 6.1   | 417 635 → 416 332 |
+| student       | 30 → 30 | 5.34 → 3.22           | 2.10 → 1.27   | 21.7 → 10.9 | 436 274 → 433 520 |
+| update-box    | 30 → 30 | 3.40 → 2.79           | 0.15 → 0.08   | 47.4 → 47.4 | 391 881 → 391 334 |
+
+Three ratios stay high, and each one is the motion, not the encoding.
+`doctor` and `student` hold a pose for most of the loop, so their median step is small.
+`update-box` hits the table in one source frame on purpose,
+and its source was not re-rendered: `update-box-ink.png` is not in the repository.
 
 `GIF` is not an option despite also animating: its transparency is single-colour, and
 these stickers are die-cut with an anti-aliased white outline that would fringe.

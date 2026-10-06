@@ -133,6 +133,10 @@ final class RobotHFLinkModel {
     }
 
     /// Stops listening and tells the robot to stop polling the Hub.
+    ///
+    /// The screen that hosts the card calls this as it goes away, too. The task holds
+    /// this model, so a sign-in nobody cancels keeps both alive — and the robot
+    /// polling the Hub — until the code runs out.
     func cancelDeviceLogin() {
         deviceLoginTask?.cancel()
     }
@@ -140,9 +144,6 @@ final class RobotHFLinkModel {
     /// The robot signs itself in: it asks the Hub for a code, the person approves
     /// that code in a browser, and this reads the robot's progress until it holds a
     /// token or the code runs out. Nothing here ever sees a token.
-    ///
-    /// Read at the robot's own interval, which is the pace it polls the Hub at —
-    /// asking it more often learns nothing sooner.
     func linkWithDeviceCode(session: RobotSession, open: @MainActor (URL) -> Void) async {
         isLinking = true
         linkError = nil
@@ -159,28 +160,50 @@ final class RobotHFLinkModel {
         }
         deviceLogin = login
         open(login.approvalURL)
+        let status = await finalStatus(of: login, session: session)
+        if let status, case .authorized = status {
+            await finishDeviceLogin(status, session: session)
+            return
+        }
+        // Every other way out tells the robot to stop: a cancel, the card going away,
+        // a reading that failed, the code running out. The robot polls the Hub on its
+        // own, so a code left running could still link it after the card gave up.
+        await stopOnRobot(login, session: session)
+        if let status {
+            await finishDeviceLogin(status, session: session)
+        }
+    }
+
+    /// The robot's progress until it finishes, or `nil` when the reading stops first —
+    /// cancelled, failed, or out of time.
+    ///
+    /// Read at the robot's own interval, which is the pace it polls the Hub at —
+    /// asking it more often learns nothing sooner.
+    private func finalStatus(of login: RobotDeviceLogin, session: RobotSession) async -> RobotDeviceLoginStatus? {
         let deadline = ContinuousClock.now.advanced(by: login.expiresIn)
         while ContinuousClock.now < deadline {
             do {
                 try await deviceCode.pause(login.interval)
+                let status = try await deviceCode.status(session, login)
+                if status.isFinished {
+                    return status
+                }
             } catch {
-                // Cancelled — by the person, or by the card going away. The robot
-                // would otherwise go on polling the Hub for a code nobody will enter.
-                await deviceCode.cancel(session, login)
-                return
-            }
-            let status: RobotDeviceLoginStatus
-            do {
-                status = try await deviceCode.status(session, login)
-            } catch {
+                // A cancel can land in the pause or in the reading. Either way it
+                // reports nothing: `recordDaemonFailure` leaves the slot alone for one.
                 linkError.recordDaemonFailure(error)
-                return
+                return nil
             }
-            guard status.isFinished else { continue }
-            await finishDeviceLogin(status, session: session)
-            return
         }
         linkError = Self.expiredText
+        return nil
+    }
+
+    /// In a task of its own, because the caller may be cancelled, and a request made
+    /// from a cancelled task is cancelled before it leaves. A new task does not
+    /// inherit that.
+    private func stopOnRobot(_ login: RobotDeviceLogin, session: RobotSession) async {
+        await Task { await self.deviceCode.cancel(session, login) }.value
     }
 
     private func finishDeviceLogin(_ status: RobotDeviceLoginStatus, session: RobotSession) async {

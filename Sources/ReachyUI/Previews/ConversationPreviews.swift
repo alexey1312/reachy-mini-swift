@@ -56,6 +56,20 @@ import SwiftUI
     PreviewScene.conversation(.preview(phase: .preparing))
 }
 
+// The app's own words about its backend, under the wait they explain.
+#Preview("Conversation — still starting, backend failed") {
+    PreviewScene.conversation(
+        .preview(
+            phase: .preparing,
+            backend: ConversationBackendStatus(
+                canProceed: true,
+                connectionState: "disconnected",
+                error: "TimeoutError: the realtime session did not open"
+            )
+        )
+    )
+}
+
 // The transcript is kept and the tail says where the feed stopped. Losing the record to
 // show a sentence already on it would be the worse of the two wrongs.
 #Preview("Conversation — feed lost") {

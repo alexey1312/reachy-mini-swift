@@ -96,6 +96,18 @@ public extension RobotSession {
         }
     }
 
+    /// Whether the robot did not answer in time, over either transport.
+    ///
+    /// Not a refusal: for a request the daemon may still carry out, it says
+    /// nothing about whether it did. `RobotSession.playMove` asks the robot then.
+    nonisolated static func isTimeout(_ error: Error) -> Bool {
+        switch rootCause(of: error) {
+        case let urlError as URLError: urlError.code == .timedOut
+        case let failure as RemoteControlChannel.Failure: failure == .timedOut
+        default: false
+        }
+    }
+
     /// Whether the link went away before the robot answered.
     ///
     /// Not the same as a refusal the daemon made, and the difference is the whole

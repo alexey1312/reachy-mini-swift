@@ -43,7 +43,7 @@ struct AppsUnavailableView: View {
             String(
                 localized: .reachy(
                     // swiftlint:disable:next line_length
-                    "This robot's software is older than 1.10, the first that installs and runs apps over Hugging Face. Connect on the same network to browse and install, or to update the robot."
+                    "Apps over Hugging Face need robot software 1.10 or later, and this robot runs an older one. Connect on the same network to browse and install, or to update the robot."
                 )
             )
         } else {
