@@ -16096,6 +16096,35 @@
         }
       }
     },
+    "The last connection attempt failed:": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der letzte Verbindungsversuch ist fehlgeschlagen:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El último intento de conexión falló:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dernière tentative de connexion a échoué :"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя попытка подключения не удалась:"
+          }
+        }
+      }
+    },
     "The last five characters of its serial number": {
       "extractionState": "manual",
       "localizations": {

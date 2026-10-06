@@ -6,18 +6,24 @@ import ReachyKit
 extension ConversationModel {
     // MARK: Priming
 
-    /// Reads everything that *can* be read when the screen opens.
+    /// Reads everything that *can* be read when the screen opens, and waits for the
+    /// voice backend to connect.
     ///
     /// **Everything except the turn has a read.** `conversation.mic` answers the true
-    /// mute state, `conversation.status` answers whether there is a backend at all. The
-    /// turn alone is push-only and emitted on change, so it stays unknown until the
-    /// conversation next moves — and the screen says so in words rather than showing a
-    /// "Ready" nobody reported.
+    /// mute state, `conversation.status` answers whether there is a backend at all and
+    /// whether it is connected. The turn alone is push-only and emitted on change, so it
+    /// stays unknown until the conversation next moves — and the screen says so in words
+    /// rather than showing a "Ready" nobody reported.
     ///
-    /// A first failure is not fatal: the backend takes up to a minute and a half to come
-    /// up and answers `loop_unavailable` throughout, which is a state to narrate rather
-    /// than a refusal. The retry is here rather than in the transport for that reason —
-    /// a transport that swallowed it would hide the one thing this screen has to say.
+    /// **Ready is `backend_connected`, not `can_proceed`**, which only says a Hugging
+    /// Face connection is configured. The app answers `conversation.status` long before
+    /// its backend connects — at startup, and again through the reconnect a personality
+    /// change starts — and until it does, `say` and `interrupt` answer `not_running`.
+    /// So this reads the status again until the backend connects or the startup budget
+    /// runs out, as Pollen's mobile app does. Failures the app gives while it comes up
+    /// are waited out the same way; the retry is here rather than in the transport
+    /// because a transport that swallowed them would hide the one thing this screen has
+    /// to say.
     func prime(app: RobotApp?, session: RobotSession) async {
         guard let app else { return }
         preparingSince = preparingSince ?? Date()
@@ -25,6 +31,11 @@ extension ConversationModel {
             do {
                 let status = try await readStatus(session, app)
                 backend = status
+                if isStartingUp(status) {
+                    phase = .preparing
+                    try? await Task.sleep(for: configuration.retryInterval)
+                    continue
+                }
                 isMicrophoneMuted = try await readMicrophone(session, app)
                 settle(with: status)
                 return
@@ -35,38 +46,55 @@ extension ConversationModel {
         }
     }
 
-    /// What a successful status read means.
+    /// A backend that is configured and not connected yet, inside the budget. A frame
+    /// already seen outranks it, for the reason `settle(with:)` gives.
+    private func isStartingUp(_ status: ConversationBackendStatus) -> Bool {
+        status.canProceed && !status.isConnected && phase != .live && isInsideStartupBudget
+    }
+
+    /// What a status read means once the wait is over.
     ///
     /// A frame already seen outranks it: the conversation demonstrably works, and a
     /// backend flag is about configuration rather than about whether this screen is
-    /// receiving anything.
+    /// receiving anything. A backend still not connected when the budget runs out is
+    /// one the app could not reach, which is a fix on the robot, like a missing key.
     private func settle(with status: ConversationBackendStatus) {
         preparingSince = nil
         guard phase != .live else { return }
-        phase = status.canProceed ? .live : .backendUnconfigured
+        phase = status.canProceed && status.isConnected ? .live : .backendUnconfigured
     }
 
     /// Whether a failed priming read is worth trying again.
     ///
-    /// Only `loop_unavailable`, and only inside the budget. Everything else is an answer:
-    /// `-32601` means this build has no such method, `not_running` means the app is gone,
-    /// and both are verdicts the screen should show rather than retry into.
+    /// Only what the app answers while it comes up, and only inside the budget:
+    /// `loop_unavailable`, its own `not_running`, and `app_unavailable` — the relay
+    /// cannot reach the app's `/rpc` until the app serves it. Everything else is an
+    /// answer: `-32601` means this build has no such method, the relay's `not_running`
+    /// means no app runs, and both are verdicts the screen should show rather than
+    /// retry into.
     private func keepWaiting(after error: any Error) -> Bool {
         guard let failure = error as? ConversationFailure else {
             record(failure: error)
             return false
         }
-        guard failure.reason == .loopUnavailable else {
+        switch failure.reason {
+        case .loopUnavailable?, .backendNotConnected?, .appUnavailable?:
+            break
+        default:
             conclude(failure)
             return false
         }
-        let waited = preparingSince.map { Date().timeIntervalSince($0) } ?? 0
-        guard waited < configuration.startupBudget else {
+        guard isInsideStartupBudget else {
             phase = .unavailable(.appUnavailable)
             return false
         }
         phase = .preparing
         return true
+    }
+
+    private var isInsideStartupBudget: Bool {
+        let waited = preparingSince.map { Date().timeIntervalSince($0) } ?? 0
+        return waited < configuration.startupBudget
     }
 
     // MARK: Commands

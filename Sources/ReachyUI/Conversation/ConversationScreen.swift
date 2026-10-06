@@ -55,7 +55,11 @@ struct ConversationScreen: View {
         if model.hasTranscript {
             ConversationTranscriptList(entries: model.entries, isFrozen: !model.isLive)
         } else {
-            ConversationUnavailableView(phase: model.phase, settingsURL: settingsURL)
+            ConversationUnavailableView(
+                phase: model.phase,
+                settingsURL: settingsURL,
+                backendError: model.backend?.error
+            )
         }
     }
 

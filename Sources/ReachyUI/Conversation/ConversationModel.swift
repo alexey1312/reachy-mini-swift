@@ -198,6 +198,7 @@ final class ConversationModel {
             turn: ConversationTurn? = nil,
             level: ConversationLevel? = nil,
             phase: Phase = .live,
+            backend: ConversationBackendStatus? = nil,
             isMicrophoneMuted: Bool = false,
             offersControls: Bool = true,
             draft: String = "",
@@ -205,7 +206,7 @@ final class ConversationModel {
         ) -> ConversationModel {
             let model = ConversationModel(
                 events: { _, _ in AsyncStream { $0.finish() } },
-                readStatus: { _, _ in ConversationBackendStatus(canProceed: true) },
+                readStatus: { _, _ in ConversationBackendStatus(canProceed: true, isConnected: true) },
                 readMicrophone: { _, _ in isMicrophoneMuted },
                 setMicrophone: { _, _, muted in muted },
                 interruptConversation: { _, _ in },
@@ -215,6 +216,7 @@ final class ConversationModel {
             model.turn = turn
             model.level = level
             model.phase = phase
+            model.backend = backend
             model.isMicrophoneMuted = isMicrophoneMuted
             model.offersControls = offersControls
             model.draft = draft

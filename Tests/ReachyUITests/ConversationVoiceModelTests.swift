@@ -186,6 +186,22 @@ struct ConversationUnavailableViewTests {
         #expect(titles.map(\.isEmpty).contains(true) == false)
     }
 
+    /// The app's own words about its backend explain the wait, so they go under it —
+    /// and nowhere a backend error says nothing about what is on screen.
+    @Test("the backend's own words follow the wait for it")
+    func showsTheBackendError() {
+        let preparing = ConversationUnavailableView.message(for: .preparing, backendError: "TimeoutError")
+        let live = ConversationUnavailableView.message(for: .live, backendError: "TimeoutError")
+
+        #expect(preparing.hasPrefix(ConversationUnavailableView.message(for: .preparing)))
+        #expect(preparing.hasSuffix("\nTimeoutError"))
+        #expect(live == ConversationUnavailableView.message(for: .live))
+        #expect(
+            ConversationUnavailableView.message(for: .preparing, backendError: nil)
+                == ConversationUnavailableView.message(for: .preparing)
+        )
+    }
+
     /// The sentence the whole screen exists to be honest about.
     @Test("the empty state says the robot keeps no transcript")
     func admitsThereIsNoHistory() {
