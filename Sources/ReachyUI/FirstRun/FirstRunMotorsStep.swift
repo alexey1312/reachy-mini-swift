@@ -26,7 +26,7 @@ struct FirstRunMotorsStep: View {
             if let twin = model.twin {
                 Section {
                     SceneViewport(model: twin)
-                        .frame(height: 240)
+                        .frame(height: Metrics.stepPicture)
                         .listRowInsets(EdgeInsets())
                 }
             }

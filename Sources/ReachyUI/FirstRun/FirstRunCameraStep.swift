@@ -25,7 +25,7 @@ struct FirstRunCameraStep: View {
             Section {
                 if let camera {
                     CameraViewport(session: camera)
-                        .frame(height: 240)
+                        .frame(height: Metrics.stepPicture)
                         .listRowInsets(EdgeInsets())
                 } else {
                     ContentUnavailableView(

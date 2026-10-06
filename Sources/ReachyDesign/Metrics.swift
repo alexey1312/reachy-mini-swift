@@ -96,6 +96,13 @@ public enum Metrics {
     public static let sparklineHeight: CGFloat = 28
     /// A `Form` left to itself fills a 1024 pt iPad and reads as broken.
     public static let readableForm: CGFloat = 560
+    /// The robot's picture in a first-run step: the twin on the motors check and the
+    /// camera on the next. Tall enough to see a head move, short enough to leave the
+    /// heading, a status and the pinned actions on one iPhone screen.
+    ///
+    /// Not scaled: it is the height of a picture, and the text a reader enlarges is
+    /// all outside it except the camera's status, which has the width to wrap into.
+    public static let stepPicture: CGFloat = 240
     /// What the app's window asks to open at on macOS, where nothing else says.
     ///
     /// A `WindowGroup` declaring no size gets one from its content, which came out
