@@ -1,3 +1,4 @@
+import ReachyDesign
 import ReachyKit
 import SwiftUI
 
@@ -24,7 +25,10 @@ struct CommunityAppsNotice: View {
                 "Apps in Discover are published on Hugging Face by their authors, not by this app, and run on your robot with its camera, microphone and motors. Objectionable apps are not welcome: report one from its page and Hugging Face reviews it, or hide its author's apps on this device."
             ))
         } actions: {
-            Button(.reachy("Agree and continue"), action: accept)
+            // The prominent action, because it is the one the notice asks for. As a
+            // plain tinted button it read as a second link beside the policy link
+            // under seven lines of text.
+            ReachyActionButton(.reachy("Agree and continue"), action: accept)
             if let policy = URL(string: "https://huggingface.co/content-policy") {
                 Link(destination: policy) {
                     Text(.reachy("Hugging Face content policy"))

@@ -28,12 +28,7 @@ struct WedgedAppNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             Text(Self.situation(in: state))
-            Text(
-                .reachy(
-                    // swiftlint:disable:next line_length
-                    "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth, then RESTART_DAEMON."
-                )
-            )
+            Text(Self.wayOut)
         }
         .font(Typography.status)
         .foregroundStyle(.secondary)
@@ -43,6 +38,20 @@ struct WedgedAppNotice: View {
     // A region disable: each sentence is one key, so none of them can be split
     // across `+` without handing a translator two fragments to reorder.
     // swiftlint:disable line_length
+
+    /// The way out, by the path and the words the recovery screens show.
+    ///
+    /// The command is named by its row title in `BLERecoveryScriptCaption`, never by
+    /// its file name: the sentence used to end in "RESTART_DAEMON", a word the
+    /// recovery screen does not show. A `String` for `situation(in:)`'s reason —
+    /// a test holds it to that title.
+    static var wayOut: String {
+        String(
+            localized: .reachy(
+                "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth › Commands, then \"Restart the robot's software\"."
+            )
+        )
+    }
 
     /// What has happened, in the words the state allows.
     ///

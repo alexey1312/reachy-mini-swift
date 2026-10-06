@@ -299,8 +299,11 @@ struct HFAccountSection: View {
     @ViewBuilder
     private func deviceCodeRows(_ login: RobotDeviceLogin) -> some View {
         LabeledContent(.reachy("Code")) {
+            // The one value on this card the reader types somewhere else, so it is
+            // primary and heavier where a row's value is secondary by default.
             Text(login.userCode)
-                .font(Typography.console)
+                .font(Typography.console.weight(.semibold))
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
         Label {
@@ -313,7 +316,8 @@ struct HFAccountSection: View {
         } label: {
             Label(.reachy("Open huggingface.co"), systemImage: "arrow.up.forward.square")
         }
-        Button(.reachy("Cancel"), role: .cancel) { robotLink.cancelDeviceLogin() }
+        // A glyph like the row above it, so the two ways out share the icon column.
+        Button(.reachy("Cancel"), systemImage: "xmark", role: .cancel) { robotLink.cancelDeviceLogin() }
     }
 
     @ViewBuilder

@@ -1132,6 +1132,35 @@
         }
       }
     },
+    "Apps over Hugging Face need robot software 1.10 or later, and this robot runs an older one. Connect on the same network to browse and install, or to update the robot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apps über Hugging Face benötigen Roboter-Software 1.10 oder neuer, und auf diesem Roboter läuft eine ältere. Verbinde dich im selben Netzwerk, um Apps zu durchsuchen und zu installieren oder den Roboter zu aktualisieren."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las apps a través de Hugging Face necesitan el software del robot 1.10 o posterior, y este robot ejecuta una versión más antigua. Conéctate a la misma red para explorar e instalar, o para actualizar el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les apps via Hugging Face nécessitent le logiciel du robot 1.10 ou ultérieur, et ce robot exécute une version plus ancienne. Connectez-vous au même réseau pour parcourir et installer, ou pour mettre à jour le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложениям через Hugging Face нужно ПО робота 1.10 или новее, а на этом роботе установлена более старая версия. Подключитесь к той же сети, чтобы смотреть и устанавливать приложения или обновить робота."
+          }
+        }
+      }
+    },
     "Asking the robot what it can play…": {
       "extractionState": "manual",
       "localizations": {
@@ -10876,31 +10905,31 @@
         }
       }
     },
-    "Pre-release versions need daemon 1.10.0. An older robot finds the wrong version and refuses to install it.": {
+    "Pre-release versions need robot software 1.10 or later. An older robot finds the wrong version and refuses to install it.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vorabversionen benötigen Daemon 1.10.0. Ein älterer Roboter findet die falsche Version und installiert sie nicht."
+            "value": "Vorabversionen benötigen Roboter-Software 1.10 oder neuer. Ein älterer Roboter findet die falsche Version und installiert sie nicht."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las versiones preliminares necesitan el daemon 1.10.0. Un robot más antiguo encuentra la versión equivocada y no la instala."
+            "value": "Las versiones preliminares necesitan el software del robot 1.10 o posterior. Un robot más antiguo encuentra la versión equivocada y no la instala."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les préversions nécessitent le démon 1.10.0. Un robot plus ancien trouve la mauvaise version et refuse de l'installer."
+            "value": "Les préversions nécessitent le logiciel du robot 1.10 ou ultérieur. Un robot plus ancien trouve la mauvaise version et refuse de l'installer."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Предварительные версии требуют демона 1.10.0. Робот постарше находит не ту версию и отказывается её ставить."
+            "value": "Предварительным версиям нужно ПО робота 1.10 или новее. Робот постарше находит не ту версию и отказывается её ставить."
           }
         }
       }
@@ -12065,31 +12094,31 @@
         }
       }
     },
-    "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth, then RESTART_DAEMON.": {
+    "Restarting the robot's software releases it: Settings › Advanced › Recovery over Bluetooth › Commands, then \"Restart the robot's software\".": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein Neustart der Software des Roboters gibt sie frei: Einstellungen › Erweitert › Wiederherstellung über Bluetooth, dann RESTART_DAEMON."
+            "value": "Ein Neustart der Software des Roboters gibt sie frei: Einstellungen › Erweitert › Wiederherstellung über Bluetooth › Befehle, dann „Software des Roboters neu starten“."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reiniciar el software del robot la libera: Ajustes › Avanzado › Recuperación por Bluetooth y luego RESTART_DAEMON."
+            "value": "Reiniciar el software del robot la libera: Ajustes › Avanzado › Recuperación por Bluetooth › Comandos y luego «Reiniciar el software del robot»."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Redémarrer le logiciel du robot la libère : Réglages › Avancé › Récupération via Bluetooth, puis RESTART_DAEMON."
+            "value": "Redémarrer le logiciel du robot la libère : Réglages › Avancé › Récupération via Bluetooth › Commandes, puis « Redémarrer le logiciel du robot »."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Перезапуск программного обеспечения робота освободит её: Настройки › Дополнительно › Восстановление по Bluetooth, затем RESTART_DAEMON."
+            "value": "Перезапуск программного обеспечения робота освободит её: Настройки › Дополнительно › Восстановление по Bluetooth › Команды, затем «Перезапустить ПО робота»."
           }
         }
       }
@@ -22153,35 +22182,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновить или удалить это приложение, а также запускать его при пробуждении можно только в сети самого робота."
-          }
-        }
-      }
-    },
-    "This robot's software is older than 1.10, the first that installs and runs apps over Hugging Face. Connect on the same network to browse and install, or to update the robot.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Software dieses Roboters ist älter als 1.10, die erste Version, die Apps über Hugging Face installiert und startet. Verbinde dich im selben Netzwerk, um Apps zu durchsuchen und zu installieren oder den Roboter zu aktualisieren."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El software de este robot es anterior a la 1.10, la primera que instala e inicia apps a través de Hugging Face. Conéctate a la misma red para explorar e instalar, o para actualizar el robot."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le logiciel de ce robot est antérieur à la 1.10, la première à installer et lancer des apps via Hugging Face. Connectez-vous au même réseau pour parcourir et installer, ou pour mettre à jour le robot."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ПО этого робота старше версии 1.10 — первой, которая устанавливает и запускает приложения через Hugging Face. Подключитесь к той же сети, чтобы смотреть и устанавливать приложения или обновить робота."
           }
         }
       }

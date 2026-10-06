@@ -280,7 +280,7 @@ struct AppStoreScreen: View {
         Button {
             showsHiddenAuthors = true
         } label: {
-            Label(.reachy("Hidden authors"), systemImage: "eye.slash")
+            Label(.reachy("Hidden authors"), systemImage: AppModerationActions.hideSymbol)
         }
     }
 

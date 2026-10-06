@@ -7,27 +7,28 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## What is here
 
-| File                       | Holds                                                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `Space.swift`              | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
-| `Radius.swift`             | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
-| `Tone.swift`               | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
-| `ReachyTheme.swift`        | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, `shellTint`, and the `Color(hex:)` that paints a tile |
-| `ThemeStore.swift`         | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
-| `ThemeEnvironment.swift`   | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
-| `Typography.swift`         | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
-| `Motion.swift`             | The animations the app runs, named — including the one that carries a gesture                                                        |
-| `Metrics.swift`            | Sizes fixed by what they represent rather than by their text                                                                         |
-| `StatusTone.swift`         | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
-| `ReachySurface.swift`      | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
-| `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
-| `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
-| `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
-| `ReachyActionButton.swift` | The action button that puts width, target and colour _inside_ the label — full-width capsules, a dark-appearance label               |
-| `ReachyErrorRow.swift`     | One failure in a form row, with the way out beside it                                                                                |
-| `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
-| `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
-| `ReachyTabAccessory.swift` | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
+| File                           | Holds                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Space.swift`                  | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
+| `Radius.swift`                 | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
+| `Tone.swift`                   | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
+| `ReachyTheme.swift`            | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, `shellTint`, and the `Color(hex:)` that paints a tile |
+| `ThemeStore.swift`             | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
+| `ThemeEnvironment.swift`       | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
+| `Typography.swift`             | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
+| `Motion.swift`                 | The animations the app runs, named — including the one that carries a gesture                                                        |
+| `Metrics.swift`                | Sizes fixed by what they represent rather than by their text                                                                         |
+| `StatusTone.swift`             | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
+| `ReachySurface.swift`          | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
+| `ReachyBadge.swift`            | A word in a capsule, on the `.badge` surface                                                                                         |
+| `ReachyInlineLabelStyle.swift` | `.reachyInline`: a `Label`'s glyph tight against its word, out of a `Form` row's icon column                                         |
+| `ReachySurfaceGroup.swift`     | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
+| `ReachyButton.swift`           | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
+| `ReachyActionButton.swift`     | The action button that puts width, target and colour _inside_ the label — full-width capsules, a dark-appearance label               |
+| `ReachyErrorRow.swift`         | One failure in a form row, with the way out beside it                                                                                |
+| `ReachyChrome.swift`           | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
+| `ReachySheet.swift`            | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
+| `ReachyTabAccessory.swift`     | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 
 ## Rules
 
@@ -501,6 +502,16 @@ What that means when reading a dark reference:
 - The roles that carry no glass — `.badge`, `.window` — and everything outside a surface are truthful, and that is
   where the dark half earns its keep: `LogConsoleView`'s level palette, the status captions, every screen background.
 - A dark reference is therefore evidence about _content_, and evidence about glass only on device.
+- **The log console's status bar is a `.scrim`, so a dark capture of any console ends in a white strip.**
+  It was reported on `App detail — install failed` (iPhone, dark) as a fault in the log box,
+  and it is in the 0.6.1 references too.
+  The strip is the rule above and nothing else:
+  in that capture it spans rows 945–995 px, where the light capture prints "4 lines",
+  and its text does not show at all;
+  `Console — installer log` has the same strip in dark with "4 lines" barely visible in it;
+  and `Design — surfaces` draws the scrim capsule white in dark with its label gone.
+  That white is the snapshot's glass, not the device's.
+  Do not give the console another role to make the capture dark.
 - **The navigation bar is one of those glass surfaces, so a toolbar item moves the dark reference and only the dark
   one.** Measured when the Live tab gained its options menu: of the 20 references for the five Live-tab root previews,
   the 5 `iPhone-…-dark` moved and the other 15 — light iPhone and both iPad — came back byte-identical, the iPad pair

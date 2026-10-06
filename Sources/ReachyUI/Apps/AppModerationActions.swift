@@ -17,6 +17,9 @@ struct AppModerationActions: View {
     /// of an app the reader has just asked not to see.
     var afterHiding: () -> Void = {}
 
+    /// The glyph for a hidden author, here and on Discover's way back to them.
+    static let hideSymbol = "eye.slash.circle"
+
     var body: some View {
         if let reportURL = app.reportURL {
             Link(destination: reportURL) {
@@ -28,7 +31,10 @@ struct AppModerationActions: View {
                 moderation.hideAuthor(of: app)
                 afterHiding()
             } label: {
-                Label(.reachy("Hide this author's apps"), systemImage: "eye.slash")
+                // `eye.slash` is half again as wide as its neighbours and stood 4.5 pt
+                // past the icon column's leading edge. The circled form is within 2 pt
+                // of the square and the flag above it, so the three make one column.
+                Label(.reachy("Hide this author's apps"), systemImage: AppModerationActions.hideSymbol)
             }
         }
     }
