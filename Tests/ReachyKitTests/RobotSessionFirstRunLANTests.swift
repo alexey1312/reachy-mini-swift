@@ -7,8 +7,9 @@ import Testing
 private final class LANRobot: RobotAPIClient, @unchecked Sendable {
     let identity: RobotIdentity
 
-    init(version: String = "1.11.0") {
-        identity = RobotIdentity(hardwareID: "hw-\(UUID().uuidString)", name: "lan-robot", daemonVersion: version)
+    /// `hardwareID: nil` is the simulator, or a robot without the Pollen audio device.
+    init(version: String = "1.11.0", hardwareID: String? = "hw-\(UUID().uuidString)", name: String = "lan-robot") {
+        identity = RobotIdentity(hardwareID: hardwareID, name: name, daemonVersion: version)
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -40,8 +41,12 @@ private final class LANRobot: RobotAPIClient, @unchecked Sendable {
 /// The first run's gate on the LAN (#169): the robot's own flag over its data channel
 /// where that channel opens, this device's record where it does not, and nothing
 /// asked of a robot already settled.
+///
+/// Serialized because two tests turn on `KnownRobots.pendingProvisionedHardwareID`, one
+/// value for the whole process: run beside the test that sets it, the test for a robot
+/// with no hardware id passes whether nil matches nil or not.
 @MainActor
-@Suite("First run on the LAN", .timeLimit(.minutes(1)))
+@Suite("First run on the LAN", .serialized, .timeLimit(.minutes(1)))
 struct RobotSessionFirstRunLANTests {
     private let records = FirstRunRecordStore(defaults: UserDefaults(suiteName: "first-run-\(UUID().uuidString)")!)
 
@@ -174,6 +179,19 @@ struct RobotSessionFirstRunLANTests {
         let session = await connect(robot, opener: Opener(completed: nil))
 
         #expect(session.offersFirstRun)
+    }
+
+    /// Nothing is waiting to be provisioned, and the robot reports no hardware id: nil
+    /// matched nil, so such a robot read as new to this device on every connect.
+    @Test("a robot with no hardware id is not mistaken for one set up over Bluetooth")
+    func aRobotWithNoHardwareIDIsNotProvisioned() async {
+        let robot = LANRobot(hardwareID: nil, name: "nameless-\(UUID().uuidString)")
+        KnownRobots.remember(identity: robot.identity, address: RobotAddress(host: "192.168.1.77"))
+
+        let session = await connect(robot, opener: Opener(completed: nil))
+
+        #expect(!session.offersFirstRun)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
     }
 
     // MARK: - A connect that ends while the channel opens
