@@ -297,6 +297,9 @@ the next pair.
   `RobotAppRelease.Outcome` says whether one happened,
   and `RobotSleep.park(after:)` then waits for the daemon's reset instead of playing a second sleep into it,
   chasing it only past `idleResetTimeout`, which `.widgetIntent` cuts to nine seconds so a chase still fits the 15.
+  Nine alone did not fit: the 15 start before the connect and the release, which spend part of them first.
+  So `RobotPowerCommand` hands its deadline down,
+  and the wait also ends early enough for the chase to disable the motors before it.
   `RobotShutdown`'s sleep-only plan parks through the same method.
   The relay is excluded by type, because a relayed status read would cancel the reset it watched.
 - **`RobotAppLauncher.stop()` sends nothing after the stop where the daemon parks the robot itself (#173),
@@ -304,7 +307,7 @@ the next pair.
   From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no motion route cancels it,
   so on a LAN daemon with a media server a `goto` would be a second trajectory beside the daemon's.
   Deciding that costs no request: `RobotIntentTarget.VerifiedConnection` carries the handshake it verified,
-  and its status has the version and `no_media`.
+  and its status has the version and the media fields (`no_media`, `camera_specs_name`, `media_released`).
   The relay is excluded by type, as `RobotSleep` excludes it — there the `goto` cancels the reset and parks cleanly.
   The outcome says which happened (`Outcome.stopped(name:robotSleeps:)`),
   because `RobotAppCommand` records the snapshot off it:

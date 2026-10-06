@@ -38,14 +38,16 @@ extension RemoteRobotConnection: RobotAppsClient {
     /// **A silence is not a failure here, unless the relay itself is dead.** The
     /// install carries on on the robot whether anybody waits or not, and asking
     /// again costs nothing once it has finished, so a robot still in `pip` ends as
-    /// `.timedOut`. But `.relaySilent` alone cannot tell that robot from one whose
-    /// JSON-RPC relay died after a backend restart (pollen-robotics/reachy_mini#1421):
-    /// both leave the plain protocol answering. One `apps.status` on the reply budget
-    /// does — the relay runs every frame in a task of its own, so a live one answers
-    /// at once while `pip` runs. It is asked twice: **before** the install, so a dead
-    /// relay costs ten seconds rather than a sheet held for three minutes, and after a
-    /// silence, for a relay that died mid-install. Only a dead relay is thrown, with
-    /// the advice to restart that `.relaySilent` carries.
+    /// `.timedOut`. One `apps.status` on the reply budget tells that robot from one
+    /// whose JSON-RPC relay died after a backend restart
+    /// (pollen-robotics/reachy_mini#1421) — the relay runs every frame in a task of
+    /// its own, so a live one answers at once while `pip` runs. It is asked twice:
+    /// **before** the install, so a dead relay costs ten seconds rather than a sheet
+    /// held for three minutes, and after a silence, for a relay that died
+    /// mid-install. The second is `RemoteControlChannel.call`'s own probe, which
+    /// throws `.relaySilent` only when that `apps.status` goes unanswered too. Only
+    /// a dead relay is thrown, with the advice to restart that `.relaySilent`
+    /// carries.
     ///
     /// Three minutes is three of the LAN install's budgets
     /// (`AppJobMonitor.Configuration.install`). A longer wait buys a few more
@@ -60,17 +62,12 @@ extension RemoteRobotConnection: RobotAppsClient {
             switch failure {
             case let .rpc(_, message, _), let .robot(message):
                 return .failed(message)
-            case .closed:
-                return .timedOut
-            case .timedOut, .relaySilent:
-                do {
-                    try await control.call("apps.status")
-                } catch RemoteControlChannel.Failure.relaySilent {
-                    throw RemoteControlChannel.Failure.relaySilent
-                } catch {
-                    // Nothing answers at all: the robot or the link is gone, which
-                    // says nothing about the install either way.
-                }
+            case .relaySilent:
+                throw failure
+            // `.timedOut` is a relay still answering, or nothing answering at all:
+            // the robot or the link is gone, which says nothing about the install
+            // either way.
+            case .closed, .timedOut:
                 return .timedOut
             }
         }
@@ -104,8 +101,16 @@ extension RemoteRobotConnection: RobotAppsClient {
         return status
     }
 
+    /// How long `apps.stop` is waited for. Not the reply budget: the daemon answers
+    /// once its whole stop is over — up to 20 s for the app to honour SIGINT, then
+    /// the kill, the monitor task and a 1 s return to zero (`stop_current_app` in
+    /// `apps/manager.py`). On the reply budget a slow exit read as a dead relay.
+    /// Thirty seconds clears it, the figure `RobotSession.Configuration.appStopTimeout`
+    /// waits for the same stop over the LAN.
+    static let appStopTimeout: Duration = .seconds(30)
+
     public func stopCurrentApp() async throws {
-        try await control.call("apps.stop")
+        try await control.call("apps.stop", timeout: Self.appStopTimeout)
     }
 
     /// `{state, info, error}`, where `info` is the app's own entry and absent while

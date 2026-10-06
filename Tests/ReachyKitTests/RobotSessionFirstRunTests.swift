@@ -180,8 +180,10 @@ struct RobotSessionFirstRunTests {
         }
 
         #expect(!session.offersFirstRun)
+        #expect(session.isWritingFirstRunFlag)
         channel.emit(#"{"command":"set_first_wake_up","status":"ok","is_completed":true}"#)
         await finishing.value
+        #expect(!session.isWritingFirstRunFlag)
     }
 
     /// A failed write answers `"status": "error"` with the value still on disk. The

@@ -116,10 +116,14 @@ extension RobotSession {
         }
         // The daemon is about to put the robot to sleep whoever woke it, so the
         // promise is paid either way — and anything sent from here would be the
-        // same two-motions bug, one level down.
+        // same two-motions bug, one level down. Taken rather than dropped: the
+        // status cannot prove that the daemon has a loop to run the reset on, and
+        // a robot this session woke is not left awake with its torque on when the
+        // reset never comes.
         if daemonParksAfterApps {
-            appLifecycle.releaseWakeOwnership()
-            await followDaemonParking(client: client)
+            let owner = appLifecycle.takeWakeOwnership()
+            guard await followDaemonParking(client: client) == .timedOut, owner != nil else { return }
+            await sleep()
             return
         }
         if appLifecycle.takeWakeOwnership() != nil {
@@ -159,17 +163,19 @@ extension RobotSession {
     /// Ends on the first reading that says asleep, on an app holding the robot
     /// again — starting one cancels the reset daemon-side — or at
     /// `Configuration.idleResetTimeout`. A robot still awake by then is one the
-    /// daemon chose to leave alone, and it is left alone here too: parking it
+    /// daemon chose to leave alone, or one it had no loop to reset: the caller
+    /// leaves it alone unless this session woke it for the app, since parking it
     /// late would put the head down under whoever cancelled the reset.
-    private func followDaemonParking(client: any RobotAPIClient) async {
+    private func followDaemonParking(client: any RobotAPIClient) async -> IdleResetWatch {
         let attemptID = connectionAttemptID
         // Read afresh rather than off `lastStatus`, which can be a poll interval
         // old: an app that put the robot to sleep itself leaves the daemon nothing
         // to do (`_already_idle`), and announcing a transition over that would be
         // the stale state this exists to remove, inverted.
-        guard let status = try? await client.daemonStatus(), isAttemptLive(attemptID) else { return }
+        guard let status = try? await client.daemonStatus(), isAttemptLive(attemptID) else { return .abandoned }
         lastStatus = status
-        guard status.isAwake, powerTransition == nil else { return }
+        guard status.isAwake else { return .asleep }
+        guard powerTransition == nil else { return .abandoned }
         powerTransition = .goingToSleep
         defer {
             // A disconnect has already cleared it, and a new attempt may own it now.
@@ -177,7 +183,7 @@ extension RobotSession {
                 powerTransition = nil
             }
         }
-        _ = await watchIdleReset(client: client, attemptID: attemptID)
+        return await watchIdleReset(client: client, attemptID: attemptID)
     }
 
     /// How waiting for the daemon's own sleep ended.

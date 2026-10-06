@@ -24,8 +24,9 @@ public extension RemoteControlChannel {
         /// screens that were previously one string. ``errorDescription`` composes
         /// that same string, so nothing a user reads changes.
         case rpc(code: Int, message: String, reason: String?)
-        /// A JSON-RPC call went unanswered while the robot still answers plain
-        /// commands on the same channel. Appended, like ``rpc(code:message:reason:)``.
+        /// A JSON-RPC call went unanswered, the relay's own `apps.status` went
+        /// unanswered too, and the robot still answers plain commands on the same
+        /// channel. Appended, like ``rpc(code:message:reason:)``.
         case relaySilent
     }
 }

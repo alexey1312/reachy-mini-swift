@@ -30,7 +30,10 @@
             version: String? = nil,
             // Absent unless asked for. A `--no-media` daemon has no idle reset, and
             // `cameraSpecsName: ""` alone does not say which of its three causes it is.
-            noMedia: Bool? = nil
+            noMedia: Bool? = nil,
+            // Absent unless asked for, like `noMedia`. A backend that starts while the
+            // media is released is not wired to the loop the idle reset runs on.
+            mediaReleased: Bool? = nil
         ) -> Components.Schemas.DaemonStatus {
             let camera = cameraSpecsName ?? Self.previewCameraName(
                 wirelessVersion: wirelessVersion,
@@ -46,12 +49,13 @@
             let errorField = error.map { "\"error\": \"\($0)\"," } ?? ""
             let versionField = version.map { "\"version\": \"\($0)\"," } ?? ""
             let mediaField = noMedia.map { "\"no_media\": \($0)," } ?? ""
+            let releasedField = mediaReleased.map { "\"media_released\": \($0)," } ?? ""
             let json = """
             {"robot_name": "Reachy Mini", "state": "\(state.rawValue)",
              "wireless_version": \(wirelessVersion), "desktop_app_daemon": false,
              "simulation_enabled": \(simulationEnabled), "mockup_sim_enabled": \(mockupSimEnabled),
              "camera_specs_name": "\(camera)",
-             \(errorField)\(versionField)\(mediaField)
+             \(errorField)\(versionField)\(mediaField)\(releasedField)
              "backend_status": \(backend)}
             """
             // swiftlint:disable:next force_try

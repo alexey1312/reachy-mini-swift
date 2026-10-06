@@ -45,6 +45,8 @@ struct JSAppEmbedTests {
             ("tfrere/reachy-mini-sdkjs-demo-static", "tfrere-reachy-mini-sdkjs-demo-static"),
             ("Pollen-Robotics/Marionette_JS", "pollen-robotics-marionette-js"),
             ("someone/a_b_c", "someone-a-b-c"),
+            // A dot left in would start a DNS label of its own.
+            ("someone/reachy.mini_app.v2", "someone-reachy-mini-app-v2"),
         ]
     )
     func slug(id: String, expected: String) {

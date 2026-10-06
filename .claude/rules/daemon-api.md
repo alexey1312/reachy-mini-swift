@@ -511,10 +511,17 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and there `parkAfterApp()` sends nothing.
   It holds `powerTransition = .goingToSleep` and reads the status every `appStopPollInterval`,
   letting go on the first reading that says asleep, on an app holding the robot again,
-  or at `idleResetTimeout` — 12 s against the reset's 7.2 s worst case — and it never chases a reset that did not come,
-  since whoever cancelled it owns the robot.
+  or at `idleResetTimeout` — 12 s against the reset's 7.2 s worst case — and it chases a reset that did not come
+  only for a robot it woke for the app, since otherwise whoever cancelled the reset owns the robot.
   The media server is a condition because the reset runs on the loop `setup_media_server` builds:
   `request_idle_reset()` returns at once without one, so a `--no-media` daemon (`no_media` in the status) parks nothing.
+  `Daemon.start` also skips that setup for a media server that failed to start
+  and for a backend that starts while the media is released (`daemon/daemon.py:435`).
+  No status field names the loop, so the gate also needs `camera_specs_name`,
+  which only a built media server fills in, and `media_released` to be false.
+  That is the state now, not at the backend's start: an app that released the media and died without
+  acquiring it again leaves `media_released` true over a loop that exists,
+  and the session then parks the robot beside the daemon's reset.
   Over the relay the session keeps its own parking.
   Each of its commands cancels the reset before running, so there they replace it rather than race it —
   and a relayed status read is a `get_state` frame, so watching the reset would cancel it too.
@@ -523,6 +530,8 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   so where it applies they watch the motors read disabled instead of playing a `goto_sleep` into it.
   Unlike the parking after an app, a reset that never comes is chased with the sleep that was asked for,
   after `idleResetTimeout` — 12 s, or 9 s for an intent, whose whole command has 15.
+  An intent's wait also ends at that command's deadline less the chase itself,
+  because the connect and the release spend part of the 15 first.
   The session lets the wait go when an app holds the robot again, since starting one cancels the reset;
   an intent would have to ask for that and does not.
   `RobotShutdown`'s sleep-only plan stops an app too, so it parks through `RobotSleep` for the same reason.

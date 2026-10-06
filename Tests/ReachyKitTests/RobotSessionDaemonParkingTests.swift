@@ -71,6 +71,23 @@ struct RobotSessionDaemonParkingTests {
         session.disconnect()
     }
 
+    /// A daemon with no loop for the reset answers `request_idle_reset()` with nothing,
+    /// and no status field says so. The robot this session woke for the app is owed a
+    /// sleep, so the wait ends in one rather than in a robot left awake at zero pose.
+    @Test("a robot woken for the app is put to sleep when the daemon's sleep never comes")
+    func sleepsAWokenRobotTheResetMissed() async throws {
+        let client = AppLifecycleClient(motorMode: .disabled, daemonVersion: Self.parkingDaemon)
+        let session = await AppLifecycle.connected(client, idleResetTimeout: .milliseconds(200))
+        _ = try await session.startApp(named: AppLifecycle.installedApp)
+        let woken = client.recordedSteps
+
+        try await session.stopCurrentApp()
+        await AppLifecycle.waitUntil(client.recordedSteps.contains(.motorMode(.disabled)))
+
+        #expect(client.recordedSteps == woken + [.stopApp, .gotoSleep, .motorMode(.disabled)])
+        session.disconnect()
+    }
+
     /// Starting an app cancels the reset daemon-side, so the robot stays up for it.
     /// The duration is the assertion again: a loop that ignored the app would end
     /// at its deadline in the same state.
@@ -250,6 +267,48 @@ struct RobotSessionDaemonParkingTests {
         let session = await AppLifecycle.connected(client)
 
         #expect(session.daemonParksAfterApps == parks)
+        session.disconnect()
+    }
+
+    /// The reset runs on a loop the daemon builds only for a media server that came up
+    /// and was not released when the backend started (`daemon.py`). An empty camera
+    /// name is a media server that never came up.
+    @Test(
+        "a daemon whose backend has no media loop does not park the robot itself",
+        arguments: [
+            ("" as String?, nil as Bool?, false),
+            (nil, true, false),
+            (nil, false, true),
+        ]
+    )
+    func mediaGate(camera: String?, released: Bool?, parks: Bool) async {
+        let client = AppLifecycleClient(
+            daemonVersion: Self.parkingDaemon,
+            cameraSpecsName: camera,
+            mediaReleased: released
+        )
+        let session = await AppLifecycle.connected(client)
+
+        #expect(session.daemonParksAfterApps == parks)
+        session.disconnect()
+    }
+
+    /// The bug this gate closes: on such a daemon the session held `.goingToSleep` for
+    /// the whole `idleResetTimeout`, with Wake up, the joystick and the moves locked,
+    /// for a reset that could not come. **The duration is the assertion** (project
+    /// rule 7): the 12 s wait ends in the same sleep since it gained its fallback.
+    @Test("a robot woken for the app on a daemon with no media server is put to sleep at once")
+    func sleepsAtOnceWithoutAMediaServer() async throws {
+        let client = AppLifecycleClient(motorMode: .disabled, daemonVersion: Self.parkingDaemon, cameraSpecsName: "")
+        let session = await AppLifecycle.connected(client)
+        _ = try await session.startApp(named: AppLifecycle.installedApp)
+
+        let stopped = ContinuousClock.now
+        try await session.stopCurrentApp()
+        await AppLifecycle.waitUntil(client.recordedSteps.contains(.motorMode(.disabled)))
+
+        #expect(stopped.duration(to: .now) < .seconds(5))
+        #expect(Array(client.recordedSteps.suffix(2)) == [.gotoSleep, .motorMode(.disabled)])
         session.disconnect()
     }
 

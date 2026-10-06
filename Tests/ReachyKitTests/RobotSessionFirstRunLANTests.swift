@@ -7,8 +7,9 @@ import Testing
 private final class LANRobot: RobotAPIClient, @unchecked Sendable {
     let identity: RobotIdentity
 
-    init(version: String = "1.11.0") {
-        identity = RobotIdentity(hardwareID: "hw-\(UUID().uuidString)", name: "lan-robot", daemonVersion: version)
+    /// `hardwareID: nil` is the simulator, or a robot without the Pollen audio device.
+    init(version: String = "1.11.0", hardwareID: String? = "hw-\(UUID().uuidString)", name: String = "lan-robot") {
+        identity = RobotIdentity(hardwareID: hardwareID, name: name, daemonVersion: version)
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -40,8 +41,12 @@ private final class LANRobot: RobotAPIClient, @unchecked Sendable {
 /// The first run's gate on the LAN (#169): the robot's own flag over its data channel
 /// where that channel opens, this device's record where it does not, and nothing
 /// asked of a robot already settled.
+///
+/// Serialized because two tests turn on `KnownRobots.pendingProvisionedHardwareID`, one
+/// value for the whole process: run beside the test that sets it, the test for a robot
+/// with no hardware id passes whether nil matches nil or not.
 @MainActor
-@Suite("First run on the LAN", .timeLimit(.minutes(1)))
+@Suite("First run on the LAN", .serialized, .timeLimit(.minutes(1)))
 struct RobotSessionFirstRunLANTests {
     private let records = FirstRunRecordStore(defaults: UserDefaults(suiteName: "first-run-\(UUID().uuidString)")!)
 
@@ -98,6 +103,49 @@ struct RobotSessionFirstRunLANTests {
 
         #expect(opener.sent("set_first_wake_up") == 1)
         #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
+    }
+
+    /// The offer goes first so the screen does not wait on the robot. The write still
+    /// travels on the LAN channel, so the root has to hold the channel open for it —
+    /// and this device may call the robot settled only once the robot says it is.
+    @Test("finishing holds the channel for the write and settles only on the robot's answer")
+    func settlesAfterTheRobotConfirms() async throws {
+        let robot = LANRobot()
+        let opener = Opener(completed: false)
+        let session = await connect(robot, opener: opener)
+        let channel = try #require(opener.channel)
+        channel.removeReply(for: "set_first_wake_up")
+
+        let finishing = Task { await session.finishFirstRun() }
+        await waitUntil { opener.sent("set_first_wake_up") == 1 }
+
+        #expect(!session.offersFirstRun, "the shell is not held for the write")
+        #expect(session.isWritingFirstRunFlag, "the channel the write travels on is held")
+        #expect(records.state(for: robot.identity.deduplicationKey) == .pending)
+
+        channel.emit(#"{"command":"set_first_wake_up","status":"ok","is_completed":true}"#)
+        await finishing.value
+
+        #expect(!session.isWritingFirstRunFlag)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
+    }
+
+    /// A write the robot could not store leaves it new on the robot, so this device
+    /// must not call it settled either: the next connect offers the run again.
+    @Test("a write the robot refused leaves the robot pending on this device")
+    func keepsARefusedWritePending() async {
+        let robot = LANRobot()
+        let opener = Opener(completed: false)
+        let session = await connect(robot, opener: opener)
+        opener.channel?.removeReply(for: "set_first_wake_up")
+        let finishing = Task { await session.finishFirstRun() }
+        await waitUntil { opener.sent("set_first_wake_up") == 1 }
+
+        opener.channel?.emit(#"{"command":"set_first_wake_up","status":"error","is_completed":false}"#)
+        await finishing.value
+
+        #expect(!session.offersFirstRun)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .pending)
     }
 
     /// Set up in Pollen's app, or by this app on another device: the robot says so, and
@@ -174,6 +222,75 @@ struct RobotSessionFirstRunLANTests {
         let session = await connect(robot, opener: Opener(completed: nil))
 
         #expect(session.offersFirstRun)
+    }
+
+    /// Nothing is waiting to be provisioned, and the robot reports no hardware id: nil
+    /// matched nil, so such a robot read as new to this device on every connect.
+    @Test("a robot with no hardware id is not mistaken for one set up over Bluetooth")
+    func aRobotWithNoHardwareIDIsNotProvisioned() async {
+        let robot = LANRobot(hardwareID: nil, name: "nameless-\(UUID().uuidString)")
+        KnownRobots.remember(identity: robot.identity, address: RobotAddress(host: "192.168.1.77"))
+
+        let session = await connect(robot, opener: Opener(completed: nil))
+
+        #expect(!session.offersFirstRun)
+        #expect(records.state(for: robot.identity.deduplicationKey) == .settled)
+    }
+
+    // MARK: - A connect that ends while the channel opens
+
+    /// Holds the channel's opening until the test lets it go, then reports that it did
+    /// not open — the eight seconds a real one can take, at the test's pace.
+    @MainActor
+    private final class HeldOpener {
+        private(set) var opened = 0
+        private var waiter: CheckedContinuation<Void, Never>?
+
+        func open(_: RobotAddress) async -> (any FirstWakeUpClient)? {
+            opened += 1
+            await withCheckedContinuation { waiter = $0 }
+            return nil
+        }
+
+        func letGo() {
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    /// A disconnect resets the session's first-run state while the channel opens. The
+    /// stale attempt used to read that reset as "met before" and settle a robot that
+    /// never saw its first run, so no later connect ever asked it again.
+    @Test("a connect that ends while the channel opens records nothing about the robot")
+    func anEndedConnectRecordsNothing() async {
+        let robot = LANRobot()
+        let held = HeldOpener()
+        let session = RobotSession { _ in robot }
+        session.firstRunServices = FirstRunServices(
+            openLANChannel: { @MainActor address in await held.open(address) },
+            records: records
+        )
+        let connecting = Task { await session.connect(to: RobotAddress(host: "192.168.1.77")) }
+        await waitUntil { held.opened == 1 }
+
+        session.disconnect()
+        held.letGo()
+        await connecting.value
+
+        #expect(records.state(for: robot.identity.deduplicationKey) == nil)
+        #expect(!session.offersFirstRun)
+        let opener = Opener(completed: false)
+        let next = await connect(robot, opener: opener)
+        #expect(next.offersFirstRun, "the next connect asks the robot")
+        #expect(opener.opened.count == 1)
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(condition())
     }
 
     // MARK: - What is never asked

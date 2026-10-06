@@ -128,7 +128,13 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     `daemonParksAfterApps` decides — LAN, a version known to be ≥ 1.10.0, and a media server,
     which the reset needs and `--no-media` removes —
     and `followDaemonParking` shows the daemon's sleep as `.goingToSleep` until a reading says asleep.
-    It does not fall back to parking when the reset never comes: whoever cancelled it owns the robot.
+    The status cannot name the loop the reset runs on,
+    so the media server is read off `camera_specs_name` and `media_released`,
+    the state now rather than at the backend's start.
+    When the reset never comes, the session parks nothing for a robot somebody else woke:
+    whoever cancelled the reset owns the robot.
+    A robot it woke for the app gets the sleep it was owed,
+    because a daemon with no loop for the reset leaves it awake with its torque on.
     `sleep()` over a running app takes the same path (#166):
     the release it opens with is what schedules the reset,
     so it watches it under its own `.goingToSleep` through the same `watchIdleReset` —
@@ -307,10 +313,14 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     the reply shapes are in `.claude/rules/daemon-api.md`.
     Every relay test double had built the status itself, which is how that shipped:
     `RemoteRobotAppsTests` decodes the daemon's own bytes.
-  - **A silence after `apps.install` is unknown, but a dead relay is not**, and `.relaySilent` cannot tell the two:
-    both leave the plain protocol answering. One `apps.status` can, since the relay runs each frame in a task of its
+  - **A silence after `apps.install` is unknown, but a dead relay is not**, and the plain protocol cannot tell the
+    two: both leave it answering. One `apps.status` can, since the relay runs each frame in a task of its
     own — asked before the install, so pollen-robotics/reachy_mini#1421 costs ten seconds rather than a sheet held
     for three minutes, and after a silence, for a relay that died meanwhile.
+    That second probe is `RemoteControlChannel.call`'s own, after any timed-out call:
+    `.relaySilent` needs `get_version` to answer and `apps.status` to stay silent.
+    `get_version` alone named a slow `apps.stop` or a slow app a dead relay, with the advice to restart the robot.
+    `apps.stop` also waits 30 s, not the reply budget, because the daemon answers it only after the app exits.
   - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
     and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
     unreachable only while the decoding bug kept the relayed dock empty.
@@ -333,6 +343,9 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   a failed read over the relay offers nothing, and no failure is reported.
   `finishFirstRun()` is the only write, and it withdraws the offer **before** writing,
   so a relay gone quiet cannot hold the owner on the last screen over bookkeeping they never see.
+  `isWritingFirstRunFlag` is true for the length of the write,
+  because on the LAN the write travels on the channel the root closes once nothing holds it.
+  This device records the robot as settled only after the robot confirms the write.
   `wake()` no longer writes it — #157 had it do so, and the first run wakes the robot partway through.
   When a route lands, `RobotConnection` conforms and nothing above the protocol moves.
 - **`SleepPosition` is the one check that can see a wiring mistake before the motors are powered** (#169).

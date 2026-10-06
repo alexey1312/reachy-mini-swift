@@ -40,27 +40,51 @@ public extension RemoteControlChannel {
         do {
             reply = try await awaitRPCReply(id: id, sending: text, timeout: timeout)
         } catch Failure.timedOut {
-            throw await answersPlainCommands() ? Failure.relaySilent : Failure.timedOut
+            throw await relayIsSilent(after: method) ? Failure.relaySilent : Failure.timedOut
         }
         try Self.throwIfRPCError(in: reply)
         return reply
     }
 
-    /// Whether the robot still answers the `{type, command}` protocol, asked only
-    /// once a JSON-RPC call has gone unanswered.
+    /// The relayed call the daemon answers itself, at once, from its own state.
+    private static let relayProbe = "apps.status"
+
+    /// Whether the JSON-RPC relay itself has died, asked only once a call has gone
+    /// unanswered.
     ///
-    /// The two are served by different code on the robot, and the JSON-RPC half can
-    /// die alone: daemons 1.10 and 1.11 wire the relay onto the event loop of
-    /// whatever started the backend, and `POST /api/daemon/start` — this app's own
-    /// Wake up after a Power off, among others — runs that start in a loop that
-    /// closes as soon as its job ends. Every call then times out until the daemon
-    /// *process* restarts (pollen-robotics/reachy_mini#1421, fixed by the open
-    /// #1422), and a bare timeout reads as a robot that is not there. One cheap
-    /// command tells the two apart. Skipped on a channel that is not open, where it
-    /// would sit out a whole negotiation to learn nothing.
-    private func answersPlainCommands() async -> Bool {
-        guard isChannelOpen else { return false }
-        return await (try? perform("get_version", correlation: .replyKey("version"))) != nil
+    /// The relay and the `{type, command}` protocol are served by different code on
+    /// the robot, and the relay can die alone: daemons 1.10 and 1.11 wire it onto
+    /// the event loop of whatever started the backend, and `POST /api/daemon/start`
+    /// — this app's own Wake up after a Power off, among others — runs that start
+    /// in a loop that closes as soon as its job ends. Every call then times out
+    /// until the daemon *process* restarts (pollen-robotics/reachy_mini#1421, fixed
+    /// by #1422, merged on 2026-10-02 and first shipped in daemon 1.12.0rc1), and a
+    /// bare timeout reads as a robot that is not there.
+    ///
+    /// **Two probes, because a slow call is not a dead relay.** `apps.stop` waits
+    /// for the app to exit, and a call relayed to the app waits on the app. A
+    /// timeout there with `get_version` answering only says that the robot is
+    /// there. ``relayProbe`` says whether the relay is: the daemon runs every frame
+    /// in a task of its own, so a live relay answers it while the slow call is
+    /// still running. A timed-out probe is its own answer. Skipped on a channel
+    /// that is not open, where it would sit out a whole negotiation to learn
+    /// nothing.
+    private func relayIsSilent(after method: String) async -> Bool {
+        guard isChannelOpen,
+              await (try? perform("get_version", correlation: .replyKey("version"))) != nil
+        else { return false }
+        guard method != Self.relayProbe else { return true }
+        let id = nextRPCID()
+        do {
+            let probe = try Self.encodeRPC(method: Self.relayProbe, params: [:], id: id)
+            _ = try await awaitRPCReply(id: id, sending: probe, timeout: nil)
+            return false
+        } catch Failure.timedOut {
+            return true
+        } catch {
+            // A closed channel or a failed send says nothing about the relay.
+            return false
+        }
     }
 
     /// The same, with the `result` decoded.

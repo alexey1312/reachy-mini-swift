@@ -173,6 +173,26 @@ struct RobotSleepTests {
         #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
     }
 
+    /// An intent's whole command has fifteen seconds, counted from before the connect
+    /// and the release. A reset wait that ran its own nine left the chase no time, and
+    /// the command was cancelled with the motors still enabled. **The deadline is the
+    /// assertion** (project rule 7): a wait that ignored it ends in the same two calls,
+    /// twenty seconds in.
+    @Test("a reset that never comes is chased in time to disable the motors before the budget ends")
+    func chasesInsideTheBudget() async throws {
+        let client = parkingDaemon()
+        var configuration = RobotSession.Configuration.widgetIntent
+        configuration.appStopPollInterval = .milliseconds(10)
+        configuration.moveCompletionTimeout = .milliseconds(200)
+        configuration.idleResetTimeout = .seconds(20)
+        let deadline = ContinuousClock.now + .seconds(3)
+
+        try await RobotSleep(client: client, configuration: configuration, deadline: deadline).perform()
+
+        #expect(ContinuousClock.now < deadline)
+        #expect(Array(client.calls.suffix(2)) == [.gotoSleep, .setMotorMode(.disabled)])
+    }
+
     /// Only a release schedules the reset. With nothing running the old sequence is
     /// the whole of it, and not even the version is read.
     @Test("with no app running nothing is waited for, whatever the daemon")

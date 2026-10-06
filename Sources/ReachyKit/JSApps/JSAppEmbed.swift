@@ -59,11 +59,13 @@ public enum JSAppEmbed {
         }
     }
 
-    /// `owner/My_App` → `owner-my-app`: lower-cased, then `_` and `/` both become
-    /// `-`. Hugging Face's own rule for a Space's subdomain.
+    /// `owner/My_App.v2` → `owner-my-app-v2`: lower-cased, then `_`, `.` and `/`
+    /// all become `-`. Hugging Face's own rule for a Space's subdomain — a `.` left
+    /// in would start a DNS label of its own and name a host that does not exist.
     public static func slug(for spaceID: String) -> String {
         spaceID.lowercased()
             .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: ".", with: "-")
             .replacingOccurrences(of: "/", with: "-")
     }
 
