@@ -297,6 +297,9 @@ the next pair.
   `RobotAppRelease.Outcome` says whether one happened,
   and `RobotSleep.park(after:)` then waits for the daemon's reset instead of playing a second sleep into it,
   chasing it only past `idleResetTimeout`, which `.widgetIntent` cuts to nine seconds so a chase still fits the 15.
+  Nine alone did not fit: the 15 start before the connect and the release, which spend part of them first.
+  So `RobotPowerCommand` hands its deadline down,
+  and the wait also ends early enough for the chase to disable the motors before it.
   `RobotShutdown`'s sleep-only plan parks through the same method.
   The relay is excluded by type, because a relayed status read would cancel the reset it watched.
 - **`RobotAppLauncher.stop()` sends nothing after the stop where the daemon parks the robot itself (#173),

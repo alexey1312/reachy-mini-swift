@@ -14,23 +14,27 @@ public struct RobotShutdown: Sendable {
     private let daemon: any RobotAPIClient
     private let sleep: RobotSleep
 
+    /// `deadline` is when the caller's own budget ends, for the sleep-only plan's
+    /// wait on the daemon's reset — see `RobotSleep`.
     public init(
         client: any RobotAPIClient & RobotAppsClient,
-        configuration: RobotSession.Configuration = .widgetIntent
+        configuration: RobotSession.Configuration = .widgetIntent,
+        deadline: ContinuousClock.Instant? = nil
     ) {
-        self.init(apps: client, daemon: client, configuration: configuration)
+        self.init(apps: client, daemon: client, configuration: configuration, deadline: deadline)
     }
 
     /// Test seam: the two halves, with no client to build them from.
     init(
         apps: any RobotAppsClient,
         daemon: any RobotAPIClient,
-        configuration: RobotSession.Configuration = .widgetIntent
+        configuration: RobotSession.Configuration = .widgetIntent,
+        deadline: ContinuousClock.Instant? = nil
     ) {
         release = RobotAppRelease(apps: apps, configuration: configuration)
         self.apps = apps
         self.daemon = daemon
-        sleep = RobotSleep(apps: apps, daemon: daemon, configuration: configuration)
+        sleep = RobotSleep(apps: apps, daemon: daemon, configuration: configuration, deadline: deadline)
     }
 
     /// Stops whatever holds the robot, then asks the daemon to shut the backend

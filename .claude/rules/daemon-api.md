@@ -530,6 +530,8 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   so where it applies they watch the motors read disabled instead of playing a `goto_sleep` into it.
   Unlike the parking after an app, a reset that never comes is chased with the sleep that was asked for,
   after `idleResetTimeout` — 12 s, or 9 s for an intent, whose whole command has 15.
+  An intent's wait also ends at that command's deadline less the chase itself,
+  because the connect and the release spend part of the 15 first.
   The session lets the wait go when an app holds the robot again, since starting one cancels the reset;
   an intent would have to ask for that and does not.
   `RobotShutdown`'s sleep-only plan stops an app too, so it parks through `RobotSleep` for the same reason.
