@@ -22,6 +22,7 @@ struct RobotHFLinkModelDeviceCodeTests {
     private func model(
         start: RobotDeviceLogin? = nil,
         readings: [RobotDeviceLoginStatus] = [],
+        status: (@MainActor (RobotSession, RobotDeviceLogin) async throws -> RobotDeviceLoginStatus)? = nil,
         pause: @escaping @Sendable (Duration) async throws -> Void = { _ in },
         cancelled: Script? = nil
     ) -> RobotHFLinkModel {
@@ -34,7 +35,7 @@ struct RobotHFLinkModelDeviceCodeTests {
                     guard let start else { throw ReachyKitError.daemonRejected(statusCode: 404) }
                     return start
                 },
-                status: { _, _ in script.next() },
+                status: status ?? { _, _ in script.next() },
                 cancel: { _, _ in cancelled?.cancel() },
                 pause: pause
             )
@@ -43,7 +44,12 @@ struct RobotHFLinkModelDeviceCodeTests {
 
     @Test("an approved code links the robot and reads its account back")
     func linksOnceApproved() async {
-        let model = model(start: login, readings: [.pending, .pending, .authorized(username: "alexey1312")])
+        let cancelled = Script([])
+        let model = model(
+            start: login,
+            readings: [.pending, .pending, .authorized(username: "alexey1312")],
+            cancelled: cancelled
+        )
         var opened: [URL] = []
 
         await model.linkWithDeviceCode(session: .preview()) { opened.append($0) }
@@ -55,11 +61,14 @@ struct RobotHFLinkModelDeviceCodeTests {
         #expect(model.linkError == nil)
         #expect(model.deviceLogin == nil)
         #expect(!model.isLinking)
+        // Success is the one way out that leaves the robot's sign-in alone.
+        #expect(cancelled.cancellations == 0)
     }
 
     @Test("a code that ran out says so")
     func reportsAnExpiredCode() async {
-        let model = model(start: login, readings: [.pending, .expired(message: nil)])
+        let cancelled = Script([])
+        let model = model(start: login, readings: [.pending, .expired(message: nil)], cancelled: cancelled)
 
         await model.linkWithDeviceCode(session: .preview()) { _ in }
 
@@ -67,6 +76,7 @@ struct RobotHFLinkModelDeviceCodeTests {
             "The code expired before it was approved. Link the robot again."
         )))
         #expect(!model.isLinked)
+        #expect(cancelled.cancellations == 1)
     }
 
     /// The Hub's own words, by way of the robot — runtime text, so the slot stays a
@@ -94,6 +104,51 @@ struct RobotHFLinkModelDeviceCodeTests {
         #expect(model.deviceLogin == nil)
     }
 
+    /// A Cancel lands far more often in the reading than in the pause: on a robot the
+    /// reading is a network round trip, and in a test the pause is no wait at all.
+    /// The robot must still hear it, and from a task that is not cancelled — a
+    /// request made from a cancelled task never leaves.
+    @Test("a cancel during a reading still tells the robot to stop")
+    func cancelsOnTheRobotMidReading() async {
+        let cancelled = Script([])
+        let model = model(
+            start: login,
+            status: { _, _ in
+                cancelled.noteReading()
+                try await Task.sleep(for: .seconds(60))
+                return .pending
+            },
+            cancelled: cancelled
+        )
+
+        model.beginDeviceLogin(session: .preview()) { _ in }
+        await waitUntil("the robot is being read") { cancelled.readsStarted > 0 }
+        model.cancelDeviceLogin()
+        await waitUntil("the card stops waiting") { model.deviceLogin == nil }
+
+        #expect(cancelled.cancellations == 1)
+        #expect(!cancelled.cancelledFromACancelledTask)
+        #expect(model.linkError == nil)
+        #expect(!model.isLinking)
+    }
+
+    /// A robot that stopped answering may still be polling the Hub, and a code that
+    /// nobody waits for could link it later.
+    @Test("a failed reading reports it and tells the robot to stop")
+    func cancelsOnTheRobotAfterAFailedReading() async {
+        let cancelled = Script([])
+        let model = model(
+            start: login,
+            status: { _, _ in throw URLError(.timedOut) },
+            cancelled: cancelled
+        )
+
+        await model.linkWithDeviceCode(session: .preview()) { _ in }
+
+        #expect(model.linkError != nil)
+        #expect(cancelled.cancellations == 1)
+    }
+
     /// A daemon before 1.10.0 does not mount the route. Nothing is opened: a browser
     /// page for a code that does not exist is worse than the error.
     @Test("a robot that cannot start one opens nothing")
@@ -114,6 +169,8 @@ struct RobotHFLinkModelDeviceCodeTests {
         private let lock = NSLock()
         private var readings: [RobotDeviceLoginStatus]
         private var cancelled = 0
+        private var cancelledInCancelledTask = false
+        private var started = 0
 
         init(_ readings: [RobotDeviceLoginStatus]) {
             self.readings = readings
@@ -123,12 +180,30 @@ struct RobotHFLinkModelDeviceCodeTests {
             lock.withLock { readings.count > 1 ? readings.removeFirst() : readings.first ?? .pending }
         }
 
+        func noteReading() {
+            lock.withLock { started += 1 }
+        }
+
+        /// Notes whether the robot-side cancel ran in a cancelled task, where a real
+        /// request would be cancelled before it left.
         func cancel() {
-            lock.withLock { cancelled += 1 }
+            let isCancelled = Task.isCancelled
+            lock.withLock {
+                cancelled += 1
+                cancelledInCancelledTask = cancelledInCancelledTask || isCancelled
+            }
         }
 
         var cancellations: Int {
             lock.withLock { cancelled }
+        }
+
+        var cancelledFromACancelledTask: Bool {
+            lock.withLock { cancelledInCancelledTask }
+        }
+
+        var readsStarted: Int {
+            lock.withLock { started }
         }
     }
 }
