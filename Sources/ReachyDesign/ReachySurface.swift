@@ -25,6 +25,12 @@ public enum SurfaceRole: Sendable, CaseIterable {
     /// Distinct from `.window`, which is also glass-free but takes a `.bar`
     /// material: a window is raised *off* whatever is behind it, and this is the
     /// thing behind it.
+    ///
+    /// **Which background that is, the page says** — through `PageBackdrop` in the
+    /// environment, which `reachyPageBackdrop` carries. This used to be `.background`
+    /// for every page, and the one page that pins a bar is a grouped `Form`: in
+    /// light appearance its footer read as a white band under a grey page. A page
+    /// that says nothing is `.plain`, so it keeps `.background`.
     case page
     /// A raised, opaque, glass-free panel: the running-app strip where it has to
     /// back itself, and the floating live view.
@@ -49,6 +55,8 @@ public enum SurfaceRole: Sendable, CaseIterable {
 /// over the content — that painted the entire screen in the window colour. Two
 /// reference images caught it as blank captures.
 public struct ReachySurfaceFill<S: Shape>: View {
+    @Environment(\.reachyPageBackdrop) private var backdrop
+
     private let role: SurfaceRole
     private let shape: S
 
@@ -62,7 +70,7 @@ public struct ReachySurfaceFill<S: Shape>: View {
     }
 
     private var base: some View {
-        shape.fill(role.baseFill)
+        shape.fill(role.baseFill(on: backdrop))
     }
 
     /// **The effect goes under the content, never around it.**
@@ -158,10 +166,56 @@ extension SurfaceRole {
 
     /// A badge takes a fill rather than the window colour: it sits *on* a card,
     /// and `.background` there would punch a hole straight through to the screen.
-    var baseFill: AnyShapeStyle {
+    /// A page takes whatever the page it sits on paints.
+    func baseFill(on backdrop: PageBackdrop) -> AnyShapeStyle {
         switch self {
-        case .chrome, .card, .scrim, .window, .page: AnyShapeStyle(.background)
+        case .chrome, .card, .scrim, .window: AnyShapeStyle(.background)
+        case .page: backdrop.style
         case .badge: AnyShapeStyle(.fill.quaternary)
         }
+    }
+}
+
+/// What a page paints behind its content, and so what a `.page` surface pinned to
+/// it paints too.
+public enum PageBackdrop: Sendable, CaseIterable {
+    /// The window's own background — a plain list, a console, anything that is not
+    /// a grouped `Form`. What a page that declares nothing is.
+    case plain
+    /// A grouped `Form`'s backdrop: grey around white cards in light appearance.
+    case grouped
+}
+
+public extension PageBackdrop {
+    var style: AnyShapeStyle {
+        switch self {
+        case .plain:
+            AnyShapeStyle(.background)
+        case .grouped:
+            #if os(iOS)
+                AnyShapeStyle(Color(.systemGroupedBackground))
+            #else
+                // `.formStyle(.grouped)` on macOS lays out against the window's own
+                // background, so a grouped page there is a plain one.
+                AnyShapeStyle(.background)
+            #endif
+        }
+    }
+}
+
+private struct ReachyPageBackdropKey: EnvironmentKey {
+    static let defaultValue = PageBackdrop.plain
+}
+
+public extension EnvironmentValues {
+    /// The backdrop of the page this view sits on, for the `.page` surfaces in it.
+    ///
+    /// Set by the page, never by the bar: a bar that named its own colour would be
+    /// a second answer to "what does this page look like", free to drift from the
+    /// first. Spelled out rather than written with `@Entry`, for the reason
+    /// `reachyPreviewMode` gives.
+    var reachyPageBackdrop: PageBackdrop {
+        get { self[ReachyPageBackdropKey.self] }
+        set { self[ReachyPageBackdropKey.self] = newValue }
     }
 }

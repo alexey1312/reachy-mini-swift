@@ -174,6 +174,12 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   and says nothing on the ones that do not. The two consoles keep `reachyScrim` — over a log tail there _is_ content
   passing under, and the effect is the notice that there is. Glass-free but **not** `.window`: a window is raised off
   what is behind it and takes a `.bar` material, and a page is the thing behind it.
+  **Which background "the page's own" is, the page declares**, as `PageBackdrop` in `\.reachyPageBackdrop`.
+  `.page` filled with `.background` for every page,
+  and the one page that pins a bar is a grouped `Form` —
+  so in light appearance the footer was a white band under a grey page.
+  `ReachyUI`'s `groupedPageBackground()` paints the grouped backdrop and declares it in one call;
+  a page that declares nothing is `.plain` and keeps `.background`, which is why the gallery's capsule did not move.
 - **A button is a target across everything it draws, and at least `Metrics.minimumHitTarget` tall.**
   Reported from a device as "the buttons at the bottom are super small and only the text is tappable",
   and it was two faults at once.

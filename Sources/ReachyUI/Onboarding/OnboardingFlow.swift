@@ -108,7 +108,8 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             // So the effect backed no content and read as a grey strip stuck to the
             // bottom of the screen with a button in it. The page's own background
             // still hides what scrolls under it on the steps that do scroll, and
-            // says nothing on the ones that do not.
+            // says nothing on the ones that do not. `groupedPageBackground()` below
+            // is what makes it the grouped grey rather than a white band.
             .reachySurface(.page, ignoringSafeArea: .bottom)
         }
         .groupedPageBackground()
