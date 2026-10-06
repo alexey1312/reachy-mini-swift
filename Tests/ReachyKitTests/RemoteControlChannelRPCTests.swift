@@ -165,12 +165,70 @@ struct RemoteControlChannelRPCTests {
         }
     }
 
+    /// `apps.stop` waits for the app to exit, and a relayed call waits on the app. A
+    /// timeout there with the plain protocol answering only says the robot is there;
+    /// the advice to restart it was wrong. The relay's own `apps.status` answering is
+    /// what says the relay is alive.
+    @Test("a slow call on a relay that still answers is a timeout, not a dead relay")
+    func keepsATimeoutWhenTheRelayAnswers() async {
+        let (control, fake) = channel(
+            ["get_version": #"{"version": "1.11.0"}"#],
+            timeout: .milliseconds(300)
+        )
+        let relay = Self.answeringStatus(on: fake)
+        defer { relay.cancel() }
+
+        await #expect(throws: RemoteControlChannel.Failure.timedOut) {
+            _ = try await control.call("personalities.apply", params: ["name": .string("default")])
+        }
+    }
+
+    @Test("a slow call names the relay only when its own status goes unanswered too")
+    func namesASilentRelayAfterItsProbe() async {
+        let (control, fake) = channel(
+            ["get_version": #"{"version": "1.11.0"}"#],
+            timeout: .milliseconds(300)
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.relaySilent) {
+            _ = try await control.call("personalities.apply", params: ["name": .string("default")])
+        }
+        #expect(fake.sent.contains { Self.sentRPCMethod(in: $0) == "apps.status" })
+    }
+
     @Test("a robot that answers nothing at all is still a timeout")
     func keepsATimeoutWhenEverythingIsSilent() async {
         let (control, _) = channel(timeout: .milliseconds(300))
 
         await #expect(throws: RemoteControlChannel.Failure.timedOut) {
             _ = try await control.call("apps.status")
+        }
+    }
+
+    private static func sentRPCMethod(in frame: String) -> String? {
+        struct Sent: Decodable {
+            let method: String
+        }
+        return try? JSONCodec.daemon.decode(Sent.self, from: Data(frame.utf8)).method
+    }
+
+    /// Answers every `apps.status` by its id, the way a live relay does while a slow
+    /// call is still running in a task of its own.
+    private static func answeringStatus(on fake: FakeDataChannel) -> Task<Void, Never> {
+        Task {
+            var seen = 0
+            while !Task.isCancelled {
+                let sent = fake.sent
+                while seen < sent.count {
+                    let frame = sent[seen]
+                    seen += 1
+                    guard sentRPCMethod(in: frame) == "apps.status", let id = try? sentRPCID(in: frame) else {
+                        continue
+                    }
+                    fake.emit(#"{"jsonrpc":"2.0","id":\#(id),"result":{"state":"idle","info":null,"error":null}}"#)
+                }
+                try? await Task.sleep(for: .milliseconds(5))
+            }
         }
     }
 

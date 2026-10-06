@@ -313,10 +313,14 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     the reply shapes are in `.claude/rules/daemon-api.md`.
     Every relay test double had built the status itself, which is how that shipped:
     `RemoteRobotAppsTests` decodes the daemon's own bytes.
-  - **A silence after `apps.install` is unknown, but a dead relay is not**, and `.relaySilent` cannot tell the two:
-    both leave the plain protocol answering. One `apps.status` can, since the relay runs each frame in a task of its
+  - **A silence after `apps.install` is unknown, but a dead relay is not**, and the plain protocol cannot tell the
+    two: both leave it answering. One `apps.status` can, since the relay runs each frame in a task of its
     own — asked before the install, so pollen-robotics/reachy_mini#1421 costs ten seconds rather than a sheet held
     for three minutes, and after a silence, for a relay that died meanwhile.
+    That second probe is `RemoteControlChannel.call`'s own, after any timed-out call:
+    `.relaySilent` needs `get_version` to answer and `apps.status` to stay silent.
+    `get_version` alone named a slow `apps.stop` or a slow app a dead relay, with the advice to restart the robot.
+    `apps.stop` also waits 30 s, not the reply budget, because the daemon answers it only after the app exits.
   - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
     and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
     unreachable only while the decoding bug kept the relayed dock empty.
