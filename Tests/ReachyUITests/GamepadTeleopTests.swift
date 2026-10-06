@@ -192,6 +192,20 @@ struct GamepadTeleopTests {
         #expect(driver.target.z == 0.05)
     }
 
+    /// Each trigger owns one antenna, and the other may be where its slider put it.
+    @Test("a trigger leaves the other antenna where its slider put it")
+    func triggerKeepsTheOtherAntenna() {
+        let hub = GamepadTeleop()
+        let driver = TeleopDriver()
+        _ = hub.claim(driver, priority: .screen, standDown: nil)
+        driver.antennaRight = -0.4
+
+        hub.tick(reading { $0.leftTrigger = 0.8 }, seconds: 0.016)
+
+        #expect(driver.target.antennaLeft == 0.8 * hub.mapping.antennaReach)
+        #expect(driver.target.antennaRight == -0.4)
+    }
+
     @Test("reset from the controller is the same reset the button does")
     func resetIsTheButton() {
         let driver = TeleopDriver(target: TeleopTarget(z: 0.02, roll: 0.3, yaw: 0.5, bodyYaw: 0.5))
