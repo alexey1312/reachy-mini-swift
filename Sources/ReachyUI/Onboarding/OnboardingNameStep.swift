@@ -55,11 +55,9 @@ struct OnboardingNameStep: View {
                     submit()
                 }
                 .disabled(!model.canSubmitName)
-                Button(.reachy("Skip")) {
+                ReachyActionButton(.reachy("Skip"), emphasis: .quiet, fullWidth: true) {
                     Task { await model.skipName() }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
                 .disabled(model.isBusy)
             }
             OnboardingBackButton(model: model)

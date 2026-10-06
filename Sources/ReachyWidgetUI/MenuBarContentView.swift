@@ -165,11 +165,17 @@ public struct MenuBarContentView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// The popover's last row, and a target across its whole width rather than its
+    /// words: a quiet `ReachyActionButton` carries the minimum height and the hit shape
+    /// inside the label, which `reachyButton(.quiet)` on a `Button` cannot. The label
+    /// takes the width itself so it stays leading-aligned, as the app rows above it are.
     private var openRow: some View {
-        Button { onCommand(.open(content.apps.destination)) } label: {
+        ReachyActionButton(.quiet, fullWidth: true) {
+            onCommand(.open(content.apps.destination))
+        } label: {
             Label(.reachy("Open Reachy Mini"), systemImage: "arrow.up.forward.square")
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .reachyButton(.quiet)
     }
 
     /// This surface's own mapping from a tile state onto a caption, which is the

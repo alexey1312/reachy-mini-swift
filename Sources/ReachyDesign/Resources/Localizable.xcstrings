@@ -21925,6 +21925,35 @@
         }
       }
     },
+    "The video connection to the robot did not open, so there is no picture to check.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Videoverbindung zum Roboter kam nicht zustande, daher gibt es kein Bild zu prüfen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión de vídeo con el robot no llegó a abrirse, así que no hay imagen que comprobar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion vidéo avec le robot ne s'est pas ouverte, il n'y a donc aucune image à vérifier."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видеосоединение с роботом не установилось, поэтому проверить изображение нельзя."
+          }
+        }
+      }
+    },
     "The robot did not confirm the install in time. It may still be working on it — installing again later does nothing if it already has.": {
       "extractionState": "manual",
       "localizations": {

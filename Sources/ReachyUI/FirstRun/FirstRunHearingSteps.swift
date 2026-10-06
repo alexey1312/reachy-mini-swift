@@ -113,9 +113,9 @@ struct FirstRunSpeakerStep: View {
                     Task { await model.playTestSound() }
                 }
                 .disabled(audio.isBusy)
-                Button(.reachy("I didn't hear it")) { model.showHelp() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                ReachyActionButton(.reachy("I didn't hear it"), emphasis: .quiet, fullWidth: true) {
+                    model.showHelp()
+                }
             } else {
                 ReachyActionButton(.reachy("Play a sound"), fullWidth: true) {
                     Task { await model.playTestSound() }

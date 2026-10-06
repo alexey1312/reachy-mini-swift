@@ -26,7 +26,7 @@ struct FirstRunMotorsStep: View {
             if let twin = model.twin {
                 Section {
                     SceneViewport(model: twin)
-                        .frame(height: 240)
+                        .frame(height: Metrics.stepPicture)
                         .listRowInsets(EdgeInsets())
                 }
             }
@@ -126,9 +126,9 @@ struct FirstRunMotorsStep: View {
             ReachyActionButton(.reachy("It moved"), fullWidth: true) {
                 model.advance()
             }
-            Button(.reachy("It didn't move")) { model.showHelp() }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+            ReachyActionButton(.reachy("It didn't move"), emphasis: .quiet, fullWidth: true) {
+                model.showHelp()
+            }
         } else if let transition = session.powerTransition {
             PowerTransitionRow(transition: transition)
         } else if session.isAwake {
@@ -146,23 +146,27 @@ struct FirstRunMotorsStep: View {
     }
 }
 
-/// The motors the check names, and the pairs it suspects. A section of its own so the
-/// step's switch stays one arm per state.
+/// The pairs the check suspects, and then the motors it names. A section of its own so
+/// the step's switch stays one arm per state.
+///
+/// **The swaps come first, and a swapped motor is named once.** A swap is the finding
+/// with a fix — move two cables — while "not in place" only says to move the robot. The
+/// two sections used to run the other way round and list a swapped pair in both, so the
+/// instruction sat last on a long form, under the pinned footer, with the same motors
+/// above it described as merely out of place.
 struct FirstRunMisplacedMotors: View {
     let misplaced: [RobotMotor]
     let swaps: [MotorSwap]
 
+    /// The misplaced motors no suspected swap accounts for, in the check's order.
+    /// `nonisolated` because it is arithmetic: a `View`'s statics are otherwise on
+    /// the main actor, and a test calling it off the actor traps.
+    nonisolated static func unpaired(_ misplaced: [RobotMotor], swaps: [MotorSwap]) -> [RobotMotor] {
+        let swapped = Set(swaps.flatMap { [$0.first, $0.second] })
+        return misplaced.filter { !swapped.contains($0) }
+    }
+
     var body: some View {
-        Section {
-            ForEach(misplaced, id: \.self) { motor in
-                Label(RobotMotorCaption.name(motor), systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(Tone.warning.style)
-            }
-        } header: {
-            Text(.reachy("Not in place"))
-        } footer: {
-            Text(.reachy("The list follows the robot as you move it. Wake up comes back once every motor is in place."))
-        }
         if !swaps.isEmpty {
             Section {
                 ForEach(Array(swaps.enumerated()), id: \.offset) { _, swap in
@@ -181,6 +185,24 @@ struct FirstRunMisplacedMotors: View {
                     .reachy(
                         // swiftlint:disable:next line_length
                         "These motors read each other's positions, which usually means their cables are in each other's sockets. Swap them back before waking the robot."
+                    )
+                )
+            }
+        }
+        let unpaired = Self.unpaired(misplaced, swaps: swaps)
+        if !unpaired.isEmpty {
+            Section {
+                ForEach(unpaired, id: \.self) { motor in
+                    Label(RobotMotorCaption.name(motor), systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(Tone.warning.style)
+                }
+            } header: {
+                Text(.reachy("Not in place"))
+            } footer: {
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "The list follows the robot as you move it. Wake up comes back once every motor is in place."
                     )
                 )
             }

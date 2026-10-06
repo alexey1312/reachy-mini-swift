@@ -23,7 +23,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachyBadge.swift`        | A word in a capsule, on the `.badge` surface                                                                                         |
 | `ReachySurfaceGroup.swift` | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
 | `ReachyButton.swift`       | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
-| `ReachyActionButton.swift` | The action button that puts width and colour _inside_ the label — full-width capsules, a dark-appearance label                       |
+| `ReachyActionButton.swift` | The action button that puts width, target and colour _inside_ the label — full-width capsules, a dark-appearance label               |
 | `ReachyErrorRow.swift`     | One failure in a form row, with the way out beside it                                                                                |
 | `ReachyChrome.swift`       | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
 | `ReachySheet.swift`        | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
@@ -174,6 +174,38 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   and says nothing on the ones that do not. The two consoles keep `reachyScrim` — over a log tail there _is_ content
   passing under, and the effect is the notice that there is. Glass-free but **not** `.window`: a window is raised off
   what is behind it and takes a `.bar` material, and a page is the thing behind it.
+  **Which background "the page's own" is, the page declares**, as `PageBackdrop` in `\.reachyPageBackdrop`.
+  `.page` filled with `.background` for every page,
+  and the one page that pins a bar is a grouped `Form` —
+  so in light appearance the footer was a white band under a grey page.
+  `ReachyUI`'s `groupedPageBackground()` paints the grouped backdrop and declares it in one call;
+  a page that declares nothing is `.plain` and keeps `.background`, which is why the gallery's capsule did not move.
+- **A button is a target across everything it draws, and at least `Metrics.minimumHitTarget` tall.**
+  Reported from a device as "the buttons at the bottom are super small and only the text is tappable",
+  and it was two faults at once.
+  The hit shape is invisible in a reference, because it changes no pixel;
+  the floor and the large size do move the footers, which is how to tell the rules are applied.
+  Whether glass also answers in the padding between the label and the capsule's edge is a device check.
+  The same code runs on macOS — the onboarding sheet's footer, the menu bar popover's last row — with no `#if`.
+  Three rules came out of it.
+  `ReachyActionButton` applies the hit shape and the 44 pt floor, so a call site writes neither,
+  and `OnboardingStepScaffold` applies the large size:
+  1. **The hit shape goes inside the label, beside the width.**
+     `.glassProminent` answers a tap only where its label draws,
+     and a frame is empty space until `contentShape` says otherwise —
+     so a full-width capsule answered on its words and nowhere else.
+     The bordered styles make their own capsule a target, and a capture draws bordered, so no reference could show it.
+     A shape outside the label does not help, for the reason the width does not.
+  2. **A way-out is a quiet, full-width `ReachyActionButton`, one spelling everywhere.**
+     Skip, Back, "It didn't move" and "I didn't hear it" were `.plain` text, a target one line high.
+     `.quiet` draws no capsule,
+     so `ButtonEmphasis.minimumLabelHeight` puts the 44 pt floor on its label,
+     and the full width makes the row one target.
+     It is tinted rather than grey for the reason `.quiet` is `.borderless`: a tintless label reads as disabled.
+     `ButtonEmphasisTests` holds which tiers carry the floor.
+  3. **A footer pinned to the bottom of a page is `.controlSize(.large)`**,
+     the size of a bottom button everywhere else on the platform.
+     `OnboardingStepScaffold` sets it on the whole footer, so every step and the first run inherit it.
 - **Every sheet's content carries `reachySheet()`, because on macOS nothing else gives it a width.** A sheet there is
   laid out at its content's _ideal_ size, and a `Form`, a `ScrollView` or a `NavigationStack` over one offers no ideal
   width — AppKit picks something cramped and clips what does not fit rather than laying it out again. So one axis is

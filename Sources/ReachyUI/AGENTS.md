@@ -423,6 +423,12 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   `toolbarColorScheme(.dark)` to keep the title readable (drop one and the title goes white-on-white or
   black-on-black); the camera's forced a white `Connecting…` for the same reason. `RTCMTLVideoView` clears its own
   unfilled area, so the video never needed the SwiftUI backdrop — that one only ever painted the safe-area insets.
+  **The camera's status is the exception that proves it: it carries a surface of its own, and an adaptive one.**
+  Before its first frame the renderer draws nothing,
+  so the connecting, waiting and stalled states read against whatever the host put behind the pane —
+  and `PreviewScene.pane` puts a pinned black there, where they recorded black on black.
+  A `.window` surface under the status, and only while the stream is down, reads the same on any host;
+  a forced dark appearance would have been the white `Connecting…` again.
 - **A representable wrapping a renderer owes SwiftUI a `sizeThatFits`, and the reference images cannot tell you it is
   missing.** `RTCMTLVideoView` reports the _stream's_ frame size as its intrinsic content size, and without a
   `sizeThatFits` the default forwards that through `systemLayoutSizeFitting` — so `CameraVideoView` sized itself to
@@ -908,6 +914,9 @@ welcome, name, motors, camera, microphone, speaker, done.
   and its test sound now plays over the relay as well (`RemoteRobotConnection+TestSound.swift`).
 - **The steps reuse `OnboardingStepScaffold`** rather than a copy — the same heading, form and pinned actions.
   The name step reuses the onboarding's copy and `RobotNameField`'s footer word for word.
+  The scaffold holds its form and its footer to `Metrics.readableForm`, centred,
+  because in place of the shell the run has the whole display:
+  on an iPad the steps drew ~1180 pt buttons and one-line paragraphs.
 - **What the references can and cannot hold.**
   Every step and every state a reader can land in has a `First run —` preview,
   plus `Root — first run over the relay` for the fork itself.
