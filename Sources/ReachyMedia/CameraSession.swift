@@ -9,7 +9,7 @@ import ReachyKit
 ///
 /// Self-healing, within a budget: a negotiation that does not reach a connected
 /// peer in time is started over once, and a second stall in a row is reported as
-/// `.stalled` rather than retried for ever — `CameraSession+Negotiation.swift`.
+/// `.stalled` rather than retried at full speed — `CameraSession+Negotiation.swift`.
 @MainActor
 @Observable
 public final class CameraSession {
@@ -24,9 +24,9 @@ public final class CameraSession {
         /// negotiation on screen as a black picture with no spinner.
         case streaming
         /// Negotiation stalled on the first attempt and again on the one retry after it,
-        /// so nothing more is tried until `retry()`. Apart from `failed` because trying
-        /// again is the remedy here, where for a robot somebody else took it is the
-        /// opposite — so only this one offers it.
+        /// so nothing more is tried until `retry()` — on the LAN, a slow probe aside.
+        /// Apart from `failed` because trying again is the remedy here, where for a robot
+        /// somebody else took it is the opposite — so only this one offers it.
         case stalled
         case failed(String)
     }
@@ -99,6 +99,8 @@ public final class CameraSession {
     /// How long an attempt has to connect. A `var` for the tests, which shorten the
     /// stalls they cause and lengthen the attempts they expect to go through.
     @ObservationIgnored var negotiationDeadline: Duration
+    /// The wait from `.stalled` to a probe; nil, and no probe, off the LAN. A `var` for the tests.
+    @ObservationIgnored var probeDelay: Duration?
     private(set) var peerConnection: RTCPeerConnection?
     private var delegateAdapter: PeerConnectionDelegateAdapter?
     private var micTrack: RTCAudioTrack?
@@ -110,7 +112,7 @@ public final class CameraSession {
     /// `deinit` may not call — a stored property it may.
     @ObservationIgnored private(set) var isStarted = false
     /// The current signaling subscription. Nil before `start()`, after `stop()`, and
-    /// while `.stalled` — a session that gave up is not still asking. Ignored by
+    /// while `.stalled` — a session that gave up asks only in a LAN probe. Ignored by
     /// observation for the reason `isStarted` is.
     @ObservationIgnored var eventsTask: Task<Void, Never>?
     /// The carrier's half of the last subscription, still being ended. A new
@@ -137,6 +139,7 @@ public final class CameraSession {
         signaling = try CameraSignalingClient(address: address)
         connection = try? RobotConnection(address: address)
         negotiationDeadline = Self.defaultNegotiationDeadline
+        probeDelay = Self.defaultProbeDelay
     }
 
     /// Anywhere else: whatever is carrying signaling — over the Hugging Face relay

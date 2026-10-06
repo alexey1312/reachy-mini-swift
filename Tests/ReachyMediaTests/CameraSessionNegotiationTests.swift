@@ -157,6 +157,112 @@ struct CameraSessionNegotiationTests {
         await waitUntil("the retry streams") { session.phase == .streaming }
     }
 
+    /// On the LAN `.stalled` is not the end of asking. A robot that comes back with its
+    /// backend still up — Wi-Fi back after an outage — gives the viewport nothing to
+    /// rebuild the session on, so this used to stay "Camera unavailable" until Try again.
+    @Test("a stalled LAN session probes by itself, quietly, and can stream")
+    func stalledSessionProbesAndStreams() async throws {
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.stall)
+        // Long enough to lengthen the deadline below before the probe reads it.
+        session.probeDelay = .seconds(1)
+        session.start()
+        defer { session.stop() }
+        await waitUntil("the stall is reported") { session.phase == .stalled }
+
+        session.negotiationDeadline = Self.patience
+        await waitUntil("a probe subscribes") { await signaling.subscriptions == 3 }
+        // Nothing has answered it, so nothing on screen moves.
+        #expect(session.phase == .stalled)
+
+        let robot = LoopbackRobot()
+        defer { robot.close() }
+        let wire = SignalingWire(signaling: signaling, robot: robot)
+        await wire.connect()
+        defer { wire.cut() }
+        try await signaling.deliver(.offer(sessionID: "s3", sdp: robot.offer()))
+        await waitUntil("the probe streams") { session.phase == .streaming }
+        #expect(session.stalledAttempts == 0)
+    }
+
+    /// A robot still away answers nothing at all, so the deadline has to end a probe in
+    /// `.stalled` too — or the first probe would listen for good and no second one come.
+    @Test("a probe the robot never answers stalls, and another follows")
+    func unansweredProbeStalls() async {
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.stall)
+        session.probeDelay = .milliseconds(200)
+        session.start()
+        defer { session.stop() }
+
+        await waitUntil("a second probe subscribes") { await signaling.subscriptions == 4 }
+        #expect(session.phase == .stalled)
+    }
+
+    /// Slow is the point: a robot whose signaling is up and whose negotiation is not
+    /// would otherwise build a session for every probe. Measured from the stall the test
+    /// causes, because the wrong branch probes again too — only sooner.
+    @Test("a probe that stalls doubles the wait before the next")
+    func stalledProbeWaitsLonger() async {
+        let first: Duration = .milliseconds(500)
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.patience)
+        session.probeDelay = first
+        session.start()
+        defer { session.stop() }
+        await waitUntil("subscribed") { await signaling.subscriptions == 1 }
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("the attempt is started over") { await signaling.subscriptions == 2 }
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("a probe subscribes") { await signaling.subscriptions == 3 }
+
+        let stalled = ContinuousClock.now
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("the next probe subscribes") { await signaling.subscriptions == 4 }
+
+        // A sleep is never early, so the right branch cannot come in under this.
+        #expect(ContinuousClock.now - stalled >= first * 2)
+    }
+
+    @Test("the wait doubles twice, then holds at a minute")
+    func probeWaitIsCapped() {
+        let waits = (0 ..< 5).map {
+            CameraSession.probeWait(first: CameraSession.defaultProbeDelay, stalledProbes: $0)
+        }
+        #expect(waits == [.seconds(15), .seconds(30), .seconds(60), .seconds(60), .seconds(60)])
+    }
+
+    /// The carrier takes one subscription at a time, so the probe that is listening has
+    /// to be let go of — not left running beside the attempt that replaces it.
+    @Test("trying again during a probe replaces it")
+    func retryDuringAProbe() async {
+        let signaling = ScriptedSignaling()
+        let session = CameraSession(signaling: signaling, negotiationDeadline: Self.patience)
+        session.probeDelay = Self.stall
+        session.start()
+        defer { session.stop() }
+        await waitUntil("subscribed") { await signaling.subscriptions == 1 }
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("the attempt is started over") { await signaling.subscriptions == 2 }
+        await signaling.deliver(.sessionEnded(reason: "ice_negotiation_timeout"))
+        await waitUntil("a probe subscribes") { await signaling.subscriptions == 3 }
+
+        session.retry()
+        #expect(session.phase == .connecting)
+        await waitUntil("a fresh subscription") { await signaling.subscriptions == 4 }
+        // Each stall let one subscription go; the probe's is the third.
+        await waitUntil("the probe is let go of") { await signaling.disconnects == 3 }
+    }
+
+    /// Over the relay a probe would be an ask to central that nobody made, against a
+    /// service that rate-limits asks.
+    @Test("only a session on the LAN probes")
+    func onlyTheLANProbes() throws {
+        let lan = try CameraSession(address: RobotAddress(host: "192.168.1.42"))
+        #expect(lan.probeDelay == CameraSession.defaultProbeDelay)
+        #expect(CameraSession(signaling: ScriptedSignaling()).probeDelay == nil)
+    }
+
     /// The robot saying it has nothing to stream is an answer, not a stall — waiting on
     /// it is honest, and restarting would only ask the same question again.
     @Test("waiting for a producer is not a stall")

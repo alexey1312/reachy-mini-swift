@@ -90,7 +90,7 @@ integration is three types with one direction of trust:
   `track.isEnabled = isMicEnabled`, so a call rides a renegotiation out. `RootCallLifecycle` in
   ReachyUI owns that predicate.
   `.stalled` ends a call the way `.failed` does:
-  the session has stopped asking after two attempts, so there is nothing left to carry it.
+  the session has spent its two attempts, and a LAN probe a minute later is nothing a call can wait for.
   **Known remainder: `.failed` is not only a stream that died.** `CameraSession.accept()` sets it
   on its own renegotiation path when the peer cannot be built or a description is refused, and
   over the relay `CentralSignalingTransport` yields `.failed` routinely. `callMustEnd` treats any
@@ -141,6 +141,23 @@ it is the phase that waits.
   `.stalled` drops signaling, ends the robot's half and closes both channels,
   and the viewport offers **Try again** (`retry()`), which refills the budget.
   Connecting refills it too, so a stream that drops after working gets the same one retry.
+- **On the LAN `.stalled` is probed, slowly, until the robot answers.**
+  The robot does not say when it is back either,
+  and a robot that comes back with its backend still up gives the viewport nothing to rebuild the session on:
+  a Wi-Fi outage longer than both attempts, which `RobotSession` sits out on its last status,
+  or a media server slower than that to return.
+  Before #168 the session reconnected for ever; after it, such a camera stayed "Camera unavailable" until Try again.
+  So `scheduleProbe()` waits 15 s, then subscribes once more, on the usual deadline;
+  a probe that stalls too doubles the wait, twice, and then holds at a minute.
+  The phase stays `.stalled`, Try again included, until the robot answers —
+  a robot still away moves nothing on screen —
+  and `retry()` during a probe ends that probe's subscription first, because a carrier serves one at a time.
+  **A probe never calls `acquireMedia()`.**
+  On a robot whose camera an app released for direct access,
+  `POST /api/media/acquire` is a takeover, not a nudge,
+  and a probe repeats on its own schedule.
+  Over the relay there is no probe:
+  each would be an ask to central that nobody made, against a service that rate-limits asks.
 - **Starting over overlaps the old attempt, and three things keep it from leaking into the new one.**
   `CameraSignalingClient` clears only the socket its own loop opened;
   `accept` re-checks `peer === peerConnection` after every await;
@@ -241,6 +258,8 @@ after a call, and this entry is where to start.
   rather than until the offer is read, which on the LAN is well under a second. A camera that
   hangs on "Connecting…" for 15 s and then retries is the deadline at work — check the daemon's
   log for `stuck mid-negotiation` before blaming the client.
+- On the LAN, with the Live tab open, take the robot off Wi-Fi for longer than 30 s and bring it back:
+  "Camera unavailable" turns into a picture again within about a minute, with nobody tapping Try again.
 
 Untested by design, and the reason in one line each: `RobotCallController`'s adapter needs
 callservicesd; `WebRTCDataChannel` and the audio side of `CameraSession` need a live robot on the
