@@ -231,9 +231,9 @@ extension RobotSession {
         }
         moveActivity = nil
         playbacks.clear()
-        // A move that refused to stop is still running, and `_try_start_move` would
-        // drop the parking anyway — so the only thing sending it would add is a
-        // phase on screen over a robot that never left the dance.
+        // A move that refused to stop is still running, and the daemon would run
+        // the parking beside it — two motions fighting over the head, under a
+        // phase on screen that claims the robot left the dance.
         let stopped = !result.failures.contains { $0.hasPrefix("Move:") }
         guard parking, stopped, isAwake else { return result.failures.sorted() }
         let parkingErrors = await recentre(client: client)

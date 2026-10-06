@@ -50,8 +50,8 @@ struct RobotSleepTests {
 
     /// A 200 from `stop-current-app` is not the app letting go — the daemon clears
     /// its own slot several awaits later, past the return-to-zero it performs on the
-    /// app's behalf. Playing over that puts two motions on one robot, and
-    /// `play_move` takes its guard non-blocking.
+    /// app's behalf. Playing over that puts two motions on one robot, and the
+    /// daemon runs both.
     @Test("the animation waits for the daemon to stop naming the app")
     func waitsForTheAppToLetGo() async throws {
         let client = StubAppsClient()

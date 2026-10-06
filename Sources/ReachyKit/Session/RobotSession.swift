@@ -191,8 +191,8 @@ public final class RobotSession {
     }
 
     /// The robot is walking back to its zero pose. Nothing to stop, and the
-    /// library is briefly unavailable — a play issued now would be dropped by
-    /// `_try_start_move` without a word.
+    /// library is briefly unavailable — the daemon would run a play issued now
+    /// beside the parking, and the two would fight over the head.
     public var isRecentring: Bool {
         if case .recentring = moveActivity {
             true

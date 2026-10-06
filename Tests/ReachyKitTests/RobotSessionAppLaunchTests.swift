@@ -11,8 +11,7 @@ import Testing
 struct RobotSessionAppLaunchTests {
     /// The order is the assertion: motors, then the animation, then the app. A
     /// start that landed first would run over disabled motors, and one that landed
-    /// on the wake animation would have its own first move dropped by
-    /// `_try_start_move` without a word.
+    /// on the wake animation would have its own first moves run beside it.
     @Test("a sleeping robot is woken before the app starts")
     func wakesAnAsleepRobotBeforeStarting() async throws {
         let client = AppLifecycleClient(motorMode: .disabled)
@@ -35,9 +34,9 @@ struct RobotSessionAppLaunchTests {
         session.disconnect()
     }
 
-    /// A start over a running dance is accepted by the daemon and answered with a
-    /// plausible UUID, and the app's first motion then vanishes — the daemon has
-    /// one move slot and `play_move` takes its guard non-blocking.
+    /// A start over a running dance is accepted by the daemon, and the app's first
+    /// motions then run beside the dance — the daemon has one move slot and never
+    /// refuses a second caller.
     @Test("a running move is cleared before the app starts")
     func clearsTheMoveSlotFirst() async throws {
         let client = AppLifecycleClient()

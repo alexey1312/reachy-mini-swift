@@ -289,8 +289,10 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   nothing, so it says "A move is running on the robot" with no row highlighted) and the second of parking, which
   offers no Stop because there is nothing left to stop. Showing the parking phase is not decoration — it holds the
   daemon's one move slot, so a screen silent about it would claim an idle robot while it was still travelling.
-  `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view: every phase in it is a phase where
-  `_try_start_move` would drop the play without a word.
+  `MovesModel.rowsAreEnabled(_:)` owns the tap gate rather than the view:
+  every phase in it is a phase where the daemon would run the play beside a move it already has —
+  stopping, parking, and a power transition, whose `wake_up` and `goto_sleep` are move tasks too.
+  The daemon never refuses a second play; see `Sources/ReachyKit/AGENTS.md`.
 - **The soundboard is two libraries on one screen, and every row says which one it is in.** `Sounds/` holds
   `SoundboardScreen` and `SoundboardModel`, pushed from the Moves tab rather than given a tab of its own — the five are
   unconditional, and "things the robot does when you ask" is the tab this already belongs to. The row is gated on

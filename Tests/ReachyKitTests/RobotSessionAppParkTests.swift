@@ -163,7 +163,7 @@ struct RobotSessionAppParkTests {
 
     /// Sleeping stops the app itself, so the release is reached from inside a
     /// transition that is already parking the robot. A `goto` sent into that puts
-    /// two motions on one robot and one of them is dropped in silence.
+    /// two motions on one robot, and the daemon runs both.
     @Test("going to sleep by hand parks the robot once")
     func aManualSleepDoesNotParkTwice() async throws {
         let client = AppLifecycleClient()

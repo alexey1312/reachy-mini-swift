@@ -12,10 +12,8 @@ extension RobotSession {
     /// `currentMove` is this process's memory of a command it issued, and a move
     /// outlives the process: force-quit the app mid-dance and the robot is still
     /// going on the next launch. The missing animation is the visible half. The
-    /// other half is that `play_move` takes its guard non-blocking
-    /// (`backend/abstract.py`), so a play issued over a move nobody here knows
-    /// about returns a fresh UUID and moves nothing — the screen would name a
-    /// dance the robot never started.
+    /// other half is the Stop button: without it, nothing on screen can end a
+    /// dance that plays on with its music.
     ///
     /// `/api/move/running` carries UUIDs alone, so an adopted move has no
     /// `identity` and the screen says so rather than guessing a name.
@@ -52,9 +50,8 @@ extension RobotSession {
     /// The persisted record is consulted first: a UUID this app wrote is the only
     /// evidence anywhere that ties a running task to a dataset and a move name.
     /// Anything else is adopted anonymously — sorted rather than "first", because
-    /// a `Set` has no order and two tasks can overlap for an instant
-    /// (`_try_start_move` refuses the second one's *work*, but `create_move_task`
-    /// files it either way).
+    /// a `Set` has no order and two tasks can run at once (the daemon's guard
+    /// never refuses the second; see `clearTheFloor`).
     private func adoptable(from running: Set<String>) -> MovePlayback? {
         if let record = playbacks.current,
            record.robotID == connectedRobotID,

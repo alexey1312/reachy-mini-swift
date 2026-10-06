@@ -133,9 +133,9 @@ struct RobotSessionMoveTests {
         session.disconnect()
     }
 
-    /// A move that would not stop is still running, and `_try_start_move` would
-    /// refuse the parking anyway. Sending it would only add a phase over a robot
-    /// that never left the dance.
+    /// A move that would not stop is still running, and the daemon would run the
+    /// parking beside it — two motions on the head, under a phase that claims the
+    /// robot left the dance.
     @Test("a refused stop does not park the robot")
     func refusedStopSkipsNeutral() async throws {
         let client = MoveRobotClient()
@@ -159,7 +159,7 @@ struct RobotSessionMoveTests {
     }
 
     /// The parking is a move task of its own, so sending it between two dances
-    /// would have `_try_start_move` refuse the second one.
+    /// would run it beside the second one.
     @Test("starting the next move stops the old one without parking")
     func replacementSkipsNeutral() async throws {
         let client = MoveRobotClient()
@@ -211,10 +211,10 @@ struct RobotSessionMoveTests {
         session.disconnect()
     }
 
-    /// `goto_sleep` is a move task, so `_try_start_move` refuses it while a dance
-    /// is running — the animation is silently skipped and the motors go anyway.
-    /// The move has to be off the daemon's list first, exactly as the running app
-    /// is handed back first.
+    /// `goto_sleep` is a move task, and the daemon runs it beside a dance that is
+    /// still going — the two fight over the head, and the motors go anyway. The
+    /// move has to be off the daemon's list first, exactly as the running app is
+    /// handed back first.
     @Test("sleeping stops a running move before the parking animation")
     func sleepStopsMove() async throws {
         let client = MoveRobotClient()

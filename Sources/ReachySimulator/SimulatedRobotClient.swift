@@ -133,12 +133,12 @@ public final class SimulatedRobotClient: RobotAPIClient, MovePlaybackClient, @un
         startMove(aiming: TeleopTarget())
     }
 
-    /// **One slot, refused in silence, and the refusal is the point.** `play_move`
-    /// opens with a non-blocking guard and simply returns when a move is running —
-    /// having already filed a plausible UUID through `create_move_task`. So a
-    /// second caller is answered with an id and moves nothing.
-    /// `RobotSession+Moves` is built entirely around that, and a simulator that
-    /// helpfully queued would make its guards untestable against it.
+    /// **One slot, and a second caller is answered with an id and moves nothing.**
+    /// This is the simulator's rule, not the daemon's. The daemon's `play_move`
+    /// guard is a re-entrant lock taken on its one event-loop thread, so it never
+    /// refuses: a second move runs beside the first. Either way the second caller
+    /// is wrong, which is why `RobotSession+Moves` stops every running move first,
+    /// and a simulator that helpfully queued would hide that.
     private func startMove(aiming target: TeleopTarget) -> String {
         let uuid = UUID().uuidString
         let claimed = lock.withLock {

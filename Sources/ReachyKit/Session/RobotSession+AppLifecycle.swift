@@ -69,11 +69,11 @@ extension RobotSession {
     /// whether that meant waking it.
     ///
     /// Two steps, and the first is easy to leave out. **The move slot is freed
-    /// first**, because the daemon has exactly one and `play_move` takes its guard
-    /// non-blocking: an app started over a running dance has its first motion
-    /// accepted, answered with a plausible UUID and dropped in silence. `sleep()`
-    /// opens with the same `releaseMove()` for the same reason, and the wake
-    /// animation would collide with the dance too.
+    /// first**, because the daemon has exactly one and never refuses a second
+    /// caller: an app started over a running dance has its first motions run
+    /// beside the dance, both writing the head target. `sleep()` opens with the
+    /// same `releaseMove()` for the same reason, and the wake animation would
+    /// collide with the dance too.
     ///
     /// The widget's launcher has read the same readiness since it shipped
     /// (`RobotAppLauncher.startFreeRobot`); this is the screen's half of it, and
@@ -108,8 +108,8 @@ extension RobotSession {
     func parkAfterApp() async {
         // A power transition parks the robot itself, and both rungs of it reach
         // here through their own `releaseRunningApp()`. Sending a `goto` into that
-        // puts two motions on one robot, where `play_move` takes its guard
-        // non-blocking and drops one of them without a word.
+        // puts two motions on one robot, and the daemon runs both — they write
+        // the head target in turn.
         guard let client, powerTransition == nil else {
             appLifecycle.releaseWakeOwnership()
             return
