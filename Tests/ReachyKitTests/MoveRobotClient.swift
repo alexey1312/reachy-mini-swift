@@ -34,7 +34,22 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     var cancelStopMove = false
     var failStopSound = false
     var failGotoNeutral = false
+    /// How long the parking `goto`'s reply takes. The relay answers only once the
+    /// walk has finished, so there it is the whole parking.
+    var neutralReplyDelay: Duration = .zero
+    /// The play's reply never arrives. The daemon answers only after it has loaded
+    /// the dataset, and it starts the move whether or not anybody still waits.
+    var playTimeout: PlayTimeout?
+
+    enum PlayTimeout {
+        case afterStarting
+        case beforeStarting
+    }
+
     private(set) var listCalls = 0
+    /// How often the running list was read — the connect-time adoption is the
+    /// first, and a test that starts a move elsewhere waits for it to pass.
+    private(set) var runningReads = 0
     private(set) var events: [String] = []
     private(set) var stopSoundCalls = 0
     private(set) var gotoNeutralCalls = 0
@@ -47,11 +62,17 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
         self.awake = awake
     }
 
-    /// The move task ends on its own — a dance that reached its last frame, or one
-    /// `_try_start_move` dropped. The daemon pops the uuid in `wrap_coro`'s
-    /// `finally`, so from here on `move/stop` for it is a `KeyError`.
+    /// The move task ends on its own — a dance that reached its last frame. The
+    /// daemon pops the uuid in `wrap_coro`'s `finally`, so from here on
+    /// `move/stop` for it is a `KeyError`.
     func finishMove() {
         lock.withLock { activeUUID = nil }
+    }
+
+    /// A move this session never asked for: the widget, another device, or a
+    /// launch before this one.
+    func startElsewhere(_ uuid: String) {
+        lock.withLock { activeUUID = uuid }
     }
 
     private var status: Components.Schemas.DaemonStatus {
@@ -91,32 +112,43 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     }
 
     func playMove(dataset: String, move: String) async throws -> String {
-        lock.withLock {
+        let (uuid, timeout) = lock.withLock {
             nextUUID += 1
-            activeUUID = "move-\(nextUUID)"
+            if playTimeout != .beforeStarting {
+                activeUUID = "move-\(nextUUID)"
+            }
             events.append("play:\(dataset):\(move)")
-            return activeUUID!
+            return ("move-\(nextUUID)", playTimeout)
         }
+        if timeout != nil {
+            throw URLError(.timedOut)
+        }
+        return uuid
     }
 
     func gotoNeutral(duration _: Double) async throws -> String {
-        let shouldFail = lock.withLock {
+        let (uuid, shouldFail, delay) = lock.withLock {
             nextUUID += 1
             activeUUID = "goto-\(nextUUID)"
             lastGotoUUID = activeUUID
             gotoNeutralCalls += 1
             events.append("goto:\(activeUUID!)")
-            return failGotoNeutral
+            return (activeUUID!, failGotoNeutral, neutralReplyDelay)
         }
         if shouldFail {
             throw MoveFailure.failed
         }
-        return lock.withLock { activeUUID! }
+        // Filed on the daemon already; only the reply is still on its way.
+        if delay != .zero {
+            try? await Task.sleep(for: delay)
+        }
+        return uuid
     }
 
     func runningMoveUUIDs() async throws -> Set<String> {
         let probe = lock.withLock {
-            running.isEmpty ? MoveProbe.running(activeUUID.map { [$0] } ?? []) : running.removeFirst()
+            runningReads += 1
+            return running.isEmpty ? MoveProbe.running(activeUUID.map { [$0] } ?? []) : running.removeFirst()
         }
         switch probe {
         case let .running(uuids): return uuids

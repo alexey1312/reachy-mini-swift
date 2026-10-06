@@ -25,7 +25,7 @@ public extension RobotSession {
         /// Seconds rather than a `Duration` because `/api/move/goto` takes a number
         /// of seconds and this value is passed through to it unchanged. Long enough
         /// not to snap out of a dance, short enough that the next tap is not left
-        /// waiting on it — `_try_start_move` refuses a play while it runs.
+        /// waiting on it — the library rows stay off while it runs.
         public var recentreDuration: TimeInterval = 1.0
         /// Backend startup budget — upstream's `STARTUP.TIMEOUT_NORMAL`.
         public var daemonStartTimeout: Duration = .seconds(90)

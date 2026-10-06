@@ -203,9 +203,11 @@ its path component. `check-updates?force=` is the only `force` anywhere in the d
 **Nor can a client cause it.** Two hypotheses were checked and both are dead: uvicorn 0.52.1 does **not** cancel the
 ASGI task when the client disconnects (`connection_lost` only sets `cycle.disconnected`, in both `h11_impl.py` and
 `httptools_impl.py`; the sole `.cancel()` is the keep-alive timer, and there is no `BaseHTTPMiddleware` in the chain),
-so our 35 s and 6 s budgets cannot abort a stop in flight. And `play_move` takes its guard **non-blocking** and
-simply returns when a move is running (`backend/abstract.py:412`), so nothing we hold — teleop, the state stream, the
-camera — can stall return-to-zero.
+so our 35 s and 6 s budgets cannot abort a stop in flight. And `play_move` never waits on its guard:
+`_try_start_move` takes a re-entrant lock **non-blocking**, on the one event-loop thread every route runs on,
+so it never even refuses (`backend/abstract.py`, see the move-task section below).
+Nothing we hold — teleop, the state stream, the camera — can stall return-to-zero;
+a move of ours would run beside it instead.
 
 **`POST /api/daemon/restart` does not clear it.** It restarts the motor backend, not the FastAPI process that holds
 the slot (`daemon/daemon.py:473-536`, whose own docstring says so). The only ways out are `systemctl restart
@@ -435,6 +437,21 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   recorded move are indistinguishable in `GET /api/move/running` — which returns `[{uuid}]` and no other field. There
   is no route that names a running move. `POST /api/move/stop` awaits the cancellation before answering, so a 200
   means the slot is already free.
+  - **The daemon never refuses a second move, and its own comment says it does.**
+    `play_move` opens with `if not self._try_start_move(): return`,
+    and `_try_start_move` is `threading.RLock().acquire(blocking=False)`.
+    Every HTTP, WebSocket and data-channel route runs `play_move` as a coroutine on the one event-loop thread,
+    so the lock is re-entrant there and the acquire always succeeds — on every version from 1.9 to `main`.
+    A second play therefore runs beside the first: both write the head target in turn at 100 Hz,
+    and the second `play_sound` restarts the music.
+    `_async_play_recorded_move` carries the comment "a double-tap is a no-op"; it is not.
+    The client stops every running move before a play — `RobotSession.clearTheFloor`, `RobotMovePlayer`.
+  - **Both recorded-move routes load the dataset before they answer**,
+    through `RecordedMoves(dataset)`, which downloads what is not cached.
+    Only `DEFAULT_DATASETS` — the two Pollen libraries — are preloaded at startup,
+    and a cold load of `Anne-Charlotte/music` took about 15 s.
+    A client that gives up first has not stopped the move: the daemon plays it once the load ends.
+    The data channel's `play_recorded_move` acks at the same point, after the load.
   - **A stop for a uuid the daemon no longer holds is a 500, not a 404**, and the uuid goes the instant the move's
     coroutine ends — `wrap_coro`'s `finally` pops it, while `stop_move_task` opens with a bare
     `raise KeyError(...)` that no exception handler catches. Measured against the Wireless unit on 2026-08-14: the
@@ -552,8 +569,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     the app manager is never told, so an app is still driving when the motors go and dies on its next command. Both
     the client's sleep and its power-off therefore stop the app first *and wait for the daemon to stop naming it* —
     a 200 from `stop-current-app` is not the app letting go (see the `stopping` section above), and parking on top
-    of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot, where `play_move`'s
-    non-blocking guard silently drops one of them. `RobotSession.releaseRunningApp` and `RobotAppRelease`.
+    of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot,
+    and the daemon runs both, because `play_move`'s guard never refuses. `RobotSession.releaseRunningApp` and
+    `RobotAppRelease`.
 - `daemon/start?wake_up=<bool>` returns a job id immediately and starts the backend in the background (409 while
   another job runs); poll `daemon/status` until `running`. With `wake_up=true` the daemon enables the motors itself.
   - **That flag is what lets a caller with no time wake a robot at all.** `motors/set_mode` is behind `get_backend`

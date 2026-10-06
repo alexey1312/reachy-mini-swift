@@ -103,7 +103,7 @@ public struct MoveEntityQuery: EntityQuery, EntityStringQuery {
         let known = MoveLibrary.all.map(\.dataset)
         let extras = index.keys.filter { !known.contains($0) }.sorted()
         return (known + extras).flatMap { dataset in
-            (index[dataset] ?? []).map { MoveEntity(dataset: dataset, move: $0) }
+            MoveLibrary.offered(index[dataset] ?? [], in: dataset).map { MoveEntity(dataset: dataset, move: $0) }
         }
     }
 

@@ -52,6 +52,30 @@ public struct MoveLibrary: Sendable, Equatable, Identifiable {
         all.first { $0.dataset == dataset }
     }
 
+    /// Recordings this app does not offer, by dataset.
+    ///
+    /// Both carry bursts of frames that share one timestamp — 574 in Thriller and
+    /// 838 in We Will Rock You. The daemon's `RecordedMove.evaluate` sets alpha to
+    /// 0 between two equal timestamps, so the head snaps across a burst instead of
+    /// easing through it: up to 27.5° in 10 ms. Their twins without "official" in
+    /// the name hold one or two such bursts and stay in the library.
+    static let withheld: [String: Set<String>] = [
+        "Anne-Charlotte/music": [
+            "michael-jackson-thriller-official-video-shortene",
+            "queen-we-will-rock-you-official",
+        ],
+    ]
+
+    /// The moves a person is offered out of what the robot listed, in its order.
+    ///
+    /// Every list a person picks from goes through this: the Moves screen, the
+    /// Shortcuts and widget pickers, Siri's match and the Spotlight index. A saved
+    /// shortcut still resolves by its identifier, which names the move outright.
+    public static func offered(_ moves: [String], in dataset: String) -> [String] {
+        guard let withheld = withheld[dataset] else { return moves }
+        return moves.filter { !withheld.contains($0) }
+    }
+
     /// The only title a move has. The daemon answers with file stems —
     /// `happy_dance`, `sad2` — and there is no metadata behind them anywhere.
     public static func displayName(_ move: String) -> String {

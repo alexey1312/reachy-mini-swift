@@ -215,8 +215,8 @@ extension RobotSession {
     /// clears its own slot on the last line of `stop_current_app`, past the
     /// return-to-zero it performs on the app's behalf (`apps/manager.py:283`,
     /// `:355`). Parking on top of that hand-back puts two motions on one robot, and
-    /// `play_move` takes its guard non-blocking (`backend/abstract.py:412`) — so
-    /// one of the two silently does nothing, and which one is not ours to choose.
+    /// the daemon runs both: `play_move`'s guard is a re-entrant lock taken on its
+    /// one event-loop thread, so it never refuses, and the two fight over the head.
     ///
     /// Neither a refusal nor a timeout aborts anything. Parking the robot matters
     /// more than proof that the app let go, the same trade `waitForMoveToFinish`

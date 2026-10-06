@@ -91,8 +91,8 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   motors taken out from under it and dies on its next command, which is what "sleeping killed my app" turned out to
   be. The **wait** is not politeness: a 200 from `stop-current-app` is not the app letting go (the daemon sets
   `stopping` before any I/O and clears its own slot on the last line, past the return-to-zero it performs on the
-  app's behalf), so parking on top of it puts two motions on one robot and `play_move` takes its guard
-  non-blocking — one of the two silently does nothing. Bounded by `appStopTimeout` and never fatal: a refusal is
+  app's behalf), so parking on top of it puts two motions on one robot,
+  and the daemon runs both — they write the head target in turn. Bounded by `appStopTimeout` and never fatal: a refusal is
   reported and a timeout is ignored, because a head held up for the daemon's one-way `stopping` wedge is the worse
   outcome. The intent-side twin is `RobotAppRelease` in `ReachyWidgetUI`, on a much shorter budget.
 - **An app start is the mirror image of that hand-back, and the daemon does neither end.**
@@ -141,14 +141,36 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     and, because somebody asked for sleep, chases a reset that never comes.
     The relay keeps the session's own parking, because every data-channel frame cancels the reset first.
     Why each condition holds, with the daemon's line numbers, is in `.claude/rules/daemon-api.md`.
-- **The daemon has exactly one move slot, it refuses the second caller in silence, and everything in
-  `RobotSession+Moves` follows from that.** `play_move` opens with `if not self._try_start_move(): return`
-  (`backend/abstract.py`) — non-blocking, no error, and the route has _already_ filed a fresh UUID through
-  `create_move_task`. So a second play is accepted, answered with a plausible id, and moves nothing. Three separate
-  bugs were that one fact: a relaunched app tapping over a dance it had forgotten, `goto_sleep` skipped over a
-  running move while `set_mode/disabled` cut the motors mid-pose a moment later, and a parking `goto` swallowing the
-  tap that followed it. `clearTheFloor` and `releaseMove` are the two ways the slot is emptied first; whatever is
-  added next owes the same.
+- **The daemon has exactly one move slot and does not guard it, and everything in `RobotSession+Moves` follows from
+  that.**
+  `play_move` opens with `if not self._try_start_move(): return` (`backend/abstract.py`),
+  and `_try_start_move` is `RLock.acquire(blocking=False)`.
+  Every HTTP, WebSocket and data-channel route runs `play_move` as a coroutine on the one event-loop thread,
+  so the lock is re-entrant there and the guard never refuses.
+  A second play is accepted and **runs beside the first**:
+  the two write the head target in turn at 100 Hz, and the second `play_sound` restarts the music,
+  so the robot jerks as if every command came twice.
+  The daemon's own comment says "a double-tap is a no-op"; it is not, on any version from 1.9 to `main`.
+  So every move the daemon runs is stopped before a play, not only the one this session remembers:
+  `clearTheFloor` calls `MovePlaybackClient.stopRunningMoves()`,
+  which on the LAN lists `GET /api/move/running` and stops each uuid,
+  and over the relay reads `get_state`'s `is_move_running` and sends one `stop_move`,
+  because the relay can name only the move it started itself.
+  A move that will not stop throws, and the play is not sent.
+  `releaseMove` runs the same sweep before `goto_sleep`,
+  and the parking claims its phase before its `goto` is sent, so no library row is live while it runs.
+  Whatever is added next owes the same.
+  - **The relay's `stop_move` is awaited by its command, never by its `stopped` key.**
+    The ack is `{"status": "ok", "command": "stop_move", "stopped": …}`,
+    and the channel routes a frame by `command` before any other key,
+    so a wait on `stopped` never matched and sat out the whole reply budget after the robot had stopped.
+  - **A play that times out may still start.**
+    Both move routes load the dataset before they answer, and the daemon preloads only the two Pollen libraries
+    (`DEFAULT_DATASETS`); a cold load of the Music one took about 15 s.
+    So the LAN index and play ride `hubClient`,
+    and after a timeout `playMove` reads the running list once and adopts what it finds —
+    named after the play when it is the only task, since the floor was cleared just before.
+    Over the relay the handle outlives the timeout, so `runningMoveUUIDs` can confirm it.
 - **`GET /api/move/running` answers UUIDs and nothing else, and it does not know what a dance is.** No dataset, no
   name — and `wake_up`, `goto_sleep` and `goto` are `create_move_task` calls too, so they appear in it exactly like a
   recorded move. Two consequences, both load-bearing: a move adopted on connect gets `MovePlayback.identity == nil`
@@ -161,13 +183,18 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   derived from it, not stored beside it, so `.stopping` and `.recentring` cannot both be true. `.recentring` carries
   a bare UUID rather than a `MovePlayback`: parking is not playback, has no row to highlight, and must leave
   `currentMove` nil or the screen offers Stop over a move nobody started.
+  The UUID is `nil` while the `goto` is in flight:
+  `recentre` claims the phase before it sends the request,
+  because a row tapped before the reply played beside the parking — over the relay, for the whole walk.
 - **Parking is followed by the same poll as a dance, never timed against `recentreDuration`.** A `goto` can be
   cancelled — `playMove` does exactly that — or fail, and the phase has to end when the task does. It is also skipped
-  in three places on purpose: between two dances (it would refuse the second), after a stop the daemon rejected (the
-  move is still running), and while the robot is asleep (motors disabled, so the task travels nowhere).
+  in three places on purpose: between two dances (it would run beside the second), after a stop the daemon rejected
+  (the move is still running), and while the robot is asleep (motors disabled, so the task travels nowhere).
 - **`RobotSession.swift` is at SwiftLint's file and type limits.** Recorded moves moved out to
   `RobotSession+Moves.swift` when adding parking crossed both at once. New session behaviour belongs in a
   `RobotSession+<Feature>.swift`, not in the class body.
+  `+Moves` reached the file limit in turn, and adoption moved out to `RobotSession+MoveAdoption.swift`;
+  the relay's moves live in `RemoteRobotConnection+Moves.swift` for the same reason.
 - **The app catalogue and the move index outlive the process, in the app group's
   `Library/Caches/ReachyMini/catalogue`.** `Cache/` holds one
   `RobotCatalogueCache` actor with two slots, not two stores: both need the same atomic write, the same

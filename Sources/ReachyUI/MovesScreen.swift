@@ -181,8 +181,9 @@ struct MovesScreen: View {
         session.canTeleoperate && session.isAwake && !recorder.isPlaying
     }
 
-    /// Frees the daemon's one move slot first: a dance already playing would fight
-    /// the targets this is about to send, and `play_move` drops the loser in silence.
+    /// Frees the daemon's one move slot first: while a move runs, the daemon
+    /// ignores every target this is about to send (`set_target` checks
+    /// `is_move_running`), so the recording would play into silence.
     private func play(_ recording: MoveRecording) {
         Task {
             if session.moveActivity != nil {
