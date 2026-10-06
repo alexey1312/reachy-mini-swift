@@ -41,6 +41,7 @@ struct CameraSignalingClientTests {
 
         let client = try await makeClient(port: fake.readyPort())
         var events = await client.events().makeAsyncIterator()
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
         #expect(await events.next() == .remoteCandidate(
             sessionID: "sess-1", candidate: "candidate:1", sdpMLineIndex: 0, sdpMid: "0"
@@ -78,8 +79,11 @@ struct CameraSignalingClientTests {
         _ = events // keep the stream (and its run loop) alive until here
     }
 
+    /// The late producer is a peer status only this client sees, so it has to say it
+    /// asked: the session times the offer from that moment, and a robot that registers
+    /// and then never offers would otherwise be waited on for ever.
     @Test(
-        "empty producer list → waitingForProducer, producer appearing later starts a session",
+        "empty producer list → waitingForProducer, producer appearing later starts a session and says so",
         .timeLimit(.minutes(1))
     )
     func waitsForProducer() async throws {
@@ -103,6 +107,7 @@ struct CameraSignalingClientTests {
         #expect(await events.next() == .waitingForProducer)
 
         fake.send(.peerStatusChanged(peerID: "prod-late", roles: ["producer"], name: "reachymini"))
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-2", sdp: "v=0 late offer"))
     }
 
@@ -125,11 +130,13 @@ struct CameraSignalingClientTests {
 
         let client = try await makeClient(port: fake.readyPort())
         var events = await client.events().makeAsyncIterator()
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
 
         fake.send(.endSession(sessionID: "sess-1", reason: nil))
         #expect(await events.next() == .sessionEnded(reason: nil))
         // The client re-lists and re-negotiates a fresh session on its own.
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
         #expect(fake.received(.startSession(peerID: "prod-1")) == 2)
     }
@@ -153,10 +160,12 @@ struct CameraSignalingClientTests {
 
         let client = try await makeClient(port: fake.readyPort())
         var events = await client.events().makeAsyncIterator()
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
 
         fake.dropConnections()
         #expect(await events.next() == .sessionEnded(reason: nil))
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
         #expect(fake.connectionCount == 2)
     }
@@ -193,11 +202,13 @@ struct CameraSignalingClientTests {
             }
         }
         var firstEvents = seen.makeAsyncIterator()
+        #expect(await firstEvents.next() == .sessionRequested)
         #expect(await firstEvents.next() == .offer(sessionID: "sess-1", sdp: "v=0 offer"))
         first.cancel()
         await client.disconnect()
 
         var events = await client.events().makeAsyncIterator()
+        #expect(await events.next() == .sessionRequested)
         #expect(await events.next() == .offer(sessionID: "sess-2", sdp: "v=0 offer"))
         #expect(fake.received(.endSession(sessionID: "sess-1", reason: nil)) == 1)
         await client.send(answerSDP: "v=0 answer")

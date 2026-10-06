@@ -54,4 +54,8 @@ actor ScriptedSignaling: RobotSignaling {
             }
         }
     }
+
+    var disconnects: Int {
+        sent.count { $0 == .disconnect }
+    }
 }

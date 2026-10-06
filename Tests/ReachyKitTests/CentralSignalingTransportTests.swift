@@ -59,6 +59,8 @@ struct CentralSignalingTransportTests {
         }
 
         #expect(events.contains(.offer(sessionID: "s1", sdp: "v=0 offer")))
+        // Said as well as done, so a session waiting for the robot starts its clock.
+        #expect(events.contains(.sessionRequested))
         let asked = StubURLProtocol.bodies(for: session)
             .compactMap { try? JSONDecoder().decode(SignalingMessage.self, from: $0) }
         #expect(asked.contains(.startSession(peerID: "robot-1")))

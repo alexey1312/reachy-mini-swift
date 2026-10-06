@@ -140,7 +140,7 @@ public actor CameraSignalingClient {
         case let .peerStatusChanged(peerID, roles, _):
             if roles.contains("producer") {
                 if producerID == nil {
-                    await startSession(producerID: peerID)
+                    await startSession(producerID: peerID, continuation)
                 }
             } else if peerID == producerID {
                 endCurrentSession(continuation)
@@ -150,7 +150,7 @@ public actor CameraSignalingClient {
             guard producerID == nil else { return }
             let preferred = producers.first { $0.name == Self.preferredProducerName } ?? producers.first
             if let preferred {
-                await startSession(producerID: preferred.id)
+                await startSession(producerID: preferred.id, continuation)
             } else {
                 continuation.yield(.waitingForProducer)
             }
@@ -186,9 +186,16 @@ public actor CameraSignalingClient {
         }
     }
 
-    private func startSession(producerID: String) async {
+    /// Says so as well as asking. A producer that registers after `waitingForProducer`
+    /// arrives as a peer status nobody else sees, and the media layer times the offer
+    /// from here — without this, a robot that then never offers is waited on for ever.
+    private func startSession(
+        producerID: String,
+        _ continuation: AsyncStream<SignalingEvent>.Continuation
+    ) async {
         self.producerID = producerID
         await send(.startSession(peerID: producerID))
+        continuation.yield(.sessionRequested)
     }
 
     private func endCurrentSession(_ continuation: AsyncStream<SignalingEvent>.Continuation) {

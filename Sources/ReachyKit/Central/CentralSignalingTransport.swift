@@ -109,6 +109,9 @@ public actor CentralSignalingTransport: RobotSignaling {
             switch try await relay.startSession(with: robot.peerID) {
             case let .started(sessionID):
                 self.sessionID = sessionID
+                // The same sign the robot's own socket gives: after a wait, the
+                // media layer times the offer from here.
+                continuation.yield(.sessionRequested)
             case let .rejected(reason, activeApp):
                 continuation.yield(.failed(RemoteSessionEnd(reason: reason, activeApp: activeApp).message))
             }
