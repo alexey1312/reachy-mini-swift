@@ -162,7 +162,7 @@ struct AppDetailSheet: View {
                     Link(destination: spaceURL) {
                         Label(.reachy("View on Hugging Face"), systemImage: "arrow.up.forward.square")
                     }
-                    AppModerationActions(app: app, moderation: model.moderation, afterHiding: dismiss)
+                    AppModerationActions(app: app, store: model, afterHiding: dismiss)
                         .disabled(install.isBusy)
                 } footer: {
                     Text(.reachy("A report goes to Hugging Face, which moderates every Space."))

@@ -21,4 +21,14 @@ extension AppStoreModel {
         shownSection == .discover && !discoverNeedsHFSignIn && !showsCommunityNotice
             && catalogue.contains(where: moderation.isHidden)
     }
+
+    /// Whether a page or a row may offer to hide this app's author: never for a card
+    /// that stands for an installed app, for the reason `AppModeration` refuses an
+    /// installed row. Over the relay that card is the only page there is — the relay
+    /// has no Installed section, so the card of the app that runs or was just
+    /// installed is the one page that can start it, and hiding its author would take
+    /// that page away.
+    func canHideAuthor(of app: RobotApp) -> Bool {
+        installedTwin(of: app) == nil && moderation.canHideAuthor(of: app)
+    }
 }

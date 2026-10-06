@@ -117,7 +117,7 @@ struct AppStoreScreen: View {
                             }
                         }
                         pinButton(for: app)
-                        AppModerationActions(app: app, moderation: model.moderation)
+                        AppModerationActions(app: app, store: model)
                     }
                 }
             }

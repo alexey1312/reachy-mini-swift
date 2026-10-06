@@ -50,6 +50,8 @@ final class AppModeration {
 
     /// Whether a surface may offer to hide this app's author: a catalogue card with
     /// an author. An installed row is not one, for the reason the type's note gives.
+    /// A card with an installed twin is not one either, which only the store can
+    /// tell — surfaces ask `AppStoreModel.canHideAuthor(of:)`.
     func canHideAuthor(of app: RobotApp) -> Bool {
         !app.isInstalled && app.author?.isEmpty == false
     }

@@ -803,6 +803,10 @@ this is that half, and it ships.
   So `canHideAuthor(of:)` answers false for an installed row even when it names an author —
   `installedWithAuthorNoHide` is there because the fixture's installed app has no card,
   and the guard could be deleted with every other test still green (checked by mutating it).
+  **A card with an installed twin offers no hide either** (`AppStoreModel.canHideAuthor(of:)`),
+  and the relay is why: it has no Installed section, so the card of the app that runs or was just installed
+  is the only page that can start it. `installedTwinOffersNoHide` holds it.
+  On the LAN the same rule takes Hide off `App detail — installed`, whose card joins an installed row.
   Report is offered on every page with a Space id: it is the Hub's own form,
   and an app worth reporting does not stop being one once installed.
 - **The notice is not part of `visibleApps`, and the sign-in gate is.**
