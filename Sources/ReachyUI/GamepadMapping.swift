@@ -28,11 +28,6 @@ struct GamepadReading: Equatable, Sendable {
 
 /// What one tick of a controller asks of `TeleopDriver`, which writes it as one target.
 struct TeleopStep: Equatable, Sendable {
-    struct Antennas: Equatable, Sendable {
-        var left: Double
-        var right: Double
-    }
-
     /// A new deflection for the pad's own mapping, or `nil` to leave the head alone.
     var look: JoystickDeflection?
     /// Radians to turn the body by, signed like `JoystickMapping.bodyYawRate`.
@@ -41,8 +36,11 @@ struct TeleopStep: Equatable, Sendable {
     var roll = 0.0
     /// Metres to raise the head by.
     var height = 0.0
-    /// Absolute angles, or `nil` to leave the antennas where they are.
-    var antennas: Antennas?
+    /// Absolute angles, each `nil` to leave that antenna where it is. One per side,
+    /// because each trigger moves its own antenna: a pair would write the other side
+    /// too, and snap an antenna its slider had set to wherever the other trigger rests.
+    var antennaLeft: Double?
+    var antennaRight: Double?
     var reset = false
 }
 
@@ -116,13 +114,16 @@ struct GamepadMapping: Equatable, Sendable {
         let tilt = (reading.rightShoulder ? 1.0 : 0) - (reading.leftShoulder ? 1.0 : 0)
         step.roll = tilt * rollRate * seconds
 
+        // Mirrored, so the two move as a pair: the daemon's own poses carry
+        // opposite signs on the two sides — `SLEEP_ANTENNAS_JOINT_POSITIONS` is
+        // `[-3.05, 3.05]`, right then left, as `target_antennas` is ordered.
         let left = trigger(reading.leftTrigger)
+        if left != trigger(previous.leftTrigger) {
+            step.antennaLeft = left * antennaReach
+        }
         let right = trigger(reading.rightTrigger)
-        if left != trigger(previous.leftTrigger) || right != trigger(previous.rightTrigger) {
-            // Mirrored, so the two move as a pair: the daemon's own poses carry
-            // opposite signs on the two sides — `SLEEP_ANTENNAS_JOINT_POSITIONS` is
-            // `[-3.05, 3.05]`, right then left, as `target_antennas` is ordered.
-            step.antennas = .init(left: left * antennaReach, right: -right * antennaReach)
+        if right != trigger(previous.rightTrigger) {
+            step.antennaRight = -right * antennaReach
         }
 
         return step == TeleopStep() ? nil : step

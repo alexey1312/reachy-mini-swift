@@ -52,6 +52,10 @@ import SwiftUI
         let reconnect: @MainActor (CentralRobot) -> Void
 
         @State private var hosted: JSAppHostModel?
+        /// Set from the tap until the page is up. Over the relay that wait is
+        /// `freeRobot`, up to twenty seconds with `hosted` still nil, so `hosted`
+        /// alone would let a second tap open the app twice.
+        @State private var isOpening = false
         /// The relayed robot to dial again once the app has let go, by hardware id —
         /// its central peer id may well have changed by then.
         @State private var returnTo: String?
@@ -76,8 +80,10 @@ import SwiftUI
         }
 
         private func open(_ app: JSApp, url: URL) {
-            guard hosted == nil else { return }
+            guard hosted == nil, !isOpening else { return }
+            isOpening = true
             Task {
+                defer { isOpening = false }
                 if session.isRemote, let hardwareID = session.connectedIdentity?.hardwareID {
                     returnTo = hardwareID
                     releaseRelay()

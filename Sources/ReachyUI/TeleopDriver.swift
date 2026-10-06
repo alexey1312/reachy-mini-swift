@@ -157,9 +157,11 @@ final class TeleopDriver {
         if step.height != 0 {
             next.z = (next.z + step.height).clamped(to: -Self.heightLimit ... Self.heightLimit)
         }
-        if let antennas = step.antennas {
-            next.antennaLeft = antennas.left
-            next.antennaRight = antennas.right
+        if let left = step.antennaLeft {
+            next.antennaLeft = left
+        }
+        if let right = step.antennaRight {
+            next.antennaRight = right
         }
         // Held against a limit a tick changes nothing, and an unchanged target is not
         // worth a push — the same guard `setBodyYaw` keeps.

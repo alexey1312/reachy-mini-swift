@@ -12,7 +12,9 @@ import SwiftUI
 /// between a reader and the one control guideline 1.2 asks to be easy.
 struct AppModerationActions: View {
     let app: RobotApp
-    let moderation: AppModeration
+    /// The store rather than its `AppModeration` alone: whether Hide is offered
+    /// depends on what the robot has installed (`AppStoreModel.canHideAuthor(of:)`).
+    let store: AppStoreModel
     /// What the host does once the author is hidden. The page leaves: it is the page
     /// of an app the reader has just asked not to see.
     var afterHiding: () -> Void = {}
@@ -26,9 +28,9 @@ struct AppModerationActions: View {
                 Label(.reachy("Report this app"), systemImage: "flag")
             }
         }
-        if moderation.canHideAuthor(of: app) {
+        if store.canHideAuthor(of: app) {
             Button {
-                moderation.hideAuthor(of: app)
+                store.moderation.hideAuthor(of: app)
                 afterHiding()
             } label: {
                 // `eye.slash` is half again as wide as its neighbours and stood 4.5 pt

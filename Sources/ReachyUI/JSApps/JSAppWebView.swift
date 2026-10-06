@@ -38,8 +38,13 @@ import WebKit
             }
 
             func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
-                guard let body = message.body as? String,
-                      let decoded = JSAppHostProtocol.pageMessage(from: Data(body.utf8))
+                guard JSAppHostBridge.admits(
+                    isMainFrame: message.frameInfo.isMainFrame,
+                    host: message.frameInfo.securityOrigin.host,
+                    allowedHost: allowedHost
+                ),
+                    let body = message.body as? String,
+                    let decoded = JSAppHostProtocol.pageMessage(from: Data(body.utf8))
                 else { return }
                 model.receive(decoded)
             }

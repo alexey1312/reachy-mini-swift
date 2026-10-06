@@ -16,12 +16,15 @@ struct ConversationUnavailableView: View {
     /// relay session and for an app that is not running — the page is served by the app's
     /// own process, on the robot's own network.
     let settingsURL: URL?
+    /// What the app last said about its voice backend. The app's own words, so they
+    /// stay runtime text (rule 9).
+    var backendError: String?
 
     var body: some View {
         ContentUnavailableView {
             Label(Self.title(for: phase), systemImage: Self.symbol(for: phase))
         } description: {
-            Text(Self.message(for: phase))
+            Text(Self.message(for: phase, backendError: backendError))
         } actions: {
             if case .backendUnconfigured = phase, let settingsURL {
                 Link(destination: settingsURL) {
@@ -80,6 +83,15 @@ struct ConversationUnavailableView: View {
                 String(localized: .reachy("The robot's software is too old to relay the conversation."))
             }
         }
+    }
+
+    /// `message(for:)`, and the app's own words about its backend under it — while the
+    /// screen waits for the backend, and once that wait has ended without it.
+    static func message(for phase: ConversationModel.Phase, backendError: String?) -> String {
+        let message = message(for: phase)
+        guard let backendError, phase == .preparing || phase == .backendUnconfigured else { return message }
+        return message + "\n\n" + String(localized: .reachy("The last connection attempt failed:")) + "\n" +
+            backendError
     }
 
     private static func symbol(for phase: ConversationModel.Phase) -> String {

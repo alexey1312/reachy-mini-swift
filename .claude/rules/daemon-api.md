@@ -253,16 +253,22 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `user_personalities/` with no `profile.md` in it does that: `Failed to initialize tools`, exit code 1, and the
   settings that would fix it unreachable until the app starts. Fix that class of thing on the robot.
 - **Conversation App 1.0 speaks JSON-RPC 2.0 over WebSocket `/rpc`.** The REST `/api/v1/*` + SSE
-  `/api/v1/conversation_events` of v0.10.0 is retired, not extended. It ships with SDK `1.10.0rc2` **in the app's own
-  venv**, so `/rpc` answers on a robot whose daemon is still 1.9.0.
+  `/api/v1/conversation_events` of v0.10.0 is retired, not extended.
+  v1.0.1 requires `reachy-mini>=1.10.0rc5` **in the app's own venv**,
+  so `/rpc` answers on a robot whose daemon is still 1.9.0.
 - **Consume `conversation.turn` `{state}`, not `conversation.activity` `{reason}`.** The app's own web UI subscribes
   to `activity` and maps the raw reasons itself (`static/js/orb.js`); `turn` carries the mapped
   `listening / thinking / speaking / ready`, deduplicated server-side, and the comment beside it in `console.py` says
   it is there "for clients without that mapping (mobile)". Copying the frontend is the wrong instinct here.
   Also broadcast: `conversation.transcript` `{role, text, final}` and `conversation.level` `{role, rms}` — the
   latter throttled server-side to 15 Hz and scaled into `0…1`, with the app's own comment saying the cap is "so it
-  stays light on the DataChannel". Request methods: `conversation.status`, `conversation.mic`, `conversation.say`,
-  `conversation.interrupt`, `personalities.*`, `voices.*`, `backend.config`.
+  stays light on the DataChannel".
+  On v1.0.x the app answers 21 request methods:
+  `conversation.{status,mic,say,interrupt}`, `backend.config`,
+  `personalities.{list,all,load,avatar,save,delete,apply}`, `voices.{list,current,apply}`,
+  `profile_tools.{get,save,reset}` and `tool_spaces.{list,add,remove}`.
+  This client makes ten calls to nine of them (`ConversationRPCClient+Requests.swift`).
+  Upstream `main` adds `memory.*`, `language.*` and `vision.*`, which no release carries yet.
 - **`conversation.phase` is dead.** `_emit_phase` is defined in `console.py` and called from nowhere in the Space, so
   a client that waits for one waits for ever. It is in the broadcast list above only in the sense that the code to
   send it exists.
@@ -278,10 +284,20 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   and the sent text never comes back. Anything naming this feature has to say "give Reachy something to respond to",
   never "have Reachy say…" — the same honesty test #121 applied to the `phone` App Intents schema. It also barges
   in, clearing whatever is queued for the speaker.
-- **The backend takes up to 90 seconds to come up**, and `loop_unavailable` is the documented reason meaning
-  "Reachy is still starting up". The app's own web client retries it every 2 s against a 90 s deadline
-  (`static/js/api.js:untilReady`). A client that treats the first failure as fatal is wrong; a transport that
-  swallows the reason hides the one state a screen has to narrate, so the retry belongs above the transport.
+- **The backend takes up to 90 seconds to come up, and `backend_connected` is what says it has.**
+  `conversation.status` answers from the moment the app is up,
+  and its `can_proceed` only says a Hugging Face connection is configured.
+  Until the backend connects, `conversation.say` and `conversation.interrupt` raise `not_running`
+  ("no active session") — at startup, and again through the reconnect a personality or backend change starts.
+  `loop_unavailable` comes only from the personality and voice operations, while the app's event loop is not up;
+  `conversation.status` never raises it.
+  The app's own web client retries any failure every 2 s against a 90 s deadline (`static/js/api.js:untilReady`).
+  Pollen's mobile app polls `conversation.status` every 1 s for up to 60 s until `backend_connected`,
+  shows `backend_error`, and treats `not_running` and `app_unavailable` as transient while the app boots
+  (`robot-conversation.ts:waitUntilReady`).
+  A client that treats the first failure as fatal is wrong;
+  a transport that swallows the reason hides the one state a screen has to narrate,
+  so the retry belongs above the transport.
 - **The error envelope is `{message, data: {reason}}` with a JSON-RPC `code`**, and the `reason` strings are a
   stable contract — `api.js` calls it "the stable reason" and maps about twenty of them to copy. Match those rather
   than inventing any.
@@ -335,6 +351,11 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `method_not_found` / -32601 for a verb the app's build does not have. Those are three different screens — the app
   is gone, the app is there and silent, this build cannot do it — and folding them into one sentence is what
   `RemoteControlChannel.Failure.rpc(code:message:reason:)` exists to stop.
+  The app raises `not_running` itself too, with the same code, while its backend is not connected (above),
+  and the relay passes that reply on unchanged.
+  So over the relay only the relay's own message, "no app is running", says that no app runs;
+  on the LAN there is no relay to have said it.
+  `ConversationFailure` maps the app's one to `backendNotConnected`, which a screen waits out.
 - **Removing an app does not stop it first.** `POST /apps/remove/{app_name}` clears the startup app if it matches and
   then queues `AppManager.remove_app`, which calls `uninstall_package` immediately — no `is_app_running()` check. The
   contrast is one method down: `update_app` *does* check and raises. So a running conversation app can be uninstalled

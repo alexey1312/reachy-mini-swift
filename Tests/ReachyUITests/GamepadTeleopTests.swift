@@ -116,6 +116,29 @@ struct GamepadTeleopTests {
         driver.stop()
     }
 
+    /// A Mac window left visible behind another app keeps the scene `.active`, and the
+    /// system stops sending the controller's input to it: the reading the poll copied
+    /// last stays held. The poll can also take one more turn with that reading.
+    @Test("the app losing the front stops a held turn until it is back in front")
+    func losingTheFrontStopsAHeldTurn() {
+        let hub = GamepadTeleop()
+        let driver = TeleopDriver()
+        _ = hub.claim(driver, priority: .screen, standDown: nil)
+        let held = reading { $0.rightStick = .init(x: 1, y: 0) }
+        hub.tick(held, seconds: 0.016)
+        #expect(driver.bodyYawRate != 0)
+
+        hub.setAppActive(false)
+        #expect(driver.bodyYawRate == 0)
+        hub.tick(held, seconds: 0.016)
+        #expect(driver.bodyYawRate == 0)
+
+        hub.setAppActive(true)
+        hub.tick(held, seconds: 0.016)
+        #expect(driver.bodyYawRate != 0)
+        driver.stop()
+    }
+
     /// The pad and the controller share a driver; letting go of the controller must
     /// not recentre a head a finger is holding.
     @Test("letting go leaves a look the controller was not holding")
@@ -167,6 +190,20 @@ struct GamepadTeleopTests {
         let driver = TeleopDriver(target: TeleopTarget(z: 0.05))
         driver.steer(TeleopStep(roll: 0.1))
         #expect(driver.target.z == 0.05)
+    }
+
+    /// Each trigger owns one antenna, and the other may be where its slider put it.
+    @Test("a trigger leaves the other antenna where its slider put it")
+    func triggerKeepsTheOtherAntenna() {
+        let hub = GamepadTeleop()
+        let driver = TeleopDriver()
+        _ = hub.claim(driver, priority: .screen, standDown: nil)
+        driver.antennaRight = -0.4
+
+        hub.tick(reading { $0.leftTrigger = 0.8 }, seconds: 0.016)
+
+        #expect(driver.target.antennaLeft == 0.8 * hub.mapping.antennaReach)
+        #expect(driver.target.antennaRight == -0.4)
     }
 
     @Test("reset from the controller is the same reset the button does")

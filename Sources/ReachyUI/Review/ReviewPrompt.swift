@@ -101,26 +101,59 @@ extension View {
     }
 }
 
+/// What one shell has seen of the Settings tab.
+///
+/// The root rebuilds `ReachyTabShell` on every connect, and the new shell starts on
+/// whatever tab the router still holds. So a reconnect with Settings showing builds a
+/// shell that starts on Settings, and that is not a visit: it may neither count one
+/// nor start the dwell. Only a change of tab inside one shell is an arrival.
+struct ReviewPromptArrival: Equatable {
+    private var tab: ReachyRouter.Tab
+    /// The reader came to Settings by a change of tab in this shell, and is still there.
+    private(set) var hasArrived = false
+
+    init(startingOn tab: ReachyRouter.Tab) {
+        self.tab = tab
+    }
+
+    /// Records the shell's tab, and answers whether that was an arrival on Settings.
+    mutating func select(_ tab: ReachyRouter.Tab) -> Bool {
+        guard tab != self.tab else { return false }
+        self.tab = tab
+        hasArrived = tab == .settings
+        return hasArrived
+    }
+}
+
 private struct ReviewPromptModifier: ViewModifier {
     let tab: ReachyRouter.Tab
+    /// Starts on the tab this shell was built on, which is never an arrival.
+    @State private var arrival: ReviewPromptArrival
 
     @Environment(\.requestReview) private var requestReview
     @Environment(\.reachyPreviewMode) private var previewMode
     @Environment(\.scenePhase) private var scenePhase
 
+    init(tab: ReachyRouter.Tab) {
+        self.tab = tab
+        _arrival = State(initialValue: ReviewPromptArrival(startingOn: tab))
+    }
+
     func body(content: Content) -> some View {
         content
             // A visit is arriving on the tab. Coming back to the app with Settings
-            // already showing is not one, which is why this keys on the tab alone.
-            .onChange(of: tab, initial: true) { _, tab in
-                guard tab == .settings, isEnabled else { return }
+            // already showing is not one, which is why this keys on the tab alone —
+            // and neither is a shell rebuilt on Settings, which is why there is no
+            // `initial: true` (`ReviewPromptArrival`).
+            .onChange(of: tab) { _, tab in
+                guard arrival.select(tab), isEnabled else { return }
                 ReviewPromptStore.shared.settingsVisited()
             }
             // The dwell does restart on the scene phase: a prompt timed across a trip
             // to the background would appear the moment the app came back, which is
             // the "on launch" Apple asks apps not to do.
-            .task(id: Dwell(tab: tab, isActive: scenePhase == .active)) {
-                guard tab == .settings, scenePhase == .active, isEnabled else { return }
+            .task(id: Dwell(hasArrived: arrival.hasArrived, isActive: scenePhase == .active)) {
+                guard arrival.hasArrived, scenePhase == .active, isEnabled else { return }
                 try? await Task.sleep(for: ReviewPrompt.dwell)
                 guard !Task.isCancelled,
                       ReviewPromptStore.shared.claimRequest(now: Date(), version: ReviewPrompt.appVersion)
@@ -134,7 +167,7 @@ private struct ReviewPromptModifier: ViewModifier {
     }
 
     private struct Dwell: Equatable {
-        let tab: ReachyRouter.Tab
+        let hasArrived: Bool
         let isActive: Bool
     }
 }

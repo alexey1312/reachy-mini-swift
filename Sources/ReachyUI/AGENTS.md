@@ -617,6 +617,10 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   A change handler fires when a stick moves, and a held turn is the case where nothing moves.
   The scene gate is the same hazard again: the system stops delivering a controller's input in the background,
   and a stick last read as held would go on turning the body with nobody at the controls.
+  The scene gate alone does not cover a Mac window left visible behind another app:
+  the scene stays `.active` there and the input stops all the same.
+  So the hub also lets go when the app resigns active and drives nothing until it is in front again
+  (`setAppActive(_:)`).
 - **Captures never see a real controller.**
   `ControllerScreen` reads `.shared` only outside `reachyPreviewMode`,
   so a controller paired to the Mac running the suite cannot put the legend into a root reference;
@@ -820,6 +824,10 @@ this is that half, and it ships.
   So `canHideAuthor(of:)` answers false for an installed row even when it names an author —
   `installedWithAuthorNoHide` is there because the fixture's installed app has no card,
   and the guard could be deleted with every other test still green (checked by mutating it).
+  **A card with an installed twin offers no hide either** (`AppStoreModel.canHideAuthor(of:)`),
+  and the relay is why: it has no Installed section, so the card of the app that runs or was just installed
+  is the only page that can start it. `installedTwinOffersNoHide` holds it.
+  On the LAN the same rule takes Hide off `App detail — installed`, whose card joins an installed row.
   Report is offered on every page with a Space id: it is the Hub's own form,
   and an app worth reporting does not stop being one once installed.
 - **The notice is not part of `visibleApps`, and the sign-in gate is.**
@@ -970,6 +978,13 @@ welcome, name, motors, camera, microphone, speaker, done.
 - **`RootJSAppHost` is mounted on the root, above the gate**, for the reason `RootSheets` is:
   over the relay this app's session is ended before the page loads,
   the phase leaves `.connected`, and the shell — with the screen the app was opened from — is thrown away.
+- **Only the page's own document speaks for the app.** The injected script forwards a message only when
+  `event.source` is the window itself and `event.origin` is its own, and the handler drops any script message
+  that is not from the main frame at the Space's host (`JSAppHostBridge.admits`):
+  `window.webkit.messageHandlers` is there in every frame, and a frame the page embeds is somebody else's code.
+  `JSAppHostBridgeTests` runs the script in a bare `JSContext`, so it needs no WebKit.
+- **Opening is guarded by a flag of its own** (`RootJSAppHost.isOpening`), because over the relay
+  `freeRobot` can take twenty seconds with `hosted` still nil, and a second tap would open the app twice.
 - **Closing waits for `embed:left`**, because that is the page putting the robot to sleep;
   `JSAppHostModel.leave()` gives it 9.5 s, the reference host's bound.
 - **The token is the narrow one** (`HFOAuthConfiguration.reachyMiniWebApps`), in memory,
@@ -1528,6 +1543,12 @@ and an elapsed timer conclude nothing — the transport reconnects on its own an
 may be behind a blip. Only an arriving `not_running` says the app is gone; `.closed`
 draws a gap and stops there. `ConversationModelTests.doesNotConcludeFromATimeout` is what
 holds it.
+And only the relay's `not_running` says so.
+The app sends the same reason, with the same code, while its voice backend is not connected —
+at startup, and through the reconnect a personality change starts.
+`ConversationFailure` reads that one as `backendNotConnected`,
+and the screen narrates preparing and waits for `backend_connected` again
+(`ConversationModelTests.waitsAgainOnTheAppsOwnNotRunning`).
 
 **The dock's sheet stopped collapsing, and it was measured against the other host.**
 `RunningAppModifier` used to read `visibleStatus` inside its `.sheet` content while
@@ -1591,6 +1612,10 @@ and a row on that tab that is always there.
 - **A visit is a change of tab; the prompt waits two seconds on it.**
   `reviewPrompt(tab:)` hangs on `ReachyTabShell`, the one place that sees the selection change,
   and counts arriving on Settings — not coming back to the app with Settings already showing.
+  Nor a reconnect with Settings showing: the root rebuilds the shell on every connect,
+  and the new one starts on the tab the router still holds.
+  It used `onChange(of:initial: true)`, so each rebuild counted a visit and started the dwell again;
+  `ReviewPromptArrival` now counts only a change of tab inside one shell.
   The two-second dwell is Apple's own, and it restarts on the scene phase,
   so a prompt is never timed across a trip to the background and shown the moment the app returns.
   The Settings tab exists only once a robot has answered,

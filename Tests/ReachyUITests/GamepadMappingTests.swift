@@ -122,9 +122,10 @@ struct GamepadMappingTests {
             $0.leftTrigger = 0.5
             $0.rightTrigger = 0.5
         }
-        let antennas = try #require(mapping.step(from: .neutral, to: pulled, seconds: 0)?.antennas)
-        #expect(antennas.left == 0.5 * mapping.antennaReach)
-        #expect(antennas.right == -antennas.left)
+        let step = try #require(mapping.step(from: .neutral, to: pulled, seconds: 0))
+        let left = try #require(step.antennaLeft)
+        #expect(left == 0.5 * mapping.antennaReach)
+        #expect(step.antennaRight == -left)
     }
 
     /// Triggers at rest must not zero antennas a slider set; a trigger let go must
@@ -133,7 +134,15 @@ struct GamepadMappingTests {
     func triggersOnlyOnChange() {
         let pulled = reading { $0.leftTrigger = 0.8 }
         #expect(mapping.step(from: pulled, to: pulled, seconds: 0.016) == nil)
-        #expect(mapping.step(from: pulled, to: .neutral, seconds: 0.016)?.antennas == .init(left: 0, right: 0))
+        #expect(mapping.step(from: pulled, to: .neutral, seconds: 0.016) == TeleopStep(antennaLeft: 0))
+    }
+
+    /// Each trigger owns one antenna. Writing both on any change would snap the
+    /// other antenna, set by its slider, to wherever its own trigger rests.
+    @Test("one trigger moves only its own antenna")
+    func triggerMovesOneSide() {
+        let step = mapping.step(from: .neutral, to: reading { $0.leftTrigger = 0.8 }, seconds: 0.016)
+        #expect(step == TeleopStep(antennaLeft: 0.8 * mapping.antennaReach))
     }
 
     @Test("reset fires on the press, not for as long as it is held")

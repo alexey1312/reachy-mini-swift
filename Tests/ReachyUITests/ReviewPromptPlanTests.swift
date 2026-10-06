@@ -136,6 +136,38 @@ struct ReviewPromptStoreTests {
     }
 }
 
+/// The root rebuilds the shell on every connect, and the new shell starts on the tab
+/// the router still holds — so a reconnect with Settings showing must not read as
+/// arriving there.
+@Suite("Review prompt arrival")
+struct ReviewPromptArrivalTests {
+    /// A mutating call cannot sit inside `#expect`, so each answer is read out first.
+    @Test("a shell built on Settings has not arrived there")
+    func aRebuiltShellIsNotAVisit() {
+        var arrival = ReviewPromptArrival(startingOn: .settings)
+
+        let visited = arrival.select(.settings)
+
+        #expect(!visited)
+        #expect(!arrival.hasArrived)
+    }
+
+    @Test("a change of tab to Settings is an arrival, and leaving ends it")
+    func aChangeOfTabIsAVisit() {
+        var arrival = ReviewPromptArrival(startingOn: .settings)
+
+        let away = arrival.select(.robot)
+        let back = arrival.select(.settings)
+        #expect(!away)
+        #expect(back)
+        #expect(arrival.hasArrived)
+
+        let left = arrival.select(.apps)
+        #expect(!left)
+        #expect(!arrival.hasArrived)
+    }
+}
+
 @Suite("Review link")
 struct ReviewLinkTests {
     @Test("the link opens this app's review sheet")

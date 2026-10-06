@@ -55,7 +55,11 @@ struct ConversationScreen: View {
         if model.hasTranscript {
             ConversationTranscriptList(entries: model.entries, isFrozen: !model.isLive)
         } else {
-            ConversationUnavailableView(phase: model.phase, settingsURL: settingsURL)
+            ConversationUnavailableView(
+                phase: model.phase,
+                settingsURL: settingsURL,
+                backendError: model.backend?.error
+            )
         }
     }
 
@@ -150,10 +154,12 @@ struct ConversationScreen: View {
 
     /// Nil while there is nothing to read: backgrounded, or a transport that does not
     /// carry the app's control surface. `scenePhase` goes **into** the key rather than
-    /// into a second modifier, so one identity governs the whole task.
+    /// into a second modifier, so one identity governs the whole task. So does the
+    /// model's `primingRound`, which is how a command that found the backend gone
+    /// starts the wait again.
     private var primingKey: String? {
         guard scenePhase == .active, session.canControlConversation else { return nil }
-        return "\(app.id)@\(session.isRemote ? "relay" : "lan")"
+        return "\(app.id)@\(session.isRemote ? "relay" : "lan")#\(model.primingRound)"
     }
 }
 

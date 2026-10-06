@@ -192,6 +192,34 @@ struct AppStoreRelayTests {
         #expect(lit == ["face_tracking"])
     }
 
+    /// The relay has no Installed section, so the card of the app that runs or was
+    /// just installed is the only page that can start it. Hiding its author would
+    /// take that page away.
+    @Test("a card standing for an installed app offers no hide")
+    func installedTwinOffersNoHide() async throws {
+        let client = RelayAppsClient()
+        client.catalogue = [
+            .preview(name: "face-tracking", author: "someone"),
+            .preview(name: "reachy_mini_radio", author: "someone"),
+            .preview(name: "chess", author: "someone"),
+        ]
+        client.running = RobotAppStatus(
+            app: RobotApp(Components.Schemas.AppInfo(name: "face_tracking", sourceKind: .installed)),
+            state: .running
+        )
+        let session = await relayed(client)
+        let model = AppStoreModel(session: session)
+        await model.load(session: session)
+        let running = try #require(model.catalogue.first { $0.name == "face-tracking" })
+        let installed = try #require(model.catalogue.first { $0.name == "reachy_mini_radio" })
+        let other = try #require(model.catalogue.first { $0.name == "chess" })
+        await model.reloadInstalled(session: session, after: .succeeded(.install(installed)))
+
+        #expect(!model.canHideAuthor(of: running))
+        #expect(!model.canHideAuthor(of: installed))
+        #expect(model.canHideAuthor(of: other))
+    }
+
     @Test("a relayed install answers once, with no job and no log")
     func installsOverTheRelay() async {
         let client = RelayAppsClient()

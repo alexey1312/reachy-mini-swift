@@ -21,7 +21,8 @@ import SwiftUI
 /// It polls rather than listening to value changes, because what matters most is what
 /// is *held*: a turn integrates for as long as the stick stays over, and a change
 /// handler fires only when the stick moves. The poll runs only while somebody claims
-/// the controller and one is connected — 60 Hz of nothing otherwise.
+/// the controller, one is connected and the app is in front — 60 Hz of nothing
+/// otherwise.
 @MainActor
 @Observable
 final class GamepadTeleop {
@@ -50,6 +51,8 @@ final class GamepadTeleop {
     @ObservationIgnored private var pad: GCExtendedGamepad?
     @ObservationIgnored private var poller: Task<Void, Never>?
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
+    /// Whether this app is the one in front. See `setAppActive(_:)`.
+    @ObservationIgnored private var isAppActive = true
 
     private static let tick = Duration.milliseconds(16)
 
@@ -67,6 +70,7 @@ final class GamepadTeleop {
         self.controllerName = controllerName
         if observesControllers {
             observeControllers()
+            observeAppActivity()
         }
     }
 
@@ -93,7 +97,9 @@ final class GamepadTeleop {
     /// One tick, with the reading already copied out of the controller. The poll
     /// calls this; so do tests, which have no controller to read.
     func tick(_ reading: GamepadReading, seconds: Double) {
-        guard let claim = currentClaim else {
+        // The poll can take one more turn after it is cancelled, with the reading the
+        // controller froze at when the app lost the front.
+        guard isAppActive, let claim = currentClaim else {
             drivenBy = nil
             previous = .neutral
             return
@@ -112,6 +118,23 @@ final class GamepadTeleop {
         guard let step = mapping.step(from: last, to: reading, seconds: seconds) else { return }
         claim.driver.steer(step)
         claim.standDown?()
+    }
+
+    /// This app gaining or losing the front.
+    ///
+    /// The scene phase cannot say this: a Mac window that is still visible stays
+    /// `.active` while another app is in front. The system then stops sending this app
+    /// the controller's input (`shouldMonitorBackgroundEvents` is false), so the last
+    /// reading stays as it was and the poll would go on applying it — a held turn
+    /// would go on turning the body with nobody at the controls. So the controller lets
+    /// go and drives nothing until the app is in front again.
+    func setAppActive(_ isActive: Bool) {
+        guard isActive != isAppActive else { return }
+        isAppActive = isActive
+        if !isActive, let driving = claims.first(where: { $0.id == drivenBy }) {
+            letGo(of: driving.driver)
+        }
+        reconcilePolling()
     }
 
     /// The controller leaving a driver, whichever way it leaves — a hand-over, the
@@ -151,6 +174,32 @@ final class GamepadTeleop {
         refreshController()
     }
 
+    /// Only `shared` watches, as only it watches for controllers; a test calls
+    /// `setAppActive(_:)` itself.
+    private func observeAppActivity() {
+        #if os(macOS)
+            isAppActive = NSApplication.shared.isActive
+            let changes = [
+                (NSApplication.didResignActiveNotification, false),
+                (NSApplication.didBecomeActiveNotification, true),
+            ]
+        #else
+            isAppActive = UIApplication.shared.applicationState == .active
+            let changes = [
+                (UIApplication.willResignActiveNotification, false),
+                (UIApplication.didBecomeActiveNotification, true),
+            ]
+        #endif
+        let center = NotificationCenter.default
+        for (name, isActive) in changes {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.setAppActive(isActive)
+                }
+            })
+        }
+    }
+
     /// The most recently used controller if it has two sticks, otherwise any that has.
     private func refreshController() {
         let controller = [GCController.current].compactMap(\.self).first { $0.extendedGamepad != nil }
@@ -161,7 +210,7 @@ final class GamepadTeleop {
     }
 
     private func reconcilePolling() {
-        let shouldPoll = pad != nil && !claims.isEmpty
+        let shouldPoll = pad != nil && !claims.isEmpty && isAppActive
         if shouldPoll, poller == nil {
             poller = Task { [weak self] in await self?.poll() }
         } else if !shouldPoll, let poller {
@@ -230,7 +279,9 @@ private struct GamepadClaim: ViewModifier {
 
     /// Not while the app is in the background: the system stops delivering a
     /// controller's input there, and a stick last read as held would go on turning
-    /// the body with nobody at the controls.
+    /// the body with nobody at the controls. A window left visible behind another
+    /// app keeps the scene `.active`, so the hub watches for that itself
+    /// (`GamepadTeleop.setAppActive(_:)`).
     private var holdsClaim: Bool {
         isActive && scenePhase == .active && !previewMode
     }
