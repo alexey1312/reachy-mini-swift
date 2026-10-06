@@ -36,12 +36,20 @@ public enum Metrics {
     /// the padding the old spelling intended survives and every control now
     /// matches. Anything wider than 19 pt at `.title3` needs this raised.
     public static let viewportControl: CGFloat = 36
+    /// The smallest a target may be in either axis: Apple's 44 × 44 pt for a
+    /// finger.
+    ///
+    /// A pointer needs less, and the Mac takes the same number anyway, so one
+    /// layout serves both platforms. Not scaled: it is a floor, and text that
+    /// grows past it grows the target with it.
+    public static let minimumHitTarget: CGFloat = 44
     /// The live view floating over the interface — wide enough to read what the
     /// robot is doing, narrow enough to leave a list legible beside it.
     public static let floatingViewport = CGSize(width: 160, height: 112)
-    /// What that window leaves at the edge once it is switched off. 44 pt across
-    /// because the tab is the only way back and nothing else can be aimed at.
-    public static let viewportTab = CGSize(width: 44, height: 72)
+    /// What that window leaves at the edge once it is switched off. One target
+    /// across, because the tab is the only way back and nothing else can be
+    /// aimed at.
+    public static let viewportTab = CGSize(width: minimumHitTarget, height: 72)
     /// The trailing column the live view takes where the shell draws a sidebar, as
     /// the three widths `inspectorColumnWidth(min:ideal:max:)` asks for.
     ///

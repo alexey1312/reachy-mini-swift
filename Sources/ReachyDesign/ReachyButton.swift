@@ -22,6 +22,20 @@ public enum ButtonEmphasis: Sendable, CaseIterable {
     case destructive
 }
 
+extension ButtonEmphasis {
+    /// The height a label must fill by itself, or `nil` where the style draws a
+    /// shape around it that is already at least that tall.
+    ///
+    /// `quiet` draws nothing around its label, so the label is the whole target.
+    /// A line of text is about half the minimum, and the step footers' way-outs —
+    /// Skip, Back, "It didn't move" — shipped at that height, reported from a
+    /// device as answering only on their words. `ReachyActionButton` applies this
+    /// inside the label, where the frame becomes part of what a tap can land on.
+    var minimumLabelHeight: CGFloat? {
+        self == .quiet ? Metrics.minimumHitTarget : nil
+    }
+}
+
 public extension ButtonEmphasis {
     /// What a `.prominent` label is painted with, per appearance.
     ///

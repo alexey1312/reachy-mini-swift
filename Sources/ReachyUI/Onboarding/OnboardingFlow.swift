@@ -97,6 +97,10 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
             VStack(spacing: Space.sm) {
                 actions()
             }
+            // The size of a bottom button everywhere else on the platform. At the
+            // regular size the primary action read as a small bar under a thumb,
+            // and the way-outs under it as words — reported together from a device.
+            .controlSize(.large)
             .padding()
             .frame(maxWidth: .infinity)
             // `.page` and not `.scrim`, which is what this was. A scrim carries
@@ -115,14 +119,16 @@ struct OnboardingStepScaffold<Content: View, Actions: View>: View {
 
 /// Renders itself only where stepping back means something: once the password is on its
 /// way to the robot, there is nothing to go back to.
+///
+/// Every way-out in a step's footer is this spelling — a quiet, full-width
+/// `ReachyActionButton` — so the row is one target the width of the footer and at least
+/// `Metrics.minimumHitTarget` tall, where `.plain` text answered only on its words.
 struct OnboardingBackButton: View {
     let model: OnboardingModel
 
     var body: some View {
         if model.canGoBack {
-            Button(.reachy("Back")) { model.back() }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+            ReachyActionButton(.reachy("Back"), emphasis: .quiet, fullWidth: true) { model.back() }
         }
     }
 }

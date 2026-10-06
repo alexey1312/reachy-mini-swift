@@ -126,9 +126,9 @@ struct FirstRunMotorsStep: View {
             ReachyActionButton(.reachy("It moved"), fullWidth: true) {
                 model.advance()
             }
-            Button(.reachy("It didn't move")) { model.showHelp() }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+            ReachyActionButton(.reachy("It didn't move"), emphasis: .quiet, fullWidth: true) {
+                model.showHelp()
+            }
         } else if let transition = session.powerTransition {
             PowerTransitionRow(transition: transition)
         } else if session.isAwake {

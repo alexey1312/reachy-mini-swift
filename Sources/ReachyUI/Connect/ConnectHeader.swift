@@ -70,10 +70,9 @@ struct ConnectHeader: View {
             decision(.reachy("Start the motors and camera")) {
                 Task { await session.startBackend() }
             } alternatives: {
-                Button(.reachy("Continue anyway")) {
+                ReachyActionButton(.reachy("Continue anyway"), emphasis: .quiet) {
                     session.proceedWithoutBackend()
                 }
-                .reachyButton(.quiet)
                 cancelButton
             }
         } else if isFailed, case let .lan(address) = session.link {
@@ -122,11 +121,14 @@ struct ConnectHeader: View {
     /// `disconnect()` is the whole cancel story: it invalidates the attempt and
     /// pauses automatic reconnect, which is what stops the 10 s rescan from
     /// reopening this very card moments later.
+    ///
+    /// Both way-outs are quiet `ReachyActionButton`s rather than `reachyButton(.quiet)`
+    /// on a `Button`: a borderless label is its own whole target, and only the helper
+    /// can give it `Metrics.minimumHitTarget` of height from inside the label.
     private var cancelButton: some View {
-        Button(.reachy("Cancel"), role: .cancel) {
+        ReachyActionButton(.reachy("Cancel"), emphasis: .quiet, role: .cancel) {
             session.disconnect()
         }
-        .reachyButton(.quiet)
     }
 
     /// Read off the live phase, not the displayed one: the sentence names what went
