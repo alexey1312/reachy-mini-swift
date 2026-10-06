@@ -25,8 +25,30 @@ struct CameraViewport: View {
             .overlay(alignment: .bottomTrailing) { teleopControls }
     }
 
+    /// **The status backs itself, because nothing under it can be relied on.**
+    /// Until a frame arrives `RTCMTLVideoView` skips its draw, so what shows through
+    /// is whatever the host put behind it: the system background on the Live tab, the
+    /// row's white in the first run (`First run — camera` records it), and the pinned
+    /// black of `PreviewScene.pane` in the `Camera —` references. Adaptive text read
+    /// on the first two and was black on black on the third, with "Try again" at
+    /// about 2.3:1. A fixed dark appearance is the opposite bet — white on white
+    /// wherever the host is light — and `AGENTS.md` records a forced-white
+    /// "Connecting…" that was removed for that reason. So the status carries its own
+    /// surface with adaptive text on it, which reads the same over all three.
+    /// `.window` because it is opaque and glass-free, so it also flips correctly in a
+    /// dark reference. A stream that is up draws no status, so no surface covers the
+    /// picture.
     @ViewBuilder
     private var status: some View {
+        if session.phase != .streaming {
+            phaseStatus
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .reachySurface(.window)
+        }
+    }
+
+    @ViewBuilder
+    private var phaseStatus: some View {
         switch session.phase {
         case .connecting:
             ProgressView(.reachy("Connecting…"))
