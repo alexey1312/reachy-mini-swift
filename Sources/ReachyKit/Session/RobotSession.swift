@@ -122,8 +122,9 @@ public final class RobotSession {
     public enum MoveActivity: Equatable, Sendable {
         case playing(MovePlayback)
         case stopping(MovePlayback)
-        /// The daemon's own zero pose, which is a move task like any other.
-        case recentring(uuid: String)
+        /// The daemon's own zero pose, a move task like any other — `nil` until the
+        /// `goto` answers, because the phase is claimed before it is sent.
+        case recentring(uuid: String?)
 
         /// `nil` while parking: returning to neutral is not playback. It has no
         /// dataset, no row to highlight in the library, and nothing to stop.
@@ -134,7 +135,7 @@ public final class RobotSession {
             }
         }
 
-        var uuid: String {
+        var uuid: String? {
             switch self {
             case let .playing(playback), let .stopping(playback): playback.uuid
             case let .recentring(uuid): uuid

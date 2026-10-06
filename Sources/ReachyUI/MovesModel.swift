@@ -87,16 +87,19 @@ final class MovesModel {
     /// Whether a row may be tapped.
     ///
     /// Lives here rather than in the view because it is a rule about the robot,
-    /// not about layout, and because every phase in it was found the same way: the
-    /// daemon's `_try_start_move` refuses a play without saying so and hands back
-    /// a fresh UUID, so a row left live over a busy robot puts a dance on screen
-    /// that never started. Browsing the library stays available throughout —
-    /// only playing needs the robot.
+    /// not about layout. Every phase in it is one where a play would run beside a
+    /// move the daemon already has: the daemon does not refuse a second play, it
+    /// runs both, and the two write the head target in turn. A power transition
+    /// is one of them — `wake_up` and `goto_sleep` are move tasks, and the status
+    /// poll reads the robot as awake once the motors are on, before the wake-up
+    /// animation ends. Browsing the library stays available throughout — only
+    /// playing needs the robot.
     ///
     /// Playing is deliberately *not* in the list: picking another move while one
     /// runs is how you change dance, and `playMove` clears the floor first.
     func rowsAreEnabled(_ session: RobotSession) -> Bool {
-        !startingMove && !session.isStoppingMove && !session.isRecentring && session.isAwake
+        !startingMove && !session.isStoppingMove && !session.isRecentring
+            && session.powerTransition == nil && session.isAwake
     }
 
     /// Fetches the selected library, and over warmed rows does it silently — the

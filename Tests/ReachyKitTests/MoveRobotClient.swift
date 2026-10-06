@@ -34,6 +34,9 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     var cancelStopMove = false
     var failStopSound = false
     var failGotoNeutral = false
+    /// How long the parking `goto`'s reply takes. The relay answers only once the
+    /// walk has finished, so there it is the whole parking.
+    var neutralReplyDelay: Duration = .zero
     /// The play's reply never arrives. The daemon answers only after it has loaded
     /// the dataset, and it starts the move whether or not anybody still waits.
     var playTimeout: PlayTimeout?
@@ -124,18 +127,22 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     }
 
     func gotoNeutral(duration _: Double) async throws -> String {
-        let shouldFail = lock.withLock {
+        let (uuid, shouldFail, delay) = lock.withLock {
             nextUUID += 1
             activeUUID = "goto-\(nextUUID)"
             lastGotoUUID = activeUUID
             gotoNeutralCalls += 1
             events.append("goto:\(activeUUID!)")
-            return failGotoNeutral
+            return (activeUUID!, failGotoNeutral, neutralReplyDelay)
         }
         if shouldFail {
             throw MoveFailure.failed
         }
-        return lock.withLock { activeUUID! }
+        // Filed on the daemon already; only the reply is still on its way.
+        if delay != .zero {
+            try? await Task.sleep(for: delay)
+        }
+        return uuid
     }
 
     func runningMoveUUIDs() async throws -> Set<String> {

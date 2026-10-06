@@ -2,8 +2,8 @@ import Foundation
 @testable import ReachyKit
 import Testing
 
-/// What the session does about moves it did not see start: ones from elsewhere,
-/// and one whose play timed out.
+/// What the session does so that two moves never share the robot: moves from
+/// elsewhere, one whose play timed out, and the parking after a move.
 ///
 /// The daemon guards its one move slot with a re-entrant lock, taken on the one
 /// event-loop thread every route runs on, so it never refuses a second play: both
@@ -110,6 +110,26 @@ struct RobotSessionMoveFloorTests {
         }
 
         #expect(session.currentMove == nil)
+        session.disconnect()
+    }
+
+    /// The parking `goto` is a move task, and the daemon runs a dance beside it.
+    /// Until its reply came the phase was empty, so the library rows were live.
+    @Test("a move that ends claims the parking before the goto answers")
+    func parkingIsClaimedBeforeItsReply() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        try await session.playMove(dataset: "library", move: "wave")
+        client.neutralReplyDelay = .seconds(30)
+        client.finishMove()
+
+        let refresh = Task { await session.refreshMoveActivity() }
+        await waitUntil(client.gotoNeutralCalls == 1)
+
+        #expect(session.moveActivity == .recentring(uuid: nil))
+        #expect(session.isRecentring)
+        refresh.cancel()
+        await refresh.value
         session.disconnect()
     }
 

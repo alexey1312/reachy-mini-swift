@@ -91,9 +91,12 @@ extension RobotSession {
     /// One miss settles it here, against the poll's two: this is asked after a gap
     /// rather than in the moments a play is still being registered.
     public func refreshMoveActivity() async {
-        guard let client = movesClient, let activity = moveActivity, !isStoppingMove else { return }
+        // A parking with no uuid yet is `recentre`'s, awaiting its own reply.
+        guard let client = movesClient, let activity = moveActivity, let uuid = activity.uuid,
+              !isStoppingMove
+        else { return }
         guard let running = try? await client.runningMoveUUIDs() else { return }
-        guard moveActivity?.uuid == activity.uuid, !running.contains(activity.uuid) else { return }
+        guard moveActivity?.uuid == uuid, !running.contains(uuid) else { return }
         await finish(activity, client: client)
     }
 
@@ -133,7 +136,9 @@ extension RobotSession {
         case .playing, .stopping:
             _ = await stopMove(parking: false)
         case let .recentring(uuid):
-            try? await client.stopMove(uuid: uuid)
+            if let uuid {
+                try? await client.stopMove(uuid: uuid)
+            }
             movePollTask?.cancel()
             movePollTask = nil
             moveActivity = nil
@@ -244,16 +249,26 @@ extension RobotSession {
     /// Not `private`: an app releasing the robot parks it the same way
     /// (`RobotSession+AppLifecycle`), and a second implementation of "go back to
     /// base" is the one that would drift from the phase this claims on screen.
+    ///
+    /// The phase is claimed before the `goto` is sent, not when it answers. In
+    /// between, the rows were live, and a dance tapped there played beside the
+    /// parking, because the daemon runs both. Over the relay that gap was the
+    /// whole walk: `goto_target` answers only once it has finished.
     func recentre(client: any MovePlaybackClient) async -> [String] {
+        let pending = MoveActivity.recentring(uuid: nil)
+        moveActivity = pending
         do {
             let uuid = try await client.gotoNeutral(duration: configuration.recentreDuration)
             // Anything that claimed the robot while the request was in flight owns
             // it now; adopting the parking task over that would hide a real move.
-            guard moveActivity == nil else { return [] }
+            guard moveActivity == pending else { return [] }
             moveActivity = .recentring(uuid: uuid)
             startMonitoring(.recentring(uuid: uuid), client: client)
             return []
         } catch {
+            if moveActivity == pending {
+                moveActivity = nil
+            }
             guard let message = Self.message(for: error) else { return [] }
             return ["Neutral: \(message)"]
         }
@@ -267,7 +282,7 @@ extension RobotSession {
     /// end when the task does, not when its nominal duration is up.
     func startMonitoring(_ activity: MoveActivity, client: any MovePlaybackClient) {
         movePollTask?.cancel()
-        let uuid = activity.uuid
+        guard let uuid = activity.uuid else { return }
         movePollTask = Task { [configuration] in
             var consecutiveMisses = 0
             while !Task.isCancelled, moveActivity?.uuid == uuid {
