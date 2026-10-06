@@ -1573,6 +1573,10 @@ and a row on that tab that is always there.
 - **A visit is a change of tab; the prompt waits two seconds on it.**
   `reviewPrompt(tab:)` hangs on `ReachyTabShell`, the one place that sees the selection change,
   and counts arriving on Settings — not coming back to the app with Settings already showing.
+  Nor a reconnect with Settings showing: the root rebuilds the shell on every connect,
+  and the new one starts on the tab the router still holds.
+  It used `onChange(of:initial: true)`, so each rebuild counted a visit and started the dwell again;
+  `ReviewPromptArrival` now counts only a change of tab inside one shell.
   The two-second dwell is Apple's own, and it restarts on the scene phase,
   so a prompt is never timed across a trip to the background and shown the moment the app returns.
   The Settings tab exists only once a robot has answered,
