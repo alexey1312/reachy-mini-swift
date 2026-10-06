@@ -41,6 +41,14 @@ struct HiddenAuthorsScreen: View {
                 )
             }
         }
+        // An empty list came out on a white page and a full one on a grey one, so
+        // the screen changed colour as the last author was shown again. The page
+        // behind the list is pinned to the grouped background, and on iOS the
+        // list's own is hidden, so both states show that one background.
+        #if os(iOS)
+        .scrollContentBackground(.hidden)
+        #endif
+        .groupedPageBackground()
         .navigationTitle(.reachy("Hidden authors"))
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

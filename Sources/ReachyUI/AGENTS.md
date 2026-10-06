@@ -767,11 +767,21 @@ Start.
   which kept the 13 previews without a button byte-identical and moved the 9 with one.
   The badges themselves still fall back to one per line rather than a letter per line
   at text sizes where even the full column is too narrow.
-  **Each badge sets its glyph against its word itself (`BadgeLabelStyle`).**
+  **Each badge sets its glyph against its word itself (`.reachyInline`, in `ReachyDesign`).**
   Left to the `Form` row, a `Label` puts its icon in a column of its own,
   so the seal stood 21 pt from "Official" and the heart 14 pt after it, with its own 214 22 pt away —
   the heart read as part of "Official". Measured off the reference by ink columns, not by eye;
-  now 7 pt inside a badge and 15 pt between two.
+  now 6 pt inside a badge and 15 pt between two.
+  **The header's Install or Start button takes the same style, and so does the Robot tab's Link row** —
+  every `Label` that is part of a row rather than the row's own label.
+  The button's glyph stood 18.5 pt from its word, the Link row's check 18 pt from "Connected",
+  and that row's separator started under "Connected" instead of at the row's inset,
+  which is why the row also pins `listRowSeparatorLeading` to its own leading edge.
+
+- **The install log is a console embedded in the page, and there it offers no search** (`LogConsoleView.isEmbedded`).
+  SwiftUI hoists `.searchable` to the bar of the page around the console,
+  and on an iPhone that put "Filter log" over the page's last row, "Hide this author's apps".
+  The console's toolbar items still reach the page's bar; only the search field is withheld.
 
 - **Over the relay the store is Discover alone, and the page knows less (#158).**
   `AppStoreModel+Relay.swift` holds the fork, keyed on `isOverRelay` (`session.canInstallFromCatalogue`),
@@ -782,8 +792,11 @@ Start.
   and an install this visit confirmed, started by its slug, the name the daemon itself assumes.
   Install waits for one answer with no log, so `AppInstallModel.streamsLog` swaps the console for a sentence,
   and a silence reads as unconfirmed rather than failed, because asking again is free.
-  Update, Start on wake-up and Remove are HTTP; the page says so where they would be (`lanOnlyNote`),
+  Update, Start on wake-up and Remove are HTTP;
+  the page says so in the footer of the section they would fill (`actionsFooter`),
   and Restart is gone from the page and the dock because the relay has no verb for it.
+  The note was a row of that section once, and with the three controls gone
+  it was a lone grey sentence in an empty card.
 
 ## Report, hide and the notice (App Review 1.2)
 

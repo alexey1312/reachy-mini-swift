@@ -17,7 +17,8 @@ extension AppDetailSheet {
                 source: app.title,
                 // The socket only wakes on a new line, so silence here is normal
                 // rather than a stall — `AppJobMonitor` is polling regardless.
-                emptyDescription: String(localized: .reachy("Waiting for the robot to report progress…"))
+                emptyDescription: String(localized: .reachy("Waiting for the robot to report progress…")),
+                isEmbedded: true
             )
             .frame(minHeight: 160)
         } else {
@@ -30,11 +31,24 @@ extension AppDetailSheet {
         }
     }
 
-    /// Where Update, Start on wake-up and Remove would be, and the reason they are
-    /// not: all three are HTTP, and the relay carries none of them.
-    var lanOnlyNote: some View {
-        Text(.reachy("Updating or removing this app, and starting it on wake-up, need the robot's own network."))
-            .font(Typography.status)
-            .foregroundStyle(.secondary)
+    /// The footer of the section Update, Start on wake-up and Remove would fill:
+    /// `note`, and over the relay, above it, why the three are absent — all three
+    /// are HTTP, and the relay carries none of them.
+    ///
+    /// In the footer and not a row: as the section's one row, the sentence was a lone
+    /// grey line in an empty card. A stack, because a footer handed two bare views
+    /// renders the first only.
+    @ViewBuilder
+    func actionsFooter(@ViewBuilder _ note: () -> some View) -> some View {
+        if model.isOverRelay, model.installedTwin(of: app) != nil {
+            VStack(alignment: .leading, spacing: Space.sm) {
+                Text(
+                    .reachy("Updating or removing this app, and starting it on wake-up, need the robot's own network.")
+                )
+                note()
+            }
+        } else {
+            note()
+        }
     }
 }

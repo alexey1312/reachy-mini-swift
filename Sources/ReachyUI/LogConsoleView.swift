@@ -17,6 +17,10 @@ struct LogConsoleView: View {
     /// Set once the source has given up. Replaces the list — a frozen tail with no
     /// explanation reads as "no output" rather than "the feed died".
     var failure: String?
+    /// Set where the console is one row of a larger page (`AppDetailSheet`). There
+    /// it offers no search field: SwiftUI hoists `.searchable` to the page's own
+    /// bar, where "Filter log" sat over the page's last row.
+    var isEmbedded = false
 
     @State private var atBottom = true
     @State private var jumpToken = 0
@@ -48,7 +52,7 @@ struct LogConsoleView: View {
             }
         }
         .safeAreaInset(edge: .bottom) { statusBar }
-        .searchable(text: $model.query, prompt: String(localized: .reachy("Filter log")))
+        .logSearch($model.query, isOffered: !isEmbedded)
         .toolbar { toolbarContent }
         .confirmationDialog(
             model.clearConfirmation.title,
@@ -207,6 +211,18 @@ struct LogConsoleView: View {
         case .info: AnyShapeStyle(.primary)
         case .warning: Tone.warning.style
         case .error: Tone.danger.style
+        }
+    }
+}
+
+private extension View {
+    /// The console's search field, where it is offered.
+    @ViewBuilder
+    func logSearch(_ query: Binding<String>, isOffered: Bool) -> some View {
+        if isOffered {
+            searchable(text: query, prompt: String(localized: .reachy("Filter log")))
+        } else {
+            self
         }
     }
 }

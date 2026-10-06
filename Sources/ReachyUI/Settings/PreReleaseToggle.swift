@@ -37,7 +37,7 @@ struct PreReleaseToggle: View {
             if session.refusesPreReleaseUpdates {
                 Text(.reachy(
                     // swiftlint:disable:next line_length
-                    "Pre-release versions need daemon 1.10.0. An older robot finds the wrong version and refuses to install it."
+                    "Pre-release versions need robot software 1.10 or later. An older robot finds the wrong version and refuses to install it."
                 ))
             }
         }

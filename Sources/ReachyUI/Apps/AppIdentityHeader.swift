@@ -38,7 +38,10 @@ struct AppIdentityHeader: View {
                 details
                 if let primary {
                     ReachyActionButton(action: primary.action) {
+                        // Inline for the badges' reason: left to the row, the glyph
+                        // took the row's icon column, 18.5 pt from its word.
                         Label(primary.title, systemImage: primary.systemImage)
+                            .labelStyle(.reachyInline)
                     }
                     .buttonBorderShape(.capsule)
                     .disabled(!primary.isEnabled)
@@ -68,7 +71,10 @@ struct AppIdentityHeader: View {
             }
             .font(Typography.status)
             .foregroundStyle(.secondary)
-            .labelStyle(BadgeLabelStyle())
+            // Each glyph against its own word, so the gap between two badges is
+            // the widest in the row: in the row's icon column the heart stood
+            // nearer "Official" than its own 214.
+            .labelStyle(.reachyInline)
         }
     }
 
@@ -82,20 +88,6 @@ struct AppIdentityHeader: View {
         }
         if let likes = app.likes, likes > 0 {
             Label(.reachy("\(likes)"), systemImage: "heart.fill")
-        }
-    }
-}
-
-/// A badge's glyph tight against its word, so the gap between two badges is the
-/// widest one in the row. Left to a `Form` row, a `Label` sets its icon in a column
-/// of its own: measured on `App detail — not installed`, the seal stood 21 pt from
-/// "Official" and the heart 14 pt after it, so the heart read as part of "Official"
-/// rather than of its own 214, 22 pt away.
-private struct BadgeLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: Space.xs) {
-            configuration.icon
-            configuration.title
         }
     }
 }
