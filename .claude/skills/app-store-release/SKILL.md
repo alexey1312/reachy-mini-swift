@@ -74,7 +74,7 @@ only from the second release onward. See `references/troubleshooting.md`.
 
 ```bash
 asc versions attach-build --version-id VERSION_ID --build-id BUILD_ID
-asc review submit --app APP_ID --version-id VERSION_ID --build BUILD_ID \
+asc review submit --app APP_ID --version-id VERSION_ID --build-id BUILD_ID \
   --platform IOS --confirm
 ```
 
