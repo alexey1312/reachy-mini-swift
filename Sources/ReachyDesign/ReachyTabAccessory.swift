@@ -143,6 +143,9 @@ private struct ReachyFallbackTabAccessory<Accessory: View>: ViewModifier {
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if isPresented {
                         accessory()
+                            // The strip takes the width it is given and asks for none.
+                            // See `holdsMinimumSize` below for why that is not cosmetic.
+                            .frame(minWidth: 0, maxWidth: .infinity)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                             // Otherwise the strip rides up on top of the keyboard
                             // whenever a search field on this tab takes focus. Being
@@ -151,12 +154,49 @@ private struct ReachyFallbackTabAccessory<Accessory: View>: ViewModifier {
                             .ignoresSafeArea(.keyboard, edges: .bottom)
                     }
                 }
+                .modifier(HoldsMinimumSize())
                 // The appearance animates here rather than inside the strip: the
                 // system animates its own slot, and two animations on one arrival
                 // fight. Keyed on presence alone, so a caption changing from
                 // "Starting…" to "Running" slides nothing.
                 .animation(Motion.dock, value: isPresented)
         }
+    }
+}
+
+/// Keeps the strip's arrival out of the tab's minimum size (#188).
+///
+/// **On macOS a tab's minimum size is a constraint on the window.** The tab is the
+/// detail column of the sidebar's split view, and that split view sits inside the
+/// inspector's. AppKit turns each column's minimum into a constraint and adds them
+/// up into the window's minimum. Measured on macOS 27.0 with the sidebar at 144 pt
+/// and the inspector at 380 pt: the detail column asked for at least 524 pt, and the
+/// window for 904 pt, in a window 1000 pt wide. When the strip arrived, the detail
+/// column asked for 707 pt, which is 524 pt plus the strip's own 183 pt. The window
+/// then asked for 1087 pt.
+///
+/// AppKit answered by widening the window from inside a layout pass, and the pass
+/// did not settle at once. Eight passes ran in 80 ms. The tab content went to 52 pt
+/// high and then to 0 pt, the sidebar edge moved from 144 pt to 58 pt and back, and
+/// the window grew to 1087 pt. On that Mac the passes converged. On the Mac in #188
+/// they did not: AppKit raised its "more Update Constraints in Window passes than
+/// there are views in the window" exception, a few seconds after Start, every time.
+/// A window that cannot grow, such as a full-screen or tiled one, has no way to
+/// converge at all.
+///
+/// So the strip may inset the tab, but it may not raise either minimum. Its width is
+/// a frame with no minimum (above), and the inset tab is a frame with no minimum
+/// height (here). Before the strip arrives, the tab content asks for no minimum of
+/// its own, so neither frame moves anything else. With both frames the same arrival
+/// left the window at 1000 pt and the column at 524 pt, in one layout pass.
+///
+/// No reference image can show any of this: the snapshot suite renders on an iOS
+/// simulator, where a column's minimum is not a window constraint. On iOS both frames
+/// propose exactly what the tab already fills, so no capture moves.
+/// `ReachyTabAccessoryLayoutTests` holds the two minimums on macOS.
+private struct HoldsMinimumSize: ViewModifier {
+    func body(content: Content) -> some View {
+        content.frame(minHeight: 0, maxHeight: .infinity)
     }
 }
 
