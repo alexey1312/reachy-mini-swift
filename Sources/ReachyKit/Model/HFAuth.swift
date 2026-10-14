@@ -147,6 +147,13 @@ public struct CentralRobotStatusProxy: Sendable, Equatable, Decodable {
         self.reason = reason
     }
 
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isAvailable = try container.decode(Bool.self, forKey: .isAvailable)
+        robots = try container.decode([CentralRobot].self, forKey: .robots).reachyMinis
+        reason = try container.decodeIfPresent(Reason.self, forKey: .reason)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case robots, reason
         case isAvailable = "available"
@@ -181,11 +188,30 @@ public struct CentralRobot: Sendable, Equatable, Identifiable, Decodable {
         public let hardwareID: String?
         /// Announced by the relay as a future field; daemon 1.9.0 never sends it.
         public let installID: String?
+        /// Which family registered this entry. A Reachy Mini daemon sends no kind,
+        /// so an absent one is a Reachy Mini.
+        public let kind: RobotKind
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decodeIfPresent(String.self, forKey: .name)
+            transport = try container.decodeIfPresent(Transport.self, forKey: .transport)
+            hardwareID = try container.decodeIfPresent(String.self, forKey: .hardwareID)
+            installID = try container.decodeIfPresent(String.self, forKey: .installID)
+            // Untrusted text any signed-in account can register, and central passes
+            // it on without checking its type: a number or an object here is a kind
+            // nobody can use, not a reason to lose the whole listing.
+            kind = RobotKind(
+                kind: try? container.decodeIfPresent(String.self, forKey: .kind),
+                robotType: try? container.decodeIfPresent(String.self, forKey: .robotType)
+            )
+        }
 
         private enum CodingKeys: String, CodingKey {
-            case name, transport
+            case name, transport, kind
             case hardwareID = "hardware_id"
             case installID = "install_id"
+            case robotType = "robot_type"
         }
     }
 
@@ -209,6 +235,11 @@ public struct CentralRobot: Sendable, Equatable, Identifiable, Decodable {
 
     public var transport: Transport? {
         meta?.transport
+    }
+
+    /// A listing with no `meta` at all is a Reachy Mini too: central reads it so.
+    public var kind: RobotKind {
+        meta?.kind ?? .reachyMini
     }
 
     public var displayName: String {

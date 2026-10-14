@@ -56,6 +56,17 @@ Modelled in `Sources/ReachyKit/Transport/SignalingMessage.swift`, shared with th
 - **60 s of silence ends the stream.** Central keepalives well inside that; `readTimeout` matches the robot's budget.
 - **`unauthorized` is not worth retrying** — the same token will be refused again. It is the signal to ask for a fresh
   sign-in, which is what `YourReachiesModel.State.needsSignIn` renders.
+- **Central lists more than Reachy Minis.**
+  Since September 2026 a Micro Duck (`pollen-robotics/microduck`) registers on the same server,
+  under the same Hugging Face account, with `kind: "microduck"` in its `meta`.
+  A Reachy Mini daemon sends no `kind` at all.
+  Central stores `meta` as it arrives and classifies `kind` only for its public counters
+  (`docs/META_CONTRACT.md` and `robot_kinds.py` in `pollen-robotics/reachy_mini_central_signalling`):
+  `kind`, else the `robot_type` alias, else Reachy Mini,
+  compared without case and without any character outside `a-z0-9`.
+  `RobotKind` repeats that rule,
+  and `CentralRelayClient.robots()` and the daemon's proxied list keep only Reachy Minis,
+  because every screen that lists a robot offers to drive it.
 
 ## What cannot be tested here
 
