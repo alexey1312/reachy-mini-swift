@@ -144,7 +144,10 @@ enum PreviewScene {
         recorder: MoveRecorderModel? = nil,
         // A hub that watches for no controller, so a capture never depends on what
         // happens to be paired to the machine running it.
-        controllerName: String? = nil
+        controllerName: String? = nil,
+        // The same for headphones: a capture never reads the device, so the section
+        // shows only in a preview that hands in a state.
+        headTracking: HeadphoneTeleop.Status = .unsupported
     ) -> some View {
         NavigationHost {
             ControllerScreen(
@@ -152,7 +155,8 @@ enum PreviewScene {
                 gamepad: GamepadTeleop(controllerName: controllerName),
                 driver: driver ?? TeleopDriver(),
                 setupError: setupError,
-                recorder: recorder
+                recorder: recorder,
+                headTracking: HeadphoneTeleop(status: headTracking)
             )
         }
         .preview()

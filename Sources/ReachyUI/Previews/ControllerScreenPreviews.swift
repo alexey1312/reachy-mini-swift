@@ -36,3 +36,26 @@ import SwiftUI
 #Preview("Controller — game controller") {
     PreviewScene.controller(.preview(), controllerName: "Xbox Wireless Controller")
 }
+
+// Head tracking appears only where the device can read headphone motion, so every preview above
+// is its absence too. These four hand the hub the state they show.
+#Preview("Controller — head tracking offered") {
+    PreviewScene.controller(.preview(), headTracking: .off)
+}
+
+#Preview("Controller — waiting for headphones") {
+    PreviewScene.controller(.preview(), headTracking: .waiting)
+}
+
+// The pad and the roll slider go out while a head steers the target they write.
+#Preview("Controller — following a head") {
+    PreviewScene.controller(
+        .preview(),
+        driver: TeleopDriver(target: .init(roll: 0.12, pitch: 0.2, yaw: 0.35)),
+        headTracking: .following
+    )
+}
+
+#Preview("Controller — motion access turned off") {
+    PreviewScene.controller(.preview(), headTracking: .denied)
+}

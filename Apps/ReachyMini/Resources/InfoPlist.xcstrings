@@ -140,6 +140,41 @@
           }
         }
       }
+    },
+    "NSMotionUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dreht den Kopf deines Reachy Mini mit deinem – über Kopfhörer, die Kopfbewegungen erfassen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turns your Reachy Mini's head with yours, using headphones that track head movement."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gira la cabeza de tu Reachy Mini con la tuya, con auriculares que siguen el movimiento de la cabeza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tourne la tête de votre Reachy Mini avec la vôtre, grâce à des écouteurs qui suivent les mouvements de la tête."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поворачивает голову вашего Reachy Mini вместе с вашей с помощью наушников, которые отслеживают движения головы."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

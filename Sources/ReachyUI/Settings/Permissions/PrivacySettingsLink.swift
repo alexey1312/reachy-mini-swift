@@ -30,6 +30,8 @@ public enum PrivacySettingsLink {
         case localNetwork
         /// Not a privacy pane on macOS at all — see `macOSURL(_:)`.
         case notifications
+        /// Motion & Fitness, which headphones that track a head need (`HeadphoneTeleop`).
+        case motion
     }
 
     @MainActor
@@ -64,6 +66,10 @@ public enum PrivacySettingsLink {
             switch pane {
             case .notifications:
                 "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
+            // Not offered on a Mac yet (`HeadphoneTeleop.observeHeadphones`), and its
+            // anchor was never checked by hand, so the list rather than a guess.
+            case .motion:
+                "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
             case .bluetooth, .microphone, .localNetwork:
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(privacyAnchor(pane))"
             }
@@ -74,8 +80,8 @@ public enum PrivacySettingsLink {
             case .bluetooth: "Privacy_Bluetooth"
             case .microphone: "Privacy_Microphone"
             case .localNetwork: "Privacy_LocalNetwork"
-            // Unreachable: `macOSURL` routes it to its own pane above.
-            case .notifications: "Privacy_LocalNetwork"
+            // Unreachable: `macOSURL` routes these two to their own URLs above.
+            case .notifications, .motion: "Privacy_LocalNetwork"
             }
         }
     #endif

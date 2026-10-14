@@ -630,6 +630,42 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   like every constant in the teleop path;
   the roll's direction follows the right-hand rule about the robot's forward axis and has not been checked on hardware.
 
+## Headphones that track a head
+
+`HeadphoneMotionMapping.swift`, `HeadphoneTeleop.swift` and `HeadTrackingSection.swift`.
+AirPods or Beats that track the listener's head steer the robot's head from the Controller screen.
+It is a spike: everything here is tested except the signs and the feel, which need a device.
+
+- **A head is a pose, not a deflection.**
+  `TeleopDriver.aim(_:)` sets the head's yaw, pitch and roll directly,
+  so it skips the pad's mapping and its rotation zone: following a head never turns the body.
+  Each axis stays inside `JoystickMapping.headAngle`.
+  That is also under the ~50° past which the daemon drops a pose without a word
+  (pollen-robotics/reachy_mini#1449, where the documented ±40° clamp turned out not to exist).
+- **Readings are relative to the first one.**
+  Core Motion reports a headphone's attitude in a frame of its own,
+  so the first reading after a switch-on, an attach or Recentre becomes the reference,
+  and `CMAttitude.multiply(byInverseOf:)` gives every reading after it.
+- **The signs are a device check.**
+  `HeadphoneMotionMapping` assumes a right-handed frame with its vertical axis up.
+  A wrong sign shows at once on the robot, and it is one number to flip.
+- **It drives only while a thumb could, and never during a wake.**
+  `ControllerScreen.headTrackingDrives` adds `powerTransition == nil` to the game controller's gate,
+  because a stream of targets just after the motors come on can take the daemon down (pollen-robotics/reachy_mini#1430).
+- **Every way out puts the head back** — a detach, a switch-off, Recentre,
+  and silence for `HeadphoneTeleop.staleAfter`, because an AirPod that leaves an ear stops the readings with no event.
+  A head that was never followed is not put back: the pad may have a thumb on it.
+  The pad and the roll slider go out while a head is followed, because two writers on one target fight every frame.
+- **iOS only, for now.**
+  `CMHeadphoneMotionManager` exists on macOS 14 too,
+  but nobody has checked by hand which Motion pane a refusal would open there,
+  and a wrong pane has no runtime signal (`PrivacySettingsLink`).
+- **No capture reads the device.**
+  The section shows only for a status other than `.unsupported`,
+  and only `observeHeadphones()` reads one — a call no capture makes.
+  So adopting it moved no reference that predates it,
+  and four `Controller —` previews hand in the states they show.
+
 ## Errors
 
 **An error is shown by the screen whose action caused it.** A daemon failure goes into the slot on that screen's

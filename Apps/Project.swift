@@ -103,6 +103,11 @@ let project = Project(
                 "NSMicrophoneUsageDescription": .string(
                     "Talk to people near your Reachy Mini through its speaker."
                 ),
+                // Head tracking from headphones (`HeadphoneTeleop`). Core Motion crashes the
+                // app at `startDeviceMotionUpdates` when this key is absent, on iOS and macOS.
+                "NSMotionUsageDescription": .string(
+                    "Turns your Reachy Mini's head with yours, using headphones that track head movement."
+                ),
                 "UILaunchScreen": .dictionary([:]),
                 // Two modes for a call framed through LiveCommunicationKit, and
                 // only one of them is about the background. `audio` keeps the

@@ -24940,6 +24940,180 @@
           }
         }
       }
+    },
+    "Head tracking": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopferfassung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguimiento de la cabeza"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivi de la tête"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отслеживание головы"
+          }
+        }
+      }
+    },
+    "Follow my head": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meinem Kopf folgen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguir mi cabeza"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivre ma tête"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следовать за моей головой"
+          }
+        }
+      }
+    },
+    "With AirPods or Beats that track your head, the robot turns its head as you turn yours. Look straight ahead when you switch it on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit AirPods oder Beats, die deine Kopfbewegungen erfassen, dreht der Roboter seinen Kopf mit deinem. Schau beim Einschalten geradeaus."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con unos AirPods o Beats que siguen tu cabeza, el robot gira la cabeza a la vez que tú. Mira al frente al activarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avec des AirPods ou des Beats qui suivent votre tête, le robot tourne la tête en même temps que vous. Regardez droit devant vous en l’activant."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С AirPods или Beats, которые отслеживают движения головы, робот поворачивает голову вместе с вами. При включении смотрите прямо перед собой."
+          }
+        }
+      }
+    },
+    "Waiting for headphones that track your head.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf Kopfhörer, die deine Kopfbewegungen erfassen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando unos auriculares que sigan tu cabeza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente d’écouteurs qui suivent votre tête."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ждём наушники, которые отслеживают движения головы."
+          }
+        }
+      }
+    },
+    "Recentre": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu zentrieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a centrar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recentrer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отцентровать"
+          }
+        }
+      }
+    },
+    "Motion & Fitness access is turned off": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Zugriff auf „Bewegung & Fitness“ ist deaktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso a Movimiento y forma física está desactivado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accès à Mouvements et forme est désactivé"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ к «Движению и фитнесу» отключён"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
