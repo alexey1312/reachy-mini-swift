@@ -255,6 +255,28 @@ struct CentralRelayClientTests {
         #expect(robots.first?.transport == .wifi)
     }
 
+    /// A Micro Duck registers on the same central under the same account, with the
+    /// meta its own relay sends. Listed here, it would be a robot every screen
+    /// offers to connect to and none can drive.
+    @Test("another family on the same account is left out of the list")
+    func listsReachyMinisOnly() async throws {
+        let (client, _) = client([
+            "/api/robot-status": .init(statusCode: 200, json: #"""
+            {"robots": [
+              {"peerId": "peer-7", "robotName": "testbot", "busy": false,
+               "meta": {"name": "testbot", "transport": "wifi", "hardware_id": "a1b2c3d4e5f60718"}},
+              {"peerId": "peer-8", "robotName": "olducky", "busy": false,
+               "meta": {"hardware_id": "3fa1c51b", "name": "olducky", "kind": "microduck",
+                        "release": "0.10.0", "api_version": 1, "simulated": false}}
+            ]}
+            """#),
+        ])
+
+        let robots = try await client.robots()
+
+        #expect(robots.map(\.id) == ["a1b2c3d4e5f60718"])
+    }
+
     /// Presence in the list *is* the online signal — central sweeps a robot whose
     /// lease lapsed — so an empty list is an answer, not a failure.
     @Test("an empty list is an answer")

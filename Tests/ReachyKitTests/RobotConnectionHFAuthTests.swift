@@ -235,6 +235,28 @@ struct RobotConnectionHFAuthTests {
         #expect(robot.activeApp == "Hand Tracker")
     }
 
+    /// The daemon proxies central's answer as it is, so the other families under the
+    /// robot's account reach this list too.
+    @Test("the proxied list leaves out another family as well")
+    func proxiesReachyMinisOnly() async throws {
+        let session = makeSession([
+            "/api/hf-auth/central-robot-status": .init(
+                statusCode: 200,
+                json: #"""
+                {"available": true, "robots": [
+                  {"peerId": "peer-8", "busy": false, "meta": {"name": "olducky", "kind": "microduck"}},
+                  {"peerId": "peer-7", "busy": false,
+                   "meta": {"name": "testbot", "transport": "wifi", "hardware_id": "a1b2c3d4e5f60718"}}
+                ]}
+                """#
+            ),
+        ])
+
+        let robots = try await makeConnection(session).centralRobotStatus().robots
+
+        #expect(robots.map(\.id) == ["a1b2c3d4e5f60718"])
+    }
+
     /// `peerId` changes on every relay reconnect, so it is the last resort. Daemon
     /// 1.9.0 sends no `install_id` at all — the relay lists it as a future field.
     @Test("a robot is identified by the most stable key it actually sent")

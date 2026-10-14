@@ -1,7 +1,7 @@
 import Foundation
 
-/// The one thing a screen needs from central: which of this account's robots are
-/// reachable right now.
+/// The one thing a screen needs from central: which of this account's Reachy Minis
+/// are reachable right now.
 ///
 /// A protocol rather than the client itself so listing can be stood up without
 /// HTTP — the same reason `RobotAPIClient` exists next to `RobotConnection`.
