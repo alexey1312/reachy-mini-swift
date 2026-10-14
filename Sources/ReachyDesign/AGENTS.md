@@ -228,6 +228,33 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   column, and that column was placed past the sheet's own leading edge — outside the container, not clipped by it.
   `HFSignInScreen` was the one `Form` in the app without `.formStyle(.grouped)`, and a wider sheet had only been
   hiding it. A symptom at the edge of a container is not evidence about the container.
+- **On macOS a tab's minimum size is a constraint on the window, so the fallback strip may raise neither minimum (#188).**
+  The tab is the detail column of the sidebar's split view, and that split view sits inside the inspector's.
+  AppKit adds the minimum of each column into the minimum of the window.
+  The strip asked for 183 pt of width,
+  so its arrival raised the column's minimum from 524 pt to 707 pt
+  and the window's from 904 pt to 1087 pt, in a window 1000 pt wide.
+  AppKit then widened the window from inside a layout pass:
+  eight passes in 80 ms, with the tab content 52 pt and then 0 pt high on the way.
+  On this Mac the passes settled.
+  On the Mac in #188 they did not, and AppKit raised
+  "more Update Constraints in Window passes than there are views in the window"
+  a few seconds after Start, every time.
+  `ReachyFallbackTabAccessory` therefore gives the strip a frame with no minimum width,
+  and the inset tab a frame with no minimum height (`HoldsMinimumSize`).
+  With both frames the same arrival is one pass, and no minimum moves.
+  - **No reference can hold this.** The snapshot suite renders on an iOS simulator,
+    where a column's minimum is not a window constraint, and on iOS both frames propose what the tab already fills.
+    `ReachyTabAccessoryLayoutTests` holds the two minimums on macOS,
+    and goes red when either frame is removed.
+  - **Read a minimum off the hosting views, not off the screen.**
+    Each split view column is an `NSHostingView` that carries its minimum as `>=` constraints with no second item,
+    so a walk over the window's views from inside the app names every minimum at once.
+    That walk is what found the 183 pt.
+  - **A launch while the screen is locked may open no window.**
+    Measured on every launch but the first: `open -n` started the process with no window,
+    so no view appeared and no `.task` ran, which reads as an app that does nothing.
+    A deep link makes `WindowGroup` open one: `open -n -a <ReachyMini.app> reachy-mini-swift://robot`.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
   headless snapshot (`RunningAppDock`'s `windowEdge` records the same about `.bar`). Without a fill that _does_ render,
   every surface would be invisible to the reference images and the layout and text on each card would silently lose

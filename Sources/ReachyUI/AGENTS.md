@@ -200,6 +200,10 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   - **The old entry read `Root — dock on the apps tab` as showing the bar where the layout puts it.** It showed the
     bar buried. When a reference is the evidence for a claim about layout, say which pixels — and see
     `ReachyDesign/AGENTS.md` on why no reference can be evidence about the safe area at all.
+  - **On macOS the strip may not raise the tab's minimum size, and that is what crashed the app at Start (#188).**
+    Every macOS window draws the fallback, inside two split views,
+    and a minimum the strip adds becomes a minimum of the window.
+    `ReachyDesign/AGENTS.md` has the measurements and the two frames that hold the minimums still.
 - **The floating window and its edge tab are one view, and the morph depends on that.** They used to be two
   branches of a `switch` returning structurally different views — which gave them different SwiftUI identities, and
   nothing geometric interpolates across an identity boundary. `withAnimation(Motion.dock)` was therefore left with
