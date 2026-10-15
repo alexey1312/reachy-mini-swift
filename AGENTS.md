@@ -57,11 +57,13 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
   per-user LaunchAgent that `tuist setup cache` creates once (bootstrap.sh runs it best-effort; it needs a tuist.dev
   session). A missing daemon is **not** the cliff it used to be: the plugin fails fast on an absent socket and the
   local CAS inside DerivedData keeps serving hits — an incremental rebuild measured 23 s with the daemon and 22 s
-  without. CI still defaults `TUIST_CACHE_ENABLED=false` at the workflow level; only the two app-build jobs ask
-  `.github/actions/xcode-workspace` for `compilation-cache: "true"`, and even they flip the variable only once the
-  `tuist setup cache` step sees a live socket — a fork has no session to start one with, and a `.sock` file outlives a
-  dead daemon, so existence is not liveness. **On CI it has been measured and it does not pay** — do not switch it on
-  for the other jobs without new evidence. Two things were wrong with the obvious theory, and both were corrected
+  without.
+  CI sets `TUIST_CACHE_ENABLED=false` for every job, and no job starts a cache service.
+  The two app-build jobs had a `tuist setup cache` step until 2026-10-15.
+  That step waited for a socket named after the project handle, which tuist 4.209.0 no longer creates,
+  so from 2026-09-29 it only logged "Tuist cache service did not start", and it was removed.
+  **On CI it has been measured and it does not pay** — do not switch it on without new evidence.
+  Two things were wrong with the obvious theory, and both were corrected
   before measuring: the generated project carries `COMPILATION_CACHE_*` but no `SWIFT_ENABLE_EXPLICIT_MODULES`,
   without which the Swift compiler caches nothing and says so at every build ("swift compiler caching requires
   explicit module build"); and that setting cannot come from `Apps/Project.swift`, because a project's build settings
@@ -73,10 +75,12 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
   **Cache keys embed absolute paths**, so hits only come from
   a stable DerivedData path: a clean rebuild in the same DD replays from cache (119 s → 39 s measured), while the same
   build in a different DD misses every key and re-uploads everything. `Apps/DerivedData` and CI's fixed workspace path
-  both qualify; a first build with an empty cache pays a population surcharge. Everything is named after the project
-  handle (`alexey1312_reachy-mini-swift` in the LaunchAgent, socket and ci.yml): renaming the tuist.dev project
-  orphans all three silently — exactly how the pre-rename project's agent was found dead here. The agent's first
-  start can lose a race and exit 1; KeepAlive restarts it, check `launchctl list | grep tuist.cache`.
+  both qualify; a first build with an empty cache pays a population surcharge.
+  Since tuist 4.209.0 the service is one LaunchAgent for the whole machine, `tuist.cas-proxy`,
+  and its socket is `~/.local/state/tuist/cas-proxy.sock`.
+  `tuist setup cache` removes the old per-project agent, `tuist.cache.alexey1312_reachy-mini-swift`.
+  Do not wait for a socket named after the project handle: the CI step did that and never found one.
+  Check the agent with `launchctl list | grep tuist`.
 - **Build insights reach tuist.dev through a scheme post-action, not through a command.** `tuist generate` writes
   `tuist inspect build` into every generated scheme's build action (and `tuist inspect test` into
   `ReachyUISnapshotTests`' test action), pointing at the mise-installed binary by absolute path. That post-action
@@ -229,14 +233,14 @@ back with the build still green.
 `mise.toml` interpolates it, and `ci.yml` sets it to `COMPILER_INDEX_STORE_ENABLE=NO`. Index-while-building stays on
 locally because Xcode.app reads that index out of the same `Apps/DerivedData` these tasks write to.
 The four Xcode jobs share `.github/actions/xcode-workspace`: mise, an `Apps/DerivedData/SourcePackages` cache (the
-package graph was being resolved from scratch in every job — 82 s, 97 s, 108 s), the OIDC session, an optional
-`tuist setup cache`, and **one** `tuist generate`. The build steps then run under `MISE_TASK_SKIP_DEPENDS: "true"`,
+package graph was being resolved from scratch in every job — 82 s, 97 s, 108 s), the OIDC session,
+and **one** `tuist generate`. The build steps then run under `MISE_TASK_SKIP_DEPENDS: "true"`,
 because every `mise run build:app*` otherwise re-runs its `depends = ["project"]` — that cost the old single
 app-build job four generations for one workspace. The variable takes `true`/`false`, not `1`, and rejects anything
-else outright. **The step order inside that action is load-bearing**: `Apps/Tuist.swift` reads `TUIST_CACHE_ENABLED`
-_at generation_, so a cache service started after `tuist generate` is a service the project was never told about —
-the socket comes up, the step reports success, and nothing is cached. Generation stays last for the same reason the
-SourcePackages restore comes first.
+else outright.
+Generation stays last in that action, because the SourcePackages restore must come before it.
+`Apps/Tuist.swift` reads `TUIST_CACHE_ENABLED` _at generation_,
+so anything that changes that variable must also run before `tuist generate`.
 **GitHub Actions is not the only CI, and the other one is not in this repository.** An Xcode Cloud workflow named
 `Hey Reachy | TestFlight (Public)` archives `main` and uploads it; its definition lives in App Store Connect and only
 `Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here. It archives **iOS only**, and

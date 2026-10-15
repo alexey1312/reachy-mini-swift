@@ -5,13 +5,6 @@ inputs:
   github-token:
     description: Token for mise's tool downloads and for the OIDC session exchange.
     required: true
-  compilation-cache:
-    description: >-
-      Start the Tuist cache service before generating. Apps/Tuist.swift reads
-      TUIST_CACHE_ENABLED at generation time, so a service started afterwards is a
-      service the project was never told about.
-    required: false
-    default: "false"
 
 runs:
   using: composite
@@ -48,30 +41,11 @@ runs:
       working-directory: Apps
       run: mise x -- tuist auth login || echo "::warning::No tuist.dev session — this run's build insights go unrecorded."
 
-    # The compilation cache answers only through the service `tuist setup cache` starts,
-    # so the env flips to true strictly after its socket is live — settings baked in with
-    # no service behind them stall every compile task instead. A fork has no session to
-    # start one with, and a `.sock` file outlives a dead daemon, so existence is checked
-    # rather than assumed.
-    - name: Set up Tuist cache
-      if: ${{ inputs.compilation-cache == 'true' && !github.event.pull_request.head.repo.fork }}
-      shell: bash
-      working-directory: Apps
-      run: |
-        mise x -- tuist setup cache || true
-        SOCK="$HOME/.local/state/tuist/alexey1312_reachy-mini-swift.sock"
-        for _ in $(seq 1 10); do [ -S "$SOCK" ] && break; sleep 1; done
-        if [ -S "$SOCK" ]; then
-          echo "TUIST_CACHE_ENABLED=true" >> "$GITHUB_ENV"
-        else
-          echo "::warning::Tuist cache service did not start — building uncached."
-        fi
-
     # Generated once per job rather than once per build: every `mise run build:app*`
     # re-runs its `depends = ["project"]`, which cost the old single app-build job four
     # generations (84 + 17 + 18 + 23 s) for one workspace. The build steps that follow
-    # run under MISE_TASK_SKIP_DEPENDS. Last of the steps here, because it is what reads
-    # TUIST_CACHE_ENABLED and what the SourcePackages cache is restored for.
+    # run under MISE_TASK_SKIP_DEPENDS. Last of the steps here, because the SourcePackages
+    # cache is restored for it.
     - name: Generate the Xcode workspace
       shell: bash
       run: mise run project

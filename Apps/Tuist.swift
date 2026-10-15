@@ -8,7 +8,7 @@ let tuist = Tuist(
         // is the session, not the connection.
         // Caching needs the local cache service from `tuist setup cache` (a LaunchAgent);
         // bootstrap.sh runs it. Without the daemon every compile task waits out a CAS
-        // socket deadline, so CI enables it only after its own setup step succeeds.
+        // socket deadline, so CI keeps it off with TUIST_CACHE_ENABLED=false.
         generationOptions: .options(
             optionalAuthentication: true,
             enableCaching: Environment.cacheEnabled.getBoolean(default: true)
