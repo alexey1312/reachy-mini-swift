@@ -25,15 +25,20 @@ git config core.hooksPath .githooks 2>/dev/null || true
 swiftformat = "0.63.0" # Swift code formatting
 swiftlint = "0.65.1"   # Swift linting
 xcsift = "1.5.1"       # xcodebuild/swift output filtering
-tuist = "4.209.0"      # Xcode project generation (Apps/)
-# 4.209.0 asks tuist.dev for the new `KURA` cache backend, and the first machine to ask an account
-# that has none provisioned gets `{"endpoints":[],"provisioning":true}` from
-# `/api/cache/endpoints` — which the CLI reports as a fatal `No cache endpoints are available.`
-# and generation dies. The request is what starts the provisioning, so **retry**: the second run
-# succeeded 40 seconds later. It only bites a machine with a tuist.dev session, which is why a
-# laptop without one and CI (`TUIST_CACHE_ENABLED=false`) never see it, and why it reads as the
-# version bump having broken generation. `TUIST_CACHE_ENABLED=false mise run project` is the
-# escape hatch if it ever persists.
+tuist = "4.212.0"      # Xcode project generation (Apps/)
+# Keep this at 4.210.0 or later. With a tuist.dev session, `tuist generate` asks
+# `/api/cache/endpoints` for the binary cache, also if `TUIST_CACHE_ENABLED=false`:
+# that variable sets `enableCaching` and nothing more. When the account's cache is cold, the
+# server answers `{"endpoints":[],"provisioning":true}`, and the request starts the provisioning.
+# 4.209.0 stops generation on that answer with `No cache endpoints are available.`
+# CI has a session through OIDC, so it got the error too: "Warm the SPM cache" failed three
+# times in a row on 2026-10-14, and other jobs failed at random on 2026-10-05 and 2026-10-13.
+# 4.210.0 and later wait up to 30 s for the cache, then warn and use the local cache.
+# A local stub server that gives this answer shows the difference:
+# 4.209.0 exits 1, and 4.212.0 exits 0 after about 27 s more.
+# With `enableCaching`, 4.212.0 also maps `Apps/` to `/^root` for compile-cached targets.
+# tuist#13737 reports that `#filePath` then reads `/^root/…`. The snapshot tests do not use
+# `#filePath`: Prefire writes the absolute path of each generated file as a literal.
 
 # --- Documentation & Formatting ---
 dprint = "0.57.4" # Markdown formatting
