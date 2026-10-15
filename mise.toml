@@ -2,10 +2,13 @@
 # mise Configuration for ReachyMini
 # =============================================================================
 # Bootstrap: run ./bootstrap.sh once after cloning. No global mise needed —
-# ./bin/mise is a self-contained bootstrap binary (mise generate bootstrap).
+# ./bin/mise is a self-contained bootstrap script (mise generate install-script).
 #
-# To update the embedded mise version:
-#   mise generate bootstrap > ./bin/mise && chmod +x ./bin/mise
+# To update the embedded mise version, name the version explicitly:
+#   ./bin/mise generate install-script --version <X.Y.Z> --write bin/mise
+# Without --version the script pins the release that `mise self-update` picks,
+# and that skips releases younger than a day: 2026.10.10 generated a 2026.10.9 script.
+# `mise generate bootstrap` is the old name; mise 2027.9.0 removes it.
 # =============================================================================
 
 [settings]
@@ -22,9 +25,9 @@ git config core.hooksPath .githooks 2>/dev/null || true
 [tools]
 # --- Swift Development ---
 # Swift itself is managed by swiftly via .swift-version, not by mise.
-swiftformat = "0.63.0" # Swift code formatting
+swiftformat = "0.63.1" # Swift code formatting
 swiftlint = "0.65.1"   # Swift linting
-xcsift = "1.5.1"       # xcodebuild/swift output filtering
+xcsift = "1.6.0"       # xcodebuild/swift output filtering
 tuist = "4.212.0"      # Xcode project generation (Apps/)
 # Keep this at 4.210.0 or later. With a tuist.dev session, `tuist generate` asks
 # `/api/cache/endpoints` for the binary cache, also if `TUIST_CACHE_ENABLED=false`:
@@ -41,7 +44,7 @@ tuist = "4.212.0"      # Xcode project generation (Apps/)
 # `#filePath`: Prefire writes the absolute path of each generated file as a literal.
 
 # --- Documentation & Formatting ---
-dprint = "0.57.4" # Markdown formatting
+dprint = "0.63.0" # Markdown formatting
 
 # --- Snapshots & Storybook ---
 # The release ships a single lowercase `prefire` binary, which the backend cannot guess from the
@@ -58,7 +61,7 @@ dprint = "0.57.4" # Markdown formatting
 git-lfs = "3.8.0" # Snapshot reference images
 
 # --- Git & CI ---
-hk = "2.4.0"         # Git hooks manager (version must match hk.pkl package URI)
+hk = "2.6.0"         # Git hooks manager (version must match hk.pkl package URI)
 actionlint = "1.7.12" # GitHub Actions linting
 git-cliff = "2.14.2"  # Changelog generation
 
@@ -66,16 +69,16 @@ git-cliff = "2.14.2"  # Changelog generation
 # The release ships a bare binary rather than an archive, and that decides the option:
 # `bin` renames a single downloaded file, `exe` (used for Prefire above) only renames one
 # extracted from an archive and here leaves an unrunnable `asc_<version>_macOS`.
-"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.7.0" # App Store Connect API client
+"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.14.3" # App Store Connect API client
 
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
-uv = "0.12.19"   # installs into that venv as APFS clones — see sim-daemon
+uv = "0.13.1"   # installs into that venv as APFS clones — see sim-daemon
 # Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
 # rather than left to a global `brew install` because CI and a fresh clone have no brew
 # copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
 # is the only asset it publishes, so bootstrap.sh disables it everywhere else.
-"github:MobAI-App/simslim[exe=simslim]" = "0.11.0"
+"github:MobAI-App/simslim[exe=simslim]" = "0.12.2"
 
 # --- End-to-end flows ---
 # Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
@@ -84,8 +87,8 @@ uv = "0.12.19"   # installs into that venv as APFS clones — see sim-daemon
 # launcher script resolves relative to itself. Naming either option, or `bin_path`,
 # disables that strip and separates the two.
 # The tag is `cli-<version>`, so that is what the pin says: `mise ls-remote maestro`
-# lists `cli-2.10.0`, not `2.10.0`.
-maestro = "cli-2.10.0" # End-to-end flows on a simulator (Apps/Maestro)
+# lists `cli-2.11.0`, not `2.11.0`.
+maestro = "cli-2.11.0" # End-to-end flows on a simulator (Apps/Maestro)
 # Maestro is a JVM application and this machine had no Java at all. Exact rather than
 # `21`, which is the fuzzy-selector shape that makes the next re-lock a wide diff.
 java = "temurin-21.0.12+101.0.LTS" # Maestro's runtime, nothing else uses it

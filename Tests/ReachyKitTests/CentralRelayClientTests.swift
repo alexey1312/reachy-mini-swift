@@ -86,8 +86,8 @@ struct CentralRelayClientTests {
                 false
             }
         } }
-        /// The POST is fired from the stream's task; poll for it rather than
-        /// betting a fixed pause outlasts a loaded runner (project rule 7).
+        // The POST is fired from the stream's task; poll for it rather than
+        // betting a fixed pause outlasts a loaded runner (project rule 7).
         func announced() -> Bool {
             StubURLProtocol.bodies(for: session)
                 .compactMap { try? JSONDecoder().decode(SignalingMessage.self, from: $0) }

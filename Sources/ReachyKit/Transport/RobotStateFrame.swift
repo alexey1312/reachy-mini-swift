@@ -117,7 +117,7 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
         if let values = try pose.decodeIfPresent([Double].self, forKey: .m) {
             return .matrix(values)
         }
-        /// Every component defaults to 0 in the daemon's schema.
+        // Every component defaults to 0 in the daemon's schema.
         func component(_ key: PoseKeys) throws -> Double {
             try pose.decodeIfPresent(Double.self, forKey: key) ?? 0
         }

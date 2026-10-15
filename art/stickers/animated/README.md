@@ -14,7 +14,7 @@
 | astronaut-float     | float   | дрейфует восьмёркой в невесомости       | 🚀     |
 | builder-hammer      | hammer  | три удара молотком за цикл              | 👷     |
 | captain-sail        | sail    | качка: крен и вертикаль в противофазе   | ⚓     |
-| cooking-chief-laugh | laugh   | хохочет; антенн не видно — колпак       | 👨‍🍳   |
+| cooking-chief-laugh | laugh   | хохочет; антенн не видно — колпак       | 👨‍🍳     |
 | cowboy-swagger      | swagger | развалистая асимметричная раскачка      | 🤠     |
 | doctor-think        | think   | склонил голову, антенны сошлись         | 🩺     |
 | explorer-scan       | scan    | взгляд влево, пауза, вправо, пауза      | 🧭     |
