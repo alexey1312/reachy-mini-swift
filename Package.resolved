@@ -1,5 +1,5 @@
 {
-  "originHash" : "bb805aafb5234e4175013b3e8c0a96dd8944cbd6dc507b0ede66d238e354ba04",
+  "originHash" : "851a45a175fde1d303afb486acaea2af288c003af3590edd147970be7393dc46",
   "pins" : [
     {
       "identity" : "bigint",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/BarredEwe/Prefire",
       "state" : {
-        "revision" : "482f59ced5a9a041bc516cb258f0af897079c13a",
-        "version" : "5.7.0"
+        "revision" : "df2ea9cfd4d80419ab03c492f9e3a9f5aabd174b",
+        "version" : "6.1.0"
       }
     },
     {

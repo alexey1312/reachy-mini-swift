@@ -601,7 +601,7 @@ and not a failed assertion — `Switch to iOS 26 for these tests`. Reached throu
 before it runs anything, that is every reference gone and every test crashing. Rebuild after changing the pin, then
 prove one class runs (`test-without-building -only-testing:…/JoystickPadPreviewsTests`) before recording.
 **Every preview is captured in both appearances**, by `Apps/ReachyUISnapshotTests/PreviewTests.stencil` — a fork of
-Prefire 5.7.0's built-in test template, which is why the package requirement is `.exact` rather than
+Prefire 6.1.0's built-in test template, which is why the package requirement is `.exact` rather than
 `upToNextMajor`. Light keeps the name it always had and dark takes a `-dark` suffix, so adopting it added 500 files
 and modified none. What a dark reference can and cannot prove — glass renders light in both — is in
 `Sources/ReachyDesign/AGENTS.md`. `simctl ui … appearance light` survives in `snapshots:_run` as belt and braces

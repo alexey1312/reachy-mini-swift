@@ -26,7 +26,7 @@ jobs:
           # git-cliff walks the whole history to find the previous tag.
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
         with:
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -33,7 +33,7 @@ let package = Package(
         .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
         // No target here uses these two; `Apps/Project.swift` does. Declared so SwiftPM (and
         // Dependabot) pin the same 25 packages Xcode does instead of dropping five of them.
-        .package(url: "https://github.com/BarredEwe/Prefire", exact: "5.7.0"),
+        .package(url: "https://github.com/BarredEwe/Prefire", exact: "6.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.19.4"),
     ],
     targets: [
