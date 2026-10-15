@@ -164,43 +164,43 @@ url = "https://github.com/git-lfs/git-lfs/releases/download/v3.8.0/git-lfs-windo
 url_api = "https://api.github.com/repos/git-lfs/git-lfs/releases/assets/532993969"
 
 [[tools."github:BarredEwe/Prefire"]]
-version = "5.7.0"
+version = "6.1.0"
 backend = "github:BarredEwe/Prefire"
 
 [tools."github:BarredEwe/Prefire"."platforms.linux-arm64"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.linux-arm64-musl"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.linux-x64"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.linux-x64-musl"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.macos-arm64"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.macos-x64"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [tools."github:BarredEwe/Prefire"."platforms.windows-x64"]
-checksum = "sha256:8f8a1d95cadc705fdbd950a72aee95e5a59f90a41dcd17e300f95c8becc6121b"
-url = "https://github.com/BarredEwe/Prefire/releases/download/5.7.0/prefire.tar.gz"
-url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/471183079"
+checksum = "sha256:37d49464c12254824d3ca6e56839d961d5be7ad1e159c7325cb4ae70af10047f"
+url = "https://github.com/BarredEwe/Prefire/releases/download/6.1.0/prefire.tar.gz"
+url_api = "https://api.github.com/repos/BarredEwe/Prefire/releases/assets/634241069"
 
 [[tools."github:MobAI-App/simslim"]]
 version = "0.12.2"

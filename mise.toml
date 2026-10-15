@@ -49,15 +49,18 @@ dprint = "0.63.0" # Markdown formatting
 # --- Snapshots & Storybook ---
 # The release ships a single lowercase `prefire` binary, which the backend cannot guess from the
 # repository name — hence the explicit exe option.
-# Held at 5.7.0 deliberately, and a bump is a migration rather than a version change:
+# A bump is a migration, not a version change:
 # `Apps/ReachyUISnapshotTests/PreviewTests.stencil` is a fork of *this version's* built-in
-# template, and 5.9.0 renamed the runtime API underneath it — `snapshotDevice()` became
-# `snapshotDeviceConfig()`, `checkEnvironments()` + `UIView.setAnimationsEnabled(false)` became
-# `prepareEnvironment()`, and `PrefireSnapshot` gained `fixedLayoutSize`. So the fork does not
-# compile against it, and re-forking moves the rendering path, which means re-recording ~1100
-# references. Diff `PrefireExecutable/Sources/PrefireCore/Templates/PreviewTestsTemplate.swift`
-# between the two tags before attempting it.
-"github:BarredEwe/Prefire[exe=prefire]" = "5.7.0"
+# template, and the runtime API under it changes between releases.
+# From 5.7.0 to 6.1.0, `snapshotDevice()` became `snapshotDeviceConfig()`,
+# `checkEnvironments()` became `prepareEnvironment()`, and `PrefireSnapshot` got `fixedLayoutSize`.
+# So rebuild the fork on the new template; do not patch the old fork.
+# Take `PreviewTestsTemplate.swift` from `PrefireExecutable/Sources/PrefireCore/Templates/`
+# at the new tag, and apply the edits that the "PREFIRE FORK" comment in the stencil names.
+# 6.1.0 was moved that way on 2026-10-15 and moved no reference:
+# 519 tests passed, and all 2076 reference PNGs stayed byte-identical.
+# Keep the pin equal to the `.exact` requirements in Apps/Project.swift and Package.swift.
+"github:BarredEwe/Prefire[exe=prefire]" = "6.1.0"
 git-lfs = "3.8.0" # Snapshot reference images
 
 # --- Git & CI ---
