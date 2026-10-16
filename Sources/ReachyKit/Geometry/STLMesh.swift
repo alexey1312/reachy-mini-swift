@@ -93,8 +93,8 @@ public enum STLDecoder {
         data.withUnsafeBytes { raw in
             for triangle in 0 ..< count {
                 let base = headerSize + 4 + triangle * triangleStride
-                /// Offsets are not four-byte aligned once the 84-byte prologue is
-                /// passed, so an aligned load would trap on arm64.
+                // Offsets are not four-byte aligned once the 84-byte prologue is
+                // passed, so an aligned load would trap on arm64.
                 func float(_ index: Int) -> Float {
                     Float(bitPattern: raw.loadUnaligned(
                         fromByteOffset: base + index * 4,

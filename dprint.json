@@ -6,6 +6,6 @@
     ".github/ISSUE_TEMPLATE/**",
     ".claude/**"
   ],
-  "plugins": ["https://plugins.dprint.dev/markdown-0.17.8.wasm"],
+  "plugins": ["https://plugins.dprint.dev/markdown-0.26.0.wasm"],
   "markdown": { "lineWidth": 120, "textWrap": "maintain" }
 }

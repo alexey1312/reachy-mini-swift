@@ -52,10 +52,13 @@ import SwiftUI
     )
 }
 
+// What a 1.12 daemon's refused device code reads as: it answers one of a few fixed
+// sentences, and the card translates it. The robot here offers the device code,
+// so a token's refusal would not match the footer under it.
 #Preview("HF — linking failed") {
     PreviewScene.hfAccount(
         model: .preview(state: .signedIn(username: "alexey1312")),
-        linkError: "The daemon rejected the request (HTTP 400)"
+        linkError: RobotHFFailureCaption.text(for: "Authorization was denied.")
     )
 }
 

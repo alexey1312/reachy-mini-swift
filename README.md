@@ -25,7 +25,11 @@ run in simulation — or no robot at all, with the simulator the app carries its
 
 <p align="center">
   <a href="https://alexey1312.github.io/reachy-mini-swift/">
-    <img src="docs/media/demo.gif" width="400" alt="A Reachy Mini Wireless moving while the 3D twin on the iPad follows it" />
+    <img
+      src="docs/media/demo.gif"
+      width="400"
+      alt="A Reachy Mini Wireless moving while the 3D twin on the iPad follows it"
+    />
   </a>
 </p>
 
@@ -91,10 +95,16 @@ Hey Reachy is a separate app, and this is where it differs:
 
 <p align="center">
   <a href="https://apps.apple.com/app/hey-reachy/id6799644194">
-    <img src="https://img.shields.io/badge/Download%20on%20the%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download on the App Store" />
+    <img
+      src="https://img.shields.io/badge/Download%20on%20the%20App%20Store-000000?style=for-the-badge&logo=apple&logoColor=white"
+      alt="Download on the App Store"
+    />
   </a>
   <a href="https://testflight.apple.com/join/CGjefT9a">
-    <img src="https://img.shields.io/badge/Join%20the%20public%20beta%20on%20TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white" alt="Join the public beta on TestFlight" />
+    <img
+      src="https://img.shields.io/badge/Join%20the%20public%20beta%20on%20TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white"
+      alt="Join the public beta on TestFlight"
+    />
   </a>
 </p>
 
@@ -186,7 +196,7 @@ Two different things, and which one you want depends on what you are working on:
   No daemon, no network, no Python,
   and the only one of the two that runs on a phone.
   Use it for the UI, the 3D viewer and the kinematics.
-- **A real daemon in MuJoCo simulation** — `./bin/mise run sim-daemon`; the tested daemon baseline is **1.11.0**. Use
+- **A real daemon in MuJoCo simulation** — `./bin/mise run sim-daemon`; the tested daemon baseline is **1.12.0**. Use
   it for anything about the _protocol_: it is upstream's own code answering. The daemon's OpenAPI spec is committed
   at `Sources/ReachyKit/openapi.json` and refreshed with `./bin/mise run update-spec`.
 

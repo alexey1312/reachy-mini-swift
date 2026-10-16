@@ -14,9 +14,10 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_GITHUB_ATTESTATIONS: false
-  # Read by Apps/Tuist.swift at generation. Off for every job by default — with the
+  # Read by Apps/Tuist.swift at generation. Off for every job: with the
   # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
-  # waits out a CAS socket deadline. The app jobs flip it on once their service is up.
+  # waits out a CAS socket deadline. The cache was measured on CI and does not pay
+  # (AGENTS.md), so no job turns it on.
   TUIST_CACHE_ENABLED: "false"
   # Honoured by every xcodebuild task in mise.toml. Index-while-building writes an index
   # nothing on a runner ever opens; it stays on locally, where Xcode.app reads it out of
@@ -71,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
         with:
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -187,7 +188,6 @@ jobs:
       - uses: ./.github/actions/xcode-workspace
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          compilation-cache: "true"
 
       - name: Build ReachyMini (Debug)
         run: mise run build:app
@@ -235,7 +235,6 @@ jobs:
       - uses: ./.github/actions/xcode-workspace
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          compilation-cache: "true"
 
       - name: Build ReachyMini + widget (Debug)
         run: mise run build:app:ios

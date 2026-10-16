@@ -200,6 +200,10 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   - **The old entry read `Root — dock on the apps tab` as showing the bar where the layout puts it.** It showed the
     bar buried. When a reference is the evidence for a claim about layout, say which pixels — and see
     `ReachyDesign/AGENTS.md` on why no reference can be evidence about the safe area at all.
+  - **On macOS the strip may not raise the tab's minimum size, and that is what crashed the app at Start (#188).**
+    Every macOS window draws the fallback, inside two split views,
+    and a minimum the strip adds becomes a minimum of the window.
+    `ReachyDesign/AGENTS.md` has the measurements and the two frames that hold the minimums still.
 - **The floating window and its edge tab are one view, and the morph depends on that.** They used to be two
   branches of a `switch` returning structurally different views — which gave them different SwiftUI identities, and
   nothing geometric interpolates across an identity boundary. `withAnimation(Motion.dock)` was therefore left with
@@ -866,6 +870,12 @@ this is that half, and it ships.
   On the LAN the same rule takes Hide off `App detail — installed`, whose card joins an installed row.
   Report is offered on every page with a Space id: it is the Hub's own form,
   and an app worth reporting does not stop being one once installed.
+- **The sign-in gate sends no token anywhere.**
+  It opens when the robot's own account reads as signed out, and its button opens the account sheet.
+  Linking is a step somebody takes there (ADR 0003, amended 2026-10-16):
+  the store used to put this app's token on any robot that read as signed out, unasked.
+  The screen follows `RobotSession.knownRobotHFAccount`, because the sheet links the robot over a screen
+  whose `.task` does not run again; the reload that follows forces a fresh catalogue.
 - **The notice is not part of `visibleApps`, and the sign-in gate is.**
   Folding it in would make every store test agree to a notice first.
   The screen draws no rows while `showsCommunityNotice` is true —
@@ -903,6 +913,11 @@ written against Conversation App 1.0's `/rpc` and would leave every other app wi
 (`WebAuthenticationBrowser` is **not** a second web view — that is `ASWebAuthenticationSession`, out of process on
 purpose so no Hugging Face credential passes through one of ours.)
 
+- **The page stays on its own origin.**
+  `AppSettingsNavigation` lets the main frame go only to the page's scheme, host and port.
+  Any other `http` or `https` link opens in the system browser, and anything else is refused.
+  The sheet has no address bar, so a page that left its origin would put another site under a "Settings" title.
+  Subframes stay the page's own business, as in the JS app host.
 - **`AppDetailSheet` decides whether to offer it, not the screen.** `RobotSession.appSettingsURL(for:)` answers nil
   without a declared port and without a LAN address; the page adds `state == .running` and `isReachable`, because
   the process serving the page is the process that crashes. There is no way to reach an app's settings while it is
@@ -1241,6 +1256,32 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   and not worth contorting the screen for. Snapshots are unaffected — they capture the title _and_
   the toolbar items, so `RobotScreen`'s Settings gear and `MovesScreen`'s Refresh are covered.
   Only the storybook hoists.
+- **Under `.searchable` an iPhone capture drew the large title flush against the leading edge, and only the capture
+  was wrong.**
+  The Apps, Daemon logs and Recovery journal references had the title's first ink at x 1–4 px,
+  where every other screen has it at 33–36 px (16 pt).
+  The running app on an iPhone 17 Pro simulator, connected to `sim-daemon` and driven to the Apps tab by Maestro,
+  draws it at 16.7 pt, the same as the Settings tab.
+  - **The cause is in swift-snapshot-testing.**
+    On a safe area of exactly `.zero` it moves the view to (10 000, 10 000), off its window,
+    and then renders it with `renderInContext:`, which runs one more layout pass.
+    Off the window the view has no system minimum layout margins,
+    so each view that pass lays out gets a 0 pt margin.
+    A trace of `UILabel.setCenter` on the title showed it:
+    centre x 56.5 in the library's `add(traits:)`, then 40.5 from `-[CALayer renderInContext:]` →
+    `layoutIfNeeded` → `_UINavigationBarLargeTitleView layoutSubviews`.
+  - **`.searchable` is what leaves the title to that last pass**, and on an iPhone only.
+    A bisect in the real harness gave x 1 px for a `List` or a `Form` with `.searchable`, with or without
+    `.minimize`, and 33 px for each of `.refreshable`, a toolbar `Menu`, `readablePage()` and no modifier.
+    Every iPad capture kept its inset.
+  - **The stencil now sets a safe area of one millionth of a point**, which keeps the view on its window.
+    The move exists to keep a host app's own safe area out of a capture, and this bundle has no host app.
+    On the window a `Form` also draws its scroll edge effect, so the stencil hides that too;
+    without it, 135 dark references outside these three screens moved, each in a band across the first card.
+    With both changes 57 references moved, all of them only in the title band (y 152…212 px),
+    and the run after the re-record passed all 519 tests with no reference written.
+    The 58th predicted one, `Recovery — journal, quiet robot` in dark, did not move:
+    its title is white on the glass a dark capture draws white.
 
 ## Entities in Spotlight, beside the three systems above
 

@@ -12,7 +12,7 @@
 | astronaut     | 🚀     |
 | builder       | 👷     |
 | captain       | ⚓     |
-| cooking-chief | 👨‍🍳   |
+| cooking-chief | 👨‍🍳     |
 | cowboy        | 🤠     |
 | doctor        | 🩺     |
 | explorer      | 🧭     |

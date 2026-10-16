@@ -26,8 +26,8 @@ import SwiftUI
     // The robot's own version is the Software version row above the warning, so the
     // two are seeded together or the screen contradicts itself.
     PreviewScene.robotScreen(.preview(
-        phase: .connected(RobotIdentity(hardwareID: "hw-preview", name: "Reachy Mini", daemonVersion: "1.12.0")),
-        compatibility: .untestedNewer(reported: "1.12.0", tested: "1.11.0")
+        phase: .connected(RobotIdentity(hardwareID: "hw-preview", name: "Reachy Mini", daemonVersion: "1.13.0")),
+        compatibility: .untestedNewer(reported: "1.13.0", tested: "1.12.0")
     ))
 }
 

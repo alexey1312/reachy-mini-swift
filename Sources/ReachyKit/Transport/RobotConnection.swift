@@ -59,9 +59,9 @@ public actor RobotConnection {
             return URLSession(configuration: configuration)
         }
 
-        /// Generated routes exchange finite JSON. The actual streams use their own
-        /// clients, so avoid URLSession's bidirectional upload path here: on macOS 15
-        /// its response callbacks can race a custom URLProtocol used by tests.
+        // Generated routes exchange finite JSON. The actual streams use their own
+        // clients, so avoid URLSession's bidirectional upload path here: on macOS 15
+        // its response callbacks can race a custom URLProtocol used by tests.
         func makeTransport(_ session: URLSession) -> URLSessionTransport {
             URLSessionTransport(
                 configuration: .init(session: session, httpBodyProcessingMode: .buffered)
@@ -216,7 +216,7 @@ public actor RobotConnection {
         }
     }
 
-    private static func detail(of payload: UndocumentedPayload) async -> String? {
+    static func detail(of payload: UndocumentedPayload) async -> String? {
         guard let body = payload.body, let data = try? await Data(collecting: body, upTo: 4096) else { return nil }
         return ReachyKitError.detail(in: data)
     }

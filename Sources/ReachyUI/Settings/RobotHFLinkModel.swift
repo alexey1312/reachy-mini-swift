@@ -119,6 +119,9 @@ final class RobotHFLinkModel {
             // change state would wait forever — the daemon's own docstring calls
             // that trap out by name.
             relay = refresh.didStart ? try? await relayCall(session) : relay
+        } catch let ReachyKitError.daemonRefused(statusCode: 400, detail) {
+            // `save-token` refused the token; the detail is the daemon's sentence.
+            linkError = RobotHFFailureCaption.text(for: detail)
         } catch {
             linkError.recordDaemonFailure(error)
         }
@@ -158,8 +161,15 @@ final class RobotHFLinkModel {
             linkError.recordDaemonFailure(error)
             return
         }
+        guard let approvalURL = login.approvalURL else {
+            // Not Hugging Face's page, so nothing is opened and the robot is told to
+            // stop: a code nobody can approve here is a code left polling the Hub.
+            await stopOnRobot(login, session: session)
+            linkError = Self.untrustedPageText
+            return
+        }
         deviceLogin = login
-        open(login.approvalURL)
+        open(approvalURL)
         let status = await finalStatus(of: login, session: session)
         if let status, case .authorized = status {
             await finishDeviceLogin(status, session: session)
@@ -216,12 +226,16 @@ final class RobotHFLinkModel {
         case .expired:
             linkError = Self.expiredText
         case let .failed(message):
-            // Runtime text from the Hub by way of the robot, which is what keeps
-            // this slot a String (rule 9).
-            linkError = message ?? String(localized: .reachy("Hugging Face did not sign the robot in."))
+            // The daemon's sentence, in this app's words — never the provider's own
+            // text, which a daemon before 1.12 could still send.
+            linkError = RobotHFFailureCaption.text(for: message)
         case .cancelled, .pending, .unknown:
             break
         }
+    }
+
+    static var untrustedPageText: String {
+        String(localized: .reachy("The robot sent a sign-in page that is not on huggingface.co, so it was not opened."))
     }
 
     private static var expiredText: String {
@@ -236,6 +250,9 @@ final class RobotHFLinkModel {
             try await unlinkCall(session)
             robotAccount = try? await accountCall(session, true)
             relay = try? await relayCall(session)
+        } catch let ReachyKitError.daemonRefused(statusCode: 400, detail) {
+            // `save-token` refused the token; the detail is the daemon's sentence.
+            linkError = RobotHFFailureCaption.text(for: detail)
         } catch {
             linkError.recordDaemonFailure(error)
         }

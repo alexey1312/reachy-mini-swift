@@ -30,6 +30,13 @@ public extension RobotSession {
         return status
     }
 
+    /// The robot's account as this session last read or wrote it, without asking
+    /// the robot. `nil` until something asked. Observable, so a screen can follow a
+    /// link made on another one.
+    var knownRobotHFAccount: HFAuthStatus? {
+        hfAccountCache
+    }
+
     /// Hands the robot a token and asks the relay to pick it up at once, rather
     /// than on its next retry.
     ///

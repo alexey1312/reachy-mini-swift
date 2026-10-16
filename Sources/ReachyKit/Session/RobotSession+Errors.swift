@@ -68,9 +68,9 @@ public extension RobotSession {
     /// nothing, so it may neither report a failure nor clear one still being read.
     nonisolated static func message(for error: Error) -> String? {
         guard !isCancellation(error) else {
-            // `.public`: an error description carries no user data, and a line
-            // reading `<private>` would defeat the point of keeping it.
-            log.debug("dropped cancelled call: \(String(describing: error), privacy: .public)")
+            // `.public` is safe only because `logSummary` names the failure and
+            // nothing it carried — see there for what `String(describing:)` leaked.
+            log.debug("dropped cancelled call: \(logSummary(of: error), privacy: .public)")
             return nil
         }
         let message = describe(error)
@@ -94,6 +94,24 @@ public extension RobotSession {
         case let urlError as URLError: urlError.code == .cancelled
         default: false
         }
+    }
+
+    /// A line that names a failure and carries none of its payload, for a log that
+    /// is read in Console unredacted.
+    ///
+    /// `String(describing:)` of the generated client's `ClientError` is the whole
+    /// operation context: `operationInput` and `requestBody` included. For
+    /// `hf-auth/save-token` that is the request body, and the body is the token —
+    /// so a link cancelled by a disconnect wrote `hf_…` into the system log as
+    /// `.public`. This keeps the operation, the HTTP status and the root cause's
+    /// type, which is everything a reader of the log can act on.
+    nonisolated static func logSummary(of error: Error) -> String {
+        let root = rootCause(of: error)
+        let nsError = root as NSError
+        let cause = "\(type(of: root)) \(nsError.domain) \(nsError.code)"
+        guard let clientError = error as? ClientError else { return cause }
+        let status = clientError.response.map { " HTTP \($0.status.code)" } ?? ""
+        return "\(clientError.operationID)\(status): \(cause)"
     }
 
     /// Whether the robot did not answer in time, over either transport.

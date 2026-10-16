@@ -66,14 +66,18 @@ struct RobotConnectionHFAuthTests {
     }
 
     /// The daemon validates the token by calling `whoami` before storing it, and a
-    /// token that fails comes back as a 400 — not a 401.
-    @Test("a token the Hub rejects is refused with a 400")
+    /// token that fails comes back as a 400 — not a 401. The detail is kept: from
+    /// 1.12 it is one of a few fixed sentences, which the screen translates.
+    @Test("a token the Hub rejects is refused with a 400 and the daemon's sentence")
     func rejectsAnInvalidToken() async throws {
         let session = makeSession([
-            "/api/hf-auth/save-token": .init(statusCode: 400, json: #"{"detail": "Invalid token"}"#),
+            "/api/hf-auth/save-token": .init(
+                statusCode: 400,
+                json: #"{"detail": "Invalid token or network error"}"#
+            ),
         ])
 
-        await #expect(throws: ReachyKitError.daemonRejected(statusCode: 400)) {
+        await #expect(throws: ReachyKitError.daemonRefused(statusCode: 400, detail: "Invalid token or network error")) {
             try await makeConnection(session).saveHFToken("nope")
         }
     }
@@ -233,6 +237,28 @@ struct RobotConnectionHFAuthTests {
         #expect(robot.transport == .wifi)
         #expect(robot.isBusy)
         #expect(robot.activeApp == "Hand Tracker")
+    }
+
+    /// The daemon proxies central's answer as it is, so the other families under the
+    /// robot's account reach this list too.
+    @Test("the proxied list leaves out another family as well")
+    func proxiesReachyMinisOnly() async throws {
+        let session = makeSession([
+            "/api/hf-auth/central-robot-status": .init(
+                statusCode: 200,
+                json: #"""
+                {"available": true, "robots": [
+                  {"peerId": "peer-8", "busy": false, "meta": {"name": "olducky", "kind": "microduck"}},
+                  {"peerId": "peer-7", "busy": false,
+                   "meta": {"name": "testbot", "transport": "wifi", "hardware_id": "a1b2c3d4e5f60718"}}
+                ]}
+                """#
+            ),
+        ])
+
+        let robots = try await makeConnection(session).centralRobotStatus().robots
+
+        #expect(robots.map(\.id) == ["a1b2c3d4e5f60718"])
     }
 
     /// `peerId` changes on every relay reconnect, so it is the last resort. Daemon

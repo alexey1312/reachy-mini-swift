@@ -27,43 +27,61 @@ struct AppStoreModelTests {
         return (model, session)
     }
 
-    /// The robot's copy of the token cannot renew itself — the daemon stores only
-    /// the access half — so an expired one silently empties the Hub search behind
-    /// Discover. This app holds the refresh token and is the only party that can
-    /// put a live one back.
-    @Test("an expired session on the robot is relinked with this app's token")
-    func relinksTheRobot() async {
+    /// Linking is a step somebody takes in the account sheet. The store used to put
+    /// this app's token on any robot that read as signed out — over plain HTTP, to
+    /// whatever host answered, asking nobody — and daemon 1.12 signs every robot
+    /// out once.
+    @Test("a signed-out robot gates Discover and is sent no token")
+    func sendsNoToken() async {
         let client = StoreRobotClient()
         client.hfStatus = HFAuthStatus(isLoggedIn: false)
         let session = await connected(client)
         let model = AppStoreModel(session: session)
 
-        await model.load(session: session) { "hf_fresh" }
+        await model.load(session: session)
 
-        #expect(client.savedTokens == ["hf_fresh"])
-        #expect(!model.discoverNeedsHFSignIn)
-        model.section = .discover
-        #expect(!model.visibleApps.isEmpty)
+        #expect(client.savedTokens.isEmpty)
+        #expect(model.discoverNeedsHFSignIn)
     }
 
-    /// Nothing to relink with, so the catalogue the daemon returns is short and
-    /// says nothing about being short. Discover asks for the sign-in instead;
-    /// installed apps are on the robot already and are left alone.
-    @Test("without a token of its own the store gates Discover, not Installed")
+    /// The catalogue the daemon returns is short and says nothing about being
+    /// short. Discover asks for the link instead; installed apps are on the robot
+    /// already and are left alone.
+    @Test("a signed-out robot gates Discover, not Installed")
     func gatesDiscoverOnly() async {
         let client = StoreRobotClient()
         client.hfStatus = HFAuthStatus(isLoggedIn: false)
         let session = await connected(client)
         let model = AppStoreModel(session: session)
 
-        await model.load(session: session) { nil }
+        await model.load(session: session)
 
         #expect(model.discoverNeedsHFSignIn)
-        #expect(client.savedTokens.isEmpty)
         model.section = .discover
         #expect(model.visibleApps.isEmpty)
         model.section = .installed
         #expect(!model.visibleApps.isEmpty)
+    }
+
+    /// The list read behind the gate is the curated handful, and the session holds
+    /// it in memory — so without a forced refresh the next load would answer out of
+    /// it and the robot would never be asked for the whole catalogue.
+    @Test("a robot linked since the gate went up is asked for the catalogue again")
+    func refreshesAfterALink() async {
+        let client = StoreRobotClient()
+        client.hfStatus = HFAuthStatus(isLoggedIn: false)
+        let session = await connected(client)
+        let model = AppStoreModel(session: session)
+        await model.load(session: session)
+        let callsBehindTheGate = client.catalogueCalls
+
+        // The account sheet's explicit link. Its relay refresh throws in this
+        // double, after the token is saved, as a real one may.
+        _ = try? await session.linkRobot(token: "hf_explicit")
+        await model.load(session: session)
+
+        #expect(!model.discoverNeedsHFSignIn)
+        #expect(client.catalogueCalls == callsBehindTheGate + 1)
     }
 
     @Test("one answer from the daemon becomes two sections")

@@ -35,7 +35,7 @@ either re-records everything or fails the run outright:
 So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, at iPhone 16 Pro dimensions. A
 different iOS runtime renders text differently and every reference would have to be re-recorded.
 **Every preview is captured in both appearances**, by `Apps/ReachyUISnapshotTests/PreviewTests.stencil` — a fork of
-Prefire 5.7.0's built-in test template, which is why the package requirement is `.exact` rather than
+Prefire 6.1.0's built-in test template, which is why the package requirement is `.exact` rather than
 `upToNextMajor`. Light keeps the name it always had and dark takes a `-dark` suffix, so adopting it added 500 files
 and modified none. What a dark reference can and cannot prove — glass renders light in both — is in
 `Sources/ReachyDesign/AGENTS.md`. `simctl ui … appearance light` survives in `snapshots:_run` as belt and braces

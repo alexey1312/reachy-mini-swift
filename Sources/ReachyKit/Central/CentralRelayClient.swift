@@ -163,15 +163,16 @@ public actor CentralRelayClient {
         return try? JSONCodec.web.decode(SignalingMessage.self, from: data)
     }
 
-    /// The robots central can see for this token. Presence in the list *is* the
-    /// online signal: central sweeps a peer whose lease lapsed.
+    /// The Reachy Minis central can see for this token. Presence in the list *is*
+    /// the online signal: central sweeps a peer whose lease lapsed. Any other family
+    /// registered under the same account is left out (`RobotKind`).
     public func robots() async throws -> [CentralRobot] {
         struct Response: Decodable {
             let robots: [CentralRobot]
         }
         let (data, response) = try await session.data(for: authorized(path: "/api/robot-status"))
         try Self.check(response)
-        return try JSONCodec.web.decode(Response.self, from: data).robots
+        return try JSONCodec.web.decode(Response.self, from: data).robots.reachyMinis
     }
 
     /// The one route central serves without a token.

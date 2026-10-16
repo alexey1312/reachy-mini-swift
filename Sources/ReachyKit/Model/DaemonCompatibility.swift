@@ -11,14 +11,15 @@ public enum DaemonCompatibility: Equatable, Sendable {
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
 public enum DaemonCompatibilityPolicy {
     public static let minimumVersion = "1.9.0"
-    /// Raised to 1.11.0, whose only API change is the IMU on REST: `/api/state/imu`,
-    /// `with_imu` and `FullState.imu`. The committed spec already carried all three —
-    /// it was taken from `main` before 1.11.0 was cut, which is why the route reads as
-    /// a 1.10.0 one in older notes. Everything else in the release is behaviour: H.264
-    /// handed to `webrtcsink` with adaptive bitrate, a TURN default that resolves again,
-    /// and central/TURN endpoints that must be HTTPS and refuse redirects — none of
-    /// which reaches a request this client sends.
-    public static let testedVersion = "1.11.0"
+    /// Raised to 1.12.0, which adds no route and no data-channel command type to
+    /// 1.11.0. What it changes is behaviour this client meets: a credential store of
+    /// its own that signs every robot out once (pollen-robotics/reachy_mini#1367), a
+    /// guard that refuses a `Host` that is not an IP literal, `localhost` or a
+    /// `.local` name (#1423), fixed sentences for a failed Hugging Face sign-in
+    /// (#1363), and data-channel messages over 60 000 bytes split into
+    /// `message_chunk` frames (#1438). The committed spec is the v1.12.0 tag's.
+    /// 1.11.0 before it brought the IMU on REST and nothing else this client sends.
+    public static let testedVersion = "1.12.0"
 
     /// Whether the daemon is *known* to be older than `floor`.
     ///

@@ -1,31 +1,28 @@
 import ReachyKit
 
-/// Keeping the robot's Hugging Face session alive, because nothing on the robot
-/// can: the daemon stores only the access half of the OAuth token and searches the
-/// Hub with it. Once that expires the search collapses to `[]` — the daemon catches
-/// the 401 — and the catalogue quietly loses everything but the curated handful.
+/// Whether Discover can trust the robot's Hub search. The robot searches with its
+/// own token, and a robot with none — or with an expired one — gets a search that
+/// collapses to `[]`: the daemon catches the 401, and the catalogue quietly loses
+/// everything but the curated handful.
 extension AppStoreModel {
-    /// Puts a live Hugging Face token back on the robot, and answers whether it had
-    /// to — a catalogue read behind an expired token is stale.
+    /// Reads the robot's own account, gates Discover on it, and answers whether the
+    /// robot was linked since the gate went up — a catalogue read behind the gate is
+    /// stale.
     ///
-    /// The daemon keeps only the access half and cannot renew it, so this app is the
-    /// only party that can. A robot that cannot answer at all is left alone:
-    /// unreachable is not signed out. The outcome is read back from the session's
-    /// own cache rather than from `linkRobot`, which throws when the relay half
-    /// fails — by then the token is saved and the account is known.
-    func relinkHuggingFace(session: RobotSession, token: @MainActor () async -> String?) async -> Bool {
+    /// This used to put this app's token on the robot whenever the robot read as
+    /// signed out. That sent a `write-repos` token over plain HTTP to whatever host
+    /// answered `is_logged_in: false`, and asked nobody. Daemon 1.12 signs every
+    /// robot out once (pollen-robotics/reachy_mini#1367), so after that update it
+    /// would have run against every robot. Linking is now always a step somebody
+    /// takes in the account sheet: a device code from 1.10.0, where no token crosses
+    /// the network, and this app's token only on a 1.9 robot that has nothing else
+    /// (ADR 0003).
+    ///
+    /// A robot that cannot answer is left alone: unreachable is not signed out.
+    func readRobotHFLink(session: RobotSession) async -> Bool {
         guard session.canLinkHuggingFace, let status = try? await session.robotHFAccount() else { return false }
-        guard !status.isLoggedIn else {
-            discoverNeedsHFSignIn = false
-            return false
-        }
-        guard let token = await token() else {
-            discoverNeedsHFSignIn = true
-            return false
-        }
-        _ = try? await session.linkRobot(token: token)
-        let linked = await (try? session.robotHFAccount())?.isLoggedIn == true
-        discoverNeedsHFSignIn = !linked
-        return linked
+        let wasGated = discoverNeedsHFSignIn
+        discoverNeedsHFSignIn = !status.isLoggedIn
+        return wasGated && status.isLoggedIn
     }
 }
