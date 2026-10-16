@@ -19,6 +19,16 @@ public protocol TeleopChannel: Sendable {
     func connect() async
     func send(_ target: TeleopTarget) async
     func disconnect() async
+    /// How fast the emitted pose may walk toward the goal from now on. A pose already
+    /// in flight continues from where it is, under the new limits.
+    ///
+    /// **No default implementation, on purpose.** A no-op default in an extension is
+    /// `async`, an actor's own method is synchronous, and Swift prefers the `async`
+    /// overload in an async context: the default then won over `RemoteTeleopChannel`'s
+    /// own method, and the new limiter never reached the pacer.
+    /// `RemoteTeleopChannelTests.limiterChangesThePace` caught it. A channel that paces
+    /// nothing says so with an empty body of its own.
+    func setLimiter(_ limiter: TargetSlewLimiter) async
 }
 
 /// A live-teleop target: head pose offsets from neutral in metres and radians,

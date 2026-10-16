@@ -100,7 +100,24 @@ final class TeleopDriver {
         guard client == nil else { return }
         let client = try makeChannel()
         self.client = client
-        Task { await client.connect() }
+        let limiter = limiter
+        Task {
+            await client.connect()
+            await client.setLimiter(limiter)
+        }
+    }
+
+    /// How fast the emitted pose chases `target`. The default is tuned for a thumb;
+    /// a followed head swaps in `.headTracking` and gives it back when it lets go
+    /// (`HeadphoneTeleop`). Kept here as well as on the channel, so a channel opened
+    /// while a head is followed starts with the right one.
+    private(set) var limiter = TargetSlewLimiter()
+
+    func useLimiter(_ limiter: TargetSlewLimiter) {
+        guard limiter != self.limiter else { return }
+        self.limiter = limiter
+        let client = client
+        Task { await client?.setLimiter(limiter) }
     }
 
     func stop() {

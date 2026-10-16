@@ -17,7 +17,7 @@ import simd
 public actor RemoteTeleopChannel: TeleopChannel {
     private let control: RemoteControlChannel
     private let tickInterval: Duration
-    private let limiter: TargetSlewLimiter
+    private var limiter: TargetSlewLimiter
     private var pacerTask: Task<Void, Never>?
     private var goal = TeleopTarget()
     private var emitted = TeleopTarget()
@@ -53,6 +53,10 @@ public actor RemoteTeleopChannel: TeleopChannel {
         pacerTask = nil
         task?.cancel()
         await task?.value
+    }
+
+    public func setLimiter(_ limiter: TargetSlewLimiter) {
+        self.limiter = limiter
     }
 
     /// Stores the latest goal. One pacer walks toward it, so a peer gap can never

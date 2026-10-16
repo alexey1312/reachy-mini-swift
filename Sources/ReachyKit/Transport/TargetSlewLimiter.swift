@@ -8,7 +8,7 @@ import Foundation
 ///
 /// Safety limits stay in the daemon (project rule 2): this bounds the speed of
 /// approach, never the target itself.
-public struct TargetSlewLimiter: Sendable {
+public struct TargetSlewLimiter: Sendable, Equatable {
     /// Time constant of the exponential approach.
     public var tau: Duration
     /// Radians per second.
@@ -31,6 +31,18 @@ public struct TargetSlewLimiter: Sendable {
         self.antennaRate = antennaRate
         self.translationRate = translationRate
     }
+
+    /// For a head that follows the reader's own (`HeadphoneTeleop`).
+    ///
+    /// The default is tuned for a thumb, whose jumps need smoothing. A head turns at
+    /// 200–300°/s, and under the default's 90°/s and 100 ms time constant the robot
+    /// was about half a second behind a quick turn on the first device run. A head
+    /// also arrives already smooth, about 25 readings a second, so there is less to
+    /// smooth. The other axes keep their defaults, because a head drives none of them.
+    public static let headTracking = TargetSlewLimiter(
+        tau: .milliseconds(35),
+        headAngularRate: 240 * .pi / 180
+    )
 
     /// Computed rather than stored: a key-path array is not `Sendable`, and a
     /// global one would need `nonisolated(unsafe)` to compile.

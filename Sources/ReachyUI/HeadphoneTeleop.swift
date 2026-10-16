@@ -1,6 +1,7 @@
 import CoreMotion
 import Foundation
 import Observation
+import ReachyKit
 
 /// Headphones that track the listener's head, steering the robot's (the AirPods spike).
 ///
@@ -41,8 +42,23 @@ final class HeadphoneTeleop {
         case denied
     }
 
+    /// Which earbud's sensors Core Motion reads. It reads one at a time and can change
+    /// to the other, for example when an AirPod leaves an ear. The two buds are mirror
+    /// images, so a reference taken on one is wrong for the other.
+    enum Source: Equatable {
+        case left
+        case right
+        case unknown
+    }
+
     private(set) var status: Status
     let mapping: HeadphoneMotionMapping
+
+    /// The last reading, relative to the reference and before the mapping, for the
+    /// screen to show. Which head motion moves which of the three angles is still a
+    /// device question, and this line is how a reader answers it.
+    private(set) var reading: HeadAttitude?
+    private(set) var source: Source?
 
     /// The next reading becomes the reference. Set by a switch-on, an attach, a
     /// recentre and a loss; read and cleared by the Core Motion half.
@@ -60,10 +76,31 @@ final class HeadphoneTeleop {
 
     /// `status` is the preview seam: a capture hands in the state it shows, and only
     /// `observeHeadphones()` ever reads the device.
-    init(mapping: HeadphoneMotionMapping = HeadphoneMotionMapping(), status: Status = .unsupported) {
+    init(
+        mapping: HeadphoneMotionMapping = HeadphoneMotionMapping(),
+        status: Status = .unsupported,
+        reading: HeadAttitude? = nil,
+        source: Source? = nil
+    ) {
         self.mapping = mapping
         self.status = status
+        self.reading = reading
+        self.source = source
     }
+
+    #if DEBUG
+        /// A capture's hub. A followed head shows its live reading, so that state carries
+        /// one: the pose of `Controller — following a head`'s driver, before the mapping
+        /// flips pitch.
+        static func preview(status: Status) -> HeadphoneTeleop {
+            let following = status == .following
+            return HeadphoneTeleop(
+                status: status,
+                reading: following ? HeadAttitude(yaw: 0.35, pitch: -0.2, roll: 0.12) : nil,
+                source: following ? .left : nil
+            )
+        }
+    #endif
 
     var isOn: Bool {
         status == .waiting || status == .following
@@ -115,6 +152,11 @@ final class HeadphoneTeleop {
         guard isOn else { return }
         lastReading = instant
         status = .following
+        reading = attitude
+        // On every reading rather than on the edge into `.following`: Recentre gives the
+        // default back while the status stays `.following`, and the next reading has
+        // to take the fast one again. The driver ignores a limiter it already has.
+        driver?.useLimiter(.headTracking)
         driver?.aim(mapping.aim(attitude))
     }
 
@@ -125,6 +167,7 @@ final class HeadphoneTeleop {
         // Released while still following: `releaseHead` puts back only a head it led.
         releaseHead()
         status = .waiting
+        reading = nil
         needsReference = true
     }
 
@@ -154,12 +197,17 @@ final class HeadphoneTeleop {
         lastReading = nil
         releaseHead()
         self.status = status
+        reading = nil
+        source = nil
     }
 
     /// Only a head that was being followed is put back: a driver whose pad is in use
     /// while the headphones wait has a thumb on it, and a release would fight it.
+    /// The way back to neutral takes the pad's gentler limiter, because nobody's head
+    /// is leading it any more.
     private func releaseHead() {
         guard status == .following else { return }
+        driver?.useLimiter(TargetSlewLimiter())
         driver?.aim(.zero)
     }
 
@@ -193,7 +241,15 @@ final class HeadphoneTeleop {
             }
             return
         }
-        guard let attitude = motion?.attitude else { return }
+        guard let motion else { return }
+        let attitude = motion.attitude
+        #if os(iOS)
+            let source = Self.source(of: motion.sensorLocation)
+            if source != self.source {
+                self.source = source
+                needsReference = true
+            }
+        #endif
         if needsReference || reference == nil {
             reference = attitude.copy() as? CMAttitude
             needsReference = false
@@ -204,4 +260,15 @@ final class HeadphoneTeleop {
         relative.multiply(byInverseOf: reference)
         receive(HeadAttitude(yaw: relative.yaw, pitch: relative.pitch, roll: relative.roll), at: .now)
     }
+
+    #if os(iOS)
+        /// `sensorLocation` is iOS only in the SDK, so the Mac reads no source at all.
+        private static func source(of location: CMDeviceMotion.SensorLocation) -> Source {
+            switch location {
+            case .headphoneLeft: .left
+            case .headphoneRight: .right
+            default: .unknown
+            }
+        }
+    #endif
 }

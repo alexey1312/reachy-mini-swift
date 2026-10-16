@@ -156,7 +156,7 @@ enum PreviewScene {
                 driver: driver ?? TeleopDriver(),
                 setupError: setupError,
                 recorder: recorder,
-                headTracking: HeadphoneTeleop(status: headTracking)
+                headTracking: .preview(status: headTracking)
             )
         }
         .preview()

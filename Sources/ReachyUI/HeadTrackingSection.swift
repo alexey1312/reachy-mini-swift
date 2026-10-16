@@ -40,6 +40,9 @@ struct HeadTrackingSection: View {
             // The one control the reader needs while following: their own "straight
             // ahead" drifts as they settle into a chair.
             Button(.reachy("Recentre")) { model.recentre() }
+            if let reading = model.reading {
+                HeadReadingRow(reading: reading, source: model.source)
+            }
         case .denied:
             Text(.reachy("Motion & Fitness access is turned off"))
                 .foregroundStyle(.secondary)
@@ -47,5 +50,39 @@ struct HeadTrackingSection: View {
         case .off, .unsupported:
             EmptyView()
         }
+    }
+}
+
+/// What the headphones report, in Core Motion's own three names and before the mapping.
+///
+/// A spike's instrument rather than a feature: the first device run showed that a nod
+/// and a turn did not reach the robot while a tilt did, and Apple documents the
+/// headphones' axes only in a picture. So the reader nods, turns and tilts and reads
+/// which number moves, and the mapping's signs and axes follow from that.
+struct HeadReadingRow: View {
+    let reading: HeadAttitude
+    let source: HeadphoneTeleop.Source?
+
+    var body: some View {
+        let yaw = degrees(reading.yaw)
+        let pitch = degrees(reading.pitch)
+        let roll = degrees(reading.roll)
+        VStack(alignment: .leading) {
+            Text(.reachy("Yaw \(yaw)° · pitch \(pitch)° · roll \(roll)°"))
+                .monospacedDigit()
+            switch source {
+            case .left:
+                Text(.reachy("From the left earbud"))
+            case .right:
+                Text(.reachy("From the right earbud"))
+            case .unknown, nil:
+                EmptyView()
+            }
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private func degrees(_ radians: Double) -> Int {
+        Int((radians * 180 / .pi).rounded())
     }
 }

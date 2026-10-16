@@ -81,6 +81,34 @@ struct RemoteTeleopChannelTests {
         try #require(JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
     }
 
+    /// A followed head swaps the limiter mid-stream (`TeleopDriver.useLimiter`), so the
+    /// frame after the swap must already obey the new one.
+    @Test("a new limiter paces the frames after it")
+    func limiterChangesThePace() async throws {
+        let (paced, spy) = teleop(limiter: TargetSlewLimiter())
+        await paced.send(TeleopTarget(yaw: 1))
+
+        await paced.tick()
+        await paced.setLimiter(Self.immediateLimiter)
+        await paced.tick()
+
+        // What a channel that reaches the goal at once sends for the same target.
+        let (reference, referenceSpy) = teleop()
+        await reference.send(TeleopTarget(yaw: 1))
+        await reference.tick()
+        let goalText = try #require(referenceSpy.sent.first)
+        let goal = try #require(object(goalText)["head"] as? [Double])
+
+        #expect(spy.sent.count == 2)
+        let firstText = try #require(spy.sent.first)
+        let secondText = try #require(spy.sent.last)
+        let first = try #require(object(firstText)["head"] as? [Double])
+        let second = try #require(object(secondText)["head"] as? [Double])
+        // The pad's 90°/s moves a 33 ms tick by about 3°, far short of one radian.
+        #expect(zip(first, goal).contains { abs($0 - $1) > 0.1 })
+        #expect(zip(second, goal).allSatisfy { abs($0 - $1) < 1e-12 })
+    }
+
     /// One command where the LAN socket sends one frame: `set_target` alone would
     /// need `set_body_yaw` and `set_antennas` beside it and make every frame three.
     @Test("a target goes out as one set_full_target")

@@ -167,4 +167,109 @@ struct HeadphoneTeleopTests {
         #expect(driver.target.antennaRight == target.antennaRight)
         #expect(driver.bodyYawRate == 0)
     }
+
+    // MARK: The limiter
+
+    /// The pad's limiter put the robot about half a second behind a quick turn on the
+    /// first device run, so a followed head drives with a faster one.
+    @Test("following a head drives with the head-tracking limiter")
+    func followingTakesTheFastLimiter() {
+        let driver = TeleopDriver()
+        let hub = hub(driving: driver)
+        #expect(driver.limiter == TargetSlewLimiter())
+
+        hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
+
+        #expect(driver.limiter == .headTracking)
+    }
+
+    @Test("every way out gives the pad's limiter back", arguments: [0, 1, 2])
+    func releaseGivesTheDefaultBack(way: Int) {
+        let driver = TeleopDriver()
+        let hub = hub(driving: driver)
+        hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
+
+        switch way {
+        case 0: hub.setOn(false)
+        case 1: hub.detach()
+        default: hub.checkForSilence(at: start + .seconds(2))
+        }
+
+        #expect(driver.limiter == TargetSlewLimiter())
+        #expect(isNeutral(driver))
+    }
+
+    /// Recentre releases the head while the status stays `.following`, so the edge into
+    /// following never comes again; the next reading has to take the fast one back.
+    @Test("after Recentre the next reading drives fast again")
+    func recentreThenFastAgain() {
+        let driver = TeleopDriver()
+        let hub = hub(driving: driver)
+        hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
+
+        hub.recentre()
+        #expect(driver.limiter == TargetSlewLimiter())
+
+        hub.receive(.level, at: start + .milliseconds(40))
+        #expect(driver.limiter == .headTracking)
+    }
+
+    @Test("the reading is shown while following and gone once it stops")
+    func readingFollowsTheStatus() {
+        let hub = hub(driving: TeleopDriver())
+        let attitude = HeadAttitude(yaw: 10 * degree, pitch: -5 * degree, roll: 3 * degree)
+
+        hub.receive(attitude, at: start)
+        #expect(hub.reading == attitude)
+
+        hub.checkForSilence(at: start + .seconds(2))
+        #expect(hub.reading == nil)
+
+        hub.receive(attitude, at: start + .seconds(3))
+        hub.setOn(false)
+        #expect(hub.reading == nil)
+        #expect(hub.source == nil)
+    }
+
+    /// A channel opened while a head is followed must start fast, not with its own
+    /// default, and a later switch must reach the channel already open.
+    @Test("the driver hands its limiter to the channel, at start and on a switch", .timeLimit(.minutes(1)))
+    func limiterReachesTheChannel() async {
+        let channel = LimiterSpy()
+        let driver = TeleopDriver()
+        driver.useLimiter(.headTracking)
+
+        try? driver.start { channel }
+        await waitUntil { channel.limiters == [.headTracking] }
+
+        driver.useLimiter(TargetSlewLimiter())
+        await waitUntil { channel.limiters == [.headTracking, TargetSlewLimiter()] }
+        #expect(channel.limiters == [.headTracking, TargetSlewLimiter()])
+    }
+
+    private func waitUntil(_ condition: @escaping () -> Bool) async {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while !condition(), ContinuousClock.now < deadline {
+            await Task.yield()
+        }
+    }
+}
+
+/// Records what reaches a channel's limiter. Mutated only from the main actor's
+/// tasks in these tests, so the lock is for the compiler rather than for a race.
+private final class LimiterSpy: TeleopChannel, @unchecked Sendable {
+    private let lock = NSLock()
+    private var received: [TargetSlewLimiter] = []
+
+    var limiters: [TargetSlewLimiter] {
+        lock.withLock { received }
+    }
+
+    func connect() async {}
+    func send(_: TeleopTarget) async {}
+    func disconnect() async {}
+
+    func setLimiter(_ limiter: TargetSlewLimiter) async {
+        lock.withLock { received.append(limiter) }
+    }
 }
