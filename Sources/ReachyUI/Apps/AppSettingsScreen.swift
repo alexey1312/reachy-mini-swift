@@ -37,6 +37,7 @@ struct AppSettingsScreen: View {
     /// button that silently does nothing is the worse failure.
     @State private var attempt = 0
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.openURL) private var openURL
 
     /// `phase` is injectable for the same reason every other screen here takes a
     /// frozen model: a preview must be final on its first frame.
@@ -82,7 +83,7 @@ struct AppSettingsScreen: View {
         if previewMode {
             Color.clear
         } else {
-            AppSettingsWebView(url: url, phase: $phase)
+            AppSettingsWebView(url: url, phase: $phase) { openURL($0) }
                 .id(attempt)
                 .ignoresSafeArea(edges: .bottom)
         }
@@ -96,6 +97,7 @@ struct AppSettingsScreen: View {
 private struct AppSettingsWebView {
     let url: URL
     @Binding var phase: AppSettingsScreen.Phase
+    let openExternally: (URL) -> Void
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
@@ -103,6 +105,36 @@ private struct AppSettingsWebView {
         /// What this web view was last asked to load. Without it every SwiftUI
         /// update reloads the page, and the page is a form someone is filling in.
         var loadedURL: URL?
+        let openExternally: (URL) -> Void
+
+        init(openExternally: @escaping (URL) -> Void) {
+            self.openExternally = openExternally
+        }
+
+        /// The page stays on its own origin; see `AppSettingsNavigation`.
+        func webView(
+            _: WKWebView,
+            decidePolicyFor action: WKNavigationAction,
+            decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let page = loadedURL else {
+                decisionHandler(.allow)
+                return
+            }
+            let target = action.request.url
+            let isMainFrame = action.targetFrame?.isMainFrame ?? true
+            switch AppSettingsNavigation.decide(target, isMainFrame: isMainFrame, page: page) {
+            case .allow:
+                decisionHandler(.allow)
+            case .openExternally:
+                decisionHandler(.cancel)
+                if let target {
+                    openExternally(target)
+                }
+            case .refuse:
+                decisionHandler(.cancel)
+            }
+        }
 
         func webView(_: WKWebView, didFinish _: WKNavigation!) {
             phase?.wrappedValue = .ready
@@ -153,7 +185,7 @@ private struct AppSettingsWebView {
     /// them and then fail to construct one.
     @MainActor
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(openExternally: openExternally)
     }
 }
 

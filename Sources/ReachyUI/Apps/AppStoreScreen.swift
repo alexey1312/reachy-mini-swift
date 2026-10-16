@@ -23,9 +23,6 @@ struct AppStoreScreen: View {
     @State private var selected: RobotApp?
     @State private var showsHiddenAuthors = false
     @Environment(\.reachyPreviewMode) private var previewMode
-    /// This app's own session, which is where a replacement token for the robot
-    /// comes from. Optional because a preview host has none.
-    @Environment(HFAccount.self) private var hfAccount: HFAccount?
 
     /// `model` is `nil` rather than a defaulted value: it now needs `session`, and a
     /// default argument cannot read another parameter.
@@ -193,6 +190,13 @@ struct AppStoreScreen: View {
             guard !previewMode else { return }
             await reload()
         }
+        // The account sheet links the robot over this screen, which stays mounted
+        // under it, so `.task` does not run again. The account the link wrote is
+        // the signal: Discover asks again the moment the robot is signed in.
+        .onChange(of: session.knownRobotHFAccount?.isLoggedIn) { _, isLoggedIn in
+            guard !previewMode, isLoggedIn == true, model.discoverNeedsHFSignIn else { return }
+            Task { await reload() }
+        }
     }
 
     /// Everything resolving a requested page waits on, in one `Equatable` value —
@@ -235,29 +239,30 @@ struct AppStoreScreen: View {
         }
     }
 
-    /// The store reads the robot's Hugging Face session on the way in, so every
-    /// load carries the token that can renew it.
     private func reload(refresh: Bool = false) async {
-        await model.load(session: session, refresh: refresh) { await hfAccount?.currentToken() }
+        await model.load(session: session, refresh: refresh)
     }
 
     /// Discover with no Hub behind it.
     ///
-    /// The robot searches Hugging Face with its own token, and an expired one leaves
-    /// the daemon answering with the handful of curated apps instead of the whole
-    /// catalogue. Showing that list would be showing a store that is quietly missing
-    /// most of itself, so the section asks for the sign-in that fixes it. Installed
-    /// apps are untouched — they are on the robot already.
+    /// The robot searches Hugging Face with its own token, and a robot with none
+    /// gets the handful of curated apps instead of the whole catalogue. Showing that
+    /// list would be showing a store that is quietly missing most of itself, so the
+    /// section asks for the link that fixes it. Installed apps are untouched — they
+    /// are on the robot already.
+    ///
+    /// The button opens the account sheet, where linking is a step somebody takes:
+    /// nothing here sends a token to the robot (`readRobotHFLink`).
     private var signInGate: some View {
         ContentUnavailableView {
-            Label(.reachy("Sign in to browse apps"), systemImage: "person.crop.circle.badge.exclamationmark")
+            Label(.reachy("Link Reachy Mini to browse apps"), systemImage: "person.crop.circle.badge.exclamationmark")
         } description: {
             Text(.reachy(
                 // swiftlint:disable:next line_length
-                "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working."
+                "The robot searches Hugging Face with its own account, and it is not signed in. Installed apps keep working."
             ))
         } actions: {
-            Button(.reachy("Sign in to Hugging Face"), action: signIn)
+            Button(.reachy("Link Reachy Mini"), action: signIn)
         }
     }
 

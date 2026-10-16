@@ -10,8 +10,11 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 ## Spec
 
 - REST: OpenAPI 3.1 at `Sources/ReachyKit/openapi.json`; canonical source
-  `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/main/docs/source/API/openapi.json` (main is ahead of
-  develop there). Refresh with `./bin/mise run update-spec` — it also normalizes `anyOf: [X, {type: null}]` branches
+  `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/<ref>/docs/source/API/openapi.json`.
+  Refresh with `./bin/mise run update-spec <tag>` —
+  the tag of the release `testedVersion` names (`v1.12.0` now).
+  Without a tag it takes `main`, which runs ahead of every release.
+  The task also normalizes `anyOf: [X, {type: null}]` branches
   that swift-openapi-generator silently drops (`Scripts/normalize-openapi.py`). Swagger UI at `http://<host>:8000/docs`
   when a daemon runs.
 - **The committed spec describes a daemon newer than 1.9.0, so a generated call can 404 on a supported robot.** `main`
@@ -94,6 +97,35 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 - `GET /api/daemon/hardware-id` answers one key, `{"hardware_id": "<16 hex>"}` = `sha256(usb serial)[:16]` — the same
   string as mDNS TXT `unit_id` and BLE characteristic `…cdef7`. It is a join key: never reshape it.
 
+## The Host and Origin guard (1.12.0)
+
+`LocalNetworkGuardMiddleware` (#1423, `daemon/app/middleware.py`) closes two browser vectors
+against an API with no authentication: DNS rebinding and a cross-site "simple" POST.
+It covers every HTTP route and every WebSocket on :8000. It does not cover :8443,
+which is GStreamer's own signalling server.
+Measured with `curl` against `sim-daemon` 1.12.0 on 2026-10-16.
+
+- **`Host` must be an IP literal, `localhost`, or a name ending in `.local`** (a trailing dot is allowed).
+  Anything else answers **400 `{"detail": "Untrusted Host header"}`**:
+  a bare `reachy-mini`, a Tailscale `*.ts.net`, a router's `.home` or `.lan`.
+  The port is ignored.
+  A link-local address with a zone id passes in either spelling (`[fe80::1%25en0]`, `[fe80::1%en0]`),
+  and `URLSession` drops the zone id from the header anyway — it sends `Host: [fe80::1]:8000`.
+  `ReachyKitError.untrustedHost` names the 400 at the handshake's first request, `daemonStatus()`,
+  which is the only place it can appear first.
+- **An `Origin` is checked only on a state-changing request**, which is every method but GET, HEAD and OPTIONS,
+  and every WebSocket handshake.
+  A request with no `Origin` passes, and that is what this app sends:
+  `WebSocketOriginTests` holds it for the sockets, and the HTTP client sets none.
+  An `Origin` passes when its host is `.local`, `localhost`, or a loopback, private or link-local IP,
+  or when it is `tauri://localhost` or `capacitor://localhost`.
+  Anything else answers **403 `{"detail": "Cross-origin request rejected"}`** —
+  a public site, `null`, and also a Tailscale address,
+  because `100.64.0.0/10` is not a private range to Python's `ipaddress`.
+  So a page in `AppSettingsScreen` can write to the daemon only while the robot is reached by a LAN address.
+  A refused WebSocket is closed with 1008, which the client sees as a failed handshake (403).
+- Duplicate `Host` or `Origin` headers answer 400 `{"detail": "Duplicate Host or Origin header"}`.
+
 ## Hugging Face on the robot (`/api/hf-auth/*`)
 
 The robot's **own** account, which is not this app's — read `daemon/app/routers/hf_auth.py` and
@@ -124,12 +156,50 @@ this app keeps its own in the Keychain (ADR 0003).
   and the robot polls Hugging Face itself and keeps a **refresh-capable** token —
   unlike `save-token`, which stores whatever access token it is handed and nothing to renew it with.
   The first poll that reads `authorized` also starts the central relay on a robot that booted with no token.
-- **Daemon 1.12 relinks every robot once** (#1367, merged 2026-09-30, unreleased at the time of writing).
-  The daemon moves to its own credential store, `reachy_mini_daemon_credentials.json`,
+- **Daemon 1.12.0 relinks every robot once** (#1367, released 2026-10-15).
+  The daemon moves to its own credential store, `reachy_mini_daemon_credentials.json` (mode 0600),
   with "intentionally no migration": a robot linked on 1.11 reads `is_logged_in: false` after the update,
   drops off central, and must be linked again over the LAN.
   It also stops reading `HF_TOKEN` and `hf auth login`.
-  The routes and their shapes do not change.
+  The 15 routes and their shapes do not change.
+  - **This app never puts a token on a robot that nobody asked it to link.**
+    The Apps tab used to do exactly that whenever the robot read as signed out —
+    this app's `write-repos` token, over plain HTTP, to whatever host answered `is_logged_in: false`.
+    After 1.12 that is every robot once.
+    Linking is now always a step in the account sheet:
+    a device code from 1.10.0, and this app's token only on a 1.9 robot (`AppStoreModel+HuggingFace.swift`).
+  - **A failed sign-in answers one of a few fixed sentences** (#1363), and the detail stays in the daemon's log:
+    `Authentication failed. Please try again.`, `Authorization was denied.`, `Login expired. Please try again.`,
+    `Sign-in was cancelled. Please try again.` and `Could not save credentials. Please try again.`.
+    `Invalid token or network error`, `Invalid or expired session. Please try again.` and
+    `Session expired or not found` are unchanged.
+    Before 1.12 the same slot could carry `str(e)` from the Hub, which upstream stopped sending
+    because it could carry credentials.
+    `RobotHFFailureCaption` translates the known sentences and shows a general one for anything else.
+    `save-token` answers its sentence as a 400 `detail`, and `saveHFToken` keeps it.
+  - **`DELETE /token` writes a signed-out record** and advances a lifecycle generation instead of calling `logout()`.
+    It also clears every OAuth and device-code session,
+    so a client still polling reads `{"status": "expired", "message": "Session expired or not found"}`.
+    The answer is unchanged: `{"status": "success"}`, or a 500.
+  - `POST /refresh-relay` no longer answers `reason: "relay_unavailable"`; only `relay_not_running` is left.
+  - The device-code page the robot relays is opened only when it is `https` on `huggingface.co`
+    (`RobotDeviceLogin.approvalURL`).
+    Anything on the network can answer as a robot, and the button reads "Open huggingface.co".
+
+## Large data-channel messages (1.12.0)
+
+The WebRTC data channel drops any message over 64 KiB without a word to either side.
+From 1.12.0 (#1438) the daemon splits a message over `DATA_CHANNEL_MAX_MESSAGE_BYTES = 60_000` UTF-8 bytes
+into ordered frames, `{"type": "message_chunk", "id", "index", "count", "data"}`:
+`id` is a 32-character hex string, `index` counts from 0,
+and `data` is a slice of 4096 code points of the original text, so the slices joined in order are the message.
+A message that fits is sent unchanged.
+`DataChannelReassembler` joins them, with upstream's `MAX_CHUNKS = 4096` and the same rule that a gap loses the message.
+
+- **Only the daemon splits, and only on the `data` channel.** The `pose` channel never carries a chunk,
+  and the daemon does not reassemble what it receives: a frame from this app over 64 KiB is lost the same way.
+  Nothing this app sends comes near that.
+- Central relays chunks to a remote session unchanged.
 
 ## Bluetooth service
 
@@ -356,6 +426,9 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   So over the relay only the relay's own message, "no app is running", says that no app runs;
   on the LAN there is no relay to have said it.
   `ConversationFailure` maps the app's one to `backendNotConnected`, which a screen waits out.
+  From 1.12.0 the daemon also answers a request with `reason: "relay_unavailable"`
+  ("daemon relay is not available") when its relay loop is already closed — a daemon shutting down.
+  It is not a reason to wait, so `ConversationReason` carries it as `.unknown` and the screen shows the daemon's words.
 - **Removing an app does not stop it first.** `POST /apps/remove/{app_name}` clears the startup app if it matches and
   then queues `AppManager.remove_app`, which calls `uninstall_package` immediately — no `is_app_running()` check. The
   contrast is one method down: `update_app` *does* check and raises. So a running conversation app can be uninstalled
@@ -636,7 +709,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   the Constrained Baseline caps filter survives only on the fallback path,
   and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
   The client sets no codec preference and takes whatever H.264 the offer carries.
-- Daemon 1.9.0 is the minimum API version and 1.11.0 the tested baseline. Enforce
+- Daemon 1.9.0 is the minimum API version and 1.12.0 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a
@@ -675,8 +748,8 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     `{"applied": false}`, and `verify: false` does not help because the write is what fails. It reads as success,
     because a readback of an unchanged register answers correctly. Measured register by register on firmware
     2.1.2 — every integer refused, every float took. `MicrophoneProfileTests` holds the constraint.
-    Daemon `main` casts before packing (#1395, merged after v1.11.0), so integer registers become writable in 1.12.
-    Keep the constraint until the minimum reaches that release.
+    Daemon 1.12.0 casts before packing (#1395), so integer registers are writable from that release.
+    Keep the constraint until the minimum reaches it.
   - A write is global and outlives the session that made it. Whether it outlives a reboot is untested.
 - **"First wake-up completed" is one robot-wide boolean, and only the data channel can read it.**
   Daemon 1.10.0 stores `first_wake_up_completed` in the same config file as the startup app

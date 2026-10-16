@@ -13718,35 +13718,6 @@
         }
       }
     },
-    "Sign in to browse apps": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anmelden, um Apps zu durchsuchen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inicia sesión para explorar apps"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connectez-vous pour parcourir les apps"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Войдите, чтобы смотреть приложения"
-          }
-        }
-      }
-    },
     "Sign in to the robot": {
       "extractionState": "manual",
       "localizations": {
@@ -17223,35 +17194,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот перезапустился"
-          }
-        }
-      }
-    },
-    "The robot searches Hugging Face with your account, and its session has ended. Installed apps keep working.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Roboter durchsucht Hugging Face mit Ihrem Konto, und seine Sitzung ist abgelaufen. Installierte Apps funktionieren weiter."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El robot busca en Hugging Face con tu cuenta, y su sesión ha terminado. Las apps instaladas siguen funcionando."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le robot cherche sur Hugging Face avec votre compte, et sa session a expiré. Les apps installées continuent de fonctionner."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Робот ищет на Hugging Face под вашей учётной записью, и его сессия завершилась. Установленные приложения продолжают работать."
           }
         }
       }
@@ -24937,6 +24879,296 @@
           "stringUnit": {
             "state": "translated",
             "value": "Робот только что впервые поднялся. Его изображение здесь повторяет движения."
+          }
+        }
+      }
+    },
+    "Hugging Face did not sign the robot in. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face hat den Roboter nicht angemeldet. Versuche es erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face no inició la sesión del robot. Inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face n'a pas connecté le robot. Réessayez."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face не выполнил вход для робота. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "Hugging Face refused the token, or the robot could not reach Hugging Face.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face hat das Token abgelehnt, oder der Roboter konnte Hugging Face nicht erreichen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face rechazó el token, o el robot no pudo conectar con Hugging Face."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face a refusé le jeton, ou le robot n'a pas pu joindre Hugging Face."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face отклонил токен, или робот не смог связаться с Hugging Face."
+          }
+        }
+      }
+    },
+    "Link Reachy Mini": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reachy Mini verknüpfen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincular Reachy Mini"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Associer Reachy Mini"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Привязать Reachy Mini"
+          }
+        }
+      }
+    },
+    "Link Reachy Mini to browse apps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reachy Mini verknüpfen, um Apps zu durchsuchen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincula Reachy Mini para explorar apps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Associez Reachy Mini pour parcourir les apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Привяжите Reachy Mini, чтобы смотреть приложения"
+          }
+        }
+      }
+    },
+    "The robot could not save its sign-in. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter konnte seine Anmeldung nicht speichern. Versuche es erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot no pudo guardar su inicio de sesión. Inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot n'a pas pu enregistrer sa connexion. Réessayez."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот не смог сохранить вход. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "The robot searches Hugging Face with its own account, and it is not signed in. Installed apps keep working.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter durchsucht Hugging Face mit seinem eigenen Konto und ist nicht angemeldet. Installierte Apps funktionieren weiter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot busca en Hugging Face con su propia cuenta, y no ha iniciado sesión. Las apps instaladas siguen funcionando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot cherche sur Hugging Face avec son propre compte, et il n'est pas connecté. Les apps installées continuent de fonctionner."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот ищет на Hugging Face под своей учётной записью, и вход не выполнен. Установленные приложения продолжают работать."
+          }
+        }
+      }
+    },
+    "The robot sent a sign-in page that is not on huggingface.co, so it was not opened.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter hat eine Anmeldeseite geschickt, die nicht auf huggingface.co liegt, deshalb wurde sie nicht geöffnet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot envió una página de inicio de sesión que no está en huggingface.co, así que no se abrió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot a envoyé une page de connexion qui n'est pas sur huggingface.co, elle n'a donc pas été ouverte."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот прислал страницу входа не с huggingface.co, поэтому она не открыта."
+          }
+        }
+      }
+    },
+    "The sign-in expired. Link the robot again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung ist abgelaufen. Verknüpfe den Roboter erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inicio de sesión caducó. Vuelve a vincular el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion a expiré. Associez de nouveau le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок входа истёк. Привяжите робота ещё раз."
+          }
+        }
+      }
+    },
+    "The sign-in was cancelled. Link the robot again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung wurde abgebrochen. Verknüpfe den Roboter erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se canceló el inicio de sesión. Vuelve a vincular el robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion a été annulée. Associez de nouveau le robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход отменён. Привяжите робота ещё раз."
+          }
+        }
+      }
+    },
+    "The sign-in was denied on huggingface.co.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung wurde auf huggingface.co abgelehnt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se denegó el inicio de sesión en huggingface.co."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion a été refusée sur huggingface.co."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход отклонён на huggingface.co."
           }
         }
       }

@@ -429,6 +429,10 @@ They are wired now; the entries are here because each failure reads as something
   Check `system_profiler SPAudioDataType` for the default input before blaming the client or the daemon,
   and note that the tell `mise.toml` names beside `GST_PLUGIN_SCANNER`, `No caps found for stream audio_0`,
   is absent here too.
+  **1.12.0 behaves the same, measured on 2026-10-16:**
+  the first start after the venv rebuild bound :8000 about eight minutes later,
+  and `test:sim` passed seven cases with the WebRTC one timing out on the same `not-negotiated (-4)`,
+  with `Jump Desktop Microphone` still the default input.
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both
@@ -769,9 +773,13 @@ Consult `.claude/rules/` when working in the matching area:
 | `.claude/rules/networking.md` | Discovery, ATS, Local Network permission |
 
 Per-target notes live beside the code:
-`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI}/AGENTS.md`
+`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI,ReachyKeychain}/AGENTS.md`
 and `Apps/ReachyStickers/AGENTS.md`
 (`CLAUDE.md` is a symlink to it).
+**`ReachyKeychain/AGENTS.md` owns every `SecItem` call** —
+the macOS data protection keychain, the access group that keeps the widget out,
+and the move out of the file-based keychain.
+Read it before you touch a stored credential.
 **`Apps/ReachyStickers/AGENTS.md` owns the iMessage sticker pack** —
 Apple's 500 KB per-sticker ceiling and what actually buys the margin back,
 the two catalogue spellings of which Tuist silently drops one,

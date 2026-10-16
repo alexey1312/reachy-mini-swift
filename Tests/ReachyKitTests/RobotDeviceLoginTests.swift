@@ -26,7 +26,7 @@ struct RobotDeviceLoginTests {
 
         #expect(login.sessionID == "9f2c")
         #expect(login.userCode == "WDJB-MJHT")
-        #expect(login.approvalURL.absoluteString == "https://huggingface.co/device?user_code=WDJB-MJHT")
+        #expect(login.approvalURL?.absoluteString == "https://huggingface.co/device?user_code=WDJB-MJHT")
         #expect(login.interval == .seconds(5))
         #expect(login.expiresIn == .seconds(900))
     }
@@ -38,8 +38,45 @@ struct RobotDeviceLoginTests {
         {"session_id": "9f2c", "user_code": "WDJB-MJHT", "verification_uri": "https://huggingface.co/device"}
         """.utf8))
 
-        #expect(login.approvalURL.absoluteString == "https://huggingface.co/device")
+        #expect(login.approvalURL?.absoluteString == "https://huggingface.co/device")
         #expect(login.interval == .seconds(5))
+    }
+
+    /// The page is opened under a button reading "Open huggingface.co", and the URL
+    /// comes from whatever answered as the robot.
+    @Test(
+        "only Hugging Face's own page over https is offered",
+        arguments: [
+            ("https://huggingface.co/device", true),
+            ("https://HuggingFace.co/device", true),
+            ("https://huggingface.co:443/device", true),
+            ("http://huggingface.co/device", false),
+            ("https://huggingface.co.example.com/device", false),
+            ("https://huggingface.co@evil.example/device", false),
+            ("https://user@huggingface.co/device", false),
+            ("https://huggingface.co:8443/device", false),
+            ("https://hf.example/device", false),
+        ]
+    )
+    func offersOnlyTheHub(page: String, isOffered: Bool) throws {
+        let login = try JSONCodec.daemon.decode(RobotDeviceLogin.self, from: Data("""
+        {"session_id": "9f2c", "user_code": "WDJB-MJHT", "verification_uri": "\(page)"}
+        """.utf8))
+
+        #expect((login.approvalURL != nil) == isOffered)
+    }
+
+    /// The pre-filled page wins when there is one, so a spoofed one is not
+    /// rescued by a genuine plain page beside it.
+    @Test("a spoofed pre-filled page is refused even beside a genuine one")
+    func refusesASpoofedPrefilledPage() throws {
+        let login = try JSONCodec.daemon.decode(RobotDeviceLogin.self, from: Data("""
+        {"session_id": "9f2c", "user_code": "WDJB-MJHT",
+         "verification_uri": "https://huggingface.co/device",
+         "verification_uri_complete": "https://huggingface-login.example/device"}
+        """.utf8))
+
+        #expect(login.approvalURL == nil)
     }
 
     @Test(

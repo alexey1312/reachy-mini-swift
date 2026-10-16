@@ -22,8 +22,10 @@ extension RobotConnection: HFAuthClient {
             return try response.body.json.username
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
-        case let .undocumented(statusCode, _):
-            throw ReachyKitError.fromStatusCode(statusCode)
+        case let .undocumented(statusCode, payload):
+            // Kept: from 1.12 a refused token answers one of a few fixed
+            // sentences, which the screen translates.
+            throw await ReachyKitError.fromStatusCode(statusCode, detail: Self.detail(of: payload))
         }
     }
 

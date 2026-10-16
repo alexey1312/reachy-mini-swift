@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-05
 - Amended: 2026-10-01 — "Decision: a robot signs itself in with a device code"
+- Amended: 2026-10-16 — "Decision: a token reaches the robot only when somebody links it"
 
 ## Context
 
@@ -68,6 +69,27 @@ that removes both.
   so a robot linked on 1.11 reads as unlinked after the update and leaves central.
   The card says so on a robot known to run 1.12 or later.
   Relinking needs the local network, so a robot updated remotely cannot be brought back remotely.
+
+## Decision: a token reaches the robot only when somebody links it
+
+Amendment, 2026-10-16.
+The store put this app's token back on the robot by itself:
+on every catalogue load, a robot that read as signed out received the token through `save-token`,
+with no question asked and no version check.
+That broke the line above — "none crosses the local network" — on every robot from 1.10.0.
+It also sent a `write-repos manage-repos` token over plain HTTP to whatever host answered as a robot
+with `is_logged_in: false`, and anything on the network can answer as one.
+Daemon 1.12 signs every robot out once, so after that update it would have run against every robot.
+
+- **The store only reads the robot's account.**
+  A signed-out robot gates Discover,
+  and the gate opens the account sheet, where linking is a step somebody takes.
+- **The two ways to link are unchanged**: a device code from 1.10.0, and `save-token` for 1.9.x,
+  under the footer that says the hop is unencrypted.
+- **The device-code page is opened only when it is `https` on `huggingface.co`.**
+  The robot relays that URL, and a host that is not a robot could relay a look-alike sign-in page.
+- The cost is a 1.9.x robot whose copied token expires: it no longer heals on the next visit to the store.
+  It shows the gate, and one tap reaches the Link button.
 
 ## Decision: the relay carries signaling, not robot data
 

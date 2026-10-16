@@ -66,3 +66,19 @@ public final class InMemoryHFTokenStore: HFTokenStoring, @unchecked Sendable {
         lock.withLock { token = nil }
     }
 }
+
+/// A token printed anywhere — a log line, a test failure, `dump` — is a token
+/// leaked, so every way of printing one names what it holds and never the value.
+extension HFToken: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String {
+        "HFToken(username: \(username ?? "nil"), refreshable: \(refreshToken != nil), <redacted>)"
+    }
+
+    public var debugDescription: String {
+        description
+    }
+
+    public var customMirror: Mirror {
+        Mirror(self, children: ["username": username as Any, "expiresAt": expiresAt as Any], displayStyle: .struct)
+    }
+}
