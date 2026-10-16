@@ -43,12 +43,16 @@ let package = Package(
         // The robot's *own* account (`/api/hf-auth/*`) is a daemon surface and
         // stays in ReachyKit — which does not depend on this target either, so a
         // token reaches it as a value the UI passes in, never as a global.
-        .target(name: "HuggingFaceAuth", dependencies: ["ReachyJSON"]),
+        .target(name: "HuggingFaceAuth", dependencies: ["ReachyJSON", "ReachyKeychain"]),
         // Every hand-written JSON call in this repository, and the rules each kind
         // of payload is read under. A leaf on Foundation alone because `ReachySSH`
         // and `HuggingFaceAuth` deliberately do not depend on `ReachyKit` — see
         // docs/adr/0004-one-json-codec.md.
         .target(name: "ReachyJSON", exclude: ["AGENTS.md", "CLAUDE.md"]),
+        // The Keychain calls of `HuggingFaceAuth` and `ReachySSH`, in one place: on macOS the
+        // data protection keychain and the move out of the file-based one. A leaf on
+        // Foundation and Security, for the reason `ReachyJSON` is one.
+        .target(name: "ReachyKeychain", exclude: ["AGENTS.md", "CLAUDE.md"]),
         // Tokens and the `ReachySurface` facade. It depends on SwiftUI and
         // nothing else, which is what lets both `ReachyUI` and `ReachyWidgetUI`
         // link it: a dependency is linked into a *target*, not into the place it
@@ -91,7 +95,7 @@ let package = Package(
         // arrive as values, the way a Hugging Face token reaches ReachyKit.
         .target(
             name: "ReachySSH",
-            dependencies: [.product(name: "Citadel", package: "Citadel"), "ReachyJSON"],
+            dependencies: [.product(name: "Citadel", package: "Citadel"), "ReachyJSON", "ReachyKeychain"],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
         .target(
@@ -143,7 +147,7 @@ let package = Package(
         ),
         // Not a product: stubs for the test targets only, in a plain target because
         // one test target cannot import another's sources.
-        .target(name: "ReachyTestSupport"),
+        .target(name: "ReachyTestSupport", dependencies: ["ReachyKeychain"]),
         // Also not a product, and not shipped at all: it writes the USD scene an
         // object tracker is trained from (#77), out of the description and meshes
         // `ReachySimulator` already carries. An executable rather than a
@@ -161,6 +165,10 @@ let package = Package(
         .testTarget(
             name: "ReachyJSONTests",
             dependencies: ["ReachyJSON"]
+        ),
+        .testTarget(
+            name: "ReachyKeychainTests",
+            dependencies: ["ReachyKeychain", "ReachyTestSupport"]
         ),
         .testTarget(
             name: "HuggingFaceAuthTests",
@@ -200,7 +208,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ReachySSHTests",
-            dependencies: ["ReachySSH"]
+            dependencies: ["ReachySSH", "ReachyTestSupport"]
         ),
         .testTarget(
             name: "ReachyUITests",
