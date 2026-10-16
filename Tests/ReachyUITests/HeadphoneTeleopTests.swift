@@ -12,11 +12,16 @@ struct HeadphoneTeleopTests {
     private let degree = Double.pi / 180
     private let start = ContinuousClock.now
 
-    private func hub(driving driver: TeleopDriver) -> HeadphoneTeleop {
+    /// A switched-on hub with one claim on `driver`, the way the Controller screen
+    /// claims it. The id is what a view going away releases.
+    private func following(
+        _ driver: TeleopDriver,
+        priority: HeadphoneTeleop.Priority = .screen
+    ) -> (HeadphoneTeleop, UUID) {
         let hub = HeadphoneTeleop(status: .off)
         hub.setOn(true)
-        hub.attach(driver)
-        return hub
+        let claim = hub.claim(driver, priority: priority)
+        return (hub, claim)
     }
 
     /// The head of `driver` is level with its body: what every release must leave.
@@ -40,7 +45,7 @@ struct HeadphoneTeleopTests {
     @Test("a turned head turns the robot's, composed onto the body's turn")
     func turnReachesTheDriver() {
         let driver = TeleopDriver(target: .init(yaw: 0.5, bodyYaw: 0.5))
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
 
         hub.receive(HeadAttitude(yaw: 20 * degree), at: start)
 
@@ -62,14 +67,14 @@ struct HeadphoneTeleopTests {
         #expect(driver.target == TeleopTarget())
     }
 
-    @Test("detaching puts the head back and leaves the body where it was")
+    @Test("releasing the claim puts the head back and leaves the body where it was")
     func detachReleases() {
         let driver = TeleopDriver(target: .init(yaw: 0.3, bodyYaw: 0.3))
-        let hub = hub(driving: driver)
+        let (hub, claim) = following(driver)
         hub.receive(HeadAttitude(yaw: 20 * degree, pitch: 10 * degree, roll: 5 * degree), at: start)
         #expect(!isNeutral(driver))
 
-        hub.detach()
+        hub.release(claim)
 
         #expect(isNeutral(driver))
         #expect(driver.target.bodyYaw == 0.3)
@@ -78,7 +83,7 @@ struct HeadphoneTeleopTests {
     @Test("switching off puts the head back")
     func switchOffReleases() {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
         hub.receive(HeadAttitude(yaw: -15 * degree, pitch: 12 * degree), at: start)
 
         hub.setOn(false)
@@ -93,7 +98,7 @@ struct HeadphoneTeleopTests {
     @Test("silence past the limit puts the head back and asks for a new reference")
     func silenceReleases() {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
         hub.receive(HeadAttitude(yaw: 20 * degree, pitch: 10 * degree), at: start)
 
         hub.checkForSilence(at: start + .milliseconds(500))
@@ -109,7 +114,7 @@ struct HeadphoneTeleopTests {
     @Test("recentring puts the head back and makes the next reading the reference")
     func recentreReleases() {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
         hub.receive(HeadAttitude(yaw: 25 * degree), at: start)
 
         hub.recentre()
@@ -126,9 +131,9 @@ struct HeadphoneTeleopTests {
         let driver = TeleopDriver()
         driver.apply(JoystickDeflection(x: driver.mapping.rotationThreshold / 2, y: 0.3))
         let before = driver.target
-        let hub = hub(driving: driver)
+        let (hub, claim) = following(driver)
 
-        hub.detach()
+        hub.release(claim)
         hub.setOn(false)
 
         #expect(driver.target == before)
@@ -175,7 +180,7 @@ struct HeadphoneTeleopTests {
     @Test("following a head drives with the head-tracking limiter")
     func followingTakesTheFastLimiter() {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
         #expect(driver.limiter == TargetSlewLimiter())
 
         hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
@@ -186,12 +191,12 @@ struct HeadphoneTeleopTests {
     @Test("every way out gives the pad's limiter back", arguments: [0, 1, 2])
     func releaseGivesTheDefaultBack(way: Int) {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, claim) = following(driver)
         hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
 
         switch way {
         case 0: hub.setOn(false)
-        case 1: hub.detach()
+        case 1: hub.release(claim)
         default: hub.checkForSilence(at: start + .seconds(2))
         }
 
@@ -204,7 +209,7 @@ struct HeadphoneTeleopTests {
     @Test("after Recentre the next reading drives fast again")
     func recentreThenFastAgain() {
         let driver = TeleopDriver()
-        let hub = hub(driving: driver)
+        let (hub, _) = following(driver)
         hub.receive(HeadAttitude(yaw: 10 * degree), at: start)
 
         hub.recentre()
@@ -216,7 +221,7 @@ struct HeadphoneTeleopTests {
 
     @Test("the reading is shown while following and gone once it stops")
     func readingFollowsTheStatus() {
-        let hub = hub(driving: TeleopDriver())
+        let (hub, _) = following(TeleopDriver())
         let attitude = HeadAttitude(yaw: 10 * degree, pitch: -5 * degree, roll: 3 * degree)
 
         hub.receive(attitude, at: start)
@@ -252,6 +257,61 @@ struct HeadphoneTeleopTests {
         while !condition(), ContinuousClock.now < deadline {
             await Task.yield()
         }
+    }
+
+    // MARK: Claims
+
+    /// An iPad under a sidebar shows the Controller screen and the pad over the picture
+    /// at once, and a head must steer one of them, never both.
+    @Test("the Controller screen outranks the pad over the picture")
+    func screenOutranksTheOverlay() {
+        let screen = TeleopDriver()
+        let picture = TeleopDriver()
+        let (hub, _) = following(picture, priority: .overlay)
+        _ = hub.claim(screen, priority: .screen)
+
+        hub.receive(HeadAttitude(yaw: 20 * degree), at: start)
+
+        #expect(hub.owner === screen)
+        #expect(!isNeutral(screen))
+        #expect(isNeutral(picture))
+        #expect(hub.drives(screen))
+        #expect(!hub.drives(picture))
+    }
+
+    /// The first device run switched head tracking off on the way to the camera.
+    /// Leaving the Controller screen now hands the head to the pad over the picture,
+    /// still on, and the screen's own head goes back to neutral.
+    @Test("leaving the screen hands the head to the pad over the picture, still on")
+    func leavingHandsOver() {
+        let screen = TeleopDriver()
+        let picture = TeleopDriver()
+        let (hub, screenClaim) = following(screen)
+        _ = hub.claim(picture, priority: .overlay)
+        hub.receive(HeadAttitude(yaw: 20 * degree), at: start)
+
+        hub.release(screenClaim)
+
+        #expect(hub.isOn)
+        #expect(isNeutral(screen))
+        #expect(hub.owner === picture)
+
+        hub.receive(HeadAttitude(yaw: 20 * degree), at: start + .milliseconds(40))
+        #expect(!isNeutral(picture))
+        #expect(picture.limiter == .headTracking)
+    }
+
+    @Test("with no claim left a reading moves nothing, and the hub stays on")
+    func noClaimDrivesNothing() {
+        let driver = TeleopDriver()
+        let (hub, claim) = following(driver)
+        hub.release(claim)
+
+        hub.receive(HeadAttitude(yaw: 20 * degree), at: start)
+
+        #expect(hub.owner == nil)
+        #expect(hub.isOn)
+        #expect(isNeutral(driver))
     }
 }
 

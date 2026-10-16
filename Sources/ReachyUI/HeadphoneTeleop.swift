@@ -2,6 +2,7 @@ import CoreMotion
 import Foundation
 import Observation
 import ReachyKit
+import SwiftUI
 
 /// Headphones that track the listener's head, steering the robot's (the AirPods spike).
 ///
@@ -9,23 +10,30 @@ import ReachyKit
 /// for the controller's reason: the slew limiter and the daemon's own limits apply
 /// unchanged (project rule 2). `TeleopDriver.aim(_:)` is the one door.
 ///
-/// **One screen drives with it, so there is no shared hub.** The Controller screen owns
-/// an instance and attaches its driver only while the robot can be driven — awake, with
-/// no power transition under way and the scene in front. A stream of targets right after
-/// the motors come on can take the daemon down (pollen-robotics/reachy_mini#1430), and
-/// readings taken in the background would drive a robot nobody watches.
+/// **One pair of headphones, one owner, and that is why this is shared** — the game
+/// controller's shape (`GamepadTeleop`). The first device run switched it off on the way
+/// to the camera, which is where a head is worth following: the Controller screen owned
+/// it then. Now each surface with a driver claims it (`headphoneTeleop(_:priority:isActive:)`)
+/// while the robot can be driven — awake, with no power transition under way and the
+/// scene in front — and the highest priority drives, the most recent among equals. A
+/// stream of targets right after the motors come on can take the daemon down
+/// (pollen-robotics/reachy_mini#1430), and readings taken in the background would drive
+/// a robot nobody watches. Switching on and off belongs to the hub, so it survives a
+/// change of screen.
 ///
 /// **The head starts from where the reader is looking.** Core Motion reports a
-/// headphone's attitude in a frame of its own, so the first reading after a switch-on,
-/// an attach or `recentre()` becomes the reference and everything after it is relative
-/// to that. Nothing asks the reader to look anywhere first; the footer says to look
+/// headphone's attitude in a frame of its own, so the first reading after a switch-on
+/// or `recentre()` becomes the reference and everything after it is relative to that.
+/// A hand-over keeps it, so the next surface starts from the straight ahead the reader
+/// already had. Nothing asks the reader to look anywhere first; the footer says to look
 /// straight ahead, and Recentre is there for when they did not.
 ///
 /// **Losing the headphones puts the head back.** Readings stop with no event at all
 /// when an AirPod leaves an ear or the headphones disconnect, so silence for
 /// `staleAfter` is the signal: the robot's head returns to neutral and the next
-/// reading is a fresh reference. The same release happens on detach and on switch-off,
-/// the way the game controller lets go of a look it was holding.
+/// reading is a fresh reference. The same release happens on switch-off and to a
+/// surface that loses the head, the way the game controller lets go of a look it was
+/// holding.
 @MainActor
 @Observable
 final class HeadphoneTeleop {
@@ -36,7 +44,7 @@ final class HeadphoneTeleop {
         case off
         /// Switched on, and no reading has arrived since.
         case waiting
-        /// Readings arrive, and reach the robot while a driver is attached.
+        /// Readings arrive, and reach the robot while a surface claims the hub.
         case following
         /// Motion & Fitness access was refused, at the prompt or in Settings.
         case denied
@@ -60,15 +68,35 @@ final class HeadphoneTeleop {
     private(set) var reading: HeadAttitude?
     private(set) var source: Source?
 
-    /// The next reading becomes the reference. Set by a switch-on, an attach, a
-    /// recentre and a loss; read and cleared by the Core Motion half.
+    /// The next reading becomes the reference. Set by a switch-on, a recentre, a loss
+    /// and a change of earbud; read and cleared by the Core Motion half.
     @ObservationIgnored private(set) var needsReference = true
 
-    @ObservationIgnored private weak var driver: TeleopDriver?
+    typealias Priority = GamepadTeleop.Priority
+
+    /// The driver a head moves right now: the highest priority claim, the most recent
+    /// among equals. Observed, so a pad can go out while a head drives its target.
+    private(set) var owner: TeleopDriver?
+
+    @ObservationIgnored private var claims: [Claim] = []
     @ObservationIgnored private var lastReading: ContinuousClock.Instant?
     @ObservationIgnored private var manager: CMHeadphoneMotionManager?
     @ObservationIgnored private var reference: CMAttitude?
     @ObservationIgnored private var watchdog: Task<Void, Never>?
+
+    private struct Claim {
+        let id: UUID
+        let driver: TeleopDriver
+        let priority: Priority
+    }
+
+    /// The hub every surface claims. Built on first use, and only a host outside
+    /// `reachyPreviewMode` reaches it, so no capture reads the device.
+    static let shared: HeadphoneTeleop = {
+        let hub = HeadphoneTeleop()
+        hub.observeHeadphones()
+        return hub
+    }()
 
     /// Long enough to ride out a reading or two the headphones skip, short enough that
     /// a head left turned reads as a robot left turned only briefly.
@@ -136,14 +164,32 @@ final class HeadphoneTeleop {
         releaseHead()
     }
 
-    func attach(_ driver: TeleopDriver) {
-        self.driver = driver
-        needsReference = true
+    func claim(_ driver: TeleopDriver, priority: Priority) -> UUID {
+        let id = UUID()
+        claims.append(Claim(id: id, driver: driver, priority: priority))
+        reconcileOwner()
+        return id
     }
 
-    func detach() {
+    func release(_ id: UUID) {
+        claims.removeAll { $0.id == id }
+        reconcileOwner()
+    }
+
+    /// Whether a head is steering `driver` now, which is when its own pad goes out.
+    func drives(_ driver: TeleopDriver) -> Bool {
+        status == .following && owner === driver
+    }
+
+    /// The surface that loses the head gets it back at neutral before the next one
+    /// takes it. The reference stays, so the new owner starts from the same straight
+    /// ahead; its first reading takes the fast limiter (`receive`).
+    private func reconcileOwner() {
+        let top = claims.map(\.priority).max()
+        let next = claims.last { $0.priority == top }?.driver
+        guard next !== owner else { return }
         releaseHead()
-        driver = nil
+        owner = next
     }
 
     /// One reading, already relative to the reference. The Core Motion half calls this;
@@ -156,8 +202,8 @@ final class HeadphoneTeleop {
         // On every reading rather than on the edge into `.following`: Recentre gives the
         // default back while the status stays `.following`, and the next reading has
         // to take the fast one again. The driver ignores a limiter it already has.
-        driver?.useLimiter(.headTracking)
-        driver?.aim(mapping.aim(attitude))
+        owner?.useLimiter(.headTracking)
+        owner?.aim(mapping.aim(attitude))
     }
 
     /// The watchdog's one step. Called on a timer while switched on, and by tests.
@@ -207,8 +253,8 @@ final class HeadphoneTeleop {
     /// is leading it any more.
     private func releaseHead() {
         guard status == .following else { return }
-        driver?.useLimiter(TargetSlewLimiter())
-        driver?.aim(.zero)
+        owner?.useLimiter(TargetSlewLimiter())
+        owner?.aim(.zero)
     }
 
     // MARK: - Core Motion
@@ -271,4 +317,62 @@ final class HeadphoneTeleop {
             }
         }
     #endif
+}
+
+extension View {
+    /// Lets headphones that track a head drive `driver` while `isActive`: awake, with no
+    /// power transition under way. Released when the view goes away. `hub` is `nil` for
+    /// the shared one, and a capture claims nothing at all.
+    func headphoneTeleop(
+        _ driver: TeleopDriver,
+        priority: HeadphoneTeleop.Priority,
+        isActive: Bool,
+        hub: HeadphoneTeleop? = nil
+    ) -> some View {
+        modifier(HeadphoneClaim(driver: driver, priority: priority, isActive: isActive, hub: hub))
+    }
+}
+
+/// `GamepadClaim`'s shape, for `GamepadClaim`'s reasons.
+private struct HeadphoneClaim: ViewModifier {
+    let driver: TeleopDriver
+    let priority: HeadphoneTeleop.Priority
+    let isActive: Bool
+    /// Resolved here rather than defaulted at the call, because a main-actor default
+    /// fails the `Apps/` build (`ReachyUI/AGENTS.md`).
+    let hub: HeadphoneTeleop?
+    @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var holdsClaim: Bool {
+        isActive && scenePhase == .active && !previewMode
+    }
+
+    func body(content: Content) -> some View {
+        content.task(id: holdsClaim) {
+            guard holdsClaim else { return }
+            let hub = hub ?? .shared
+            let id = hub.claim(driver, priority: priority)
+            // The claim lives exactly as long as this task: the view leaving, `isActive`
+            // turning false or the scene leaving the front cancels it.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
+            }
+            hub.release(id)
+        }
+    }
+}
+
+private struct HeadTrackingMayDriveKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Whether a head may drive the robot from a surface that does not see the robot's
+    /// session itself, such as the pad over the camera. `ViewportView` sets it from its
+    /// `robotSession`; anywhere else it is false, so nothing claims the headphones.
+    var headTrackingMayDrive: Bool {
+        get { self[HeadTrackingMayDriveKey.self] }
+        set { self[HeadTrackingMayDriveKey.self] = newValue }
+    }
 }

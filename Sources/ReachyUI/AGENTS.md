@@ -637,8 +637,26 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
 ## Headphones that track a head
 
 `HeadphoneMotionMapping.swift`, `HeadphoneTeleop.swift` and `HeadTrackingSection.swift`.
-AirPods or Beats that track the listener's head steer the robot's head from the Controller screen.
+AirPods or Beats that track the listener's head steer the robot's head,
+from the Controller screen and from the pad over the camera.
 It is a spike: everything here is tested except the signs and the feel, which need a device.
+
+- **One pair of headphones, one owner, so the hub is shared** — `HeadphoneTeleop.shared`,
+  in the game controller's shape (the section above).
+  The first device run switched head tracking off on the way to the camera,
+  because the Controller screen owned the hub, and the camera is where a followed head is worth the most.
+  Surfaces claim it with `headphoneTeleop(_:priority:isActive:hub:)`:
+  the Controller screen at `.screen`, `TeleopPadCluster` at `.overlay`,
+  and the highest priority drives, the most recent among equals.
+  On and off belong to the hub, so they survive a change of screen,
+  and a hand-over keeps the reference, so the next surface starts from the same straight ahead.
+  The surface that loses the head gets it back at neutral.
+- **The pad over the picture sees no robot session**, so `ViewportView` publishes the gate it needs
+  as `\.headTrackingMayDrive`: awake, and no power transition under way.
+  Anywhere else it is false, and nothing claims the headphones.
+  The pad carries a "Follow my head" button beside it,
+  absent where the device cannot read headphones and after a refusal,
+  because only the Controller screen's section can say why and open Settings.
 
 - **A head is a pose, not a deflection.**
   `TeleopDriver.aim(_:)` sets the head's yaw, pitch and roll directly,
@@ -681,10 +699,11 @@ It is a spike: everything here is tested except the signs and the feel, which ne
 - **It drives only while a thumb could, and never during a wake.**
   `ControllerScreen.headTrackingDrives` adds `powerTransition == nil` to the game controller's gate,
   because a stream of targets just after the motors come on can take the daemon down (pollen-robotics/reachy_mini#1430).
-- **Every way out puts the head back** — a detach, a switch-off, Recentre,
+- **Every way out puts the head back** — a lost claim, a switch-off, Recentre,
   and silence for `HeadphoneTeleop.staleAfter`, because an AirPod that leaves an ear stops the readings with no event.
   A head that was never followed is not put back: the pad may have a thumb on it.
-  The pad and the roll slider go out while a head is followed, because two writers on one target fight every frame.
+  A pad goes out while a head drives its own target (`HeadphoneTeleop.drives(_:)`),
+  because two writers on one target fight every frame.
 - **iOS only, for now.**
   `CMHeadphoneMotionManager` exists on macOS 14 too,
   but nobody has checked by hand which Motion pane a refusal would open there,
@@ -693,7 +712,8 @@ It is a spike: everything here is tested except the signs and the feel, which ne
   The section shows only for a status other than `.unsupported`,
   and only `observeHeadphones()` reads one — a call no capture makes.
   So adopting it moved no reference that predates it,
-  and four `Controller —` previews hand in the states they show.
+  four `Controller —` previews hand in the states they show,
+  and `Camera — head tracking offered` and `— following a head` hand the pad a hub, off and on.
   `Controller — following a head` also hands in a reading, so its references show the live line.
 
 ## Errors
