@@ -1220,6 +1220,32 @@ Adding a screen (project rule 8) means: a preview per state in `Previews/<Screen
   and not worth contorting the screen for. Snapshots are unaffected — they capture the title _and_
   the toolbar items, so `RobotScreen`'s Settings gear and `MovesScreen`'s Refresh are covered.
   Only the storybook hoists.
+- **Under `.searchable` an iPhone capture drew the large title flush against the leading edge, and only the capture
+  was wrong.**
+  The Apps, Daemon logs and Recovery journal references had the title's first ink at x 1–4 px,
+  where every other screen has it at 33–36 px (16 pt).
+  The running app on an iPhone 17 Pro simulator, connected to `sim-daemon` and driven to the Apps tab by Maestro,
+  draws it at 16.7 pt, the same as the Settings tab.
+  - **The cause is in swift-snapshot-testing.**
+    On a safe area of exactly `.zero` it moves the view to (10 000, 10 000), off its window,
+    and then renders it with `renderInContext:`, which runs one more layout pass.
+    Off the window the view has no system minimum layout margins,
+    so each view that pass lays out gets a 0 pt margin.
+    A trace of `UILabel.setCenter` on the title showed it:
+    centre x 56.5 in the library's `add(traits:)`, then 40.5 from `-[CALayer renderInContext:]` →
+    `layoutIfNeeded` → `_UINavigationBarLargeTitleView layoutSubviews`.
+  - **`.searchable` is what leaves the title to that last pass**, and on an iPhone only.
+    A bisect in the real harness gave x 1 px for a `List` or a `Form` with `.searchable`, with or without
+    `.minimize`, and 33 px for each of `.refreshable`, a toolbar `Menu`, `readablePage()` and no modifier.
+    Every iPad capture kept its inset.
+  - **The stencil now sets a safe area of one millionth of a point**, which keeps the view on its window.
+    The move exists to keep a host app's own safe area out of a capture, and this bundle has no host app.
+    On the window a `Form` also draws its scroll edge effect, so the stencil hides that too;
+    without it, 135 dark references outside these three screens moved, each in a band across the first card.
+    With both changes 57 references moved, all of them only in the title band (y 152…212 px),
+    and the run after the re-record passed all 519 tests with no reference written.
+    The 58th predicted one, `Recovery — journal, quiet robot` in dark, did not move:
+    its title is white on the glass a dark capture draws white.
 
 ## Entities in Spotlight, beside the three systems above
 

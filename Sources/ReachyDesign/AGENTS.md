@@ -292,6 +292,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   and only `.soft` differs, over the first 150 pt. What the other three add there is a hairline under the bar. That
   is why `reachySoftScrollEdge` keeps its override over a log tail, where the list hides every other separator, and
   why it is still wrong over a grouped `Form`, which ends in its own background.
+  The stencil now also hides it in every capture (`snapshotScrollEdge()`).
+  Once a capture kept its view on the window, a `Form` drew the effect at its top edge with no bar over it,
+  and 135 dark references gained a dark band across their first card.
 - **Wrapping something in `.opacity()` moves its reference, at opacity 1 and with nothing else changed.** SwiftUI
   composites that subtree offscreen and blends it back, and the round-trip lands within 1 bit. Measured when the
   floating viewport's edge glyphs became fadeable: 14 references moved, 3990 px each on an iPhone capture, **max
@@ -312,7 +315,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   70/255, all of it the material clearing and the chrome's corner-overhang losing the drop shadow it had been
   dragging along.
 - **No reference image is evidence about the safe area.** `Apps/ReachyUISnapshotTests/PreviewTests.stencil` sets
-  `snapshot.device.safeArea = .zero` before every capture, so the home indicator, the status bar and every inset
+  a safe area of one millionth of a point before every capture —
+  zero in effect, and not exactly `.zero` for the reason `ReachyUI/AGENTS.md` gives under the large title —
+  so the home indicator, the status bar and every inset
   derived from them are simply absent from all ~1100 of them. This is not a detail: it is the whole reason the
   running-app dock shipped for five releases mounted in a way that drew it straight over the tab bar, with three
   root references recording that and being read as confirming the opposite. Anything about safe-area geometry gets a
