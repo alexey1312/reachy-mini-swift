@@ -85,6 +85,7 @@ import SnapshotTesting
                         }
                         .reachyTheme(.fallback)
                         .reachyPreviewMode(true)
+                        .snapshotScrollEdge()
                     },
                     name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
                     isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
@@ -107,6 +108,7 @@ import SnapshotTesting
                 }
                 .reachyTheme(.fallback)
                 .reachyPreviewMode(true)
+                .snapshotScrollEdge()
             }
         }
         {% endif %}
@@ -121,6 +123,7 @@ import SnapshotTesting
                     }
                     .reachyTheme(.fallback)
                     .reachyPreviewMode(true)
+                    .snapshotScrollEdge()
                     {% endif %}
                 },
                 name: "{{ macroModel.displayName }}",
@@ -196,8 +199,18 @@ import SnapshotTesting
         snapshot.name = "\(prefireSnapshot.name)-\(variant.deviceName)\(variant.suffix)"
         snapshot.device = device
 
-        // Ignore specific device safe area
-        snapshot.device.safeArea = .zero
+        // Ignore specific device safe area — but not with an exact `.zero`. On `.zero`,
+        // swift-snapshot-testing moves the view to (10 000, 10 000), off its window, and
+        // then renders it with `renderInContext:`, which runs one more layout pass. Off
+        // the window the view has no system minimum layout margins, so each view that
+        // pass lays out gets a 0 pt margin. On an iPhone `.searchable` leaves the large
+        // title to that pass, so the Apps, Daemon logs and Recovery journal titles were
+        // captured flush against the leading edge while a device insets them by 16 pt.
+        // One millionth of a point keeps the view on its window and rounds away before
+        // it reaches a pixel. The move keeps a host app's own safe area out of the
+        // capture, and this bundle has no host app. On the window a `Form` also draws
+        // its scroll edge effect, which `snapshotScrollEdge()` hides.
+        snapshot.device.safeArea = UIEdgeInsets(top: 0, left: 0, bottom: 0.000_001, right: 0)
 
         // Ignore specific device display scale
         snapshot.traits = UITraitCollection { traits in
@@ -289,6 +302,22 @@ import SnapshotTesting
 }
 
 // MARK: - SnapshotTesting + Extensions
+
+private extension SwiftUI.View {
+    /// No scroll edge effect in a capture. The stencil keeps each view on its window
+    /// (see `safeArea` above), and on the window a `Form` draws the effect at its top
+    /// edge with no bar over it — a dark band across the first card of every dark
+    /// reference. Off the window it never drew, so hiding it keeps those references
+    /// as they were. No reference covers the effect: it is a probe question.
+    @ViewBuilder
+    func snapshotScrollEdge() -> some SwiftUI.View {
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
+            scrollEdgeEffectHidden(true, for: .all)
+        } else {
+            self
+        }
+    }
+}
 
 #if os(iOS) || os(tvOS)
 private extension DeviceConfig {
