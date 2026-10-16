@@ -7,6 +7,10 @@ import Testing
 /// back `errSecMissingEntitlement`. Probing once decides whether these tests can
 /// say anything at all, rather than failing for a reason that has nothing to do
 /// with the code.
+///
+/// On macOS these tests reach the file-based keychain only. The test process has no
+/// application identifier, so `KeychainItems` does not use the data protection
+/// keychain here. `KeychainHFTokenStoreMoveTests` holds the move between the two.
 private enum KeychainProbe {
     static let isUsable: Bool = {
         let store = KeychainHFTokenStore(service: "com.alexey1312.ReachyMini.probe")

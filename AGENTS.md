@@ -769,9 +769,13 @@ Consult `.claude/rules/` when working in the matching area:
 | `.claude/rules/networking.md` | Discovery, ATS, Local Network permission |
 
 Per-target notes live beside the code:
-`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI}/AGENTS.md`
+`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI,ReachyKeychain}/AGENTS.md`
 and `Apps/ReachyStickers/AGENTS.md`
 (`CLAUDE.md` is a symlink to it).
+**`ReachyKeychain/AGENTS.md` owns every `SecItem` call** —
+the macOS data protection keychain, the access group that keeps the widget out,
+and the move out of the file-based keychain.
+Read it before you touch a stored credential.
 **`Apps/ReachyStickers/AGENTS.md` owns the iMessage sticker pack** —
 Apple's 500 KB per-sticker ceiling and what actually buys the margin back,
 the two catalogue spellings of which Tuist silently drops one,
