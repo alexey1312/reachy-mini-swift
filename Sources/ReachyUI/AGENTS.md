@@ -834,6 +834,12 @@ this is that half, and it ships.
   On the LAN the same rule takes Hide off `App detail — installed`, whose card joins an installed row.
   Report is offered on every page with a Space id: it is the Hub's own form,
   and an app worth reporting does not stop being one once installed.
+- **The sign-in gate sends no token anywhere.**
+  It opens when the robot's own account reads as signed out, and its button opens the account sheet.
+  Linking is a step somebody takes there (ADR 0003, amended 2026-10-16):
+  the store used to put this app's token on any robot that read as signed out, unasked.
+  The screen follows `RobotSession.knownRobotHFAccount`, because the sheet links the robot over a screen
+  whose `.task` does not run again; the reload that follows forces a fresh catalogue.
 - **The notice is not part of `visibleApps`, and the sign-in gate is.**
   Folding it in would make every store test agree to a notice first.
   The screen draws no rows while `showsCommunityNotice` is true —
@@ -871,6 +877,11 @@ written against Conversation App 1.0's `/rpc` and would leave every other app wi
 (`WebAuthenticationBrowser` is **not** a second web view — that is `ASWebAuthenticationSession`, out of process on
 purpose so no Hugging Face credential passes through one of ours.)
 
+- **The page stays on its own origin.**
+  `AppSettingsNavigation` lets the main frame go only to the page's scheme, host and port.
+  Any other `http` or `https` link opens in the system browser, and anything else is refused.
+  The sheet has no address bar, so a page that left its origin would put another site under a "Settings" title.
+  Subframes stay the page's own business, as in the JS app host.
 - **`AppDetailSheet` decides whether to offer it, not the screen.** `RobotSession.appSettingsURL(for:)` answers nil
   without a declared port and without a LAN address; the page adds `state == .running` and `isReachable`, because
   the process serving the page is the process that crashes. There is no way to reach an app's settings while it is

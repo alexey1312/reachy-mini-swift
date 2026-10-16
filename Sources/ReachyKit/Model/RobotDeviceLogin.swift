@@ -26,9 +26,24 @@ public struct RobotDeviceLogin: Sendable, Equatable, Decodable {
     /// How long the code stays valid.
     public let expiresIn: Duration
 
-    /// The page to open: the pre-filled one where there is one.
-    public var approvalURL: URL {
-        verificationURIComplete ?? verificationURI
+    /// The page to open: the pre-filled one where there is one — and only when it is
+    /// Hugging Face's own.
+    ///
+    /// The robot relays the URL the Hub gave it, and this app opens it in a browser
+    /// under a button that reads "Open huggingface.co". Anything on the network can
+    /// answer as a robot, so a host that is not one could hand over a look-alike
+    /// sign-in page there instead. `nil` for anything but `https` on
+    /// `huggingface.co`, and the caller opens nothing.
+    public var approvalURL: URL? {
+        let page = verificationURIComplete ?? verificationURI
+        return Self.isHubPage(page) ? page : nil
+    }
+
+    static func isHubPage(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "https"
+            && url.host()?.lowercased() == "huggingface.co"
+            && (url.port == nil || url.port == 443)
+            && url.user() == nil
     }
 
     public init(

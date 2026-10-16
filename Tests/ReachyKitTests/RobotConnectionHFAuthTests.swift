@@ -66,14 +66,18 @@ struct RobotConnectionHFAuthTests {
     }
 
     /// The daemon validates the token by calling `whoami` before storing it, and a
-    /// token that fails comes back as a 400 — not a 401.
-    @Test("a token the Hub rejects is refused with a 400")
+    /// token that fails comes back as a 400 — not a 401. The detail is kept: from
+    /// 1.12 it is one of a few fixed sentences, which the screen translates.
+    @Test("a token the Hub rejects is refused with a 400 and the daemon's sentence")
     func rejectsAnInvalidToken() async throws {
         let session = makeSession([
-            "/api/hf-auth/save-token": .init(statusCode: 400, json: #"{"detail": "Invalid token"}"#),
+            "/api/hf-auth/save-token": .init(
+                statusCode: 400,
+                json: #"{"detail": "Invalid token or network error"}"#
+            ),
         ])
 
-        await #expect(throws: ReachyKitError.daemonRejected(statusCode: 400)) {
+        await #expect(throws: ReachyKitError.daemonRefused(statusCode: 400, detail: "Invalid token or network error")) {
             try await makeConnection(session).saveHFToken("nope")
         }
     }

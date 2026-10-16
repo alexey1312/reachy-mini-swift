@@ -72,3 +72,20 @@ public protocol SSHCredentialStore: Sendable {
     func save(_ credentials: SSHCredentials, forRobot robot: String) throws
     func clear(robot: String) throws
 }
+
+/// A password printed anywhere — a log line, a test failure, `dump` — is a
+/// password leaked, so every way of printing these names the account and never
+/// the secret.
+extension SSHCredentials: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String {
+        "SSHCredentials(\(username)@\(host):\(port), <redacted>)"
+    }
+
+    public var debugDescription: String {
+        description
+    }
+
+    public var customMirror: Mirror {
+        Mirror(self, children: ["host": host, "port": port, "username": username], displayStyle: .struct)
+    }
+}

@@ -216,7 +216,7 @@ public actor RobotConnection {
         }
     }
 
-    private static func detail(of payload: UndocumentedPayload) async -> String? {
+    static func detail(of payload: UndocumentedPayload) async -> String? {
         guard let body = payload.body, let data = try? await Data(collecting: body, upTo: 4096) else { return nil }
         return ReachyKitError.detail(in: data)
     }

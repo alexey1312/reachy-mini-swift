@@ -81,7 +81,8 @@ public struct RelayRefresh: Sendable, Equatable, Decodable {
     public let status: String
     public let tokenAvailable: Bool
     /// `relay_not_running` (no relay instance — no token, or the daemon is still
-    /// coming up) or `relay_unavailable` (a build with no relay module at all).
+    /// coming up). A daemon before 1.12.0 can also answer `relay_unavailable`, for a
+    /// build with no relay module at all; 1.12.0 removed that case.
     public let reason: String?
 
     /// Whether a reconnect was actually kicked off. Only then is waiting for a
