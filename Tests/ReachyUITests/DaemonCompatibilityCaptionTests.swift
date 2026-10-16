@@ -21,13 +21,13 @@ struct DaemonCompatibilityCaptionTests {
     @Test("a newer daemon names the version this app was tested with")
     func newer() throws {
         let warning = try #require(DaemonCompatibilityCaption.warning(
-            for: .untestedNewer(reported: "1.12.0", tested: "1.11.0")
+            for: .untestedNewer(reported: "1.13.0", tested: "1.12.0")
         ))
 
         #expect(String(localized: warning.message) == String(localized: .reachy(
             "This robot's software is newer than this app was tested with. Some features may not work."
         )))
-        #expect(warning.testedVersion == "1.11.0")
+        #expect(warning.testedVersion == "1.12.0")
     }
 
     /// There is nothing to compare an unreadable version against, so no row either.
@@ -46,7 +46,7 @@ struct DaemonCompatibilityCaptionTests {
     @Test("the warning is translated")
     func translated() throws {
         let warning = try #require(DaemonCompatibilityCaption.warning(
-            for: .untestedNewer(reported: "1.12.0", tested: "1.11.0")
+            for: .untestedNewer(reported: "1.13.0", tested: "1.12.0")
         ))
         var russian = warning.message
         russian.locale = Locale(identifier: "ru")

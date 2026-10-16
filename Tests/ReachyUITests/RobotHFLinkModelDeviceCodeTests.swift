@@ -65,6 +65,27 @@ struct RobotHFLinkModelDeviceCodeTests {
         #expect(cancelled.cancellations == 0)
     }
 
+    /// Anything on the network can answer as a robot, and the page is opened under
+    /// a button that reads "Open huggingface.co".
+    @Test("a sign-in page that is not Hugging Face's is not opened, and the robot is stopped")
+    func refusesAPageOffTheHub() async throws {
+        let cancelled = Script([])
+        let spoofed = try RobotDeviceLogin(
+            sessionID: "abc",
+            userCode: "WDJB-MJHT",
+            verificationURI: #require(URL(string: "https://huggingface-login.example/device"))
+        )
+        let model = model(start: spoofed, readings: [.authorized(username: "alexey1312")], cancelled: cancelled)
+        var opened: [URL] = []
+
+        await model.linkWithDeviceCode(session: .preview()) { opened.append($0) }
+
+        #expect(opened.isEmpty)
+        #expect(model.linkError == RobotHFLinkModel.untrustedPageText)
+        #expect(model.deviceLogin == nil)
+        #expect(cancelled.cancellations == 1)
+    }
+
     @Test("a code that ran out says so")
     func reportsAnExpiredCode() async {
         let cancelled = Script([])
@@ -79,15 +100,26 @@ struct RobotHFLinkModelDeviceCodeTests {
         #expect(cancelled.cancellations == 1)
     }
 
-    /// The Hub's own words, by way of the robot — runtime text, so the slot stays a
-    /// `String` (rule 9).
-    @Test("a refusal from the Hub is shown in its own words")
+    /// Daemon 1.12 answers a failed sign-in with one of a few fixed sentences
+    /// (pollen-robotics/reachy_mini#1363), and the card translates them.
+    @Test("a refusal the daemon words is shown in this app's words")
     func reportsTheHubsRefusal() async {
-        let model = model(start: login, readings: [.failed(message: "access_denied")])
+        let model = model(start: login, readings: [.failed(message: "Authorization was denied.")])
 
         await model.linkWithDeviceCode(session: .preview()) { _ in }
 
-        #expect(model.linkError == "access_denied")
+        #expect(model.linkError == String(localized: .reachy("The sign-in was denied on huggingface.co.")))
+    }
+
+    /// A daemon before 1.12 could put the provider's own text here, and upstream
+    /// stopped because that text could carry credentials.
+    @Test("text the daemon did not word is replaced, not shown")
+    func hidesUnknownText() async {
+        let model = model(start: login, readings: [.failed(message: "access_denied: token hf_leak")])
+
+        await model.linkWithDeviceCode(session: .preview()) { _ in }
+
+        #expect(model.linkError == RobotHFFailureCaption.general)
     }
 
     /// Stopping must reach the robot, or it goes on polling the Hub for a code

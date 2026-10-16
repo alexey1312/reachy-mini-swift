@@ -311,10 +311,14 @@ struct HFAccountSection: View {
         } icon: {
             ProgressView()
         }
-        Button {
-            openURL(login.approvalURL)
-        } label: {
-            Label(.reachy("Open huggingface.co"), systemImage: "arrow.up.forward.square")
+        // The model refuses a login whose page is not the Hub's before this card
+        // shows it, so in practice the button is always drawn.
+        if let approvalURL = login.approvalURL {
+            Button {
+                openURL(approvalURL)
+            } label: {
+                Label(.reachy("Open huggingface.co"), systemImage: "arrow.up.forward.square")
+            }
         }
         // A glyph like the row above it, so the two ways out share the icon column.
         Button(.reachy("Cancel"), systemImage: "xmark", role: .cancel) { robotLink.cancelDeviceLogin() }

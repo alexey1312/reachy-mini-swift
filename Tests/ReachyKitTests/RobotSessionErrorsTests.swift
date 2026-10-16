@@ -1,4 +1,5 @@
 import Foundation
+import OpenAPIRuntime
 @testable import ReachyKit
 import Testing
 
@@ -32,5 +33,24 @@ struct RobotSessionErrorsTests {
         let url = try #require(URL(string: "http://reachy-mini.local:8000/api/daemon/status"))
         let error = URLError(.timedOut, userInfo: [NSURLErrorFailingURLErrorKey: url])
         #expect(RobotSession.describe(error).hasPrefix("reachy-mini.local took too long"))
+    }
+
+    /// `String(describing:)` of a `ClientError` prints its operation input, and for
+    /// `save-token` the input is the token. The log line it fed was `.public`.
+    @Test("the log line for a wrapped failure carries no part of the request")
+    func logSummaryDropsThePayload() {
+        let error = ClientError(
+            operationID: "save_token_api_hf_auth_save_token_post",
+            operationInput: "Input(body: .json(Body(token: \"hf_secret\")))",
+            causeDescription: "Transport threw an error.",
+            underlyingError: URLError(.cancelled)
+        )
+
+        let line = RobotSession.logSummary(of: error)
+
+        #expect(String(describing: error).contains("hf_secret"))
+        #expect(!line.contains("hf_secret"))
+        #expect(line.hasPrefix("save_token_api_hf_auth_save_token_post"))
+        #expect(line.contains("URLError"))
     }
 }

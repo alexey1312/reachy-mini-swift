@@ -615,9 +615,13 @@ description = "Generate CHANGELOG.md from git history"
 run = "git-cliff -o CHANGELOG.md"
 
 [tasks.update-spec]
-description = "Fetch latest daemon OpenAPI spec from pollen-robotics/reachy_mini"
+description = "Fetch the daemon OpenAPI spec from pollen-robotics/reachy_mini (a tag, or main by default)"
+# Pass the release tag the baseline moves to (`mise run update-spec v1.12.0`): `main`
+# runs ahead of every release, so a spec taken from it describes routes no shipped
+# daemon serves yet.
+usage = 'arg "[ref]" default="main" help="A tag or branch of pollen-robotics/reachy_mini"'
 run = """
-curl -fsSL https://raw.githubusercontent.com/pollen-robotics/reachy_mini/main/docs/source/API/openapi.json \
+curl -fsSL "https://raw.githubusercontent.com/pollen-robotics/reachy_mini/${usage_ref}/docs/source/API/openapi.json" \
   -o Sources/ReachyKit/openapi.json
 python3 Scripts/normalize-openapi.py Sources/ReachyKit/openapi.json
 git diff --stat Sources/ReachyKit/openapi.json
@@ -758,7 +762,7 @@ if [ ! -x "$VENV/bin/mjpython" ] || [ "$INSTALLED" != "$EXPECTED" ]; then
   uv pip install --quiet --python "$VENV/bin/python" --requirement "$REQUIREMENTS"
   printf '%s' "$EXPECTED" > "$STAMP"
 fi
-"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.11.0"'
+"$VENV/bin/python" -c 'import importlib.metadata as m; assert m.version("reachy-mini") == "1.12.0"'
 # `gstreamer_python`'s libgstpython.dylib segfaults while GStreamer scans plugins.
 # Forked (the default) that only surfaces as "External plugin loader failed" and
 # the daemon then hangs before binding :8000; with GST_REGISTRY_FORK=no the

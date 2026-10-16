@@ -36,7 +36,7 @@ final class AppStoreModel {
     /// collapses that search to `[]` rather than to an error — the daemon catches
     /// the 401. A catalogue missing four hundred entries then looks exactly like a
     /// complete one, which is why Discover has to say so itself.
-    /// Written by `relinkHuggingFace` alone, which lives in a file of its own.
+    /// Written by `readRobotHFLink` alone, which lives in a file of its own.
     var discoverNeedsHFSignIn = false
     /// A successful answer, including `[]`, is different from never having received
     /// the catalogue. That distinction keeps empty and loading states honest.
@@ -166,7 +166,7 @@ final class AppStoreModel {
     /// read would wipe the refusal from a Start or a Stop somebody is still
     /// reading. The user's own Refresh is the opposite: they asked, so the answer
     /// is theirs.
-    func load(session: RobotSession, refresh: Bool = false, hfToken: @MainActor () async -> String? = { nil }) async {
+    func load(session: RobotSession, refresh: Bool = false) async {
         let silent = catalogueIsWarmed && !refresh
         let requestID = UUID()
         loadID = requestID
@@ -177,9 +177,9 @@ final class AppStoreModel {
             }
         }
 
-        // Ahead of the catalogue: a token put back afterwards heals nothing until
-        // the next visit.
-        let relinked = await relinkHuggingFace(session: session, token: hfToken)
+        // Ahead of the catalogue, so a robot linked since the gate went up is
+        // asked for a fresh list rather than answered out of the stale one.
+        let linkedSinceGate = await readRobotHFLink(session: session)
 
         do {
             // One `list-available` carries the catalogue and the installed list
@@ -189,7 +189,7 @@ final class AppStoreModel {
             // `refresh` is forced over warmed rows: the session holds the same list
             // in memory, so without it this call answers from the cache it was
             // warmed from and the robot is never asked at all.
-            let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed || relinked)
+            let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed || linkedSinceGate)
             guard loadID == requestID, !Task.isCancelled else { return }
             catalogue = apps.filter { !$0.isInstalled }
             installed = apps.filter(\.isInstalled)

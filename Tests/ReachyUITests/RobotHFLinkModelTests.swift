@@ -98,6 +98,18 @@ struct RobotHFLinkModelTests {
         #expect(!model.isLinking)
     }
 
+    /// `save-token` answers 400 with one of the daemon's fixed sentences from 1.12.
+    @Test("a token the robot refused is reported in this app's words")
+    func translatesARefusedToken() async {
+        let model = RobotHFLinkModel(link: { _, _ in
+            throw ReachyKitError.daemonRefused(statusCode: 400, detail: "Invalid token or network error")
+        })
+        await model.link(session: .preview(), token: "hf_token")
+        #expect(model.linkError == String(localized: .reachy(
+            "Hugging Face refused the token, or the robot could not reach Hugging Face."
+        )))
+    }
+
     @Test("unlinking asks the robot what it now holds")
     func readsTheAccountBackAfterUnlinking() async {
         let unlinked = Attempts()
