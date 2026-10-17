@@ -7,8 +7,8 @@
 #
 # The workflow itself lives in App Store Connect, not here — this script and
 # ci_post_xcodebuild.sh are the whole of what is reviewable. It archives iOS
-# (scheme `ReachyMini`) and visionOS (scheme `ReachyVision`, the same bundle ID)
-# and **never macOS**: macOS TestFlight comes from `mise run release:macos`, which archives
+# (scheme `ReachyMini`), visionOS (scheme `ReachyVision`) and tvOS (scheme
+# `ReachyTV`), all three with the same bundle ID, and **never macOS**: macOS TestFlight comes from `mise run release:macos`, which archives
 # once and exports that archive twice (notarized Developer ID zip *and* Mac App
 # Store .pkg). Xcode Cloud can only ever make the second of those — the notary
 # needs an App Store Connect key that deliberately never enters CI — so a macOS
@@ -91,7 +91,8 @@ export TUIST_CACHE_ENABLED=false
 ./bin/mise run project
 
 # Every target inherits the project-level value, so this one substitution stamps the
-# iOS app, its extensions and the visionOS app alike: none sets a version of its own.
+# iOS app, its extensions, the visionOS app and the TV app alike: none sets a version
+# of its own.
 #
 # Checked rather than assumed: this rewrites a literal tuist happens to emit, so
 # a changed spelling makes the substitution a silent no-op and the archive ships

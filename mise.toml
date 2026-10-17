@@ -657,11 +657,15 @@ git diff --stat Sources/ReachyDesign/Resources
 """
 
 [tasks."theme:icons"]
-description = "Regenerate the six AppIcon*.icon bundles and the visionOS icon from the palette"
+description = "Regenerate the six AppIcon*.icon bundles and the visionOS and tvOS icons from the palette"
 run = """
 set -o pipefail
-swift Scripts/render-app-icon.swift
-git status --porcelain Apps/ReachyMini/Resources Apps/ReachyVision/Resources
+# Compiled rather than run: `swift` runs one file, and the renderer is several
+# (Scripts/render-app-icon/main.swift says why).
+BIN="$(mktemp -d)/render-app-icon"
+swiftc -o "$BIN" Scripts/render-app-icon/*.swift
+"$BIN"
+git status --porcelain Apps/ReachyMini/Resources Apps/ReachyVision/Resources Apps/ReachyTV/Resources
 """
 
 # `simulator:*` is the iOS simulator; `sim-daemon` and `test:sim` are the *robot*

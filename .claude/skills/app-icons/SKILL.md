@@ -1,6 +1,6 @@
 ---
 name: app-icons
-description: The six generated Icon Composer .icon bundles, the visionOS layered icon and the README render. Use when running theme:icons, changing ReachyTheme.palette or alternateIconName, touching Apps/ReachyMini/Resources/AppIcon*.icon or Apps/ReachyVision/Resources, or refreshing docs/media/icon.png.
+description: The six generated Icon Composer .icon bundles, the visionOS and tvOS layered icons and the README render. Use when running theme:icons, changing ReachyTheme.palette or alternateIconName, touching Apps/ReachyMini/Resources/AppIcon*.icon, Apps/ReachyVision/Resources or Apps/ReachyTV/Resources, or refreshing docs/media/icon.png.
 ---
 
 # App icons
@@ -25,6 +25,14 @@ It is a gradient-plus-glyph composer, which the README render must not be, and t
 the stops come from the same `iconThemes[0]` the `.icon` bundles use, so the colours cannot drift,
 but the light, the glass and the shadow are visionOS's own and not Icon Composer's.
 The default theme only, because visionOS offers no alternate icons.
+**tvOS takes no `.icon` either, so the same script writes the TV app's brand assets.**
+`Apps/ReachyTV/Resources/Assets.xcassets/App Icon & Top Shelf Image.brandassets` is what App Store Connect requires:
+two layered image stacks (`App Icon`, 400 × 240 pt at @1x and @2x, and `App Icon - App Store`, 1280 × 768 at @1x)
+with the visionOS split — opaque gradient at the back, antennas and shell in the middle, goggles in front,
+the robot at 80 % of the height so the focus parallax does not crop the antenna tips —
+and two flat, opaque top shelf images (1920 × 720 and 2320 × 720 pt, @1x and @2x), the gradient with the robot in the middle.
+The names are Xcode's own, because the target names the set in `ASSETCATALOG_COMPILER_APPICON_NAME`.
+The default theme only: tvOS offers no alternate icons. No reference image covers it; a TV Home Screen is a device check.
 **`docs/media/icon.png` is a copy of the shipping render, not a second rendering of it** — the README shows the
 default theme's icon, and it is refreshed by hand from a macOS build:
 `iconutil -c iconset <app>/Contents/Resources/AppIcon.icns -o <dir>` and then its `icon_128x128@2x.png` (256 px,

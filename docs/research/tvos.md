@@ -52,7 +52,7 @@ The shared WebRTC change (`68f24d56`) names the same floor.
 ```
 
 Then install `Apps/DerivedData/Build/Products/Debug-appletvsimulator/ReachyTV.app` on a tvOS simulator
-with `xcrun simctl install`, and start it with `xcrun simctl launch <udid> com.alexey1312.ReachyMini.TV`.
+with `xcrun simctl install`, and start it with `xcrun simctl launch <udid> com.alexey1312.ReachyMini`.
 With `mise run sim-daemon` running on the same Mac, it connects by itself.
 
 ## Input
@@ -171,8 +171,15 @@ which is the failure the root `CLAUDE.md` records for `test:sim`.
   The TV skips it; the phone's app runs it.
 - **The 3D twin.** RealityView is tvOS 26; ReachyScene has not been built for tvOS.
 - **Power off, settings, themes.** The TV uses the default theme.
-- **Shipping.** An app icon and a top shelf image (tvOS wants layered brand assets),
-  the bundle identifier (`com.alexey1312.ReachyMini.TV` now; universal purchase wants the iOS app's own),
-  signing, and TestFlight.
+- **Shipping, the user's half.** The app is release-ready on this side:
+  it shares the iPhone app's bundle identifier (`com.alexey1312.ReachyMini`), as the visionOS app does,
+  so it is the same App Store app (universal purchase);
+  `mise run theme:icons` writes its layered icon and top shelf images;
+  `ITSAppUsesNonExemptEncryption` is false;
+  Xcode Cloud's build-number stamp covers it, and `check-appintents-metadata.sh` accepts a tvOS bundle,
+  which carries no App Intents by design.
+  What is left is outside the repository: a tvOS archive action for the scheme `ReachyTV`
+  in the Xcode Cloud workflow, the tvOS platform and its screenshots in App Store Connect, and TestFlight.
+  The two usage strings are English only: the TV app has no `InfoPlist.xcstrings` yet.
 - **CI.** No job builds the TV app, because the five macOS slots are spent.
   `mise run build:app:tv` is the only thing that compiles the TV shell and ReachyTeleop's tvOS branch.

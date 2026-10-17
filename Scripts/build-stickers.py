@@ -109,7 +109,7 @@ CHARACTERS = [
 
 # Graphite, from `ReachyTheme.palette` — the theme the app falls back to and the one
 # the shipping icon and the docs site both use. Duplicated rather than read, the same
-# trade `Scripts/render-app-icon.swift` makes: a `swift` script cannot link
+# trade `Scripts/render-app-icon/` makes: a standalone program cannot link
 # ReachyDesign, and neither can this one.
 GRADIENT_TOP = 0x9AA6B8
 GRADIENT_BOTTOM = 0x3E4757
