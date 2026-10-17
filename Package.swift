@@ -11,6 +11,11 @@ let package = Package(
         // RealityView (the 3D robot viewer) is iOS 18 / macOS 15.
         .macOS(.v15),
         .iOS(.v18),
+        // 26 because LiveKit's WebRTC slices for these two require it on visionOS and
+        // RealityView requires it on tvOS. `platforms:` sets minimums and is not an
+        // allow-list, so naming them adds no build of any kind.
+        .tvOS("26.0"),
+        .visionOS("26.0"),
     ],
     products: [
         .library(name: "HuggingFaceAuth", targets: ["HuggingFaceAuth"]),
@@ -28,6 +33,10 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.0"),
         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.1.0"),
         .package(url: "https://github.com/stasel/WebRTC.git", from: "154.0.0"),
+        // The same library for tvOS and visionOS, which stasel ships no slice for.
+        // `exact:` because its version is Chromium's milestone and build, not semver,
+        // and `ReachyMedia` names its symbols by hand (`WebRTCNames.swift`).
+        .package(url: "https://github.com/livekit/webrtc-xcframework.git", exact: "150.7871.3"),
         // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
         // rather than the `from:` every other dependency here uses.
         .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
@@ -76,9 +85,16 @@ let package = Package(
         ),
         .target(
             name: "ReachyMedia",
+            // Two builds of one library, one per platform pair. LiveKit's carries an
+            // `LK` prefix on every symbol, which `WebRTCNames.swift` maps back.
             dependencies: [
                 "ReachyKit",
-                .product(name: "WebRTC", package: "WebRTC"),
+                .product(name: "WebRTC", package: "WebRTC", condition: .when(platforms: [.iOS, .macOS])),
+                .product(
+                    name: "LiveKitWebRTC",
+                    package: "webrtc-xcframework",
+                    condition: .when(platforms: [.tvOS, .visionOS])
+                ),
             ],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),

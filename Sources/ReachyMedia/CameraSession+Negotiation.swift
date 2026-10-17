@@ -1,6 +1,10 @@
 import Foundation
 import ReachyKit
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
 /// How long a negotiation may take, and what happens when it takes longer (#155).
 ///
