@@ -52,6 +52,8 @@ final class TVConnectionModel {
 
     func start() {
         browser.start()
+        // A store screenshot of this screen wants the robot listed, not connected to.
+        guard TVCaptureStage.current != .connect else { return }
         sweep.start()
     }
 

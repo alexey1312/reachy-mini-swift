@@ -754,6 +754,10 @@ sips -g pixelWidth -g pixelHeight "$OUT/capture-$FAMILY.png" | tail -2 | tr -d '
 echo "  -> $OUT/capture-$FAMILY.png"
 '''
 
+[tasks."screenshots:tv"]
+description = "Photograph the Apple TV app for the store listing (needs a running sim-daemon)"
+run = "./screenshots/tvos/capture.sh"
+
 [tasks."stickers:build"]
 description = "Regenerate the iMessage sticker catalogue from art/stickers"
 run = """
