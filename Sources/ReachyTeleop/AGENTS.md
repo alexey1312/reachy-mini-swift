@@ -7,7 +7,7 @@ Driving the robot live, with no view in it:
 and `HeadAim` (a pose from headphones that track a head).
 
 It is a target of its own so that a surface with no ReachyUI can drive.
-The TV app (`Apps/ReachyTV`) links this, ReachyKit and ReachyDesign, and nothing else:
+The TV app (`Apps/ReachyTV`) links this, ReachyKit, ReachyDesign and ReachyMedia, and nothing else:
 ReachyUI does not compile for tvOS, and its screens are not built for focus.
 Safety stays in the daemon (project rule 2):
 everything here writes one target, and the daemon clamps it.

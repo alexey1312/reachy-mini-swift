@@ -4,8 +4,8 @@ The WebRTC session to the robot (`CameraSession` + its adapters), and since #78 
 framing over it (`RobotCallController` + `CallLifecycle` + `MediaAudioSession`). Depends on
 `ReachyKit` and a WebRTC binary framework, nothing else.
 
-- **Linked by `ReachyUI` only, and `ReachyWidgetUI` must never gain the edge.** A widget process
-  woken for a moment to draw two lines of text cannot afford to load a media stack —
+- **Linked by `ReachyUI` and the TV app (`Apps/ReachyTV`) only, and `ReachyWidgetUI` must never gain the edge.**
+  A widget process woken for a moment to draw two lines of text cannot afford to load a media stack —
   `Package.swift` states it beside the dependency list. That is also why `MicrophonePermission`
   lives here rather than in `ReachyKit` (the widget links ReachyKit, and AVFoundation is the same
   argument one framework smaller), and why `CallRobotIntent` lives in the app target rather than

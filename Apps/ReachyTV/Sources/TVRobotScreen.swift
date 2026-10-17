@@ -73,10 +73,11 @@ struct TVRobotScreen: View {
         }
     }
 
-    /// A wake can take ninety seconds when it has to start the backend first, so the
-    /// drive button waits for it rather than offering a robot that cannot move yet.
+    /// The drive screen is the camera as well, and the camera runs while the robot
+    /// sleeps, so it opens whenever the backend runs; the controller drives only once
+    /// the robot is awake (`TVDriveScreen.drives`). A stopped backend has no camera.
     private var canDrive: Bool {
-        session.isAwake && session.powerTransition == nil && !isUnreachable
+        session.isBackendRunning && !isUnreachable
     }
 
     @ViewBuilder

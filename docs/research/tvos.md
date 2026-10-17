@@ -4,7 +4,7 @@ The 2026-10-14 platform review put the Apple TV idea as
 "the robot's eyes on the big screen, and play with a game controller",
 and rated a native app large because a TV interface is moved by focus.
 This file records the first app:
-what it is built from, what was measured, what waits on the shared WebRTC change, and what is left.
+what it is built from, what was measured, how the camera works, and what is left.
 
 ## What it is
 
@@ -17,12 +17,13 @@ A TV wants fewer and larger controls that the focus engine can reach.
 
 What the TV shares is everything below the views:
 
-| Shared                                              | From         | What the TV does with it                                      |
-| --------------------------------------------------- | ------------ | ------------------------------------------------------------- |
-| `RobotSession`                                      | ReachyKit    | Handshake, status poll, `wake()`, `sleep()`, `startBackend()` |
-| `CandidateSweep`, `RobotBrowser`, `BonjourResolver` | ReachyKit    | Finds and reconnects to robots, as the phone's gate does      |
-| `TeleopDriver`, `JoystickMapping`, `GamepadTeleop`  | ReachyTeleop | Drives the robot with a game controller or the Siri Remote    |
-| `.reachy(_:)`, `Typography`, `reachySurface`        | ReachyDesign | Strings in the one catalogue, type roles, the legend's card   |
+| Shared                                              | From         | What the TV does with it                                          |
+| --------------------------------------------------- | ------------ | ----------------------------------------------------------------- |
+| `RobotSession`                                      | ReachyKit    | Handshake, status poll, `wake()`, `sleep()`, `startBackend()`     |
+| `CandidateSweep`, `RobotBrowser`, `BonjourResolver` | ReachyKit    | Finds and reconnects to robots, as the phone's gate does          |
+| `TeleopDriver`, `JoystickMapping`, `GamepadTeleop`  | ReachyTeleop | Drives the robot with a game controller or the Siri Remote        |
+| `CameraSession`, `CameraVideoView`                  | ReachyMedia  | The robot's camera behind the drive screen, over LiveKit's WebRTC |
+| `.reachy(_:)`, `Typography`, `reachySurface`        | ReachyDesign | Strings in the one catalogue, type roles, the legend's card       |
 
 Two things moved down for this, and neither changes behaviour on the phone:
 
@@ -122,17 +123,37 @@ a real controller and a real Siri Remote driving, Menu leaving the drive screen,
 the discovery list with a robot in it (the sweep connected over loopback first),
 and the Local Network prompt, which a simulator never shows.
 
-## What waits on the shared WebRTC change
+## The camera
 
-The camera.
 stasel/WebRTC ships no tvOS slice.
-The change that makes it conditional and adds `livekit/webrtc-xcframework` for tvOS and visionOS
-is commit `68f24d56` on `claude/visionos-head-teleop`, which was not yet in a PR when this was written.
-Its tvOS slice has `RTCMTLVideoView`.
-When that lands, the TV links ReachyMedia, opens a `CameraSession` on the robot's `:8443` signalling,
-and draws the picture behind the drive screen's legend, where "Camera unavailable" stands now.
-The video view the phone uses is in ReachyUI, so the TV needs a small representable of its own,
-or the view moves down beside `CameraSession`.
+The shared change that makes it conditional and adds `livekit/webrtc-xcframework` for tvOS and visionOS
+is #207 (`68f24d56`), and the camera branch is stacked on it and on the TV app.
+The drive screen opens the phone's own `CameraSession` on the robot's `:8443` signalling
+and draws ReachyMedia's `CameraVideoView` full bleed behind the legend,
+with the phone's words for each state of the stream and a Try again button for a stall.
+It runs while the robot sleeps, so Drive opens whenever the backend runs:
+the screen is for watching as much as for driving, and the controller drives only once the robot is awake.
+The microphone stays off; the robot's own sound plays on the TV.
+
+- **LiveKit's tvOS simulator slice is arm64 alone** (`tvos-arm64-simulator`, 150.7871.3),
+  and a generic simulator destination links x86_64 too, which fails on every `LKRTC` symbol.
+  The TV target excludes x86_64 for the simulator SDK.
+  Building ReachyMedia alone, as #207 was checked, never links, so only an app shows this.
+- **A muted microphone track is attached all the same**, because the robot's `webrtcsink` never renegotiates.
+  iOS holds libwebrtc in manual audio mode, so capture starts only on the first unmute.
+  Nothing sets that mode on tvOS, and whether a sending audio stream then opens an input is a device check.
+  A process with no usage string is killed when it does,
+  so the TV declares `NSMicrophoneUsageDescription`, in the words of the phone's camera string.
+  A receive-only audio path for the TV would remove the question; it is a change to `CameraSession`.
+
+Measured on the same simulator and `sim-daemon`:
+the app linked once x86_64 was excluded,
+opened `:8443` (the signalling server logged a new listener and its `list`),
+sent `POST /api/media/acquire`, and showed "Waiting for camera".
+The daemon had no producer to offer: its sender failed at start on `GstOsxAudioSrc`
+with `not-negotiated (-4)`, with `Jump Desktop Microphone` as this Mac's default input,
+which is the failure the root `CLAUDE.md` records for `test:sim`.
+**So no picture has been seen on a TV yet.** That needs a real robot, or this Mac with another default input.
 
 ## What is left
 
