@@ -25549,6 +25549,64 @@
           }
         }
       }
+    },
+    "The robot turns its head as you turn yours. Look straight ahead when you switch it on. While it is on, the windows of other apps are hidden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter dreht seinen Kopf mit deinem. Schau beim Einschalten geradeaus. Solange es eingeschaltet ist, sind die Fenster anderer Apps ausgeblendet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot gira la cabeza a la vez que tú. Mira al frente al activarlo. Mientras está activado, las ventanas de otras apps se ocultan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot tourne la tête en même temps que vous. Regardez droit devant vous en l’activant. Tant qu’il est activé, les fenêtres des autres apps sont masquées."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот поворачивает голову вместе с вами. При включении смотрите прямо перед собой. Пока режим включён, окна других приложений скрыты."
+          }
+        }
+      }
+    },
+    "Waiting for the position of your head.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf die Position deines Kopfes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando la posición de tu cabeza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de la position de votre tête."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ждём положение головы."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

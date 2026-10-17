@@ -1,4 +1,4 @@
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     import UIKit
 #else
     import AppKit
@@ -6,7 +6,7 @@
 
 enum Clipboard {
     static func copy(_ text: String) {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             UIPasteboard.general.string = text
         #else
             NSPasteboard.general.clearContents()

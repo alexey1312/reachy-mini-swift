@@ -88,13 +88,25 @@ extension FloatingViewportModel {
     /// `rest` is the window's own corner or edge and is never consulted for a column,
     /// which has neither.
     var placement: Placement {
-        if !isEnabled {
+        if !isEnabled || !Self.offersSecondPlace {
             return .inline
         }
         if !hasTabBar {
             return .column
         }
         return isLiveTabSelected ? .inline : rest
+    }
+
+    /// Whether this platform has a second place for the viewport at all. visionOS has
+    /// neither: SwiftUI's inspector is unavailable there, and a window floating over
+    /// the app's own window is a second window, which visionOS gives the reader to
+    /// place. So the viewport stays in the Live tab, and the switch is not offered.
+    static var offersSecondPlace: Bool {
+        #if os(visionOS)
+            false
+        #else
+            true
+        #endif
     }
 
     /// The placement the geometry draws: where an animation in flight is heading, and

@@ -73,3 +73,10 @@ struct HeadphoneMotionMapping: Equatable, Sendable {
         return (angle < 0 ? -magnitude : magnitude) * gain * sign
     }
 }
+
+extension HeadphoneMotionMapping {
+    /// The headset's (`HeadsetTracker`), over the angles `HeadsetAttitude` gives: the
+    /// same reach, the same yaw and pitch, and the roll turned round, because ARKit's
+    /// roll is positive with the left ear down and the robot's with the right.
+    static let headset = HeadphoneMotionMapping(rollSign: -1)
+}

@@ -67,7 +67,7 @@ import SwiftUI
         func body(content: Content) -> some View {
             content
                 .environment(\.reachyOpenJSApp, JSAppOpener { app, url in open(app, url: url) })
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .fullScreenCover(item: $hosted) { model in
                     JSAppHostScreen(model: model) { closed() }
                 }

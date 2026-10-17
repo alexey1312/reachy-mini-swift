@@ -13,8 +13,7 @@ let package = Package(
         .iOS(.v18),
         // 26 because LiveKit's WebRTC slices for these two require it on visionOS and
         // RealityView requires it on tvOS. `platforms:` sets minimums and is not an
-        // allow-list, so naming them adds no build of any kind. The TV app
-        // (`Apps/ReachyTV`) links neither ReachyUI nor ReachySSH.
+        // allow-list, so naming them adds no build of any kind.
         .tvOS("26.0"),
         .visionOS("26.0"),
     ],
@@ -113,7 +112,14 @@ let package = Package(
         // arrive as values, the way a Hugging Face token reaches ReachyKit.
         .target(
             name: "ReachySSH",
-            dependencies: [.product(name: "Citadel", package: "Citadel"), "ReachyJSON", "ReachyKeychain"],
+            // Citadel on iOS and macOS only: its fork of swift-nio-ssh imports `NIO`
+            // without depending on it, which fails the tvOS and visionOS builds. There
+            // `RobotFileSystems.ssh(robot:)` answers nil, as for a robot with no address.
+            dependencies: [
+                .product(name: "Citadel", package: "Citadel", condition: .when(platforms: [.iOS, .macOS])),
+                "ReachyJSON",
+                "ReachyKeychain",
+            ],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
         // Driving the robot live: the pad's mapping, the game controller and the driver

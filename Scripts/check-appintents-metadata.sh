@@ -29,6 +29,7 @@ fi
 python3 - "$1" <<'PY'
 import json
 import pathlib
+import plistlib
 import sys
 
 target = pathlib.Path(sys.argv[1])
@@ -77,13 +78,14 @@ REQUIRED_APP_ACTIONS = [
     "OpenRobotAppIntent",
 ]
 
-# Required of an iOS bundle and absent from a macOS one by construction.
+# Required of an iOS bundle and absent from a macOS or visionOS one by construction.
 #
 # ActivityKit ships for iOS and Mac Catalyst, and this app's Mac target is native, so
 # `StopRunningAppActivityIntent` is behind `#if os(iOS)` along with the rest of the
 # Live Activity. Listing it unconditionally is what failed the macOS Release build on
 # #118: the check is right that the action is missing, and the action is right to be
-# missing. `isDiscoverable = false` keeps it out of the Shortcuts app but not out of
+# missing. visionOS has no Live Activities at all, so the same holds for its app.
+# `isDiscoverable = false` keeps it out of the Shortcuts app but not out of
 # this file — the flag is a field in the metadata, not an absence from it — and
 # extraction failing would leave a card whose only control does nothing, silently.
 REQUIRED_IOS_APP_ACTIONS = [
@@ -187,7 +189,12 @@ else:
     # root. That is the same distinction `mise run inspect:bundle` draws, and it is
     # the only one available from the artifact alone.
     is_macos = (target / "Contents" / "Info.plist").exists()
-    required = REQUIRED_APP_ACTIONS + ([] if is_macos else REQUIRED_IOS_APP_ACTIONS)
+    # A visionOS bundle is laid out like an iOS one, so only its Info.plist tells them
+    # apart: `XROS` on a device, `XRSimulator` on the simulator.
+    info = target / "Info.plist"
+    platforms = plistlib.loads(info.read_bytes()).get("CFBundleSupportedPlatforms", []) if info.exists() else []
+    is_visionos = any(name.startswith("XR") for name in platforms)
+    required = REQUIRED_APP_ACTIONS + ([] if is_macos or is_visionos else REQUIRED_IOS_APP_ACTIONS)
     missing = [name for name in required if name not in actions]
     if missing:
         failures.append(f"app metadata is missing actions: {missing} (has {sorted(actions)})")

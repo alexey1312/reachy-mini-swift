@@ -178,9 +178,12 @@ struct LogConsoleView: View {
             }
             .help(Text(model.paused ? .reachy("Resume") : .reachy("Pause")))
         }
-        if #available(iOS 26.0, macOS 26.0, *) {
-            ToolbarSpacer(.fixed)
-        }
+        // visionOS has no `ToolbarSpacer`; the two groups sit next to each other there.
+        #if !os(visionOS)
+            if #available(iOS 26.0, macOS 26.0, *) {
+                ToolbarSpacer(.fixed)
+            }
+        #endif
         ToolbarItemGroup {
             ShareLink(item: model.export(address: source), preview: SharePreview(.reachy("Log"))) {
                 Label(.reachy("Export"), systemImage: "square.and.arrow.up")

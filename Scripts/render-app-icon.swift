@@ -9,6 +9,9 @@
 // light, dark and tinted appearances, the iOS 18–25 back-deployment rasters and the
 // macOS ladder. There is deliberately no asset catalogue — a same-named
 // `.appiconset` is shadowed by the `.icon` and contributes nothing.
+//
+// visionOS is the exception: it takes no `.icon` bundle, so the same drawing also
+// writes the visionOS app's layered image stack (`writeVisionIcon` at the end).
 
 import CoreGraphics
 import Foundation
@@ -36,8 +39,18 @@ let sparkle = srgb(0xFFFFFF, alpha: 0.85)
 
 // MARK: - Drawing
 
+/// The parts of the robot, so visionOS can put them on layers of different depth.
+struct RobotParts: OptionSet {
+    let rawValue: Int
+    /// The antennas and the head's shell.
+    static let shell = RobotParts(rawValue: 1)
+    /// The goggles.
+    static let eyes = RobotParts(rawValue: 2)
+    static let all: RobotParts = [.shell, .eyes]
+}
+
 /// Draws the robot into `content`, a square in the context's user space.
-func drawRobot(_ ctx: CGContext, content: CGRect) {
+func drawRobot(_ ctx: CGContext, content: CGRect, parts: RobotParts = .all) {
     let s = content.width
     let headCenter = CGPoint(x: content.midX, y: content.midY + 0.075 * s)
 
@@ -55,9 +68,13 @@ func drawRobot(_ ctx: CGContext, content: CGRect) {
         height: headSize.height
     )
 
-    drawAntennas(ctx, side: s, headCenter: headCenter, headTop: head.minY)
-    drawHead(ctx, side: s, head: head)
-    drawEyes(ctx, side: s, headCenter: headCenter)
+    if parts.contains(.shell) {
+        drawAntennas(ctx, side: s, headCenter: headCenter, headTop: head.minY)
+        drawHead(ctx, side: s, head: head)
+    }
+    if parts.contains(.eyes) {
+        drawEyes(ctx, side: s, headCenter: headCenter)
+    }
 
     ctx.restoreGState()
 }
@@ -230,3 +247,85 @@ let glyph = renderGlyph(pixels: 1024)
 for theme in iconThemes {
     try writeIconBundle(theme, glyph: glyph, in: resources)
 }
+
+// MARK: - visionOS
+
+/// A square layer in a top-left user space. `opaque` drops the alpha channel, which
+/// visionOS requires of the back layer.
+func renderLayer(pixels: Int, opaque: Bool = false, _ draw: (CGContext, CGRect) -> Void) -> CGImage {
+    let alpha = opaque ? CGImageAlphaInfo.noneSkipLast : CGImageAlphaInfo.premultipliedLast
+    let ctx = CGContext(
+        data: nil,
+        width: pixels,
+        height: pixels,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: alpha.rawValue
+    )!
+    ctx.translateBy(x: 0, y: CGFloat(pixels))
+    ctx.scaleBy(x: 1, y: -1)
+    draw(ctx, CGRect(x: 0, y: 0, width: pixels, height: pixels))
+    return ctx.makeImage()!
+}
+
+func writeJSON(_ object: [String: Any], to url: URL) throws {
+    let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+    try (String(data: data, encoding: .utf8)! + "\n").write(to: url, atomically: true, encoding: .utf8)
+}
+
+/// visionOS takes no `.icon` bundle. Its app icon is a solid image stack: square
+/// layers of 1024 px that the system masks to a circle and moves apart as the reader
+/// looks at it. The same drawing, split by depth — the theme's gradient at the back,
+/// the antennas and the shell in the middle, the goggles in front — and drawn smaller,
+/// so the antenna tips stay inside the circle. The default theme only, because
+/// visionOS offers no alternate icons.
+func writeVisionIcon(_ theme: IconTheme, to catalogue: URL) throws {
+    let pixels = 1024
+    let info: [String: Any] = ["author": "xcode", "version": 1]
+    let stack = catalogue.appendingPathComponent("AppIcon.solidimagestack")
+    try? FileManager.default.removeItem(at: catalogue)
+    try FileManager.default.createDirectory(at: stack, withIntermediateDirectories: true)
+    try writeJSON(["info": info], to: catalogue.appendingPathComponent("Contents.json"))
+
+    let inset = CGFloat(pixels) * 0.07
+    let robot = { (ctx: CGContext, rect: CGRect, parts: RobotParts) in
+        drawRobot(ctx, content: rect.insetBy(dx: inset, dy: inset), parts: parts)
+    }
+    let layers: [(name: String, image: CGImage)] = [
+        ("Front", renderLayer(pixels: pixels) { robot($0, $1, .eyes) }),
+        ("Middle", renderLayer(pixels: pixels) { robot($0, $1, .shell) }),
+        ("Back", renderLayer(pixels: pixels, opaque: true) { ctx, rect in
+            let gradient = CGGradient(
+                colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                colors: [srgb(theme.gradientTop), srgb(theme.gradientBottom)] as CFArray,
+                locations: [0, 1]
+            )!
+            ctx.drawLinearGradient(
+                gradient,
+                start: CGPoint(x: rect.midX, y: rect.minY),
+                end: CGPoint(x: rect.midX, y: rect.maxY),
+                options: []
+            )
+        }),
+    ]
+    for layer in layers {
+        let folder = stack.appendingPathComponent("\(layer.name).solidimagestacklayer")
+        let imageSet = folder.appendingPathComponent("Content.imageset")
+        try FileManager.default.createDirectory(at: imageSet, withIntermediateDirectories: true)
+        try writeJSON(["info": info], to: folder.appendingPathComponent("Contents.json"))
+        let file = "\(layer.name.lowercased()).png"
+        writePNG(layer.image, to: imageSet.appendingPathComponent(file))
+        try writeJSON(
+            ["images": [["filename": file, "idiom": "vision", "scale": "2x"]], "info": info],
+            to: imageSet.appendingPathComponent("Contents.json")
+        )
+    }
+    try writeJSON(
+        ["info": info, "layers": layers.map { ["filename": "\($0.name).solidimagestacklayer"] }],
+        to: stack.appendingPathComponent("Contents.json")
+    )
+    print("wrote \(stack.path)")
+}
+
+try writeVisionIcon(iconThemes[0], to: URL(fileURLWithPath: "Apps/ReachyVision/Resources/Assets.xcassets"))

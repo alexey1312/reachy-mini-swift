@@ -9,6 +9,15 @@ lines of text link SwiftNIO. Same argument the repository already made for `Reac
 dependency. `ReachySSH` knows nothing about robots either: host, port and credentials arrive as values, the way a
 Hugging Face token reaches `ReachyKit` from `HuggingFaceAuth`.
 
+**iOS and macOS only, for SFTP.** Citadel's fork of swift-nio-ssh imports `NIO` without depending on it,
+and that fails the tvOS and visionOS builds (`Unable to resolve module dependency: 'NIO'`, Xcode 27.0).
+`Package.swift` links Citadel on iOS and macOS alone, and `SSHFileSystem.swift` compiles there alone.
+The rest of this target builds everywhere, so `ReachyUI` needs no `#if`:
+`RobotFileSystems.ssh(robot:)` answers nil where `hasSSH` is false,
+and a screen settles in the state it takes for a robot with no LAN address.
+Citadel 0.12.1 with a one-line `import NIOCore` in that fork compiled for visionOS on 2026-10-14;
+the fork is not ours to change, so that is the way back when upstream fixes it.
+
 ## What is deliberately absent
 
 - **No `exec`, no PTY.** The daemon already tails `journalctl` (`/logs/ws/daemon`, `LogStreamClient`) and already

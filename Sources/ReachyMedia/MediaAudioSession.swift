@@ -6,11 +6,12 @@ import OSLog
     @preconcurrency import WebRTC
 #endif
 
-// iOS only: the audio *session* is an iOS concept. The fork is a platform fork,
-// not a version gate — macOS has no AVAudioSession and never will; every body
-// below is a no-op there so callers never carry an `#if` of their own
-// (`MicrophonePermission` and `QuickActions.install()` set the shape).
-#if os(iOS)
+// iOS and visionOS only: the audio *session* is their concept. The fork is a
+// platform fork, not a version gate — macOS has no AVAudioSession and never will;
+// every body below is a no-op there so callers never carry an `#if` of their own
+// (`MicrophonePermission` and `QuickActions.install()` set the shape). visionOS
+// shares the app's half and not the call's, because the call framing is iOS only.
+#if os(iOS) || os(visionOS)
     import AVFAudio
 #endif
 
@@ -47,7 +48,7 @@ final class MediaAudioSession {
 
     private(set) var owner: Owner = .nobody
 
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
         /// The one audio transition in flight, if any — a deactivation retry
         /// after a stop, or a reclaim after a call ends. There is never a reason
         /// for two: each entry point cancels the previous one first, because a
@@ -71,7 +72,7 @@ final class MediaAudioSession {
     /// A camera session started: configure for two-way audio and, unless a call
     /// already owns activation, activate on the app's own authority.
     func cameraSessionStarted() {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             transitionTask?.cancel()
             transitionTask = nil
             let session = AVAudioSession.sharedInstance()
@@ -93,7 +94,7 @@ final class MediaAudioSession {
     /// for the call's whole life, and the deactivation arrives through
     /// `callDidDeactivate(_:cameraStillRunning:)` instead.
     func cameraSessionStopped() {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             guard owner != .call else { return }
             RTCAudioSession.sharedInstance().isAudioEnabled = false
             guard owner == .app else { return }
@@ -164,7 +165,7 @@ final class MediaAudioSession {
         }
     #endif
 
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
         /// `setActive(false)` races WebRTC's own audio unit, which winds down on
         /// a background thread after the caller has already returned —
         /// deactivating immediately commonly fails "session is busy", and a

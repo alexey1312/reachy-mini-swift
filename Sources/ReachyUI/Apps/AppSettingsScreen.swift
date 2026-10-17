@@ -49,7 +49,7 @@ struct AppSettingsScreen: View {
     var body: some View {
         content
             .navigationTitle(.reachy("Settings"))
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
     }
@@ -189,7 +189,7 @@ private struct AppSettingsWebView {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     extension AppSettingsWebView: UIViewRepresentable {
         func makeUIView(context: Context) -> WKWebView {
             makeWebView(context.coordinator)

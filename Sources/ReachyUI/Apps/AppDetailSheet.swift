@@ -175,7 +175,7 @@ struct AppDetailSheet: View {
         // The store's own list is deliberately not marked — see `onscreenEntity`.
         .onscreenEntity(EntityIdentifier(for: RobotAppEntity.self, identifier: app.id))
         .navigationTitle(app.title)
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
             .toolbar {

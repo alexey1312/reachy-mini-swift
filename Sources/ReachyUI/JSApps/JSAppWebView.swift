@@ -131,7 +131,7 @@ import WebKit
             controller.add(JSAppHostBridge.WeakHandler(handler), name: JSAppHostBridge.handlerName)
             configuration.userContentController = controller
             configuration.mediaTypesRequiringUserActionForPlayback = []
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 configuration.allowsInlineMediaPlayback = true
             #endif
             return configuration
@@ -161,7 +161,7 @@ import WebKit
         }
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
         extension JSAppWebView: UIViewRepresentable {
             func makeUIView(context: Context) -> WKWebView {
                 makeWebView(context.coordinator)
