@@ -634,6 +634,88 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
   like every constant in the teleop path;
   the roll's direction follows the right-hand rule about the robot's forward axis and has not been checked on hardware.
 
+## Headphones that track a head
+
+`HeadphoneMotionMapping.swift`, `HeadphoneTeleop.swift` and `HeadTrackingSection.swift`.
+AirPods or Beats that track the listener's head steer the robot's head,
+from the Controller screen and from the pad over the camera.
+It is a spike: everything here is tested except the signs and the feel, which need a device.
+
+- **One pair of headphones, one owner, so the hub is shared** — `HeadphoneTeleop.shared`,
+  in the game controller's shape (the section above).
+  The first device run switched head tracking off on the way to the camera,
+  because the Controller screen owned the hub, and the camera is where a followed head is worth the most.
+  Surfaces claim it with `headphoneTeleop(_:priority:isActive:hub:)`:
+  the Controller screen at `.screen`, `TeleopPadCluster` at `.overlay`,
+  and the highest priority drives, the most recent among equals.
+  On and off belong to the hub, so they survive a change of screen,
+  and a hand-over keeps the reference, so the next surface starts from the same straight ahead.
+  The surface that loses the head gets it back at neutral.
+- **The pad over the picture sees no robot session**, so `ViewportView` publishes the gate it needs
+  as `\.headTrackingMayDrive`: awake, and no power transition under way.
+  Anywhere else it is false, and nothing claims the headphones.
+  The pad carries a "Follow my head" button beside it,
+  absent where the device cannot read headphones and after a refusal,
+  because only the Controller screen's section can say why and open Settings.
+
+- **A head is a pose, not a deflection.**
+  `TeleopDriver.aim(_:)` sets the head's yaw, pitch and roll directly,
+  so it skips the pad's mapping and its rotation zone: following a head never turns the body.
+- **The reach is measured, and it is not the pad's.**
+  The first device run gave every axis the pad's ±40°, and the head knocked against its stops.
+  The pad never combines pitch with roll, because roll is a slider of its own; a head does.
+  The daemon checks no collision by default (`check_collision` is false),
+  and its analytical IK solves poses that put a Stewart motor past its URDF limit,
+  for example 40° up with 35° of roll.
+  `HeadphoneMotionMapping` therefore holds yaw ±40°, pitch 35° down and 30° up, roll ±30°,
+  and pitch with roll inside a 35° cone.
+  On a 2.5° grid over yaw ±40°, all 19 041 poses in that region solve
+  and keep `stewart_1…6` inside their URDF limits.
+  The script that measured it ran the daemon's own `AnalyticalKinematics` from `.venv-sim`,
+  with `create_head_pose`, which is the same `from_euler("xyz", …)` that `ws/set_target` applies.
+  Collisions are not part of that measurement, because nothing on the robot models them.
+- **A followed head drives with a faster limiter.**
+  The pad's `TargetSlewLimiter` (90°/s, τ 100 ms) put the robot about half a second behind a quick turn,
+  while a head turns at 200–300°/s and arrives already smooth.
+  `TargetSlewLimiter.headTracking` is 240°/s with τ 35 ms,
+  `TeleopChannel.setLimiter(_:)` swaps it on the channel in flight,
+  and `TeleopDriver` keeps the current one so a channel opened while following starts with it.
+  Every reading asks for it and every release gives the pad's back,
+  so the head returns to neutral at the gentler pace.
+- **The section shows what the headphones report**, in Core Motion's own names and before the mapping,
+  and which earbud the data comes from.
+  The first device run had the nod and the turn reach nothing while the tilt worked,
+  and Apple shows the headphones' axes only in a picture,
+  so this line is how a device run tells which angle is which.
+  Core Motion reads one earbud at a time and can switch to the other, a mirror image,
+  so a change of `sensorLocation` takes a new reference.
+- **Readings are relative to the first one.**
+  Core Motion reports a headphone's attitude in a frame of its own,
+  so the first reading after a switch-on, an attach or Recentre becomes the reference,
+  and `CMAttitude.multiply(byInverseOf:)` gives every reading after it.
+- **The signs are a device check.**
+  `HeadphoneMotionMapping` assumes a right-handed frame with its vertical axis up.
+  A wrong sign shows at once on the robot, and it is one number to flip.
+- **It drives only while a thumb could, and never during a wake.**
+  `ControllerScreen.headTrackingDrives` adds `powerTransition == nil` to the game controller's gate,
+  because a stream of targets just after the motors come on can take the daemon down (pollen-robotics/reachy_mini#1430).
+- **Every way out puts the head back** — a lost claim, a switch-off, Recentre,
+  and silence for `HeadphoneTeleop.staleAfter`, because an AirPod that leaves an ear stops the readings with no event.
+  A head that was never followed is not put back: the pad may have a thumb on it.
+  A pad goes out while a head drives its own target (`HeadphoneTeleop.drives(_:)`),
+  because two writers on one target fight every frame.
+- **iOS only, for now.**
+  `CMHeadphoneMotionManager` exists on macOS 14 too,
+  but nobody has checked by hand which Motion pane a refusal would open there,
+  and a wrong pane has no runtime signal (`PrivacySettingsLink`).
+- **No capture reads the device.**
+  The section shows only for a status other than `.unsupported`,
+  and only `observeHeadphones()` reads one — a call no capture makes.
+  So adopting it moved no reference that predates it,
+  four `Controller —` previews hand in the states they show,
+  and `Camera — head tracking offered` and `— following a head` hand the pad a hub, off and on.
+  `Controller — following a head` also hands in a reading, so its references show the live line.
+
 ## Errors
 
 **An error is shown by the screen whose action caused it.** A daemon failure goes into the slot on that screen's

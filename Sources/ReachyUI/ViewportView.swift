@@ -61,6 +61,7 @@ struct ViewportView: View {
 
     var body: some View {
         ViewportContent(model: model, makeTeleop: makeTeleop, standDown: standDown)
+            .environment(\.headTrackingMayDrive, headTrackingMayDrive)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .topLeading) { chrome }
             .overlay(alignment: .bottomLeading) { hearing }
@@ -81,6 +82,14 @@ struct ViewportView: View {
 
     /// Absent without a robot session — the relay carries no media routes, so there is
     /// nothing on that side to stand down.
+    /// The Controller screen's gate for a head, for the pad over the picture, which
+    /// sees no robot session of its own: awake, and not in the middle of waking
+    /// (pollen-robotics/reachy_mini#1430).
+    private var headTrackingMayDrive: Bool {
+        guard let robotSession else { return false }
+        return robotSession.isAwake && robotSession.powerTransition == nil
+    }
+
     private var standDown: TeleopStandDown? {
         guard let robotSession else { return nil }
         return presence.teleopStandDown(session: robotSession)

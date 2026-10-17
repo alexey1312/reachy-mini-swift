@@ -114,6 +114,9 @@
         public func send(_: TeleopTarget) async {}
 
         public func disconnect() async {}
+
+        /// A preview paces nothing.
+        public func setLimiter(_: TargetSlewLimiter) async {}
     }
 
     /// What a relay session actually is, as a preview fixture: the commands and the camera, and

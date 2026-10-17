@@ -100,7 +100,24 @@ final class TeleopDriver {
         guard client == nil else { return }
         let client = try makeChannel()
         self.client = client
-        Task { await client.connect() }
+        let limiter = limiter
+        Task {
+            await client.connect()
+            await client.setLimiter(limiter)
+        }
+    }
+
+    /// How fast the emitted pose chases `target`. The default is tuned for a thumb;
+    /// a followed head swaps in `.headTracking` and gives it back when it lets go
+    /// (`HeadphoneTeleop`). Kept here as well as on the channel, so a channel opened
+    /// while a head is followed starts with the right one.
+    private(set) var limiter = TargetSlewLimiter()
+
+    func useLimiter(_ limiter: TargetSlewLimiter) {
+        guard limiter != self.limiter else { return }
+        self.limiter = limiter
+        let client = client
+        Task { await client?.setLimiter(limiter) }
     }
 
     func stop() {
@@ -170,6 +187,25 @@ final class TeleopDriver {
         }
         if let look = step.look {
             setRotation(rate: mapping.bodyYawRate(look))
+        }
+    }
+
+    /// The listener's own head, from headphones that track it (`HeadphoneTeleop`).
+    ///
+    /// A pose rather than a deflection, so it skips the pad's mapping and its rotation
+    /// zone: following a head never turns the body, and the body keeps whatever turn
+    /// it already has, with the head composed onto it as `apply` composes a thumb.
+    /// Each axis stays inside `mapping.headAngle`, the pad's own reach. One assignment
+    /// for the reason `apply` is one — the headphones report at their own rate.
+    func aim(_ aim: HeadAim) {
+        let reach = -mapping.headAngle ... mapping.headAngle
+        relativeHeadYaw = aim.yaw.clamped(to: reach)
+        var next = target
+        next.pitch = aim.pitch.clamped(to: reach)
+        next.roll = aim.roll.clamped(to: reach)
+        next.yaw = Self.worldYaw(body: next.bodyYaw, head: relativeHeadYaw)
+        if next != target {
+            target = next
         }
     }
 

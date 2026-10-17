@@ -23,7 +23,7 @@ public actor SetTargetClient {
     private let url: URL
     private let session: URLSession
     private let tickInterval: Duration
-    private let limiter: TargetSlewLimiter
+    private var limiter: TargetSlewLimiter
     private var socket: URLSessionWebSocketTask?
     private var drainTask: Task<Void, Never>?
     private var pacerTask: Task<Void, Never>?
@@ -74,6 +74,10 @@ public actor SetTargetClient {
         drainTask = nil
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
+    }
+
+    public func setLimiter(_ limiter: TargetSlewLimiter) {
+        self.limiter = limiter
     }
 
     /// Aims at `target`. Nothing goes out here — the pacer decides when and how

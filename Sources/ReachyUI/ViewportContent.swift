@@ -82,32 +82,47 @@ struct TeleopPadCluster: View {
     /// go before this one starts driving. `nil` leaves them alone, which is what a
     /// preview and the floating window both want.
     var standDown: TeleopStandDown?
+    /// `nil` is the shared hub, resolved below as the Controller screen resolves it; a
+    /// preview hands in one in the state it shows.
+    var headphones: HeadphoneTeleop?
 
     @State private var driver: TeleopDriver
     @Environment(\.reachyPreviewMode) private var previewMode
+    @Environment(\.headTrackingMayDrive) private var headTrackingMayDrive
 
     init(
         isVisible: Bool,
         makeTeleop: @escaping TeleopFactory,
         standDown: TeleopStandDown? = nil,
-        driver: TeleopDriver = TeleopDriver()
+        driver: TeleopDriver = TeleopDriver(),
+        headphones: HeadphoneTeleop? = nil
     ) {
         self.isVisible = isVisible
         self.makeTeleop = makeTeleop
         self.standDown = standDown
+        self.headphones = headphones
         _driver = State(initialValue: driver)
+    }
+
+    private var headphonesHub: HeadphoneTeleop? {
+        headphones ?? (previewMode ? nil : .shared)
     }
 
     var body: some View {
         ZStack {
             if isVisible {
                 HStack(spacing: Space.md) {
+                    // Each button is a conditional child of its own, so a capture with
+                    // neither lays the pad out exactly as before they existed.
+                    headTrackingButton
                     recenterButton
                     JoystickPad(mapping: driver.mapping) { deflection in
                         driver.apply(deflection)
                         standDown?()
                     }
                     .frame(width: 140, height: 140)
+                    // Two writers on one target fight every frame.
+                    .disabled(headphonesHub?.drives(driver) == true)
                     // On the same chrome as the buttons beside it: over a camera
                     // frame the pad's own quaternary fill was invisible, and a knob
                     // floating over the picture read as a stray dot.
@@ -121,6 +136,10 @@ struct TeleopPadCluster: View {
         // Below the Controller screen when both are on screen — an iPad under a
         // sidebar shows the two at once — so a controller never drives two drivers.
         .gamepadTeleop(driver, priority: .overlay, standDown: standDown, isActive: isVisible)
+        // The same order for a head: the Controller screen outranks this pad, and leaving
+        // it hands the head here, so a reader can follow with their head and watch the
+        // picture at once.
+        .headphoneTeleop(driver, priority: .overlay, isActive: isVisible && headTrackingMayDrive, hub: headphones)
         .onAppear { connectTeleop() }
         .onDisappear { driver.stop() }
     }
@@ -146,6 +165,25 @@ struct TeleopPadCluster: View {
             .buttonStyle(ViewportControlButtonStyle())
             .help(Text(.reachy("Reset to neutral")))
             .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    /// "Follow my head" over the picture, where a followed head is worth the most.
+    /// Absent where the device cannot read headphones, and after a refusal: the
+    /// Controller screen's section says why and opens Settings, which a glyph cannot.
+    @ViewBuilder
+    private var headTrackingButton: some View {
+        if let hub = headphonesHub, hub.status != .unsupported, hub.status != .denied {
+            Button {
+                hub.setOn(!hub.isOn)
+            } label: {
+                Label(.reachy("Follow my head"), systemImage: "airpods.pro")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(hub.isOn ? Tone.brand.style : Tone.quiet.style)
+            }
+            .buttonStyle(ViewportControlButtonStyle())
+            .help(Text(.reachy("Follow my head")))
+            .accessibilityValue(Text(hub.isOn ? .reachy("On") : .reachy("Off")))
         }
     }
 

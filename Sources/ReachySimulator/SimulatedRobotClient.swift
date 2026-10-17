@@ -232,4 +232,7 @@ struct SimulatedTeleopChannel: TeleopChannel {
     }
 
     func disconnect() async {}
+
+    /// The simulated robot takes each target as it comes, so there is no pacer to limit.
+    func setLimiter(_: TargetSlewLimiter) async {}
 }

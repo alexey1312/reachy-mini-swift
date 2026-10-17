@@ -52,3 +52,31 @@ import SwiftUI
             }
     }
 }
+
+// Follow my head over the picture, which is where a followed head is worth the most. Absent above,
+// where no preview hands the pad a hub, so these two are its presence: off, then on.
+#Preview("Camera — head tracking offered") {
+    PreviewScene.pane {
+        CameraViewport(session: .preview(.streaming))
+            .overlay(alignment: .bottomTrailing) {
+                TeleopPadCluster(
+                    isVisible: true,
+                    makeTeleop: PreviewScene.teleopFactory,
+                    headphones: .preview(status: .off)
+                )
+            }
+    }
+}
+
+#Preview("Camera — following a head") {
+    PreviewScene.pane {
+        CameraViewport(session: .preview(.streaming))
+            .overlay(alignment: .bottomTrailing) {
+                TeleopPadCluster(
+                    isVisible: true,
+                    makeTeleop: PreviewScene.teleopFactory,
+                    headphones: .preview(status: .following)
+                )
+            }
+    }
+}

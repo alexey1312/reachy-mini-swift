@@ -26,6 +26,8 @@ struct MoveRecorderModelTests {
             lock.withLock { sent.append(target) }
         }
 
+        func setLimiter(_: TargetSlewLimiter) async {}
+
         func disconnect() async {}
     }
 

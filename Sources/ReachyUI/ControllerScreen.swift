@@ -19,6 +19,9 @@ struct ControllerScreen: View {
     @State private var driver: TeleopDriver
     @State private var setupError: String?
     @State private var recorder: MoveRecorderModel
+    /// `nil` is the shared hub, resolved in the body as `gamepad` is; a preview hands in
+    /// one in the state it shows.
+    var headTracking: HeadphoneTeleop?
     @Environment(\.reachyPreviewMode) private var previewMode
 
     init(
@@ -27,7 +30,8 @@ struct ControllerScreen: View {
         gamepad: GamepadTeleop? = nil,
         driver: TeleopDriver = TeleopDriver(),
         setupError: String? = nil,
-        recorder: MoveRecorderModel? = nil
+        recorder: MoveRecorderModel? = nil,
+        headTracking: HeadphoneTeleop? = nil
     ) {
         self.session = session
         self.standDown = standDown
@@ -35,6 +39,26 @@ struct ControllerScreen: View {
         _driver = State(initialValue: driver)
         _setupError = State(initialValue: setupError)
         _recorder = State(initialValue: recorder ?? MoveRecorderModel())
+        self.headTracking = headTracking
+    }
+
+    /// When a head may steer the robot: the moments a thumb could, and only while the
+    /// robot is not in the middle of waking — a stream of targets just after the motors
+    /// come on can take the daemon down (pollen-robotics/reachy_mini#1430).
+    private var headTrackingDrives: Bool {
+        session.isAwake && session.powerTransition == nil
+    }
+
+    /// The injected hub, else the shared one — never in a capture, which must not read
+    /// the headphones of the machine rendering it.
+    private var headTrackingHub: HeadphoneTeleop? {
+        headTracking ?? (previewMode ? nil : .shared)
+    }
+
+    /// The pad and the roll slider go out while a head steers this screen's target:
+    /// two writers on one target fight every frame.
+    private var headIsFollowed: Bool {
+        headTrackingHub?.drives(driver) == true
     }
 
     /// The injected hub, else the shared one — except in a capture, which must not
@@ -83,12 +107,17 @@ struct ControllerScreen: View {
                     .frame(maxWidth: 280)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Space.sm)
+                    // A thumb and a head on one target would fight every frame.
+                    .disabled(headIsFollowed)
                 } header: {
                     Text(.reachy("Head"))
                 } footer: {
                     // A sentence where a header carried "yaw / pitch": the words
                     // are the robot's, and the reader's are "look" and "turn".
                     Text(.reachy("Drag to look around. Hold at the side to turn the body."))
+                }
+                if let headTrackingHub {
+                    HeadTrackingSection(model: headTrackingHub)
                 }
                 if let controllerName = gamepadHub?.controllerName {
                     GamepadLegendSection(controllerName: controllerName)
@@ -101,6 +130,7 @@ struct ControllerScreen: View {
                         range: -driver.mapping.headAngle ... driver.mapping.headAngle,
                         format: .degrees
                     )
+                    .disabled(headIsFollowed)
                     slider(
                         .reachy("Height"),
                         value: $driver.z,
@@ -142,6 +172,9 @@ struct ControllerScreen: View {
         // below are disabled while the robot sleeps, and so is the controller.
         .gamepadTeleop(driver, priority: .screen, standDown: standDown, isActive: session.isAwake, hub: gamepad)
         .onAppear { start() }
+        // Above the pad over the camera when both are on screen, the same order the game
+        // controller keeps. Leaving the screen gives the head to that pad, still on.
+        .headphoneTeleop(driver, priority: .screen, isActive: headTrackingDrives, hub: headTracking)
         // A take starts and ends under a thumb that is on the pad rather than on the
         // button, so the moment is felt rather than watched.
         .sensoryFeedback(trigger: recorder.isRecording) { _, isRecording in
