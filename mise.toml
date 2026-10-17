@@ -636,11 +636,11 @@ git diff --stat Sources/ReachyDesign/Resources
 """
 
 [tasks."theme:icons"]
-description = "Regenerate the six AppIcon*.icon bundles from the palette"
+description = "Regenerate the six AppIcon*.icon bundles and the visionOS icon from the palette"
 run = """
 set -o pipefail
 swift Scripts/render-app-icon.swift
-git status --porcelain Apps/ReachyMini/Resources
+git status --porcelain Apps/ReachyMini/Resources Apps/ReachyVision/Resources
 """
 
 # `simulator:*` is the iOS simulator; `sim-daemon` and `test:sim` are the *robot*

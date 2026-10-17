@@ -171,14 +171,23 @@ Citadel is now linked on iOS and macOS only, and `RobotFileSystems.ssh(robot:)` 
 - **A head-locked camera.** Inside the immersive space the picture could ride on the head
   (`AnchorEntity(.head)`), so it stays in view whatever the head does.
   That is a different screen and a different decision; this change keeps the window.
-- **An app icon.** visionOS wants a three-layer image stack, and the Icon Composer bundles do not cover it.
-  The build has no icon at all.
 - **Copy that names iOS.** `OnboardingWelcomeStep` says "iOS will ask for permission" on visionOS too.
-- **App Shortcuts, widgets and the Spotlight rows** on visionOS. `ReachyShortcuts` is in the iPhone target.
+- **Widgets** on visionOS. The app shares the iPhone's intents and its ten App Shortcuts,
+  and `Scripts/check-appintents-metadata.sh` holds the visionOS archive to them,
+  without the Live Activity intent, because visionOS has no Live Activities.
 - **SFTP**, until Citadel's swift-nio-ssh fork depends on the module it imports.
 - **CI.** No job builds visionOS; the five macOS slots are spent.
   `xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyVision -destination 'generic/platform=visionOS Simulator' build`
   is the local check.
 - **A release.** The target shares the iPhone app's bundle ID,
-  so an upload would replace the compatible iPad app that Apple Vision runs today.
-  That is a decision for a release, not for this change.
+  so its first upload replaces the compatible iPad app that Apple Vision runs today.
+  Xcode Cloud archives it with the scheme `ReachyVision`;
+  `ci_post_clone.sh` stamps its build number with the iPhone app's,
+  because both inherit the project-level `CURRENT_PROJECT_VERSION`.
+
+## For TestFlight
+
+- **The icon** is a solid image stack that `mise run theme:icons` generates
+  beside the six Icon Composer bundles (`AGENTS.md` has the layers).
+- **`ITSAppUsesNonExemptEncryption` is false**, as on the iPhone, so a build does not wait on export compliance.
+- **`CFBundleIconName` is `AppIcon`**, as on the iPhone, because `actool` leaves it out.

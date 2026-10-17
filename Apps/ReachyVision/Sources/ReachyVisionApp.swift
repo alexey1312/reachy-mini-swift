@@ -12,6 +12,9 @@ import SwiftUI
 @main
 struct ReachyVisionApp: App {
     init() {
+        // The phrases with a parameter resolve against values the system captured last;
+        // `ReachyMiniApp` says why launch is where this belongs.
+        ReachyShortcuts.updateAppShortcutParameters()
         // Before launch finishes, or a tap that launched the app is never delivered.
         JobNotificationResponder.install()
         // Skipped in the smoke run for the reason `ReachyMiniApp` skips it: a test must

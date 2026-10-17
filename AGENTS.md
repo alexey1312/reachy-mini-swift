@@ -243,7 +243,8 @@ Generation stays last in that action, because the SourcePackages restore must co
 so anything that changes that variable must also run before `tuist generate`.
 **GitHub Actions is not the only CI, and the other one is not in this repository.** An Xcode Cloud workflow named
 `Hey Reachy | TestFlight (Public)` archives `main` and uploads it; its definition lives in App Store Connect and only
-`Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here. It archives **iOS only**, and
+`Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here. It archives iOS and visionOS
+(schemes `ReachyMini` and `ReachyVision`, one bundle ID) and **never macOS**, and
 `ci_post_clone.sh` exits non-zero on `CI_PRODUCT_PLATFORM = macOS` to keep it that way: `release:macos` archives once
 and exports that archive twice, and the half Xcode Cloud can produce (the App Store `.pkg`) is the half the local run
 already made — the notarized Developer ID zip needs a key that never enters CI, so a macOS action there is 28 minutes
@@ -457,6 +458,15 @@ is served by the back-deployment rasters `actool` derives. Alternate icons are d
 `ThemeIconNameTests` keeps them in step; a mismatch fails inside `setAlternateIconName` on a device and nowhere
 earlier. **No reference image covers any of this** — the suite renders views, never a Home Screen, so an icon change
 is a device check plus one iOS 18 simulator install. Each extra icon is ~624 KiB in `Assets.car`.
+**visionOS takes no `.icon`, so the same script writes its icon as a layered image stack.**
+`Apps/ReachyVision/Resources/Assets.xcassets/AppIcon.solidimagestack` holds three 1024 px layers,
+which visionOS masks to a circle and moves apart as the reader looks at it:
+the default theme's gradient at the back (opaque, as visionOS requires),
+the antennas and the shell in the middle, the goggles in front, drawn 14 % smaller so the antenna tips stay inside the circle.
+It is a gradient-plus-glyph composer, which the README render must not be, and that is the only way to make one:
+the stops come from the same `iconThemes[0]` the `.icon` bundles use, so the colours cannot drift,
+but the light, the glass and the shadow are visionOS's own and not Icon Composer's.
+The default theme only, because visionOS offers no alternate icons.
 **`docs/media/icon.png` is a copy of the shipping render, not a second rendering of it** — the README shows the
 default theme's icon, and it is refreshed by hand from a macOS build:
 `iconutil -c iconset <app>/Contents/Resources/AppIcon.icns -o <dir>` and then its `icon_128x128@2x.png` (256 px,
