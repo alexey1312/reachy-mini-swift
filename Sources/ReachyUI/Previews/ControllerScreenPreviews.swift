@@ -1,4 +1,5 @@
 import ReachyKit
+import ReachyTeleop
 @testable import ReachyUI
 import SwiftUI
 

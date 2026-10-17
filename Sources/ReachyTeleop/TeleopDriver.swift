@@ -9,7 +9,7 @@ import ReachyKit
 /// drifting inside the actor would leave the slider disagreeing with the robot.
 @MainActor
 @Observable
-final class TeleopDriver {
+public final class TeleopDriver {
     /// The world-frame goal, exactly as it goes on the wire. Every write reaches the
     /// robot as a goal, so a slider jump is as smooth as a joystick release.
     ///
@@ -28,12 +28,12 @@ final class TeleopDriver {
     /// orientation pre-multiplied by `Rz(body)`. It stays exact only while `x` and `y`
     /// are zero — they are world-frame too, and driving them would need `Rz(bodyYaw)`
     /// applied to the pair. `z` is on the yaw axis and so is invariant.
-    private(set) var target: TeleopTarget {
+    public private(set) var target: TeleopTarget {
         didSet { push() }
     }
 
-    let mapping: JoystickMapping
-    private(set) var bodyYawRate: Double = 0
+    public let mapping: JoystickMapping
+    public private(set) var bodyYawRate: Double = 0
 
     /// The head's yaw in the body's frame — what the joystick asked for.
     /// `target.yaw` is this plus `target.bodyYaw`, always.
@@ -50,7 +50,7 @@ final class TeleopDriver {
     /// A threshold rather than `!= 0`, because `ControllerScreen` binds a slider to
     /// this same property and a gesture can leave float dust behind. `reset()`
     /// assigns a fresh target, so the reset path is exact either way.
-    var isBodyTurned: Bool {
+    public var isBodyTurned: Bool {
         abs(target.bodyYaw) > Self.turnedThreshold
     }
 
@@ -65,22 +65,22 @@ final class TeleopDriver {
     /// −40° forever. Composing the head makes that difference `|relativeHeadYaw|`,
     /// which never exceeds `mapping.headAngle`, so the relative clamp stays inert and
     /// the whole ±160° is reachable.
-    static let bodyYawLimit = 160.0 * .pi / 180
+    public static let bodyYawLimit = 160.0 * .pi / 180
 
     /// The height and antenna sliders' ranges, which a game controller's held buttons
     /// integrate inside (`steer`). Comfortable ranges rather than safety limits — the
     /// daemon clamps anyway (project rule 2) — but an integral it truncated would wind
     /// up: hold "up" for ten seconds and the opposite button would then spend ten
     /// seconds bringing the head back from somewhere it never went.
-    nonisolated static let heightLimit = 0.03
-    nonisolated static let antennaLimit = 150.0 * .pi / 180
+    public nonisolated static let heightLimit = 0.03
+    public nonisolated static let antennaLimit = 150.0 * .pi / 180
 
     private static let turnedThreshold = 0.5 * .pi / 180
     private static let tick = Duration.milliseconds(20)
     private var client: (any TeleopChannel)?
     private var rotationTask: Task<Void, Never>?
 
-    init(
+    public init(
         target: TeleopTarget = TeleopTarget(),
         mapping: JoystickMapping = JoystickMapping()
     ) {
@@ -96,7 +96,7 @@ final class TeleopDriver {
     /// to dial, and the channel that carries the targets is the peer connection the
     /// session is already on. Smoothing, the rotation ticker and the slider bindings
     /// are the same either way — they are about the gesture, not the transport.
-    func start(_ makeChannel: () throws -> any TeleopChannel) throws {
+    public func start(_ makeChannel: () throws -> any TeleopChannel) throws {
         guard client == nil else { return }
         let client = try makeChannel()
         self.client = client
@@ -111,16 +111,16 @@ final class TeleopDriver {
     /// a followed head swaps in `.headTracking` and gives it back when it lets go
     /// (`HeadphoneTeleop`). Kept here as well as on the channel, so a channel opened
     /// while a head is followed starts with the right one.
-    private(set) var limiter = TargetSlewLimiter()
+    public private(set) var limiter = TargetSlewLimiter()
 
-    func useLimiter(_ limiter: TargetSlewLimiter) {
+    public func useLimiter(_ limiter: TargetSlewLimiter) {
         guard limiter != self.limiter else { return }
         self.limiter = limiter
         let client = client
         Task { await client?.setLimiter(limiter) }
     }
 
-    func stop() {
+    public func stop() {
         stopRotation()
         let client = client
         self.client = nil
@@ -131,7 +131,7 @@ final class TeleopDriver {
     ///
     /// Written as one assignment on purpose: `didSet` fires per write, and a gesture
     /// arrives at screen rate, so two writes would double the pushes for nothing.
-    func apply(_ deflection: JoystickDeflection) {
+    public func apply(_ deflection: JoystickDeflection) {
         relativeHeadYaw = mapping.headYaw(deflection)
         var next = target
         next.pitch = mapping.headPitch(deflection)
@@ -140,7 +140,7 @@ final class TeleopDriver {
         setRotation(rate: mapping.bodyYawRate(deflection))
     }
 
-    func reset() {
+    public func reset() {
         stopRotation()
         relativeHeadYaw = 0
         target = .init()
@@ -154,7 +154,7 @@ final class TeleopDriver {
     /// What a held button adds stays inside the matching slider's range, and only an
     /// axis that moved is clamped: a target some other writer put outside that range
     /// is left where it is rather than snapped in by an unrelated tick.
-    func steer(_ step: TeleopStep) {
+    public func steer(_ step: TeleopStep) {
         if step.reset {
             reset()
             return
@@ -197,7 +197,7 @@ final class TeleopDriver {
     /// it already has, with the head composed onto it as `apply` composes a thumb.
     /// Each axis stays inside `mapping.headAngle`, the pad's own reach. One assignment
     /// for the reason `apply` is one — the headphones report at their own rate.
-    func aim(_ aim: HeadAim) {
+    public func aim(_ aim: HeadAim) {
         let reach = -mapping.headAngle ... mapping.headAngle
         relativeHeadYaw = aim.yaw.clamped(to: reach)
         var next = target
@@ -210,7 +210,7 @@ final class TeleopDriver {
     }
 
     /// One integration step. Called by the ticker, and by tests without one.
-    func integrateRotation(seconds: Double) {
+    public func integrateRotation(seconds: Double) {
         guard bodyYawRate != 0 else { return }
         setBodyYaw(target.bodyYaw + bodyYawRate * seconds)
     }
@@ -218,29 +218,29 @@ final class TeleopDriver {
     /// What `ControllerScreen`'s slider binds to, rather than a binding into `target`:
     /// a slider that moved the body without the head would be the same bug in a second
     /// place, and the ticker and the slider have to clamp alike.
-    var bodyYaw: Double {
+    public var bodyYaw: Double {
         get { target.bodyYaw }
         set { setBodyYaw(newValue) }
     }
 
     /// The other axes a screen may drive. `yaw` and `pitch` are absent on purpose: the
     /// pad owns them, and `yaw` is composed rather than set.
-    var roll: Double {
+    public var roll: Double {
         get { target.roll }
         set { target.roll = newValue }
     }
 
-    var z: Double {
+    public var z: Double {
         get { target.z }
         set { target.z = newValue }
     }
 
-    var antennaLeft: Double {
+    public var antennaLeft: Double {
         get { target.antennaLeft }
         set { target.antennaLeft = newValue }
     }
 
-    var antennaRight: Double {
+    public var antennaRight: Double {
         get { target.antennaRight }
         set { target.antennaRight = newValue }
     }

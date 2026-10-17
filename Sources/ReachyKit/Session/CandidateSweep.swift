@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import ReachyKit
 
 /// The background hunt for a robot to talk to: which addresses are worth trying,
 /// which have been tried, and the retry that keeps a robot powered on later from
@@ -15,30 +14,33 @@ import ReachyKit
 /// Identity, not address, decides what counts as the same robot everywhere else
 /// (project rule 4). Here it is genuinely addresses: a sweep's whole job is to find
 /// out which of several addresses answers.
+///
+/// It lives in ReachyKit rather than beside the screen because two shells run it:
+/// the phone's connect gate and the TV app's, which links no ReachyUI.
 @MainActor
 @Observable
-final class CandidateSweep {
+public final class CandidateSweep {
     private let session: RobotSession
     /// Upstream's `INTERVALS.DISCOVERY_SCAN`.
     private let rescanInterval: Duration
 
-    private(set) var pending: [RobotAddress] = []
-    private(set) var attempted: Set<RobotAddress> = []
+    public private(set) var pending: [RobotAddress] = []
+    public private(set) var attempted: Set<RobotAddress> = []
     private var resolvedServiceIDs: Set<String> = []
     private var autoConnect: Task<Void, Never>?
     private var rescan: Task<Void, Never>?
 
-    init(session: RobotSession, rescanInterval: Duration = .seconds(10)) {
+    public init(session: RobotSession, rescanInterval: Duration = .seconds(10)) {
         self.session = session
         self.rescanInterval = rescanInterval
     }
 
-    func start() {
+    public func start() {
         enqueueInitialCandidates()
         startPeriodicRescan()
     }
 
-    func stop() {
+    public func stop() {
         autoConnect?.cancel()
         autoConnect = nil
         rescan?.cancel()
@@ -47,7 +49,7 @@ final class CandidateSweep {
 
     /// The user took over. The sweep must not race a hand-picked address, and its
     /// queue must not resume behind one.
-    func standDown() {
+    public func standDown() {
         autoConnect?.cancel()
         autoConnect = nil
     }
@@ -55,19 +57,19 @@ final class CandidateSweep {
     /// The robot reported over Bluetooth where it landed, which beats waiting for
     /// the sweep to stumble across it. A previous failure against that address is
     /// forgiven — it was a different robot's turn then.
-    func expect(_ address: RobotAddress) {
+    public func expect(_ address: RobotAddress) {
         attempted.remove(address)
         enqueue([address])
     }
 
-    func enqueue(_ candidates: [RobotAddress]) {
+    public func enqueue(_ candidates: [RobotAddress]) {
         for candidate in candidates where !attempted.contains(candidate) && !pending.contains(candidate) {
             pending.append(candidate)
         }
         startAutoConnectIfNeeded()
     }
 
-    func resolve(_ services: [RobotBrowser.DiscoveredService]) {
+    public func resolve(_ services: [RobotBrowser.DiscoveredService]) {
         guard session.automaticConnectionAllowed else { return }
         for service in services where !resolvedServiceIDs.contains(service.id) {
             resolvedServiceIDs.insert(service.id)

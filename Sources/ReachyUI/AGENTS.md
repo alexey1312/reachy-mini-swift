@@ -539,6 +539,9 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
 
 ## The joystick's rotation zone
 
+`JoystickMapping` and `TeleopDriver` live in `Sources/ReachyTeleop`, which the TV app links too.
+The notes stay here, beside the pad that draws them.
+
 `JoystickMapping` splits the pad with a **vertical line** at `±rotationThreshold`, not with a radius and not with a
 sector, and the reason is the handover: that same line is where head yaw reaches its full lead, so the head stops
 moving out exactly as the body starts. A radial zone parts the two — a push into the corner is far from the centre
@@ -585,7 +588,8 @@ haptic on.
 
 ## A game controller (#160)
 
-`GamepadMapping.swift`, `GamepadTeleop.swift` and `GamepadLegendSection.swift`.
+`GamepadMapping.swift` and `GamepadTeleop.swift` in `Sources/ReachyTeleop`, and `GamepadLegendSection.swift` here.
+On tvOS the hub also takes the Siri Remote (`Sources/ReachyTeleop/AGENTS.md`).
 A controller is one more writer of the target the pad and the sliders already write,
 so the slew limiter and the daemon's limits apply unchanged (project rule 2).
 

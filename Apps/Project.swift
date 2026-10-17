@@ -1,4 +1,5 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 /// The app and its widget extension are separate processes with separate
 /// containers, so anything both must read — the known robots, the snapshot the
@@ -325,6 +326,8 @@ let project = Project(
                 "SKIP_INSTALL": "YES",
             ])
         ),
+        // The Apple TV app, in `Tuist/ProjectDescriptionHelpers` to keep this file short.
+        .reachyTV,
         .target(
             name: "ReachyStorybook",
             destinations: [.iPhone, .iPad],
@@ -354,6 +357,8 @@ let project = Project(
             dependencies: [
                 .package(product: "ReachyDesign"),
                 .package(product: "ReachyUI"),
+                // Previews hand screens a `TeleopDriver`; `.prefire.yml` imports it too.
+                .package(product: "ReachyTeleop"),
                 .package(product: "ReachyWidgetUI"),
                 .package(product: "Prefire"),
             ]
@@ -376,6 +381,8 @@ let project = Project(
             dependencies: [
                 .package(product: "ReachyDesign"),
                 .package(product: "ReachyUI"),
+                // Previews hand screens a `TeleopDriver`; `.prefire.yml` imports it too.
+                .package(product: "ReachyTeleop"),
                 .package(product: "ReachyWidgetUI"),
                 .package(product: "Prefire"),
                 .package(product: "SnapshotTesting"),

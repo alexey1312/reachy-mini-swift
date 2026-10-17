@@ -2,6 +2,7 @@ import HuggingFaceAuth
 import ReachyDesign
 import ReachyKit
 import ReachyMedia
+import ReachyTeleop
 @testable import ReachyUI
 import SwiftUI
 

@@ -1,5 +1,5 @@
 import ReachyKit
-@testable import ReachyUI
+@testable import ReachyTeleop
 import Testing
 
 /// The hub with no controller behind it: `tick` takes the reading the poll would have

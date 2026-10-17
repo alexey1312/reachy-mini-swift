@@ -2756,6 +2756,35 @@
         }
       }
     },
+    "Connect a game controller, or use the Siri Remote.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinde einen Gamecontroller oder nutze die Siri Remote."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conecta un mando de juego o usa el Siri Remote."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez une manette de jeu ou utilisez la Siri Remote."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключите геймпад или используйте пульт Siri Remote."
+          }
+        }
+      }
+    },
     "Connect now": {
       "extractionState": "manual",
       "localizations": {
@@ -4144,6 +4173,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тяните, чтобы осмотреться. Удерживайте у края, чтобы повернуть корпус."
+          }
+        }
+      }
+    },
+    "Drive": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steuern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pilotar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piloter"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управлять"
           }
         }
       }
@@ -10640,6 +10698,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Воспроизвести звук"
+          }
+        }
+      }
+    },
+    "Play/Pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiedergabe/Pause"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir/Pausa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lecture/Pause"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Воспроизведение/Пауза"
           }
         }
       }
@@ -18184,6 +18271,35 @@
         }
       }
     },
+    "Touch surface": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch-Oberfläche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Superficie táctil"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surface tactile"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сенсорная поверхность"
+          }
+        }
+      }
+    },
     "Touching an antenna starts the app set to start on wake-up, and a sleeping robot still notices it. A powered-off one does not, until you wake it from here.": {
       "extractionState": "manual",
       "localizations": {
@@ -18789,6 +18905,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Обновление завершено"
+          }
+        }
+      }
+    },
+    "Update it with Hey Reachy on an iPhone, an iPad or a Mac.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiere ihn mit Hey Reachy auf einem iPhone, iPad oder Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualízalo con Hey Reachy en un iPhone, un iPad o un Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mettez-le à jour avec Hey Reachy sur un iPhone, un iPad ou un Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновите его в Hey Reachy на iPhone, iPad или Mac."
           }
         }
       }

@@ -1,4 +1,5 @@
 import ReachyMedia
+import ReachyTeleop
 @testable import ReachyUI
 import SwiftUI
 

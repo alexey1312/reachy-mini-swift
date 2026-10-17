@@ -1,6 +1,6 @@
 import Foundation
 import ReachyKit
-@testable import ReachyUI
+@testable import ReachyTeleop
 import Testing
 
 @Suite("Joystick mapping")

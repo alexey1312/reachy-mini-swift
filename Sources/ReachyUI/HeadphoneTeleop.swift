@@ -2,6 +2,7 @@ import CoreMotion
 import Foundation
 import Observation
 import ReachyKit
+import ReachyTeleop
 import SwiftUI
 
 /// Headphones that track the listener's head, steering the robot's (the AirPods spike).

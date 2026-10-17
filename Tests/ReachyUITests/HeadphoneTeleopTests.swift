@@ -1,5 +1,6 @@
 import Foundation
 import ReachyKit
+@testable import ReachyTeleop
 @testable import ReachyUI
 import Testing
 

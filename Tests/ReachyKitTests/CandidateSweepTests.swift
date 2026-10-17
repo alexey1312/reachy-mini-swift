@@ -1,6 +1,5 @@
 import Foundation
-import ReachyKit
-@testable import ReachyUI
+@testable import ReachyKit
 import Testing
 
 /// The queue's rules, which lived inside `ConnectionScreen` and were reachable only

@@ -1,6 +1,12 @@
 import Foundation
 import GameController
+import ReachyDesign
 import SwiftUI
+
+/// What a joystick calls to take the head off the robot's own two behaviours before
+/// driving it. Built by `PresenceModel.teleopStandDown(session:)` and cheap enough to
+/// call on every touch event; `nil` where there is no robot session to ask.
+public typealias TeleopStandDown = @MainActor @Sendable () -> Void
 
 /// The game controller, handed to whichever teleop surface owns it (#160).
 ///
@@ -23,25 +29,36 @@ import SwiftUI
 /// handler fires only when the stick moves. The poll runs only while somebody claims
 /// the controller, one is connected and the app is in front — 60 Hz of nothing
 /// otherwise.
+///
+/// **On tvOS the Siri Remote counts as well**, as a pad and nothing more: its touch
+/// surface is the look stick, and Play/Pause resets. The most recently used of the
+/// remote and a two-stick controller drives. Everywhere else a micro gamepad is not
+/// counted, since it has no second stick.
 @MainActor
 @Observable
-final class GamepadTeleop {
-    enum Priority: Int, Comparable {
+public final class GamepadTeleop {
+    public enum Priority: Int, Comparable {
         /// A pad drawn over a picture.
         case overlay
         /// The Controller screen, which exists to drive the robot.
         case screen
 
-        static func < (lhs: Self, rhs: Self) -> Bool {
+        public static func < (lhs: Self, rhs: Self) -> Bool {
             lhs.rawValue < rhs.rawValue
         }
     }
 
-    static let shared = GamepadTeleop(observesControllers: true)
+    public static let shared = GamepadTeleop(observesControllers: true)
 
     /// The connected controller's name, or `nil` when there is none worth driving
-    /// with — a micro gamepad has no second stick, so it is not counted.
-    private(set) var controllerName: String?
+    /// with — a micro gamepad has no second stick, so it is not counted outside tvOS.
+    public private(set) var controllerName: String?
+
+    #if os(tvOS)
+        /// Whether the input in use is the Siri Remote rather than a two-stick
+        /// controller, so a screen can say which controls do what.
+        public private(set) var drivesWithRemote = false
+    #endif
 
     let mapping: GamepadMapping
 
@@ -49,6 +66,10 @@ final class GamepadTeleop {
     @ObservationIgnored private var drivenBy: UUID?
     @ObservationIgnored private var previous = GamepadReading.neutral
     @ObservationIgnored private var pad: GCExtendedGamepad?
+    #if os(tvOS)
+        /// The Siri Remote, while no two-stick controller is the one in use.
+        @ObservationIgnored private var remote: GCMicroGamepad?
+    #endif
     @ObservationIgnored private var poller: Task<Void, Never>?
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
     /// Whether this app is the one in front. See `setAppActive(_:)`.
@@ -65,7 +86,11 @@ final class GamepadTeleop {
 
     /// `controllerName` is the preview seam: a preview shows the legend for a
     /// controller nobody connected. Only `shared` watches for real ones.
-    init(mapping: GamepadMapping = GamepadMapping(), controllerName: String? = nil, observesControllers: Bool = false) {
+    public init(
+        mapping: GamepadMapping = GamepadMapping(),
+        controllerName: String? = nil,
+        observesControllers: Bool = false
+    ) {
         self.mapping = mapping
         self.controllerName = controllerName
         if observesControllers {
@@ -75,18 +100,18 @@ final class GamepadTeleop {
     }
 
     /// The driver a controller would move right now.
-    var owner: TeleopDriver? {
+    public var owner: TeleopDriver? {
         currentClaim?.driver
     }
 
-    func claim(_ driver: TeleopDriver, priority: Priority, standDown: TeleopStandDown?) -> UUID {
+    public func claim(_ driver: TeleopDriver, priority: Priority, standDown: TeleopStandDown?) -> UUID {
         let id = UUID()
         claims.append(Claim(id: id, driver: driver, priority: priority, standDown: standDown))
         reconcilePolling()
         return id
     }
 
-    func release(_ id: UUID) {
+    public func release(_ id: UUID) {
         if id == drivenBy, let claim = claims.first(where: { $0.id == id }) {
             letGo(of: claim.driver)
         }
@@ -201,16 +226,53 @@ final class GamepadTeleop {
     }
 
     /// The most recently used controller if it has two sticks, otherwise any that has.
+    /// On tvOS the Siri Remote takes part too, so the remote drives when it is the one
+    /// in use or the only one there.
     private func refreshController() {
-        let controller = [GCController.current].compactMap(\.self).first { $0.extendedGamepad != nil }
-            ?? GCController.controllers().first { $0.extendedGamepad != nil }
+        let current = [GCController.current].compactMap(\.self)
+        let connected = GCController.controllers()
+        #if os(tvOS)
+            let controller = current.first { $0.extendedGamepad != nil || $0.microGamepad != nil }
+                ?? connected.first { $0.extendedGamepad != nil }
+                ?? connected.first { $0.microGamepad != nil }
+        #else
+            let controller = current.first { $0.extendedGamepad != nil }
+                ?? connected.first { $0.extendedGamepad != nil }
+        #endif
         pad = controller?.extendedGamepad
+        #if os(tvOS)
+            remote = pad == nil ? controller?.microGamepad : nil
+            // Where the thumb is on the touch surface, not how far it moved from where
+            // it landed: the surface is the pad, centre included.
+            remote?.reportsAbsoluteDpadValues = true
+            drivesWithRemote = remote != nil
+        #endif
         controllerName = controller.map { $0.vendorName ?? String(localized: .reachy("Game controller")) }
         reconcilePolling()
     }
 
+    private var hasInput: Bool {
+        #if os(tvOS)
+            pad != nil || remote != nil
+        #else
+            pad != nil
+        #endif
+    }
+
+    private func reading() -> GamepadReading? {
+        if let pad {
+            return GamepadReading(pad)
+        }
+        #if os(tvOS)
+            if let remote {
+                return GamepadReading(remote: remote)
+            }
+        #endif
+        return nil
+    }
+
     private func reconcilePolling() {
-        let shouldPoll = pad != nil && !claims.isEmpty && isAppActive
+        let shouldPoll = hasInput && !claims.isEmpty && isAppActive
         if shouldPoll, poller == nil {
             poller = Task { [weak self] in await self?.poll() }
         } else if !shouldPoll, let poller {
@@ -231,8 +293,8 @@ final class GamepadTeleop {
             let now = ContinuousClock.now
             let elapsed = last.duration(to: now).components
             last = now
-            guard let pad else { continue }
-            tick(GamepadReading(pad), seconds: Double(elapsed.seconds) + Double(elapsed.attoseconds) * 1e-18)
+            guard let reading = reading() else { continue }
+            tick(reading, seconds: Double(elapsed.seconds) + Double(elapsed.attoseconds) * 1e-18)
         }
     }
 }
@@ -250,9 +312,21 @@ private extension GamepadReading {
             reset: pad.buttonB.isPressed
         )
     }
+
+    #if os(tvOS)
+        /// The Siri Remote as a pad: the touch surface is the look stick, and Play/Pause
+        /// resets. It has nothing to turn the body with but the rotation zone, which is
+        /// the touch pad's own way to turn it.
+        init(remote: GCMicroGamepad) {
+            self.init(
+                rightStick: .init(x: Double(remote.dpad.xAxis.value), y: Double(remote.dpad.yAxis.value)),
+                reset: remote.buttonX.isPressed
+            )
+        }
+    #endif
 }
 
-extension View {
+public extension View {
     /// Lets the game controller drive `driver` while `isActive` — the same moments a
     /// thumb could drive it through the pad. Released when the view goes away.
     func gamepadTeleop(
