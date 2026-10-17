@@ -1,0 +1,63 @@
+ABOUT THE APP
+
+Hey Reachy is an unofficial network client for the Reachy Mini desktop robots from Pollen Robotics. It is not affiliated with Pollen Robotics. The app speaks to the robot's own HTTP and WebSocket daemon. This is the first native Apple Vision Pro version. Before it, Apple Vision ran the iPad app.
+
+HOW TO REVIEW WITHOUT A ROBOT
+
+The app carries a simulator of the control path. It needs no robot, no account, no network and no permission.
+
+1. On the Connect screen, open "Developer" below the list.
+2. Tap "Start the simulator".
+3. The app builds a robot from its own description and opens the main tabs. The tab bar is at the leading edge of the window.
+
+The simulator answers the Live tab, the Robot tab and Settings. It declines the camera, the two-way audio, the app catalogue, the moves and the Wi-Fi setup. Each one belongs to a physical machine.
+
+HEAD TRACKING (NEW ON APPLE VISION PRO)
+
+The headset's own pose steers the robot's head. To see it with the simulator:
+
+1. Start the simulator as above.
+2. Open the Live tab (the cube icon, second in the tab bar). The simulated robot is asleep. Tap "Wake up". The 3D robot appears.
+3. Tap the game controller button in the top trailing corner of the window. The Controller screen opens.
+4. Under "Head tracking", switch on "Follow my head". Look straight ahead when you do: that direction becomes straight ahead for the robot.
+5. visionOS gives an app the headset's position only in an immersive space, so the app opens an empty one with mixed immersion. The room and the app's window stay in view. The system hides the windows of other apps while it is open.
+6. Go back to the Live tab and turn, nod or tilt your head. The 3D robot's head follows, inside the reach of the robot's motors: 40 degrees to each side, 35 degrees down, 30 degrees up and 30 degrees of tilt. Its body does not turn.
+7. Switch "Follow my head" off on the Controller screen, or press the Digital Crown to close the space. Either one puts the robot's head back to straight ahead.
+
+The same switch is also a button beside the joystick on the Live tab.
+
+Head tracking asks for no permission. The device pose that ARKit gives an immersive space needs no authorization, and the app reads no camera, no hand data and no surroundings.
+
+With a real robot, the robot's own head turns, and the reader watches through its camera in the app's window.
+
+FIRST LAUNCH
+
+A Bluetooth sheet opens over the Connect screen. Dismiss it with Cancel. The visionOS Local Network alert waits below it. Allow it, or use the simulator, which needs no permission.
+
+WHAT NEEDS A REAL ROBOT
+
+The camera, the two-way audio, the app catalogue and its community apps, the moves, the guided first wake-up and the Wi-Fi setup over Bluetooth. The simulator does not show them, because each one belongs to a physical machine.
+
+Community apps (guideline 1.2): the Apps tab lists apps that their authors publish on Hugging Face Spaces, and the robot runs them. Before Discover shows these apps for the first time, a notice asks the user to agree, with a link to the Hugging Face content policy. Each app page and each row menu has "Report this app", which opens the Hugging Face report form for that Space, and "Hide this author's apps", which removes that author's apps from Discover at once. "Hidden authors" lists them and undoes it.
+
+DEMO ACCOUNT
+
+The Hugging Face sign-in gives one function: remote access to a robot linked to that account. It is optional. All other functions work without an account.
+
+The demo account has no robot linked to it. A robot is hardware, and we cannot send you one. After you sign in, "Your Reachies" shows "No Reachy online". This is the correct result. No other content is behind the sign-in.
+
+To sign in: select "Remote" on the Connect screen. Tap "Your Reachies", then "Sign in". Use the account in this section.
+
+ACCOUNT DELETION (5.1.1(v))
+
+The app creates no account. It has no server and no user database. The only sign-in is OAuth into an existing Hugging Face account that the user already owns. The app holds one access token in the Keychain, and "Sign out" deletes that token from the device.
+
+Settings tab > "Hugging Face" section > "Delete your Hugging Face account" opens https://huggingface.co/settings/account, which carries the "Delete my account" control. The row appears as soon as the user signs in.
+
+TWO-WAY AUDIO
+
+On Apple Vision Pro the two-way voice with the robot is not a system call. The app does not use LiveCommunicationKit there and declares no "voip" background mode. The microphone button on the camera turns the microphone on and off, and the robot's speaker plays it.
+
+DEMO VIDEO
+
+We can send a video of the app with a real robot on request, or show it with a real robot on a video call.
