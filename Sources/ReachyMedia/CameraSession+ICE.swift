@@ -1,4 +1,8 @@
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
 /// A file of its own because `CameraSession.swift` is at SwiftLint's 400-line
 /// limit, and `--strict` turns that into a build failure — the same split
@@ -17,5 +21,11 @@ extension CameraSession {
     static func iceCandidate(sdp: String, sdpMLineIndex: Int32, sdpMid: String?) -> RTCIceCandidate? {
         guard !sdp.isEmpty else { return nil }
         return RTCIceCandidate(sdp: sdp, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
+    }
+
+    /// What every call that takes constraints is given. Moved here when the WebRTC
+    /// import became a platform fork and took four more lines in `CameraSession.swift`.
+    static var noConstraints: RTCMediaConstraints {
+        RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
     }
 }

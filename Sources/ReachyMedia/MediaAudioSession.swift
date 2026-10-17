@@ -1,6 +1,10 @@
 import Foundation
 import OSLog
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
 // iOS only: the audio *session* is an iOS concept. The fork is a platform fork,
 // not a version gate — macOS has no AVAudioSession and never will; every body

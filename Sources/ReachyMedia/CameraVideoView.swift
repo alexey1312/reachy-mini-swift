@@ -1,7 +1,12 @@
 import SwiftUI
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
-/// Renders a remote `RTCVideoTrack` via Metal (`RTCMTLVideoView` / `RTCMTLNSVideoView`).
+/// Renders a remote `RTCVideoTrack` via Metal (`RTCMTLVideoView` / `RTCMTLNSVideoView`),
+/// and on visionOS, whose WebRTC slice has neither, via `SampleBufferVideoView`.
 ///
 /// **It fills the space it is given and never proposes one of its own.** The
 /// Metal views report the *stream's* frame size as their intrinsic content size,
@@ -62,31 +67,41 @@ public struct CameraVideoView {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || os(tvOS) || os(visionOS)
     extension CameraVideoView: UIViewRepresentable {
+        #if os(visionOS)
+            public typealias UIViewType = SampleBufferVideoView
+        #else
+            public typealias UIViewType = RTCMTLVideoView
+        #endif
+
         public func makeCoordinator() -> Coordinator {
             Coordinator()
         }
 
-        public func makeUIView(context _: Context) -> RTCMTLVideoView {
-            let view = RTCMTLVideoView()
-            view.videoContentMode = .scaleAspectFit
-            return view
+        public func makeUIView(context _: Context) -> UIViewType {
+            #if os(visionOS)
+                SampleBufferVideoView(frame: .zero)
+            #else
+                let view = RTCMTLVideoView()
+                view.videoContentMode = .scaleAspectFit
+                return view
+            #endif
         }
 
-        public func updateUIView(_ view: RTCMTLVideoView, context: Context) {
+        public func updateUIView(_ view: UIViewType, context: Context) {
             context.coordinator.attach(track, renderer: view)
         }
 
         public func sizeThatFits(
             _ proposal: ProposedViewSize,
-            uiView _: RTCMTLVideoView,
+            uiView _: UIViewType,
             context _: Context
         ) -> CGSize? {
             Self.resolved(proposal)
         }
 
-        public static func dismantleUIView(_ view: RTCMTLVideoView, coordinator: Coordinator) {
+        public static func dismantleUIView(_ view: UIViewType, coordinator: Coordinator) {
             coordinator.detach(renderer: view)
         }
     }
