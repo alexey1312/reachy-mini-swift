@@ -27,8 +27,11 @@ public final class OrbitCamera {
         return entity
     }
 
+    /// The three-quarter angle the view opens at, and the one visionOS turns the robot to.
+    static let startingAzimuth: Float = .pi * 0.85
+
     /// Rotation around the vertical axis.
-    private var azimuth: Float = .pi * 0.85
+    private var azimuth: Float = startingAzimuth
     /// Height above the horizon, clamped short of the poles where the up vector
     /// degenerates and the view flips.
     private var elevation: Float = 0.42
@@ -100,7 +103,7 @@ public final class OrbitCamera {
 
     /// Restores the starting three-quarter view.
     public func reset() {
-        azimuth = .pi * 0.85
+        azimuth = Self.startingAzimuth
         elevation = 0.42
         endGesture()
         if let framedBounds {
