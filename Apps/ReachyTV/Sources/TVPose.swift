@@ -35,7 +35,11 @@ struct TVPose: Equatable {
     }
 
     /// An angle as a reader sees it: whole degrees, signed.
+    ///
+    /// Rounded before it is formatted, because `%.0f` keeps the sign of a value that
+    /// rounds to zero: a head at rest a hair to the right read "-0°".
     static func degrees(_ radians: Double) -> String {
-        String(format: "%.0f°", radians * 180 / .pi)
+        let degrees = (radians * 180 / .pi).rounded()
+        return String(format: "%.0f°", degrees == 0 ? 0 : degrees)
     }
 }
