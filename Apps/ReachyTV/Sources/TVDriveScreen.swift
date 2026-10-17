@@ -1,6 +1,7 @@
 import ReachyDesign
 import ReachyKit
 import ReachyMedia
+import ReachySimulator
 import ReachyTeleop
 import SwiftUI
 
@@ -20,9 +21,16 @@ import SwiftUI
 /// by ReachyMedia's `CameraVideoView`, and it runs while the robot sleeps: the screen opens
 /// for watching as much as for driving. The microphone stays off — the TV offers no way
 /// to talk through the robot yet — while the robot's own sound plays on the TV.
+///
+/// The in-app simulated robot has no camera, so with it the legend shows the robot's own
+/// angles instead (`TVPose`): that is what makes driving it visible at all.
 struct TVDriveScreen: View {
     let session: RobotSession
+    /// The in-app simulated robot, when this session is one; its pose comes from it rather
+    /// than from a socket.
+    let simulator: SimulatedRobotClient?
     @State private var driver = TeleopDriver()
+    @State private var pose: TVPose?
     /// Built on appear and stopped on the way out. WebRTC has no cheap pause, so a
     /// session is dropped rather than kept, as the phone's viewport does.
     @State private var camera: CameraSession?
@@ -39,12 +47,18 @@ struct TVDriveScreen: View {
             // Above the legend rather than behind it, so a status never sits under it.
             cameraStatus
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            hud
-                .frame(width: TVMetrics.listWidth)
-                .padding(TVMetrics.gutter)
-                .focusable()
-                .focused($hasFocus)
-                .focusEffectDisabled()
+            HStack(alignment: .bottom, spacing: TVMetrics.group) {
+                hud
+                    .frame(width: TVMetrics.listWidth)
+                    .focusable()
+                    .focused($hasFocus)
+                    .focusEffectDisabled()
+                if let pose {
+                    poseCard(pose)
+                        .frame(width: TVMetrics.listWidth / 2)
+                }
+            }
+            .padding(TVMetrics.gutter)
         }
         .background {
             if let camera {
@@ -73,6 +87,9 @@ struct TVDriveScreen: View {
             }
         }
         .gamepadTeleop(driver, priority: .screen, standDown: nil, isActive: drives)
+        .task {
+            await readPose()
+        }
         .onExitCommand {
             dismiss()
         }
@@ -167,10 +184,56 @@ struct TVDriveScreen: View {
             case .streaming:
                 EmptyView()
             }
+        } else if session.link == .simulated {
+            // The phone's simulator says the same under its Start button.
+            ContentUnavailableView(
+                .reachy("Camera unavailable"),
+                systemImage: "video.slash",
+                description: Text(
+                    .reachy(
+                        "There is no camera, no app store and no Wi-Fi — those belong to a machine that is not there."
+                    )
+                )
+            )
         } else {
             // No LAN address to open signalling on — the TV reaches robots on its own
             // network only, so this is a session that went away under the screen.
             ContentUnavailableView(.reachy("Camera unavailable"), systemImage: "video.slash")
+        }
+    }
+
+    /// The robot's own angles, in the words the phone's Controller screen uses for them, on
+    /// a card of its own so the legend stays the height it was.
+    private func poseCard(_ pose: TVPose) -> some View {
+        VStack(alignment: .leading, spacing: Space.lg) {
+            poseRow(.reachy("Head yaw"), value: TVPose.degrees(pose.headYaw))
+            poseRow(.reachy("Head pitch"), value: TVPose.degrees(pose.headPitch))
+            poseRow(.reachy("Body yaw"), value: TVPose.degrees(pose.bodyYaw))
+        }
+        .padding(Space.xxl)
+        .reachySurface(.card, in: Radius.rect(Radius.window))
+    }
+
+    private func poseRow(_ name: LocalizedStringResource, value: String) -> some View {
+        LabeledContent {
+            Text(verbatim: value)
+                .monospacedDigit()
+        } label: {
+            Text(name)
+        }
+    }
+
+    /// From the simulated robot itself, or from the robot's state socket on the LAN. The
+    /// task ends when the screen goes, and with it the subscription.
+    private func readPose() async {
+        let source: (any RobotStateStreaming)? = simulator
+            ?? session.address.flatMap { try? RobotStateStream(address: $0) }
+        guard let source else { return }
+        for await update in source.updates(TVPose.streamOptions) {
+            guard let frame = update.frame, let reading = TVPose(frame) else { continue }
+            if reading != pose {
+                pose = reading
+            }
         }
     }
 

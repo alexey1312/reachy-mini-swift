@@ -25,6 +25,15 @@ public struct RobotStateFrame: Sendable, Equatable, Decodable {
                 RigidTransform.transform(translation: SIMD3(x, y, z), rpy: SIMD3(roll, pitch, yaw))
             }
         }
+
+        /// The head's yaw and pitch in radians, in the daemon's convention
+        /// (`Rz(yaw)·Ry(pitch)·Rx(roll)`), whichever form the frame arrived in. Read off the
+        /// rotation's first column, `(cos p cos y, cos p sin y, −sin p)`, so a matrix and the
+        /// Euler angles it was built from give the same answer.
+        public var yawAndPitch: (yaw: Double, pitch: Double)? {
+            guard let column = transform?.columns.0 else { return nil }
+            return (atan2(column.y, column.x), asin(min(max(-column.z, -1), 1)))
+        }
     }
 
     public let timestamp: Date?

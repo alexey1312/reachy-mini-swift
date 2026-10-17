@@ -35,6 +35,23 @@ struct RobotStateFrameTests {
         #expect(abs(transform.translation.z - 0.05) < 1e-12)
     }
 
+    /// The TV's drive screen shows these, and the stream sends either form: the simulator
+    /// and a daemon in matrix mode a matrix, a daemon otherwise Euler angles.
+    @Test("yaw and pitch read the same from Euler angles and from their matrix")
+    func yawAndPitch() throws {
+        let euler = RobotStateFrame.HeadPose.euler(x: 0, y: 0, z: 0.05, roll: 0.1, pitch: -0.2, yaw: 0.3)
+        let fromEuler = try #require(euler.yawAndPitch)
+        #expect(abs(fromEuler.yaw - 0.3) < 1e-9)
+        #expect(abs(fromEuler.pitch + 0.2) < 1e-9)
+
+        let transform = try #require(euler.transform)
+        // `simd` subscripts column first; the stream sends rows.
+        let rowMajor = (0 ..< 4).flatMap { row in (0 ..< 4).map { column in transform[column][row] } }
+        let fromMatrix = try #require(RobotStateFrame.HeadPose.matrix(rowMajor).yawAndPitch)
+        #expect(abs(fromMatrix.yaw - 0.3) < 1e-9)
+        #expect(abs(fromMatrix.pitch + 0.2) < 1e-9)
+    }
+
     /// Every component defaults to 0 in the daemon's schema, so a partial pose is valid.
     @Test("missing euler components default to zero")
     func partialEulerPose() throws {

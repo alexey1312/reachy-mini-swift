@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ReachyKit
+import ReachySimulator
 
 /// Finding a robot from the TV: the robots Bonjour lists, an address typed with the
 /// Siri Remote, and the phone's own background sweep underneath both.
@@ -25,10 +26,14 @@ final class TVConnectionModel {
     private(set) var picked: Pick?
     /// The picked robot's advert did not resolve to an address.
     private(set) var pickFailed = false
+    /// The in-app simulated robot could not be built: its bundled description did not
+    /// parse, which `BundledRobotGeometryTests` rules out at build time.
+    private(set) var simulatorFailed = false
 
     enum Pick: Equatable {
         case service(String)
         case typedAddress
+        case simulator
     }
 
     init(session: RobotSession, browser: RobotBrowser = RobotBrowser()) {
@@ -52,6 +57,9 @@ final class TVConnectionModel {
 
     func start() {
         browser.start()
+        // A screenshot or a check of this screen, or of the simulator, must not be raced
+        // by the sweep connecting to a robot on its own (`TVCaptureStage`).
+        guard TVCaptureStage.current?.holdsSweep != true else { return }
         sweep.start()
     }
 
@@ -75,6 +83,24 @@ final class TVConnectionModel {
             return
         }
         await session.connect(to: address)
+    }
+
+    /// The phone's own simulated robot (`ReachySimulator`, "Start the simulator" there):
+    /// no hardware, no network and no camera. It is how somebody with no robot tries the
+    /// app — App Review included. The caller keeps the client, because a simulator runs
+    /// until somebody calls `shutDown()`.
+    func makeSimulator() -> SimulatedRobotClient? {
+        sweep.standDown()
+        let client = SimulatedRobotClient()
+        simulatorFailed = client == nil
+        return client
+    }
+
+    func connect(simulating client: SimulatedRobotClient) async {
+        picked = .simulator
+        pickFailed = false
+        defer { picked = nil }
+        await session.connect(simulating: client)
     }
 
     func connectToTypedAddress() async {

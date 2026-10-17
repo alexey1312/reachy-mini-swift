@@ -1,4 +1,5 @@
 import ReachyKit
+import ReachySimulator
 import SwiftUI
 
 /// The connect screen until a robot answers, the robot screen after.
@@ -7,13 +8,29 @@ import SwiftUI
 /// must not throw the reader back to the list while the session reconnects on its own.
 struct TVRootView: View {
     let session: RobotSession
+    /// The in-app simulated robot while one is in use ("Try without a robot"). Held here,
+    /// above the screens, because it outlives the connect screen that made it, the drive
+    /// screen reads its pose, and its loop runs until somebody calls `shutDown()`.
+    @State private var simulator: SimulatedRobotClient?
 
     var body: some View {
-        switch session.phase {
-        case .connected, .unreachable:
-            TVRobotScreen(session: session)
-        case .idle, .connecting:
-            TVConnectScreen(session: session)
+        Group {
+            switch session.phase {
+            case .connected, .unreachable:
+                TVRobotScreen(session: session, simulator: simulator)
+            case .idle, .connecting:
+                TVConnectScreen(session: session) { client in
+                    simulator?.shutDown()
+                    simulator = client
+                }
+            }
+        }
+        .onChange(of: session.phase) { _, phase in
+            // A disconnect lets the simulated robot go; nothing else stops its loop.
+            if phase == .idle {
+                simulator?.shutDown()
+                simulator = nil
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachySimulator
 import SwiftUI
 
 /// The gate: robots on this network on one side, what is happening on the other.
@@ -9,10 +10,14 @@ import SwiftUI
 /// to choose before anything else is worth doing.
 struct TVConnectScreen: View {
     let session: RobotSession
+    /// Hands the simulated robot up before it connects, so the screens after this one
+    /// can read its pose and the root can stop it when the session lets it go.
+    let startedSimulator: (SimulatedRobotClient) -> Void
     @State private var model: TVConnectionModel
 
-    init(session: RobotSession) {
+    init(session: RobotSession, startedSimulator: @escaping (SimulatedRobotClient) -> Void) {
         self.session = session
+        self.startedSimulator = startedSimulator
         _model = State(initialValue: TVConnectionModel(session: session))
     }
 
@@ -29,6 +34,9 @@ struct TVConnectScreen: View {
         }
         .task {
             model.start()
+            if TVCaptureStage.current?.startsSimulator == true {
+                trySimulator()
+            }
         }
         .onDisappear {
             model.stop()
@@ -75,6 +83,20 @@ struct TVConnectScreen: View {
                 } header: {
                     Text(.reachy("Address"))
                 }
+                Section {
+                    Button(action: trySimulator) {
+                        progressLabel(.reachy("Try without a robot"), busy: model.picked == .simulator)
+                    }
+                } header: {
+                    Text(.reachy("Simulator"))
+                } footer: {
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "A robot simulated by this app, with no hardware. You can wake it and drive it, and it has no camera."
+                        )
+                    )
+                }
             }
             .frame(width: TVMetrics.listWidth)
         }
@@ -119,6 +141,9 @@ struct TVConnectScreen: View {
         } else if model.pickFailed {
             Text(.reachy("Robot unreachable"))
                 .foregroundStyle(.secondary)
+        } else if model.simulatorFailed {
+            Text(.reachy("The simulator's robot description could not be read."))
+                .foregroundStyle(.secondary)
         } else if case let .connecting(.failed(_, message)) = session.phase {
             // ReachyKit's own sentence: it carries the daemon's words, which no
             // catalogue can hold.
@@ -139,6 +164,12 @@ struct TVConnectScreen: View {
                 ProgressView()
             }
         }
+    }
+
+    private func trySimulator() {
+        guard let client = model.makeSimulator() else { return }
+        startedSimulator(client)
+        Task { await model.connect(simulating: client) }
     }
 
     private func connectToTypedAddress() {
