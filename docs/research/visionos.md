@@ -38,9 +38,40 @@ Safety stays in the daemon (project rule 2).
 ### The toolchain
 
 - Xcode 27.0 (27A266a) carries the visionOS 27.0 SDK and its simulator SDK.
-- `xcrun simctl list runtimes` lists iOS 27.0 and 27.1, tvOS 27.0 and watchOS 27.0,
-  and **no visionOS runtime**.
-  So everything below was compiled and none of it was launched.
+- `xcrun simctl list runtimes` listed iOS 27.0 and 27.1, tvOS 27.0 and watchOS 27.0,
+  and no visionOS runtime.
+  `xcodebuild -downloadPlatform visionOS` then installed visionOS 27.0 (24M362), 7.52 GB.
+
+### The launch
+
+On the `Apple Vision Pro` simulator, visionOS 27.0, the Debug simulator build launches
+to the connect gate in a window: the stepper, the Nearby and Remote segments,
+the Bluetooth setup row and the manual address field.
+A fresh install opens the "Set up a robot" sheet over the gate first, as on the iPhone.
+Its footnote says "iOS will ask for permission", which is wrong on visionOS.
+
+### The tracker in the simulator
+
+A temporary patch, not committed, switched the shared hub on at launch, switched it off
+8 s later, and logged the tracker to OSLog. No robot was connected, because the hub
+takes readings whether or not a surface claims it. Read with `simctl spawn … log stream`:
+
+| Time (s) | Event                                                             |
+| -------- | ----------------------------------------------------------------- |
+| 0.00     | Hub `off` → `setOn(true)` → `waiting`                             |
+| 0.20     | `WorldTrackingProvider.isSupported` is true                       |
+| 0.24     | `session.run` returns; the first anchor makes the hub `following` |
+| 0.62     | `HeadsetTrackingSpace` appears; `openImmersiveSpace` `opened`     |
+| 8.0      | `setOn(false)` → `off`                                            |
+| 8.6      | The space disappears; no pose arrives after it                    |
+
+- Poses arrive at about 45 per second against the 50 asked for.
+- The app's own window stays in view while the mixed space is open.
+- In the simulator `session.run` did not wait for the space, and anchors arrived before it opened.
+  So the retry in `HeadsetTracker.run(_:)` never ran here; whether a headset refuses the run
+  outside a space is still open.
+- The pose stayed at zero, because nothing moved the simulated head.
+  The controls that move it are in Device Hub, which this run did not drive.
 
 ### WebRTC
 
@@ -117,13 +148,13 @@ Citadel is now linked on iOS and macOS only, and `RobotFileSystems.ssh(robot:)` 
 
 ## Needs a headset, or at least a visionOS simulator
 
-- **Launch.** The app has not been launched; the visionOS runtime is not installed on this Mac.
-  The first check is that it reaches the connect gate.
 - **The signs and the feel.** They follow from documented frames, and they are still a device check,
   as they were for AirPods. A wrong sign is one number in `HeadphoneMotionMapping.headset`.
-- **Whether `session.run` waits or throws** when it starts before the space has opened.
-  `HeadsetTracker.run(_:)` retries every 500 ms in case it throws, and logs each refusal
-  to the `HeadsetTracker` category.
+- **Whether `session.run` throws on a headset** when it starts before the space has opened.
+  It did not in the simulator. `HeadsetTracker.run(_:)` retries every 500 ms in case it does,
+  and logs each refusal to the `HeadsetTracker` category.
+- **A moving pose.** The simulator run read a still head;
+  a turn in the simulator moves the camera through Device Hub, and a headset does the rest.
 - **The picture.** `SampleBufferVideoView` has never drawn a frame.
   The robot sends H.264, which arrives as a VideoToolbox buffer and goes to the layer as it is;
   the simulator daemon may send VP8, which goes through the I420 copy.
@@ -142,6 +173,7 @@ Citadel is now linked on iOS and macOS only, and `RobotFileSystems.ssh(robot:)` 
   That is a different screen and a different decision; this change keeps the window.
 - **An app icon.** visionOS wants a three-layer image stack, and the Icon Composer bundles do not cover it.
   The build has no icon at all.
+- **Copy that names iOS.** `OnboardingWelcomeStep` says "iOS will ask for permission" on visionOS too.
 - **App Shortcuts, widgets and the Spotlight rows** on visionOS. `ReachyShortcuts` is in the iPhone target.
 - **SFTP**, until Citadel's swift-nio-ssh fork depends on the module it imports.
 - **CI.** No job builds visionOS; the five macOS slots are spent.
