@@ -472,6 +472,32 @@ even though `pluginkit -mAvv -p com.apple.message-payload-provider`
 lists the extension with the right SDK, display name and parent.
 Confirm the drawer on hardware through `mise run device` before submitting.
 
+### Apple TV screenshots
+
+The tvOS version has a screenshot row of its own, `APP_APPLE_TV`,
+which takes 1920x1080 or 3840x2160.
+`screenshots/tvos/capture.sh` makes three, of the real app connected to `sim-daemon`:
+the connect screen with the robot in the list, the robot screen, and the drive screen.
+
+```bash
+mise run sim-daemon          # in another terminal; wait until :8000 answers
+mise run screenshots:tv      # writes screenshots/tvos/en-US/*.png at 1920x1080
+mise run asc -- screenshots upload --app 6799644194 --version-id <tvOS version id> \
+  --locale en-US --path screenshots/tvos/en-US --device-type APP_APPLE_TV
+```
+
+- **No remote is pressed.** A session cannot press the Siri Remote's buttons,
+  so the script launches a Debug build on the screen it wants (`--reachy-tv-stage`,
+  `Apps/ReachyTV/Sources/TVCaptureStage.swift`); a Release build ignores the argument.
+- **The simulator is a throwaway one, pinned to English**, so nothing a person left on theirs
+  (a stored robot address, another language) reaches the store. The script deletes it on the way out.
+- **The camera has no picture in these.** On this Mac `sim-daemon` registers no video producer
+  (its audio source fails on the virtual default input; the root `CLAUDE.md` has the measurement),
+  so the drive screen says it is waiting for the camera. That is what the app shows there,
+  and it is kept rather than replaced. A capture against a real robot would show the picture.
+- **The waits are fixed** (`REACHY_SHOT_SETTLE`, 15 s): nothing in the app can be read from outside
+  to say a screen is ready. Look at each PNG before uploading.
+
 ## The public beta
 
 `https://testflight.apple.com/join/CGjefT9a` — the **Public Beta** group,

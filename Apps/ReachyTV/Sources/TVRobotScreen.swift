@@ -54,6 +54,12 @@ struct TVRobotScreen: View {
         .fullScreenCover(isPresented: $isDriving) {
             TVDriveScreen(session: session)
         }
+        .onAppear {
+            // What a press on Drive does, for a store screenshot (`TVCaptureStage`).
+            if TVCaptureStage.current == .drive {
+                isDriving = true
+            }
+        }
     }
 
     private var robotName: String {
