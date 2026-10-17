@@ -1,0 +1,51 @@
+ABOUT THE APP
+
+Hey Reachy is an unofficial network client for the Reachy Mini desktop robots from Pollen Robotics. It is not affiliated with Pollen Robotics. The app speaks to the robot's own HTTP and WebSocket daemon.
+
+This is the Apple TV app. It connects to a robot on the local network and wakes it or puts it to sleep. It shows the robot's camera full screen, and it drives the robot with a game controller or the Siri Remote.
+
+HOW TO REVIEW WITHOUT A ROBOT
+
+The app carries a simulator of the control path. It needs no robot, no account, no network and no permission. You need only the Siri Remote.
+
+1. Open the app. The Connect screen shows "Find the robot", "Address" and "Simulator" on the right.
+2. Swipe down on the touch surface until "Try without a robot" is in focus. It is the last row, under "Simulator".
+3. Press the center of the touch surface.
+4. The robot screen opens. It shows the name "Simulator" and the state "Asleep".
+5. Select "Wake up". The state changes to "Awake".
+6. Select "Drive". The drive screen opens.
+7. Drag on the touch surface. The robot turns its head.
+8. Hold a finger at the left or right edge of the touch surface. The robot turns its body.
+9. Press Play/Pause. The robot moves back to neutral.
+10. Press Back (Menu on an older remote) to close the drive screen.
+11. Select "Disconnect" to go back to the Connect screen.
+
+On the drive screen, the card at the bottom left lists the remote's controls. The card beside it shows "Head yaw", "Head pitch" and "Body yaw", which change as you drive. The simulated robot has no camera, so the top of the screen shows "Camera unavailable". This is the correct result.
+
+A paired game controller also drives the robot on the drive screen. The card then lists the controller's sticks and buttons.
+
+FIRST LAUNCH
+
+tvOS asks for Local Network access, because the app looks for robots at once. Allow it, or use the simulator, which needs no permission.
+
+WHAT NEEDS A REAL ROBOT
+
+Each of these needs a robot on the same network, so the simulator does not show them.
+
+- The robot list. Without a robot, "Find the robot" shows "Searching…".
+- A connection to an address that you type.
+- The camera picture and the robot's sound on the drive screen.
+- "Motors and camera are off", with "Start the motors and camera".
+- "This robot needs a software update". The TV sends such a robot no commands. It tells the user to update the robot with Hey Reachy on an iPhone, an iPad or a Mac.
+
+PERMISSIONS
+
+The Apple TV app uses no camera, records no sound and does not use Bluetooth. Info.plist carries those usage strings because code that the app shares with iPhone references those APIs. The robot video code references the camera and the microphone. The robot connection code references Bluetooth.
+
+NO ACCOUNT
+
+The Apple TV app has no sign-in and creates no account. It has no server and no user database. It talks only to the robot on the local network.
+
+DEMO VIDEO
+
+We can show the Apple TV app with a real robot on a video call, on request.
