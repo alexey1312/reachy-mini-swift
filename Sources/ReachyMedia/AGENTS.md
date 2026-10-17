@@ -2,7 +2,7 @@
 
 The WebRTC session to the robot (`CameraSession` + its adapters), and since #78 the system-call
 framing over it (`RobotCallController` + `CallLifecycle` + `MediaAudioSession`). Depends on
-`ReachyKit` and the stasel/WebRTC binary framework, nothing else.
+`ReachyKit` and a WebRTC binary framework, nothing else.
 
 - **Linked by `ReachyUI` only, and `ReachyWidgetUI` must never gain the edge.** A widget process
   woken for a moment to draw two lines of text cannot afford to load a media stack —
@@ -10,6 +10,32 @@ framing over it (`RobotCallController` + `CallLifecycle` + `MediaAudioSession`).
   lives here rather than in `ReachyKit` (the widget links ReachyKit, and AVFoundation is the same
   argument one framework smaller), and why `CallRobotIntent` lives in the app target rather than
   anywhere the appex links.
+
+## Two builds of WebRTC, one per platform pair
+
+stasel/WebRTC serves iOS and macOS,
+and LiveKit's `webrtc-xcframework` serves tvOS and visionOS,
+for which stasel ships no slice.
+`Package.swift` picks one per platform with `.when(platforms:)`.
+
+- **LiveKit's symbols carry an `LK` prefix**, on classes, protocols, enums and the SSL functions alike,
+  because it builds with `RTC_OBJC_TYPE_PREFIX` set.
+  `WebRTCNames.swift` maps each name this target spells back to the unprefixed one,
+  so a new WebRTC type used here needs a line there too, or tvOS and visionOS stop compiling.
+  An enum that is only inferred needs none: Swift strips the prefix from its cases.
+- **Each file that imports WebRTC forks the import on the platform**, the same condition as `Package.swift`.
+- **visionOS has its own renderer**, `SampleBufferVideoView`.
+  LiveKit's visionOS slice has no `RTCMTLVideoView`,
+  and its `RTCEAGLVideoView` needs OpenGL ES, which visionOS does not have.
+  It enqueues each frame on an `AVSampleBufferDisplayLayer` for immediate display:
+  a VideoToolbox buffer as it is, anything else through I420 into a pooled NV12 buffer.
+  It applies no rotation, because the robot sends upright frames.
+  tvOS draws with LiveKit's `RTCMTLVideoView`, like iOS.
+- **The version pin is `exact:`.** LiveKit numbers releases by Chromium milestone and build,
+  and its tag `150.7871.03` is not semver, so SwiftPM reads it as `150.7871.3`.
+- **Nothing in CI compiles tvOS or visionOS.** The five macOS slots are spent;
+  `xcodebuild -scheme ReachyMedia -destination 'generic/platform=visionOS Simulator' build`
+  is the local check.
 
 ## The call framing (#78)
 

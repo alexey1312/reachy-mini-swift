@@ -1,7 +1,11 @@
 import Foundation
 import Observation
 import ReachyKit
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
 /// Owns one WebRTC session to the robot: consumes `CameraSignalingClient`
 /// events, answers the robot's offer, and exposes the remote video track plus
@@ -392,9 +396,5 @@ public final class CameraSession {
         videoTrack = nil
         answerSent = false
         pendingLocalCandidates = []
-    }
-
-    private static var noConstraints: RTCMediaConstraints {
-        RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
     }
 }

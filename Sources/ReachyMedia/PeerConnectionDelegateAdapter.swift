@@ -1,5 +1,9 @@
 import Foundation
-@preconcurrency import WebRTC
+#if os(tvOS) || os(visionOS)
+    @preconcurrency import LiveKitWebRTC
+#else
+    @preconcurrency import WebRTC
+#endif
 
 /// Bridges nonisolated WebRTC delegate callbacks onto the MainActor session.
 ///
