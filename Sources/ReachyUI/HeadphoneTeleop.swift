@@ -1,4 +1,3 @@
-import CoreMotion
 import Foundation
 import Observation
 import ReachyKit
@@ -21,9 +20,14 @@ import SwiftUI
 /// a robot nobody watches. Switching on and off belongs to the hub, so it survives a
 /// change of screen.
 ///
-/// **The head starts from where the reader is looking.** Core Motion reports a
-/// headphone's attitude in a frame of its own, so the first reading after a switch-on
-/// or `recentre()` becomes the reference and everything after it is relative to that.
+/// **The device is a `HeadTracker`, and the hub is the same on every platform.**
+/// Headphones through Core Motion on iOS, the headset itself through ARKit on
+/// visionOS: a tracker hands in readings and the hub does everything else, so a
+/// followed head reaches the robot through one path wherever it comes from.
+///
+/// **The head starts from where the reader is looking.** A tracker keeps a
+/// reference, and the first reading after a switch-on or `recentre()` becomes it;
+/// everything after it is relative to that.
 /// A hand-over keeps it, so the next surface starts from the straight ahead the reader
 /// already had. Nothing asks the reader to look anywhere first; the footer says to look
 /// straight ahead, and Recentre is there for when they did not.
@@ -38,8 +42,8 @@ import SwiftUI
 @Observable
 final class HeadphoneTeleop {
     enum Status: Equatable {
-        /// This device cannot read headphone motion, or nobody has asked yet. The
-        /// screen offers nothing — which is every Mac, every simulator and every capture.
+        /// This device cannot track a head, or nobody has asked yet. The screen
+        /// offers nothing — which is every Mac, every iOS simulator and every capture.
         case unsupported
         case off
         /// Switched on, and no reading has arrived since.
@@ -60,7 +64,9 @@ final class HeadphoneTeleop {
     }
 
     private(set) var status: Status
-    let mapping: HeadphoneMotionMapping
+    /// The tracker's once one is observed (`observe(_:)`): its signs follow the frame
+    /// its device reports in.
+    private(set) var mapping: HeadphoneMotionMapping
 
     /// The last reading, relative to the reference and before the mapping, for the
     /// screen to show. Which head motion moves which of the three angles is still a
@@ -69,7 +75,8 @@ final class HeadphoneTeleop {
     private(set) var source: Source?
 
     /// The next reading becomes the reference. Set by a switch-on, a recentre, a loss
-    /// and a change of earbud; read and cleared by the Core Motion half.
+    /// and a change of earbud; read and cleared by the tracker
+    /// (`takeReferenceRequest()`).
     @ObservationIgnored private(set) var needsReference = true
 
     typealias Priority = GamepadTeleop.Priority
@@ -80,8 +87,7 @@ final class HeadphoneTeleop {
 
     @ObservationIgnored private var claims: [Claim] = []
     @ObservationIgnored private var lastReading: ContinuousClock.Instant?
-    @ObservationIgnored private var manager: CMHeadphoneMotionManager?
-    @ObservationIgnored private var reference: CMAttitude?
+    @ObservationIgnored private var tracker: (any HeadTracker)?
     @ObservationIgnored private var watchdog: Task<Void, Never>?
 
     private struct Claim {
@@ -94,7 +100,7 @@ final class HeadphoneTeleop {
     /// `reachyPreviewMode` reaches it, so no capture reads the device.
     static let shared: HeadphoneTeleop = {
         let hub = HeadphoneTeleop()
-        hub.observeHeadphones()
+        hub.observeDevice()
         return hub
     }()
 
@@ -103,7 +109,7 @@ final class HeadphoneTeleop {
     static let staleAfter = Duration.seconds(1)
 
     /// `status` is the preview seam: a capture hands in the state it shows, and only
-    /// `observeHeadphones()` ever reads the device.
+    /// `observeDevice()` ever reads the device.
     init(
         mapping: HeadphoneMotionMapping = HeadphoneMotionMapping(),
         status: Status = .unsupported,
@@ -134,19 +140,28 @@ final class HeadphoneTeleop {
         status == .waiting || status == .following
     }
 
-    /// Reads whether this device can track a head at all. iOS only for now: on a Mac
-    /// the same API exists, but the Motion pane a refusal would have to open there has
-    /// not been checked by hand, and a wrong pane has no runtime signal
+    /// Reads whether this device can track a head at all, through the tracker its
+    /// platform has: headphones on iOS, the headset on visionOS. Not on a Mac for now:
+    /// the headphones' API exists there, but the Motion pane a refusal would have to
+    /// open has not been checked by hand, and a wrong pane has no runtime signal
     /// (`PrivacySettingsLink`).
-    func observeHeadphones() {
-        #if os(iOS)
-            guard manager == nil else { return }
-            let manager = CMHeadphoneMotionManager()
-            self.manager = manager
-            if manager.isDeviceMotionAvailable, status == .unsupported {
-                status = .off
-            }
+    func observeDevice() {
+        guard tracker == nil else { return }
+        #if os(visionOS)
+            observe(HeadsetTracker())
+        #elseif os(iOS)
+            observe(HeadphoneTracker())
         #endif
+    }
+
+    /// Takes `tracker` as this hub's device, and its mapping with it.
+    /// `observeDevice()` passes the platform's; a test passes one of its own.
+    func observe(_ tracker: any HeadTracker) {
+        self.tracker = tracker
+        mapping = tracker.mapping
+        if tracker.isAvailable, status == .unsupported {
+            status = .off
+        }
     }
 
     func setOn(_ isOn: Bool) {
@@ -192,8 +207,8 @@ final class HeadphoneTeleop {
         owner = next
     }
 
-    /// One reading, already relative to the reference. The Core Motion half calls this;
-    /// so do tests, which have no headphones to read.
+    /// One reading, already relative to the reference. The tracker calls this; so do
+    /// tests, which have no device to read.
     func receive(_ attitude: HeadAttitude, at instant: ContinuousClock.Instant) {
         guard isOn else { return }
         lastReading = instant
@@ -217,29 +232,47 @@ final class HeadphoneTeleop {
         needsReference = true
     }
 
+    // MARK: - From the tracker
+
+    /// Whether the reading the tracker holds becomes the reference: true once after
+    /// each request, and the tracker then reports that reading as `.level`.
+    func takeReferenceRequest() -> Bool {
+        defer { needsReference = false }
+        return needsReference
+    }
+
+    /// The earbud the readings come from. The two are mirror images, so a change
+    /// takes a new reference.
+    func noteSource(_ source: Source) {
+        guard source != self.source else { return }
+        self.source = source
+        needsReference = true
+    }
+
+    /// Access was refused while the tracker ran, in Settings or at the prompt.
+    func trackerWasRefused() {
+        switchOff(to: .denied)
+    }
+
     // MARK: - Switching
 
     private func switchOn() {
         guard status != .unsupported else { return }
-        if manager != nil {
-            switch CMHeadphoneMotionManager.authorizationStatus() {
-            case .denied, .restricted:
-                status = .denied
-                return
-            default:
-                break
-            }
+        if tracker?.isDenied == true {
+            status = .denied
+            return
         }
         status = .waiting
         needsReference = true
-        startUpdates()
+        guard let tracker else { return }
+        tracker.start(into: self)
+        startWatchdog()
     }
 
     private func switchOff(to status: Status) {
-        manager?.stopDeviceMotionUpdates()
+        tracker?.stop()
         watchdog?.cancel()
         watchdog = nil
-        reference = nil
         lastReading = nil
         releaseHead()
         self.status = status
@@ -257,18 +290,9 @@ final class HeadphoneTeleop {
         owner?.aim(.zero)
     }
 
-    // MARK: - Core Motion
-
-    private func startUpdates() {
-        guard let manager else { return }
-        // The main queue, so the handler runs on the main actor in all but name.
-        manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
-            nonisolated(unsafe) let motion = motion
-            let failed = error != nil
-            MainActor.assumeIsolated {
-                self?.handle(motion, failed: failed)
-            }
-        }
+    /// Only with a tracker: a test's hub has none and drives `checkForSilence` itself,
+    /// so no timer can interleave with it.
+    private func startWatchdog() {
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(250))
@@ -276,47 +300,6 @@ final class HeadphoneTeleop {
             }
         }
     }
-
-    private func handle(_ motion: CMDeviceMotion?, failed: Bool) {
-        if failed {
-            switch CMHeadphoneMotionManager.authorizationStatus() {
-            case .denied, .restricted:
-                switchOff(to: .denied)
-            default:
-                break
-            }
-            return
-        }
-        guard let motion else { return }
-        let attitude = motion.attitude
-        #if os(iOS)
-            let source = Self.source(of: motion.sensorLocation)
-            if source != self.source {
-                self.source = source
-                needsReference = true
-            }
-        #endif
-        if needsReference || reference == nil {
-            reference = attitude.copy() as? CMAttitude
-            needsReference = false
-            receive(.level, at: .now)
-            return
-        }
-        guard let reference, let relative = attitude.copy() as? CMAttitude else { return }
-        relative.multiply(byInverseOf: reference)
-        receive(HeadAttitude(yaw: relative.yaw, pitch: relative.pitch, roll: relative.roll), at: .now)
-    }
-
-    #if os(iOS)
-        /// `sensorLocation` is iOS only in the SDK, so the Mac reads no source at all.
-        private static func source(of location: CMDeviceMotion.SensorLocation) -> Source {
-            switch location {
-            case .headphoneLeft: .left
-            case .headphoneRight: .right
-            default: .unknown
-            }
-        }
-    #endif
 }
 
 extension View {

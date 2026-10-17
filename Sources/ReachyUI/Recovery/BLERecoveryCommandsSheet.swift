@@ -54,7 +54,7 @@ struct BLERecoveryCommandsSheet: View {
             )
             .font(Typography.console)
             .autocorrectionDisabled()
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .keyboardType(.asciiCapable)
                 .textInputAutocapitalization(.never)
             #endif

@@ -95,21 +95,20 @@ struct AdvancedScreen: View {
     /// SFTP needs a TCP route to port 22, which a relay session does not have — the
     /// Hugging Face relay carries WebRTC, not a tunnel (ADR 0003). So the row is
     /// absent rather than present and failing, the same way `canConfigureWiFi` gates
-    /// the network row.
+    /// the network row. It is absent on a platform with no SSH client too
+    /// (`RobotFileSystems.hasSSH`).
     @ViewBuilder
     private var filesLink: some View {
-        if let address = session.address, let robot = identity?.deduplicationKey {
+        if let address = session.address, let robot = identity?.deduplicationKey, RobotFileSystems.hasSSH {
             NavigationLink {
                 // Built in the destination closure rather than held here:
                 // `RobotFilesScreen` adopts it into `@State`, so a re-run does not
                 // replace a live session — the shape `YourReachiesScreen` uses.
-                RobotFilesScreen(
-                    model: RobotFilesModel(
-                        files: SSHFileSystem(robot: robot),
-                        robot: robot,
-                        host: address.host
+                if let files = RobotFileSystems.ssh(robot: robot) {
+                    RobotFilesScreen(
+                        model: RobotFilesModel(files: files, robot: robot, host: address.host)
                     )
-                )
+                }
             } label: {
                 Label(.reachy("Robot files"), systemImage: "folder")
             }

@@ -29,7 +29,7 @@ struct OnboardingPINStep: View {
                     .font(.title3.monospaced())
                     .autocorrectionDisabled()
                     .focused($focused)
-                #if os(iOS)
+                #if os(iOS) || os(visionOS)
                     // Deliberately not `.numberPad`: the code is the tail of a serial number
                     // and can contain letters, and autocapitalising it would break a robot
                     // whose code is lower-case.

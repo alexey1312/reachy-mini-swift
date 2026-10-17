@@ -77,7 +77,7 @@ struct WiFiJoinSheet: View {
             TextField(.reachy("Code"), text: $model.code)
                 .font(Typography.console)
                 .autocorrectionDisabled()
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .textInputAutocapitalization(.never)
             #endif
         } header: {

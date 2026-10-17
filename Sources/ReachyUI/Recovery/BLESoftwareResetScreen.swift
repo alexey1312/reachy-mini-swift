@@ -94,7 +94,7 @@ struct BLESoftwareResetScreen: View {
             TextField(.reachy("Hardware ID"), text: $typedID)
                 .font(Typography.console)
                 .autocorrectionDisabled()
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .textInputAutocapitalization(.never)
             #endif
         } header: {

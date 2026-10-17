@@ -636,10 +636,39 @@ so the slew limiter and the daemon's limits apply unchanged (project rule 2).
 
 ## Headphones that track a head
 
-`HeadphoneMotionMapping.swift`, `HeadphoneTeleop.swift` and `HeadTrackingSection.swift`.
+`HeadphoneMotionMapping.swift`, `HeadphoneTeleop.swift` and `HeadTrackingSection.swift`,
+plus a tracker per device: `HeadTracker.swift`, `HeadphoneTracker.swift` and, for visionOS,
+`HeadsetTracker.swift`, `HeadsetAttitude.swift` and `HeadsetTrackingSpace.swift`.
 AirPods or Beats that track the listener's head steer the robot's head,
+and on visionOS the headset itself does,
 from the Controller screen and from the pad over the camera.
 It is a spike: everything here is tested except the signs and the feel, which need a device.
+
+- **The device is a `HeadTracker`, and the hub is one for every device.**
+  A tracker keeps a reference, turns its device's readings into attitudes relative to it,
+  and hands each one to `HeadphoneTeleop.receive(_:at:)`.
+  The hub decides the rest: when a reference is due (`takeReferenceRequest()`),
+  the claims, the gate, the limiter, the silence watchdog and every way back to neutral.
+  So the headset is a tracker and nothing more, and a followed head reaches the robot through one path.
+  The tracker also brings its mapping, because the signs follow the frame its device reports in.
+  `HeadphoneTeleop` keeps its name; on visionOS its "headphones" are the headset.
+- **On visionOS the headset reads only while an immersive space is open.**
+  ARKit gives no device pose to an app in the Shared Space (Apple's sample,
+  "Placing entities using head and device transform", says so for `queryDeviceAnchor`).
+  So `headsetTrackingSpace()` opens an empty, mixed `HeadsetTrackingSpace` while the hub is on,
+  and the space switches the hub off when the reader closes it from the Digital Crown.
+  The hub stays the one truth about on and off, so the tracker starts before the space has opened,
+  and retries its session run until it does.
+  While the space is open the system hides other apps' windows, and the footer says so.
+  `queryDeviceAnchor` needs no authorization, so the tracker is never refused.
+- **The headset's signs follow from ARKit's documented frame, not from a guess.**
+  `HeadsetAttitude` decomposes the pose as a turn about the vertical, then a nod, then a tilt,
+  and measures each against the reference angle by angle, because ARKit's frame knows where gravity is:
+  a reference taken looking a little down then keeps a turn a pure turn.
+  ARKit's roll is positive with the left ear down and the robot's with the right,
+  so `HeadphoneMotionMapping.headset` is the measured reach with `rollSign` turned round.
+  `HeadsetAttitudeTests` holds each sign against what the rotation does to the head's own axes,
+  and goes red when `rollSign` is flipped back (checked by mutating it).
 
 - **One pair of headphones, one owner, so the hub is shared** — `HeadphoneTeleop.shared`,
   in the game controller's shape (the section above).
@@ -692,7 +721,7 @@ It is a spike: everything here is tested except the signs and the feel, which ne
 - **Readings are relative to the first one.**
   Core Motion reports a headphone's attitude in a frame of its own,
   so the first reading after a switch-on, an attach or Recentre becomes the reference,
-  and `CMAttitude.multiply(byInverseOf:)` gives every reading after it.
+  and `CMAttitude.multiply(byInverseOf:)` gives every reading after it (`HeadphoneTracker`).
 - **The signs are a device check.**
   `HeadphoneMotionMapping` assumes a right-handed frame with its vertical axis up.
   A wrong sign shows at once on the robot, and it is one number to flip.
@@ -704,17 +733,43 @@ It is a spike: everything here is tested except the signs and the feel, which ne
   A head that was never followed is not put back: the pad may have a thumb on it.
   A pad goes out while a head drives its own target (`HeadphoneTeleop.drives(_:)`),
   because two writers on one target fight every frame.
-- **iOS only, for now.**
+- **iOS and visionOS, not macOS.**
   `CMHeadphoneMotionManager` exists on macOS 14 too,
   but nobody has checked by hand which Motion pane a refusal would open there,
   and a wrong pane has no runtime signal (`PrivacySettingsLink`).
+  It does not exist on visionOS or tvOS at all, which is why Core Motion now lives in an iOS-only file.
 - **No capture reads the device.**
   The section shows only for a status other than `.unsupported`,
-  and only `observeHeadphones()` reads one — a call no capture makes.
+  and only `observeDevice()` reads one — a call no capture makes.
   So adopting it moved no reference that predates it,
   four `Controller —` previews hand in the states they show,
   and `Camera — head tracking offered` and `— following a head` hand the pad a hub, off and on.
   `Controller — following a head` also hands in a reading, so its references show the live line.
+
+## visionOS
+
+`Apps/ReachyVision` runs this target's screens in a visionOS window.
+`docs/research/visionos.md` says what was measured and what needs a headset.
+
+- **visionOS takes the iOS branch where it has the API, and a fork of its own where it does not.**
+  Every `#if os(…)` here used to be an iOS-or-macOS fork, so a third platform fell into the macOS branch,
+  and that branch imports AppKit.
+  The forks over UIKit and over iOS-only SwiftUI modifiers that visionOS also has —
+  text input traits, inline titles, the web views, the clipboard, the Settings link, a notification's tap —
+  now read `os(iOS) || os(visionOS)`.
+  Alternate icons, quick actions, Live Activities and the call framing stay iOS only,
+  because visionOS has none of them.
+  A new `#if os(iOS)` owes the same question: does visionOS have this?
+- **The viewport stays in the Live tab** (`FloatingViewportModel.offersSecondPlace`).
+  The inspector column does not exist on visionOS,
+  and a window floating over the app's own window is a second window, which visionOS gives the reader to place.
+  The Live tab's options menu is absent there for the same reason.
+- **The dock's bleed is zero**, because a headset has no cutout and no orientation.
+- **No SFTP.** `RobotFileSystems.hasSSH` is false, so the Files row is absent
+  and the Health screen settles in the state it takes for a robot with no LAN address.
+  `ReachySSH/AGENTS.md` has why.
+- **No capture covers visionOS.** The snapshot suite renders on an iPhone simulator,
+  so nothing here certifies a visionOS layout. That is a simulator and headset check.
 
 ## Errors
 

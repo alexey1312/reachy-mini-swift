@@ -157,7 +157,7 @@ final class RobotFilesModel {
         case let .hostKeyChanged(_, offered): offered
         default: nil
         }
-        guard let offered, let files = files as? SSHFileSystem else {
+        guard let offered, let files = files as? any HostKeyPinning else {
             // A stub file system has no key to pin; treat acceptance as a retry so
             // previews and tests can drive the same button.
             await connect()

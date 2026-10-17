@@ -255,6 +255,12 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
     Measured on every launch but the first: `open -n` started the process with no window,
     so no view appeared and no `.task` ran, which reads as an app that does nothing.
     A deep link makes `WindowGroup` open one: `open -n -a <ReachyMini.app> reachy-mini-swift://robot`.
+- **visionOS has no Liquid Glass, so a role there takes its material.** `glassEffect`, `Glass`,
+  `GlassEffectContainer`, `.glassProminent`, `scrollEdgeEffectStyle` and `ToolbarSpacer` are all unavailable on
+  visionOS, and `#available(iOS 26.0, macOS 26.0, *)` does not keep them out: its `*` passes on visionOS
+  and the compiler then refuses the symbol. Each sits behind `#if !os(visionOS)` instead.
+  visionOS materials already are glass, so `.chrome`, `.card` and `.scrim` look right there without it,
+  and the prominent buttons are bordered, as under a capture.
 - **Every role lays an opaque `baseFill` first, then the effect on top.** Neither glass nor a material renders in a
   headless snapshot (`RunningAppDock`'s `windowEdge` records the same about `.bar`). Without a fill that _does_ render,
   every surface would be invisible to the reference images and the layout and text on each card would silently lose

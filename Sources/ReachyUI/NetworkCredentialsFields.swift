@@ -34,7 +34,7 @@ struct NetworkCredentialsFields: View {
         if selected == nil {
             TextField(.reachy("Network name"), text: $manualSSID)
                 .autocorrectionDisabled()
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .textInputAutocapitalization(.never)
             #endif
         }

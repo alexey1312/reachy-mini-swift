@@ -792,6 +792,10 @@ the localization catalogue. Read it before any visual change, not after one move
 Background reading: `docs/adr/` for accepted decisions, `docs/research/webrtc.md` for 8443 signaling quirks, and
 `docs/research/ios-27.md` for the Xcode 27 move — what was measured, why `@ContentBuilder` is not an adoption task,
 and the audit of what iOS 27 still asks of this app.
+`docs/research/visionos.md` is the visionOS app, `Apps/ReachyVision`:
+what visionOS refuses, why it is a target of its own, and what only a headset can check.
+No CI job builds it, so a change to `Sources/` that visionOS also compiles needs the local
+`xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyVision -destination 'generic/platform=visionOS Simulator' build`.
 
 **`docs/` is also the GitHub Pages root**, served at `https://alexey1312.github.io/reachy-mini-swift/` by Pages' own
 Jekyll (Settings → Pages → Deploy from a branch → `main` → `/docs`). There is no workflow, no mise task and no Ruby

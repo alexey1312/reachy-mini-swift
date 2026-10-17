@@ -29,13 +29,19 @@ public struct ReachySurfaceGroup<Content: View>: View {
         self.content = content()
     }
 
+    /// visionOS has no `GlassEffectContainer`, so it renders the content untouched
+    /// there, as below the floor.
     public var body: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing) {
+        #if os(visionOS)
+            content
+        #else
+            if #available(iOS 26.0, macOS 26.0, *) {
+                GlassEffectContainer(spacing: spacing) {
+                    content
+                }
+            } else {
                 content
             }
-        } else {
-            content
-        }
+        #endif
     }
 }

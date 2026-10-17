@@ -1,7 +1,7 @@
 import Foundation
 import ReachyKit
 import UserNotifications
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     import UIKit
 #elseif os(macOS)
     import AppKit
@@ -49,7 +49,7 @@ public final class JobNotificationResponder: NSObject, UNUserNotificationCenterD
 
     @MainActor
     private static func open(_ url: URL) {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             UIApplication.shared.open(url)
         #elseif os(macOS)
             // This copy of the app rather than whichever one LaunchServices would pick

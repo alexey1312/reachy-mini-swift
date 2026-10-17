@@ -21,7 +21,7 @@ struct SSHPasswordForm: View {
                 TextField(.reachy("User"), text: $username)
                     .textContentType(.username)
                     .autocorrectionDisabled()
-                #if os(iOS)
+                #if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                 #endif
                 SecureField(.reachy("Password"), text: $password)

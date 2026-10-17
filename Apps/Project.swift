@@ -1,4 +1,5 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 /// The app and its widget extension are separate processes with separate
 /// containers, so anything both must read — the known robots, the snapshot the
@@ -230,6 +231,9 @@ let project = Project(
                 "ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS[sdk=iphone*]": "YES",
             ])
         ),
+        // Apple Vision Pro, native — in a helper file, because this one is at
+        // SwiftLint's 400-line limit (`ProjectDescriptionHelpers/ReachyVision.swift`).
+        .reachyVision(appGroup: appGroup),
         // Deliberately thin: a timeline provider over the shared snapshot and a
         // view. It depends on ReachyWidgetUI rather than ReachyUI so that a
         // process woken for a moment does not link WebRTC and RealityKit.

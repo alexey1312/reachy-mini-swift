@@ -87,13 +87,25 @@ public struct ReachySurfaceFill<S: Shape>: View {
     /// instead it has no backdrop to refract and the iOS 26 simulator renders it as
     /// a black-red-green smear — which is what the dock's reference image caught.
     ///
-    /// `.glassEffect` is multiplatform, so there is no `#if os(…)` and macOS 26
-    /// gets real glass — which an iOS-only backport never could.
+    /// `.glassEffect` is on iOS and macOS alike, so macOS 26 gets real glass —
+    /// which an iOS-only backport never could. visionOS is the one exception: it has
+    /// no Liquid Glass, and its materials already are glass, so it takes the material.
     @ViewBuilder
     private var effect: some View {
-        if #available(iOS 26.0, macOS 26.0, *), let glass = role.glass {
-            base.glassEffect(glass, in: shape)
-        } else if let material = role.material {
+        #if os(visionOS)
+            materialEffect
+        #else
+            if #available(iOS 26.0, macOS 26.0, *), let glass = role.glass {
+                base.glassEffect(glass, in: shape)
+            } else {
+                materialEffect
+            }
+        #endif
+    }
+
+    @ViewBuilder
+    private var materialEffect: some View {
+        if let material = role.material {
             base.overlay { shape.fill(material) }
         } else {
             base
@@ -149,20 +161,22 @@ extension SurfaceRole {
         }
     }
 
-    /// A badge takes no effect at all: it sits inside a card and floats over
-    /// nothing, so there is nothing behind it for glass to refract or a material
-    /// to blur. Its fill alone is the surface. A page is the same claim from the
-    /// other side: it *is* the backdrop, so there is nothing behind it either.
-    @available(iOS 26.0, macOS 26.0, *)
-    var glass: Glass? {
-        switch self {
-        // Only the chrome is touched. The rest are backdrops, and interactive
-        // glass on one would react to every scroll passing under it.
-        case .chrome: .regular.interactive()
-        case .card, .scrim: .regular
-        case .badge, .window, .page: nil
+    // A badge takes no effect at all: it sits inside a card and floats over
+    // nothing, so there is nothing behind it for glass to refract or a material
+    // to blur. Its fill alone is the surface. A page is the same claim from the
+    // other side: it *is* the backdrop, so there is nothing behind it either.
+    #if !os(visionOS)
+        @available(iOS 26.0, macOS 26.0, *)
+        var glass: Glass? {
+            switch self {
+            // Only the chrome is touched. The rest are backdrops, and interactive
+            // glass on one would react to every scroll passing under it.
+            case .chrome: .regular.interactive()
+            case .card, .scrim: .regular
+            case .badge, .window, .page: nil
+            }
         }
-    }
+    #endif
 
     /// A badge takes a fill rather than the window colour: it sits *on* a card,
     /// and `.background` there would punch a hole straight through to the screen.

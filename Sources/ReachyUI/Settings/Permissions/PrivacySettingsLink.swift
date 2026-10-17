@@ -1,7 +1,7 @@
 import ReachyDesign
 import SwiftUI
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     import UIKit
 #elseif os(macOS)
     import AppKit
@@ -36,7 +36,7 @@ public enum PrivacySettingsLink {
 
     @MainActor
     public static func open(_ pane: Pane) {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             // `pane` goes unused here on purpose: there is one destination.
             guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
             UIApplication.shared.open(url)
@@ -66,7 +66,7 @@ public enum PrivacySettingsLink {
             switch pane {
             case .notifications:
                 "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
-            // Not offered on a Mac yet (`HeadphoneTeleop.observeHeadphones`), and its
+            // Not offered on a Mac yet (`HeadphoneTeleop.observeDevice`), and its
             // anchor was never checked by hand, so the list rather than a guess.
             case .motion:
                 "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"

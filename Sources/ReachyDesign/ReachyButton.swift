@@ -100,13 +100,18 @@ private struct ReachyButtonStyle: ViewModifier {
 
     /// Glass on iOS 26 and macOS 26, bordered under a headless capture and below
     /// the floor. The capture is the only place the two differ on purpose: glass
-    /// blanks it, and a blank reference is worse than a missing one.
+    /// blanks it, and a blank reference is worse than a missing one. visionOS has
+    /// no glass button style, so it is bordered there too.
     @ViewBuilder
     private func prominent(_ content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *), !previewMode {
-            content.buttonStyle(.glassProminent)
-        } else {
+        #if os(visionOS)
             content.buttonStyle(.borderedProminent)
-        }
+        #else
+            if #available(iOS 26.0, macOS 26.0, *), !previewMode {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content.buttonStyle(.borderedProminent)
+            }
+        #endif
     }
 }
