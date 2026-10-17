@@ -1,9 +1,10 @@
 import ReachyDesign
 import SwiftUI
 
-/// The Controller screen's switch for `HeadphoneTeleop` (the AirPods spike).
+/// The Controller screen's switch for `HeadphoneTeleop` (the AirPods spike). On
+/// visionOS the device is the headset, so the copy says nothing about headphones.
 ///
-/// Absent wherever the model reads `.unsupported`, which is every Mac, every simulator
+/// Absent wherever the model reads `.unsupported`, which is every Mac, every iOS simulator
 /// and every capture that does not hand in a state of its own — so adopting it moved no
 /// reference that predates it.
 struct HeadTrackingSection: View {
@@ -20,12 +21,21 @@ struct HeadTrackingSection: View {
             } header: {
                 Text(.reachy("Head tracking"))
             } footer: {
-                Text(
-                    .reachy(
-                        // swiftlint:disable:next line_length
-                        "With AirPods or Beats that track your head, the robot turns its head as you turn yours. Look straight ahead when you switch it on."
+                #if os(visionOS)
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "The robot turns its head as you turn yours. Look straight ahead when you switch it on. While it is on, the windows of other apps are hidden."
+                        )
                     )
-                )
+                #else
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "With AirPods or Beats that track your head, the robot turns its head as you turn yours. Look straight ahead when you switch it on."
+                        )
+                    )
+                #endif
             }
         }
     }
@@ -34,8 +44,13 @@ struct HeadTrackingSection: View {
     private var status: some View {
         switch model.status {
         case .waiting:
-            Text(.reachy("Waiting for headphones that track your head."))
-                .foregroundStyle(.secondary)
+            #if os(visionOS)
+                Text(.reachy("Waiting for the position of your head."))
+                    .foregroundStyle(.secondary)
+            #else
+                Text(.reachy("Waiting for headphones that track your head."))
+                    .foregroundStyle(.secondary)
+            #endif
         case .following:
             // The one control the reader needs while following: their own "straight
             // ahead" drifts as they settle into a chair.

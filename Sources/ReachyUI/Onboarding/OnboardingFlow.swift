@@ -171,7 +171,7 @@ struct OnboardingBackButton: View {
 
 private extension View {
     func toolbarTitleStyle() -> some View {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
             navigationBarTitleDisplayMode(.inline)
         #else
             self

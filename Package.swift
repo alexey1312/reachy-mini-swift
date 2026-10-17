@@ -111,7 +111,14 @@ let package = Package(
         // arrive as values, the way a Hugging Face token reaches ReachyKit.
         .target(
             name: "ReachySSH",
-            dependencies: [.product(name: "Citadel", package: "Citadel"), "ReachyJSON", "ReachyKeychain"],
+            // Citadel on iOS and macOS only: its fork of swift-nio-ssh imports `NIO`
+            // without depending on it, which fails the tvOS and visionOS builds. There
+            // `RobotFileSystems.ssh(robot:)` answers nil, as for a robot with no address.
+            dependencies: [
+                .product(name: "Citadel", package: "Citadel", condition: .when(platforms: [.iOS, .macOS])),
+                "ReachyJSON",
+                "ReachyKeychain",
+            ],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
         .target(

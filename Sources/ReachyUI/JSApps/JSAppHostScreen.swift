@@ -29,7 +29,7 @@ import SwiftUI
             NavigationStack {
                 content
                     .navigationTitle(Text(verbatim: model.app.title))
-                #if os(iOS)
+                #if os(iOS) || os(visionOS)
                     .navigationBarTitleDisplayMode(.inline)
                 #endif
                     .toolbar {

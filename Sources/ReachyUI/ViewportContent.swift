@@ -177,7 +177,7 @@ struct TeleopPadCluster: View {
             Button {
                 hub.setOn(!hub.isOn)
             } label: {
-                Label(.reachy("Follow my head"), systemImage: "airpods.pro")
+                Label(.reachy("Follow my head"), systemImage: Self.headTrackingSymbol)
                     .labelStyle(.iconOnly)
                     .foregroundStyle(hub.isOn ? Tone.brand.style : Tone.quiet.style)
             }
@@ -185,6 +185,15 @@ struct TeleopPadCluster: View {
             .help(Text(.reachy("Follow my head")))
             .accessibilityValue(Text(hub.isOn ? .reachy("On") : .reachy("Off")))
         }
+    }
+
+    /// The device that reads the head: headphones, or on visionOS the headset itself.
+    private static var headTrackingSymbol: String {
+        #if os(visionOS)
+            "visionpro"
+        #else
+            "airpods.pro"
+        #endif
     }
 
     private func connectTeleop() {

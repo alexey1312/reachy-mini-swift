@@ -21,7 +21,7 @@ struct ManualAddressSection: View {
         Section {
             TextField(.reachy("host, host:port, or IP"), text: $input)
                 .autocorrectionDisabled()
-            #if os(iOS)
+            #if os(iOS) || os(visionOS)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
             #endif

@@ -49,12 +49,18 @@ public extension View {
     /// 150 pt, which is where the effect draws. What the other three add there is a
     /// hairline under the bar, and over a log tail that reads as one more row
     /// separator, which the list hides everywhere else.
+    ///
+    /// visionOS draws no scroll edge effect, so there is nothing to soften there.
     @ViewBuilder
     func reachySoftScrollEdge(_ edges: Edge.Set) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: edges)
-        } else {
+        #if os(visionOS)
             self
-        }
+        #else
+            if #available(iOS 26.0, macOS 26.0, *) {
+                scrollEdgeEffectStyle(.soft, for: edges)
+            } else {
+                self
+            }
+        #endif
     }
 }

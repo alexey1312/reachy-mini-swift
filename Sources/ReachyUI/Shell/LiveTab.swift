@@ -54,7 +54,9 @@ struct LiveTab: View {
                             .help(Text(.reachy("Controller")))
                         }
                     }
-                    ToolbarItem { optionsMenu }
+                    if FloatingViewportModel.offersSecondPlace {
+                        ToolbarItem { optionsMenu }
+                    }
                 }
         }
     }

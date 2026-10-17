@@ -157,7 +157,8 @@ private struct FloatingViewportModifier: ViewModifier {
     /// `hasTabBar`, and `AGENTS.md` carries why neither is a layout fork. It asks where
     /// the screen's physical edge is, and moves one point to meet it.
     private func dockBleed(in geometry: GeometryProxy) -> FloatingViewportModel.EdgeBleed {
-        #if os(macOS)
+        // A Mac and a headset have no cutout, and a headset no orientation either.
+        #if os(macOS) || os(visionOS)
             .none
         #else
             switch interfaceOrientation {
@@ -168,7 +169,7 @@ private struct FloatingViewportModifier: ViewModifier {
         #endif
     }
 
-    #if !os(macOS)
+    #if os(iOS)
         /// Re-read rather than observed: this is only ever called from inside the
         /// overlay's `GeometryReader`, and a rotation changes that reader's size — so
         /// the closure runs again with the orientation already settled, and there is no

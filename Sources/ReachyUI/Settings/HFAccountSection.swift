@@ -184,7 +184,7 @@ struct HFAccountSection: View {
                 SecureField(.reachy("hf_xxx…"), text: $model.pastedToken)
                     .textContentType(.password)
                     .autocorrectionDisabled()
-                #if os(iOS)
+                #if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                 #endif
                 Button(.reachy("Sign in with this token")) {

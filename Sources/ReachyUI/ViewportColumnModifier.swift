@@ -63,23 +63,35 @@ private struct ViewportColumnModifier: ViewModifier {
         return { [session] in try session.makeTeleop() }
     }
 
+    /// visionOS has no inspector, and no column with it
+    /// (`FloatingViewportModel.offersSecondPlace`).
     func body(content: Content) -> some View {
-        content
-            // `.constant`, never a two-way binding. SwiftUI writes back through one
-            // when it collapses the inspector itself — and it collapses it whenever
-            // the width class changes, which on an iPad is a Split View resize away.
-            // That write would land in `setEnabled(false)`, persisting "do not offer
-            // it" because a window was dragged narrower. The model is the only truth
-            // about placement; the switch that writes it is in the Live tab's toolbar.
-            .inspector(isPresented: .constant(isPresented)) {
-                columnContent
-                    .inspectorColumnWidth(
-                        min: Metrics.viewportColumnMinWidth,
-                        ideal: Metrics.viewportColumnIdealWidth,
-                        max: Metrics.viewportColumnMaxWidth
-                    )
-            }
+        #if os(visionOS)
+            content
+        #else
+            column(over: content)
+        #endif
     }
+
+    #if !os(visionOS)
+        private func column(over content: Content) -> some View {
+            content
+                // `.constant`, never a two-way binding. SwiftUI writes back through one
+                // when it collapses the inspector itself — and it collapses it whenever
+                // the width class changes, which on an iPad is a Split View resize away.
+                // That write would land in `setEnabled(false)`, persisting "do not offer
+                // it" because a window was dragged narrower. The model is the only truth
+                // about placement; the switch that writes it is in the Live tab's toolbar.
+                .inspector(isPresented: .constant(isPresented)) {
+                    columnContent
+                        .inspectorColumnWidth(
+                            min: Metrics.viewportColumnMinWidth,
+                            ideal: Metrics.viewportColumnIdealWidth,
+                            max: Metrics.viewportColumnMaxWidth
+                        )
+                }
+        }
+    #endif
 
     /// **The guard that keeps a second `RealityView` off the screen.** Neither the
     /// reference documentation nor WWDC23's session on inspectors says whether this

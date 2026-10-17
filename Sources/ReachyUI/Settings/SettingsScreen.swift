@@ -97,7 +97,7 @@ struct SettingsScreen: View {
                     // A `Form` row does not grey a disabled `TextField` out on its own,
                     // and the footer alone reads as a note rather than as a locked field.
                     .foregroundStyle(nameField.isEditable ? Color.primary : Color.secondary)
-                #if os(iOS)
+                #if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                 #endif
                 if isRenaming {
