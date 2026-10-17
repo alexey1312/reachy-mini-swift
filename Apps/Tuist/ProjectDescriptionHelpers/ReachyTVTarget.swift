@@ -47,6 +47,16 @@ public extension Target {
                 "NSMicrophoneUsageDescription": .string(
                     "Hey Reachy never records with a microphone on Apple TV; the robot video stack references this API."
                 ),
+                // App Store Connect refused the first tvOS build without these (ITMS-90683):
+                // the camera key is an error, the Bluetooth one a warning. The TV uses
+                // neither, but LiveKit's WebRTC references the camera and ReachyKit
+                // CoreBluetooth, so each string says what the app really does with it.
+                "NSCameraUsageDescription": .string(
+                    "Hey Reachy never uses a camera on Apple TV; the robot video stack references this API."
+                ),
+                "NSBluetoothAlwaysUsageDescription": .string(
+                    "Hey Reachy does not use Bluetooth on Apple TV; robot setup over Bluetooth is on iPhone and iPad."
+                ),
                 // Both profiles drive the robot (`GamepadTeleop`). There is deliberately no
                 // `GCSupportsControllerUserInteraction`: with it a controller would also move
                 // focus, and its left stick and B button are already the body's turn and the
@@ -71,6 +81,9 @@ public extension Target {
                 // The camera: `CameraSession` and `CameraVideoView`, over LiveKit's WebRTC
                 // on tvOS, since stasel ships no tvOS slice (`Sources/ReachyMedia/AGENTS.md`).
                 .package(product: "ReachyMedia"),
+                // "Try without a robot": the phone's own simulated robot, for anybody with
+                // no Reachy Mini to hand — App Review included.
+                .package(product: "ReachySimulator"),
                 .package(product: "ReachyTeleop"),
             ],
             settings: .settings(base: [

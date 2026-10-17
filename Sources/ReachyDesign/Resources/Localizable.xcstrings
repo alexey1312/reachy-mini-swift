@@ -262,6 +262,35 @@
         }
       }
     },
+    "A robot simulated by this app, with no hardware. You can wake it and drive it, and it has no camera.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein von dieser App simulierter Roboter, ohne Hardware. Du kannst ihn aufwecken und steuern, und er hat keine Kamera."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot simulado por esta app, sin hardware. Puedes despertarlo y pilotarlo, y no tiene cámara."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un robot simulé par cette app, sans matériel. Vous pouvez le réveiller et le piloter, et il n’a pas de caméra."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот, которого имитирует это приложение, без оборудования. Его можно разбудить и управлять им, но у него нет камеры."
+          }
+        }
+      }
+    },
     "A script answers nothing — the robot's handler crashes encoding its own reply. Watch the journal for what happened.": {
       "extractionState": "manual",
       "localizations": {
@@ -18441,6 +18470,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторить"
+          }
+        }
+      }
+    },
+    "Try without a robot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne Roboter ausprobieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar sin robot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essayer sans robot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробовать без робота"
           }
         }
       }

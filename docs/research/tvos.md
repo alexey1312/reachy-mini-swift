@@ -74,6 +74,27 @@ With `mise run sim-daemon` running on the same Mac, it connects by itself.
   Both inputs write one target through `TeleopDriver`, with the same slew limiter as the phone,
   and only while the robot is awake and no power transition runs (pollen-robotics/reachy_mini#1430).
 
+## Without a robot
+
+App Review has no Reachy Mini, and neither has somebody who wants to try the app first.
+**Try without a robot**, in the Simulator section at the foot of the connect screen,
+opens the phone's own simulated robot (`ReachySimulator`, "Start the simulator" on the phone):
+no hardware, no network and no camera.
+It starts asleep, wakes, and drives through the same `TeleopDriver` as a real robot.
+
+- **The drive screen shows the robot's own angles** (`TVPose`, from `RobotStateFrame.HeadPose.yawAndPitch`):
+  head yaw, head pitch and body yaw, ten times a second, read from the simulator itself
+  or from the robot's state socket on the LAN.
+  Without them, driving the simulator on a TV would show nothing at all,
+  because the TV has no 3D model and the simulator no camera.
+  Measured on the tvOS 27 simulator: a stick held up and to the left read 32° and −20°, the targets exactly.
+- **The root keeps the simulated client** and calls `shutDown()` when the session goes idle,
+  because nothing else stops its pose loop.
+- **The four usage strings** the TV declares are each about what the app does not do on Apple TV:
+  Local Network is used; the camera, the microphone and Bluetooth are not,
+  but LiveKit's WebRTC and ReachyKit reference them, and App Store Connect refused the first build
+  without the camera one (ITMS-90683).
+
 ## What was measured
 
 ### On the tvOS simulator, 2026-10-17

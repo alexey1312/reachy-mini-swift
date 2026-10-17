@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachySimulator
 import SwiftUI
 
 /// One connected robot: its name and address, whether it is awake, and the three
@@ -9,6 +10,8 @@ import SwiftUI
 /// use is the first question when something goes wrong (`.claude/rules/networking.md`).
 struct TVRobotScreen: View {
     let session: RobotSession
+    /// The in-app simulated robot, when this session is one; `nil` for a robot on the network.
+    let simulator: SimulatedRobotClient?
     @State private var isDriving = false
 
     var body: some View {
@@ -52,7 +55,13 @@ struct TVRobotScreen: View {
         }
         .padding(TVMetrics.gutter)
         .fullScreenCover(isPresented: $isDriving) {
-            TVDriveScreen(session: session)
+            TVDriveScreen(session: session, simulator: simulator)
+        }
+        .onAppear {
+            // What a press on Drive does, for a screenshot or a check (`TVCaptureStage`).
+            if TVCaptureStage.current?.opensDrive == true {
+                isDriving = true
+            }
         }
     }
 
