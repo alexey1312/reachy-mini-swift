@@ -1,4 +1,5 @@
 import Foundation
+import ReachyTeleop
 
 /// The listener's head as headphones report it, relative to where it looked when
 /// it was last centred. Core Motion's own three angles, in radians, before any of
@@ -9,17 +10,6 @@ struct HeadAttitude: Equatable, Sendable {
     var roll = 0.0
 
     static let level = HeadAttitude()
-}
-
-/// A head pose in the robot's convention, measured from the body like every angle
-/// the pad produces: yaw is positive to the robot's left, pitch positive looking
-/// down, roll positive with the right ear down.
-struct HeadAim: Equatable, Sendable {
-    var yaw = 0.0
-    var pitch = 0.0
-    var roll = 0.0
-
-    static let zero = HeadAim()
 }
 
 /// Turns a head's attitude into the robot's (the AirPods spike).

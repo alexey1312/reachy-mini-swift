@@ -3,6 +3,9 @@
 #
 #   Scripts/check-appintents-metadata.sh <ReachyMini.app | ReachyMini-*.xcarchive>
 #
+# A tvOS bundle carries no App Intents by design, so for one this asserts only that
+# no `extract.packagedata` is present.
+#
 # TestFlight 0.1.1 installed with no actions in the Shortcuts app at all. The
 # intents live in a static SPM library (ReachyWidgetUI), so Shortcuts only ever
 # sees what appintentsmetadataprocessor extracted into `Metadata.appintents` at
@@ -172,12 +175,25 @@ metadata = list(target.rglob("extract.actionsdata"))
 app_files = [p for p in metadata if not any(a.suffix == ".appex" for a in p.parents)]
 appex_files = [p for p in metadata if p not in app_files]
 
+# An iOS, visionOS or tvOS bundle keeps its Info.plist at the root, and only
+# CFBundleSupportedPlatforms tells them apart: `XROS` / `XRSimulator` for visionOS,
+# `AppleTVOS` / `AppleTVSimulator` for tvOS. A macOS bundle has none here.
+info = target / "Info.plist"
+platforms = plistlib.loads(info.read_bytes()).get("CFBundleSupportedPlatforms", []) if info.exists() else []
+# The TV app carries no App Intents at all, by design: it is a shell over ReachyKit and
+# ReachyTeleop, and links neither ReachyWidgetUI nor the iPhone app's intents
+# (docs/research/tvos.md). So a tvOS bundle owes no actions. It still may not carry an
+# `extract.packagedata`, which the check below the actions applies to every bundle.
+is_tvos = any(name.startswith("AppleTV") for name in platforms)
+
 failures = []
 # Reported on success, so a green log says the check ran. A check nobody can see is one
 # that gets deleted unnoticed.
 checked_sizes = 0
 
-if len(app_files) != 1:
+if is_tvos and not app_files:
+    pass
+elif len(app_files) != 1:
     failures.append(
         f"expected exactly one Metadata.appintents/extract.actionsdata in the app "
         f"bundle, found {len(app_files)}: {[str(p) for p in app_files]}"
@@ -189,10 +205,7 @@ else:
     # root. That is the same distinction `mise run inspect:bundle` draws, and it is
     # the only one available from the artifact alone.
     is_macos = (target / "Contents" / "Info.plist").exists()
-    # A visionOS bundle is laid out like an iOS one, so only its Info.plist tells them
-    # apart: `XROS` on a device, `XRSimulator` on the simulator.
-    info = target / "Info.plist"
-    platforms = plistlib.loads(info.read_bytes()).get("CFBundleSupportedPlatforms", []) if info.exists() else []
+    # A visionOS bundle is laid out like an iOS one; `platforms` above tells them apart.
     is_visionos = any(name.startswith("XR") for name in platforms)
     required = REQUIRED_APP_ACTIONS + ([] if is_macos or is_visionos else REQUIRED_IOS_APP_ACTIONS)
     missing = [name for name in required if name not in actions]
@@ -285,6 +298,10 @@ if failures:
     for failure in failures:
         print(f"  - {failure}", file=sys.stderr)
     sys.exit(1)
+
+if not app_files:
+    print(f"App Intents metadata OK: a tvOS bundle ({', '.join(platforms)}), which carries none by design")
+    sys.exit(0)
 
 data = json.loads(app_files[0].read_text())
 print(

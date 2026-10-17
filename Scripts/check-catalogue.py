@@ -196,6 +196,7 @@ def is_prose(body: str) -> bool:
 # fallbacks are not a rule-9 failure.
 BARE_LITERAL_ROOTS = (
     pathlib.Path("Sources/ReachyDesign"),
+    pathlib.Path("Sources/ReachyTeleop"),
     pathlib.Path("Sources/ReachyUI"),
     pathlib.Path("Sources/ReachyWidgetUI"),
     pathlib.Path("Apps"),

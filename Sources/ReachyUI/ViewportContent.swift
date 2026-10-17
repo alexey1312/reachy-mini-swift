@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyTeleop
 import SwiftUI
 
 /// The live view of the robot with nothing around it — the renderer, and whatever

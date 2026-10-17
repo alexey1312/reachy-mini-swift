@@ -165,6 +165,27 @@ xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyMini \
   build 2>&1 | xcsift
 '''
 
+# The TV app (`Apps/ReachyTV`). Built for the tvOS simulator rather than a device:
+# nothing here signs for tvOS yet, and no CI job builds it — the five macOS slots are
+# spent (`docs/research/tvos.md`). So this task is the only thing that compiles the
+# TV shell and ReachyTeleop's tvOS branch; run it after touching either.
+[tasks."build:app:tv"]
+description = "Build the Apple TV app (tvOS simulator, unsigned)"
+depends = ["project"]
+run = '''
+set -o pipefail
+RESULT_BUNDLE=Apps/DerivedData/ResultBundles/ReachyTV.xcresult
+rm -rf "$RESULT_BUNDLE"
+xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyTV \
+  -destination 'generic/platform=tvOS Simulator' -configuration Debug \
+  -derivedDataPath Apps/DerivedData \
+  -resultBundlePath "$RESULT_BUNDLE" \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation -skipMacroValidation \
+  ${REACHY_XCB_EXTRA:-} \
+  build 2>&1 | xcsift
+'''
+
 # Release builds exist to guard archive-ability: nothing else compiles the
 # Release configuration, so a broken one would first surface at archive time.
 # Each ends by asserting the built app carries its App Intents metadata —
@@ -503,7 +524,7 @@ for PIN in prefire swift-snapshot-testing; do
     exit 1
   fi
 done
-PATHS="Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyUISnapshotTests Apps/ReachyWidget"
+PATHS="Sources Tests Apps/ReachyMini Apps/ReachyStorybook Apps/ReachyTV Apps/ReachyUISnapshotTests Apps/ReachyWidget"
 # xcsift is an Xcode-output filter and ships for macOS only, so a Linux checkout has
 # swiftlint but not the pipe to read it through. Raw output is no loss here — AGENTS.md
 # already says to rerun the tool directly when xcsift truncates a long run.
@@ -636,11 +657,15 @@ git diff --stat Sources/ReachyDesign/Resources
 """
 
 [tasks."theme:icons"]
-description = "Regenerate the six AppIcon*.icon bundles and the visionOS icon from the palette"
+description = "Regenerate the six AppIcon*.icon bundles and the visionOS and tvOS icons from the palette"
 run = """
 set -o pipefail
-swift Scripts/render-app-icon.swift
-git status --porcelain Apps/ReachyMini/Resources Apps/ReachyVision/Resources
+# Compiled rather than run: `swift` runs one file, and the renderer is several
+# (Scripts/render-app-icon/main.swift says why).
+BIN="$(mktemp -d)/render-app-icon"
+swiftc -o "$BIN" Scripts/render-app-icon/*.swift
+"$BIN"
+git status --porcelain Apps/ReachyMini/Resources Apps/ReachyVision/Resources Apps/ReachyTV/Resources
 """
 
 # `simulator:*` is the iOS simulator; `sim-daemon` and `test:sim` are the *robot*

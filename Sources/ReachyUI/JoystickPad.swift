@@ -1,4 +1,5 @@
 import ReachyDesign
+import ReachyTeleop
 import SwiftUI
 
 /// 2D touch pad emitting a normalized deflection; snaps back to center on release.

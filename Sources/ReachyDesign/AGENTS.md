@@ -86,9 +86,9 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
   above the 3:1 floor. Escaping the system orange's hue upward runs into near-white before it clears 30°, so the
   only room to move is downward in lightness — hence a dark-appearance accent that is deliberately darker than the
   rest of this palette's dark accents tend to be.
-- **A theme's icon is generated, and the `.icon` is the only pipeline.** `Scripts/render-app-icon.swift` writes six
+- **A theme's icon is generated, and the `.icon` is the only pipeline.** `Scripts/render-app-icon/` writes six
   `Apps/ReachyMini/Resources/AppIcon*.icon` bundles from its own copy of the gradient stops — the same hand-kept
-  duplicate `render-theme-colors.swift` carries, and for the same reason (a script run by `swift` cannot link this
+  duplicate `render-theme-colors.swift` carries, and for the same reason (a standalone program cannot link this
   module). All six share a byte-identical `Assets/robot.png`; only `icon.json`'s `fill` differs, which is why adding
   a theme's icon is two constants rather than an artwork task. `JSONSerialization` is called with `.sortedKeys` so a
   re-run is byte-identical; without it the key order is the hash order and every run dirties the diff. Never

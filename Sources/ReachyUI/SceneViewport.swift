@@ -1,6 +1,7 @@
 import ReachyDesign
 import ReachyKit
 import ReachyScene
+import ReachyTeleop
 import SwiftUI
 
 /// The 3D robot inside the viewport.

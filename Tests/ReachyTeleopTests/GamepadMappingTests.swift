@@ -1,4 +1,4 @@
-@testable import ReachyUI
+@testable import ReachyTeleop
 import Testing
 
 /// A controller reading means something only through `TeleopDriver`, so most of these

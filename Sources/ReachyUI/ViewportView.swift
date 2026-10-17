@@ -1,6 +1,7 @@
 import ReachyDesign
 import ReachyKit
 import ReachyMedia
+import ReachyTeleop
 import SwiftUI
 
 /// Opens a teleop stream on demand — a WebSocket on the LAN, the session's own
@@ -9,11 +10,6 @@ import SwiftUI
 /// `@Sendable` because a `View` is, and this is stored on two of them; `@MainActor`
 /// because the session it closes over is.
 typealias TeleopFactory = @MainActor @Sendable () throws -> any TeleopChannel
-
-/// What a joystick calls to take the head off the robot's own two behaviours before
-/// driving it. Built by `PresenceModel.teleopStandDown(session:)` and cheap enough to
-/// call on every touch event; `nil` where there is no robot session to ask.
-typealias TeleopStandDown = @MainActor @Sendable () -> Void
 
 /// The Live tab's host for the viewport: `ViewportContent` under the full-size
 /// chrome.

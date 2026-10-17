@@ -156,7 +156,12 @@ extension SurfaceRole {
     var material: Material? {
         switch self {
         case .chrome, .card: .regular
-        case .scrim, .window: .bar
+        #if os(tvOS)
+            // tvOS has no `.bar` material. `.regular` is the nearest blur it has.
+            case .scrim, .window: .regular
+        #else
+            case .scrim, .window: .bar
+        #endif
         case .badge, .page: nil
         }
     }

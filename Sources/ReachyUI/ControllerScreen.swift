@@ -1,5 +1,6 @@
 import ReachyDesign
 import ReachyKit
+import ReachyTeleop
 import SwiftUI
 
 /// Live teleop: joystick drives head yaw/pitch and turns the body when held

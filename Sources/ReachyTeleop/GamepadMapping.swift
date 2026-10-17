@@ -27,21 +27,39 @@ struct GamepadReading: Equatable, Sendable {
 }
 
 /// What one tick of a controller asks of `TeleopDriver`, which writes it as one target.
-struct TeleopStep: Equatable, Sendable {
+public struct TeleopStep: Equatable, Sendable {
     /// A new deflection for the pad's own mapping, or `nil` to leave the head alone.
-    var look: JoystickDeflection?
+    public var look: JoystickDeflection?
     /// Radians to turn the body by, signed like `JoystickMapping.bodyYawRate`.
-    var bodyYaw = 0.0
+    public var bodyYaw: Double
     /// Radians to roll the head by.
-    var roll = 0.0
+    public var roll: Double
     /// Metres to raise the head by.
-    var height = 0.0
+    public var height: Double
     /// Absolute angles, each `nil` to leave that antenna where it is. One per side,
     /// because each trigger moves its own antenna: a pair would write the other side
     /// too, and snap an antenna its slider had set to wherever the other trigger rests.
-    var antennaLeft: Double?
-    var antennaRight: Double?
-    var reset = false
+    public var antennaLeft: Double?
+    public var antennaRight: Double?
+    public var reset: Bool
+
+    public init(
+        look: JoystickDeflection? = nil,
+        bodyYaw: Double = 0,
+        roll: Double = 0,
+        height: Double = 0,
+        antennaLeft: Double? = nil,
+        antennaRight: Double? = nil,
+        reset: Bool = false
+    ) {
+        self.look = look
+        self.bodyYaw = bodyYaw
+        self.roll = roll
+        self.height = height
+        self.antennaLeft = antennaLeft
+        self.antennaRight = antennaRight
+        self.reset = reset
+    }
 }
 
 /// Turns controller readings into teleop steps (#160).
@@ -69,7 +87,7 @@ struct TeleopStep: Equatable, Sendable {
 /// snap the touch pad back under a finger, and triggers at rest would zero antennas a
 /// slider had set. What is *held* — the turn, the lift, the roll — is reported every
 /// tick, as an amount for the time that tick covered.
-struct GamepadMapping: Equatable, Sendable {
+public struct GamepadMapping: Equatable, Sendable {
     var joystick = JoystickMapping()
     /// Below this a stick reads as centred, and the travel above it is rescaled so the
     /// rim still reads as 1. Every stick drifts, and a drifting look stick would hold
@@ -84,6 +102,9 @@ struct GamepadMapping: Equatable, Sendable {
     var rollRate = JoystickMapping().headAngle
     /// How far a fully pulled trigger moves its antenna: the antenna slider's end.
     var antennaReach = TeleopDriver.antennaLimit
+
+    /// The defaults above, spelled out because a synthesized initialiser is never public.
+    public init() {}
 
     /// The look stick as the pad would report it. A stick's `y` is up and a drag's is
     /// down, so it is flipped: pushing up looks up, as dragging up does.

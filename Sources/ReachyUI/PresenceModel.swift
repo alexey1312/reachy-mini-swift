@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ReachyKit
+import ReachyTeleop
 
 /// Drives the robot's two daemon-side presence behaviours from the viewport.
 ///

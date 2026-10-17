@@ -25,6 +25,7 @@ let package = Package(
         .library(name: "ReachyScene", targets: ["ReachyScene"]),
         .library(name: "ReachySimulator", targets: ["ReachySimulator"]),
         .library(name: "ReachySSH", targets: ["ReachySSH"]),
+        .library(name: "ReachyTeleop", targets: ["ReachyTeleop"]),
         .library(name: "ReachyUI", targets: ["ReachyUI"]),
         .library(name: "ReachyWidgetUI", targets: ["ReachyWidgetUI"]),
     ],
@@ -121,6 +122,16 @@ let package = Package(
             ],
             exclude: ["AGENTS.md", "CLAUDE.md"]
         ),
+        // Driving the robot live: the pad's mapping, the game controller and the driver
+        // that turns both into one target. A target of its own so that a surface with
+        // no ReachyUI — the TV app — drives through the same code the phone does.
+        // Nothing here draws: ReachyDesign is linked for the strings and the preview
+        // switch, ReachyKit for the channel a target goes out on.
+        .target(
+            name: "ReachyTeleop",
+            dependencies: ["ReachyDesign", "ReachyKit"],
+            exclude: ["AGENTS.md", "CLAUDE.md"]
+        ),
         .target(
             name: "ReachyUI",
             // `ReachyWidgetUI` for the app artwork alone, which both the store
@@ -128,7 +139,7 @@ let package = Package(
             // purpose: the widget target must stay clear of ReachyMedia.
             dependencies: [
                 "HuggingFaceAuth", "ReachyDesign", "ReachyJSON", "ReachyKit", "ReachyMedia", "ReachyScene",
-                "ReachySimulator", "ReachySSH", "ReachyWidgetUI",
+                "ReachySimulator", "ReachySSH", "ReachyTeleop", "ReachyWidgetUI",
             ],
             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
@@ -234,6 +245,10 @@ let package = Package(
             dependencies: ["ReachySSH", "ReachyTestSupport"]
         ),
         .testTarget(
+            name: "ReachyTeleopTests",
+            dependencies: ["ReachyTeleop", "ReachyKit"]
+        ),
+        .testTarget(
             name: "ReachyUITests",
             // `ReachyMedia` for `CameraSession`: the viewport now borrows one from
             // a remote session instead of always building its own, and that
@@ -242,7 +257,8 @@ let package = Package(
             // rather than leaned on as a transitive import of `ReachyUI`, and
             // `ReachySimulator` for the client a simulated viewport source carries.
             dependencies: [
-                "ReachyUI", "ReachyKit", "ReachyMedia", "ReachySimulator", "ReachyWidgetUI", "HuggingFaceAuth",
+                "ReachyUI", "ReachyKit", "ReachyMedia", "ReachySimulator", "ReachyTeleop", "ReachyWidgetUI",
+                "HuggingFaceAuth",
             ]
         ),
         .testTarget(

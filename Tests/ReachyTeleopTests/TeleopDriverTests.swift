@@ -1,5 +1,5 @@
 import ReachyKit
-@testable import ReachyUI
+@testable import ReachyTeleop
 import Testing
 
 /// The rotation ticker is a real `Task`, but every test body below is synchronous:

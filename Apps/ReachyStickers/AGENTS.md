@@ -269,5 +269,5 @@ the same script over the graphite `iconSwatch` gradient. The marketing slot is
 **1024×768**, not the 1024×1024 the Human Interface Guidelines table shows; Xcode's
 template is what `actool` reads, so the template wins. The gradient constants are
 hand-copied from `ReachyTheme.palette` for the same reason
-`Scripts/render-app-icon.swift` copies them: a standalone script cannot link
+`Scripts/render-app-icon/` copies them: a standalone program cannot link
 ReachyDesign.

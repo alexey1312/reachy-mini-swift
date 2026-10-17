@@ -1,6 +1,7 @@
 import ReachyDesign
 import ReachyKit
 import ReachyMedia
+import ReachyTeleop
 import SwiftUI
 
 /// Robot camera + two-way audio over WebRTC. Video and robot audio play as soon

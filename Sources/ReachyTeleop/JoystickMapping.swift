@@ -1,18 +1,23 @@
 import Foundation
 
 /// Where the knob sits, normalized to the pad's radius.
-struct JoystickDeflection: Equatable, Sendable {
-    var x: Double = 0
-    var y: Double = 0
+public struct JoystickDeflection: Equatable, Sendable {
+    public var x: Double
+    public var y: Double
 
-    static let zero = JoystickDeflection()
+    public init(x: Double = 0, y: Double = 0) {
+        self.x = x
+        self.y = y
+    }
+
+    public static let zero = JoystickDeflection()
 }
 
 /// Which rotation zone a deflection is in.
 ///
 /// It lives beside the mapping rather than beside the pad because the mapping is
 /// what decides it — the pad only draws what it is told.
-enum JoystickRotationSide: Equatable, Sendable {
+public enum JoystickRotationSide: Equatable, Sendable {
     case left, right
 }
 
@@ -36,7 +41,7 @@ enum JoystickRotationSide: Equatable, Sendable {
 /// `target_head_pose` is the other way round, so `TeleopDriver` adds the body's own
 /// yaw before anything reaches the wire; nothing on a pad centred on the torso can
 /// mean an absolute direction.
-struct JoystickMapping: Equatable, Sendable {
+public struct JoystickMapping: Equatable, Sendable {
     /// Where head yaw ends and body rotation begins, as a fraction of the pad's
     /// sideways travel.
     ///
@@ -51,11 +56,11 @@ struct JoystickMapping: Equatable, Sendable {
     /// A feel constant: it costs head-yaw resolution (the full ±`headAngle` now
     /// arrives at half travel), and only the robot can settle whether that trade is
     /// right.
-    var rotationThreshold = 0.5
+    public var rotationThreshold = 0.5
     /// Comfortable head range; the daemon clamps anyway.
-    var headAngle = 40.0 * .pi / 180
+    public var headAngle = 40.0 * .pi / 180
     /// Radians per second at full sideways deflection — a half turn in three seconds.
-    var maxBodyYawRate = 60.0 * .pi / 180
+    public var maxBodyYawRate = 60.0 * .pi / 180
     /// How much of the head's lead the body takes over across the rotation zone.
     ///
     /// 1 hands it all back, so at full deflection the head sits exactly on the torso's
@@ -67,14 +72,17 @@ struct JoystickMapping: Equatable, Sendable {
     /// zone gives 40° back while the body has barely started, so the camera swings
     /// against the push and the body needs `headAngle / maxBodyYawRate` to repay it.
     /// A feel constant like the rest of this type: only the robot settles it.
-    var headRecentring = 1.0
+    public var headRecentring = 1.0
+
+    /// The defaults above, spelled out because a synthesized initialiser is never public.
+    public init() {}
 
     /// How far past the rotation boundary the knob is: 0 at the boundary, 1 at full
     /// sideways travel.
     ///
     /// The one place the zone's shape is written down, so the head's recentring and
     /// the body's speed cannot disagree about where the turn begins.
-    func rotationRamp(_ deflection: JoystickDeflection) -> Double {
+    public func rotationRamp(_ deflection: JoystickDeflection) -> Double {
         let over = abs(deflection.x) - rotationThreshold
         guard over > 0 else { return 0 }
         return (over / (1 - rotationThreshold)).clamped(to: 0 ... 1)
@@ -82,18 +90,18 @@ struct JoystickMapping: Equatable, Sendable {
 
     /// Head yaw relative to the body: full ±`headAngle` at the boundary, and back to
     /// zero at full deflection as the body takes the pan over.
-    func headYaw(_ deflection: JoystickDeflection) -> Double {
+    public func headYaw(_ deflection: JoystickDeflection) -> Double {
         let leading = -(deflection.x / rotationThreshold).clamped(to: -1 ... 1) * headAngle
         return leading * (1 - headRecentring * rotationRamp(deflection))
     }
 
-    func headPitch(_ deflection: JoystickDeflection) -> Double {
+    public func headPitch(_ deflection: JoystickDeflection) -> Double {
         deflection.y * headAngle
     }
 
     /// Radians per second, zero inside the head zone. Signed like `headYaw`, so the
     /// head and the body turn the same way for the same push.
-    func bodyYawRate(_ deflection: JoystickDeflection) -> Double {
+    public func bodyYawRate(_ deflection: JoystickDeflection) -> Double {
         let ramp = rotationRamp(deflection)
         guard ramp > 0 else { return 0 }
         return deflection.x < 0 ? ramp * maxBodyYawRate : -ramp * maxBodyYawRate
@@ -101,7 +109,7 @@ struct JoystickMapping: Equatable, Sendable {
 
     /// Which zone the knob is in, if any — defined as "the body is turning", so the
     /// slice the pad shades and the rotation that slice stands for cannot disagree.
-    func rotationSide(_ deflection: JoystickDeflection) -> JoystickRotationSide? {
+    public func rotationSide(_ deflection: JoystickDeflection) -> JoystickRotationSide? {
         guard bodyYawRate(deflection) != 0 else { return nil }
         return deflection.x > 0 ? .right : .left
     }
