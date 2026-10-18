@@ -149,6 +149,19 @@ if [ "$wants_developer_id" = true ]; then
 fi
 
 if [ "$wants_appstore" = true ]; then
+  # productbuild signs the .pkg with the Mac Installer identity, which is in a
+  # keychain of its own (docs/release.md, "When -exportArchive fails"). That
+  # keychain locks itself after a period of inactivity, and the archive above takes
+  # longer than that period. So macOS stopped the export here with a password
+  # dialog. Unlock the keychain from its stored password instead. When either file
+  # is missing, this step does nothing and the dialog stays the fallback.
+  signing_keychain="$HOME/Library/Keychains/reachy-signing.keychain-db"
+  signing_password="$HOME/.config/reachy-mini/signing/keychain.pw"
+  if [ -f "$signing_keychain" ] && [ -r "$signing_password" ]; then
+    security unlock-keychain -p "$(cat "$signing_password")" "$signing_keychain"
+    echo "Unlocked $(basename "$signing_keychain") for the installer signature." >&2
+  fi
+
   /bin/rm -rf "$EXPORT_DIR/AppStore"
   xcodebuild -exportArchive \
     -archivePath "$ARCHIVE" \

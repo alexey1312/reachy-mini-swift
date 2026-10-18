@@ -171,6 +171,12 @@ security unlock-keychain -p "$PW" "$KC"
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC"
 ```
 
+`release-macos.sh` does the unlock itself, right before the App Store export.
+The keychain locks itself again while the archive builds,
+and without that step productbuild stops the export with a password dialog
+(seen on 2026-10-18 at the 0.7.2 build).
+The partition list is still a one-time step.
+
 `Failed to Use Accounts` is the Xcode account instead, and only the upload leg
 needs one. Export locally and hand the artifact to the API key, which does the
 upload, the group and the Beta App Review submission in one call:
