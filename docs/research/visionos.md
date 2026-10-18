@@ -123,6 +123,27 @@ Citadel is now linked on iOS and macOS only, and `RobotFileSystems.ssh(robot:)` 
   `UIDeviceFamily` 7, bundle ID `com.alexey1312.ReachyMini`.
 - `mise run test` and `mise run lint` on macOS.
 
+### The Live tab's 3D view
+
+Measured on 2026-10-17 in the `Apple Vision Pro` simulator,
+with a temporary `onGeometryChange3D` probe that logged each view's `Rect3D` in the global space.
+
+| View              | Before: origin (x, y, z) and size | After                     |
+| ----------------- | --------------------------------- | ------------------------- |
+| `RealityView`     | 0, 92, 0 — 1100 × 628 × 540       | 0, 92, 0 — 1100 × 628 × 0 |
+| View switcher     | 0, 92, **540** — 108 × 60         | 0, 92, 0 — 108 × 60       |
+| Teleoperation pad | 864, 532, **540** — 236 × 188     | 864, 532, 0 — 236 × 188   |
+
+- **A flexible `RealityView` takes the window's offered depth, and a 2D overlay lies on its front face.**
+  At 540 pt nearer the eye than the window, perspective pushed the view switcher past the leading edge
+  and over the title, and the pad past the trailing edge.
+  `.frame(depth: 0)` on the visionOS branch of `RobotSceneView` puts both back on the window.
+- **A window ignores the `PerspectiveCamera`** and draws the entities at real size from the centre of the view.
+  The robot, 0.39 m tall with its base at the origin, rose past the window's top edge.
+  `RobotSceneView` now scales it to 70 % of the view, centres it and stands it in front of the window.
+  At 80 %, perspective drew its base past the window's bottom edge.
+- `Sources/ReachyScene/AGENTS.md` has the rules that follow from this.
+
 ### The head
 
 - `queryDeviceAnchor` works only while the app has an immersive space open,
@@ -171,6 +192,8 @@ Citadel is now linked on iOS and macOS only, and `RobotFileSystems.ssh(robot:)` 
 - **A head-locked camera.** Inside the immersive space the picture could ride on the head
   (`AnchorEntity(.head)`), so it stays in view whatever the head does.
   That is a different screen and a different decision; this change keeps the window.
+- **Orbit and zoom in the 3D view.** The gestures move the `PerspectiveCamera`, which a window ignores,
+  so on visionOS they do nothing. Turning the `stand` entity instead is the likely way.
 - **Copy that names iOS.** `OnboardingWelcomeStep` says "iOS will ask for permission" on visionOS too.
 - **Widgets** on visionOS. The app shares the iPhone's intents and its ten App Shortcuts,
   and `Scripts/check-appintents-metadata.sh` holds the visionOS archive to them,
