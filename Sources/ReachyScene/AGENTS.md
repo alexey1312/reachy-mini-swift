@@ -104,3 +104,35 @@ and `ReachyScene` still does not import `ReachyDesign`.
   where the `didSet` has no graph to reach and the build is the only thing that can paint.
 - **Read the colour off the material**, as the tests do, not off `shellTint`:
   the component is what the frame is drawn from, the same rule the lighting rig's shadow test records.
+
+## visionOS
+
+`RobotSceneView` has a branch of its own on visionOS, because a window there ignores the camera.
+`docs/research/visionos.md` has the measurements.
+
+- **A window draws a `RealityView`'s entities at real size from the centre of the view.**
+  The `PerspectiveCamera` has no effect there,
+  so `OrbitCamera` frames nothing, and the orbit and zoom gestures move nothing.
+  The robot stood 0.39 m tall from the middle of the view and rose past the window's top edge.
+  `fit(into:)` scales it to 70 % of the view, centres it,
+  and turns it to the azimuth the camera starts from on the other platforms.
+- **A flexible `RealityView` takes the window's offered depth, 540 pt, and an overlay on it lies on its front face.**
+  The view switcher and the pad sat at z = 540,
+  and perspective pushed them past the window's edges and over the title.
+  `.frame(depth: 0)` keeps every overlay on the window's plane.
+  The robot stands in front of that plane, not across it.
+- **`realityViewLayoutBehavior(.centered)` cannot do this.**
+  It measures the content once, after `make`, and the robot arrives over the network later.
+  So the view reads its frame with `GeometryReader3D`
+  and converts it to scene space in `update`, which runs again when `phase` becomes `.ready`.
+- **The scale goes on a per-view `stand` entity, never on the container.**
+  The container stays at identity,
+  so bounds measured in the container's own space never include the scale the stand sets.
+  The stand is per view for the same reason the camera is: an entity has one parent.
+- **The robot is fitted to its bounds at build, `RobotSceneModel.builtBounds`, not to its live bounds.**
+  The build measures them before the stream's first frame poses the robot.
+  A sleeping head is lower, so a robot fitted to live bounds while asleep
+  would outgrow the window when it wakes.
+- **No capture covers this.** The snapshot suite renders on an iPhone simulator,
+  and the iOS and macOS branch is the code it always was.
+  Check a change here on the visionOS simulator.

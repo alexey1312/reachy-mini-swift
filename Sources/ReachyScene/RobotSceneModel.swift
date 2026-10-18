@@ -28,6 +28,12 @@ public final class RobotSceneModel {
     /// Owned here rather than by the view so a SwiftUI redraw cannot reset the
     /// angle the user just dragged to.
     public let camera = OrbitCamera()
+    #if os(visionOS)
+        /// The robot's extent in the container's own space, measured when it is built,
+        /// before the first frame of the stream poses it. `RobotSceneView` fits the robot
+        /// to these bounds rather than to the live ones, which a sleeping head shrinks.
+        private(set) var builtBounds: BoundingBox?
+    #endif
 
     /// The head is also placed straight from the daemon's pose. The linkage
     /// algorithm points each rod correctly but never enforces its length, so
@@ -191,6 +197,9 @@ public final class RobotSceneModel {
         self.graph?.root.removeFromParent()
         self.graph = graph
         container.addChild(graph.root)
+        #if os(visionOS)
+            builtBounds = graph.root.visualBounds(relativeTo: container)
+        #endif
         // Framing has to wait for the meshes: before they exist the model has no
         // extent, and a camera aimed at an empty point ends up inside the robot.
         camera.frame(graph.visualBounds)
