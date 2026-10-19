@@ -25,6 +25,12 @@ link-local IPv6). Our rules:
   connecting to one from the simulator. A stand-in advert for discovery work is one command:
   `dns-sd -R reachy_mini _reachy-mini._tcp local 8000 unit_id=<hex>`, and a second registration of the same instance
   name comes back as `reachy_mini (2)`.
+- Two daemons on one LAN collide on the mDNS name.
+  A third party measured it: the Wireless answered as `reachy-mini-2.local`,
+  and both units reported `robot_name = reachy_mini`.
+  `CandidateSweep` connects automatically to the first daemon that answers,
+  so the static fallback can reach the other unit.
+  The evidence is in `docs/research/wireless-cpu-and-mdns.md`.
 - An empty discovery list says nothing about the app. Check the robot is actually up first (`ping`, `arp -n <ip>`,
   `dns-sd -B _reachy-mini._tcp`) — a robot that dropped off the network stops advertising, and every layer above
   correctly reports nothing.
