@@ -1,5 +1,18 @@
 import Foundation
 
+public extension RobotSession {
+    /// The steps a connection walks through, in order — the stepper's row model.
+    enum ConnectionStage: Int, CaseIterable, Equatable, Sendable {
+        case connect
+        case compatibility
+        case backend
+    }
+
+    enum StageOutcome: Equatable, Sendable {
+        case pending, active, done, attention, failed
+    }
+}
+
 /// Projects the connection phase onto the stepper's rows.
 ///
 /// Kept here rather than in the view so the mapping is testable as a plain

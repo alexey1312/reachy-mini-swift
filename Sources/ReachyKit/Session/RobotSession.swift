@@ -56,17 +56,6 @@ public final class RobotSession {
         case failed(ConnectionStage, message: String)
     }
 
-    /// The steps a connection walks through, in order — the stepper's row model.
-    public enum ConnectionStage: Int, CaseIterable, Equatable, Sendable {
-        case connect
-        case compatibility
-        case backend
-    }
-
-    public enum StageOutcome: Equatable, Sendable {
-        case pending, active, done, attention, failed
-    }
-
     /// Wake and sleep are long enough — a cold backend start is budgeted at 90 s —
     /// that the UI has to show what the robot is doing meanwhile.
     ///
