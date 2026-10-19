@@ -4,7 +4,6 @@ import Foundation
 /// Manual reconnection to a known address is a first-class flow (issue #269).
 public enum KnownRobots {
     static let onboardingKey = "ReachyKit.hasCompletedOnboarding"
-    static let provisionedKey = "ReachyKit.pendingProvisionedHardwareID"
     /// Set on the destination, so the copy happens once and the shared suite is
     /// the truth from then on.
     static let migratedKey = "ReachyKit.migratedToAppGroup"
@@ -16,7 +15,8 @@ public enum KnownRobots {
         KnownRobotStore.knownRobotsKey,
         KnownRobotStore.lastAddressKey,
         onboardingKey,
-        provisionedKey,
+        KnownRobotStore.provisionedKey,
+        KnownRobotStore.lastHardwareIDKey,
     ]
 
     /// Carries an existing installation into the shared suite the first time this
@@ -108,13 +108,7 @@ public enum KnownRobots {
     /// changes: the robot is provisioned on its own hotspot and comes back on the home
     /// network at whatever DHCP hands out (rule 4).
     public static var pendingProvisionedHardwareID: String? {
-        get { defaults.string(forKey: provisionedKey) }
-        set {
-            guard let newValue else {
-                defaults.removeObject(forKey: provisionedKey)
-                return
-            }
-            defaults.set(newValue, forKey: provisionedKey)
-        }
+        get { store.pendingProvisionedHardwareID }
+        set { store.pendingProvisionedHardwareID = newValue }
     }
 }

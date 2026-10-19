@@ -13,7 +13,9 @@ import Observation
 ///
 /// Identity, not address, decides what counts as the same robot everywhere else
 /// (project rule 4). Here it is genuinely addresses: a sweep's whole job is to find
-/// out which of several addresses answers.
+/// out which of several addresses answers. Which robot it may then take is the
+/// session's decision (`RobotSession.admitsAutomatically`): an answer from another
+/// robot is an address that failed, and the drain goes on to the next one.
 ///
 /// It lives in ReachyKit rather than beside the screen because two shells run it:
 /// the phone's connect gate and the TV app's, which links no ReachyUI.
@@ -95,7 +97,7 @@ public final class CandidateSweep {
             // simulator can see; loopback reaches the host either way.
             candidates.insert(RobotAddress(host: "127.0.0.1"), at: 0)
         #endif
-        if let last = KnownRobots.lastAddress {
+        if let last = session.knownRobots.lastAddress {
             candidates.insert(last, at: 0)
         }
         enqueue(candidates)
@@ -120,11 +122,8 @@ public final class CandidateSweep {
     #if DEBUG
         /// Records an address as already tried without dialling it.
         ///
-        /// The honest way to reach this state is to let the drain run, and the drain
-        /// calls `RobotSession.connect` — real sockets against whatever host the test
-        /// invented. A stub client would make the drain itself testable and is worth
-        /// having; until then this covers the queueing rules and leaves the drain
-        /// uncovered rather than pretending otherwise.
+        /// For the queueing rules, whose tests keep the drain from starting. The drain
+        /// itself is tested through a session whose `makeClient` hands out stubs.
         func markAttemptedForTesting(_ address: RobotAddress) {
             attempted.insert(address)
             pending.removeAll { $0 == address }

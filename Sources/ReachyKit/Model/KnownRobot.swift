@@ -32,6 +32,8 @@ public struct KnownRobotStore {
     /// Public because the app target names it when it starts the iCloud mirror.
     public static let knownRobotsKey = "ReachyKit.knownRobots"
     static let lastAddressKey = "ReachyKit.lastAddress"
+    static let lastHardwareIDKey = "ReachyKit.lastHardwareID"
+    static let provisionedKey = "ReachyKit.pendingProvisionedHardwareID"
 
     private let defaults: UserDefaults
 
@@ -61,6 +63,25 @@ public struct KnownRobotStore {
         }
     }
 
+    /// The hardware id of the robot this device connected to last over the LAN, written
+    /// beside `lastAddress`. An automatic attempt takes no other robot while it is set.
+    ///
+    /// Its own key, not part of `all`: that list is mirrored through iCloud, so its most
+    /// recent entry can be a robot another device used. `nil` when that robot reported no
+    /// hardware id, which pins nothing — a robot that cannot be told apart cannot be held to.
+    public var lastHardwareID: String? {
+        get { defaults.string(forKey: Self.lastHardwareIDKey) }
+        nonmutating set { set(newValue, forKey: Self.lastHardwareIDKey) }
+    }
+
+    /// A robot just given a Wi-Fi password over Bluetooth, waiting to be recognised once
+    /// it appears on the network. `KnownRobots.pendingProvisionedHardwareID` has the reason
+    /// it is a hardware id.
+    public var pendingProvisionedHardwareID: String? {
+        get { defaults.string(forKey: Self.provisionedKey) }
+        nonmutating set { set(newValue, forKey: Self.provisionedKey) }
+    }
+
     /// Upserts by identity, so a robot that reappears at another address updates its record
     /// rather than adding a second one.
     public func remember(identity: RobotIdentity, address: RobotAddress, at date: Date = Date()) {
@@ -73,7 +94,8 @@ public struct KnownRobotStore {
     }
 
     /// Also clears `lastAddress` when it pointed at this robot — otherwise the manual field
-    /// keeps offering the address of a robot the user just removed.
+    /// keeps offering the address of a robot the user just removed. `lastHardwareID` goes
+    /// the same way, so forgetting the robot the sweep is held to frees the sweep.
     public func forget(_ key: String) {
         let robots = all
         let removed = robots.first { $0.key == key }
@@ -81,10 +103,21 @@ public struct KnownRobotStore {
         if let removed, lastAddress == removed.address {
             lastAddress = nil
         }
+        if lastHardwareID == key {
+            lastHardwareID = nil
+        }
     }
 
     private func write(_ robots: [KnownRobot]) {
         guard let data = try? JSONCodec.stored.encode(robots) else { return }
         defaults.set(data, forKey: Self.knownRobotsKey)
+    }
+
+    private func set(_ value: String?, forKey key: String) {
+        guard let value else {
+            defaults.removeObject(forKey: key)
+            return
+        }
+        defaults.set(value, forKey: key)
     }
 }

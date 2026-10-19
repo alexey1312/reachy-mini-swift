@@ -165,6 +165,10 @@ public final class RobotSession {
     var firstRun = FirstRunState()
     /// What outlives a connection: the LAN channel the UI opens, and this device's record.
     public var firstRunServices = FirstRunServices()
+    /// The robots this device has met, the last address, and the robot an automatic
+    /// attempt is held to. A test replaces it with a store on a suite of its own, because
+    /// `--parallel` connects other sessions against the shared one at the same time.
+    var knownRobots = KnownRobots.store
     public internal(set) var moveActivity: MoveActivity?
 
     public var currentMove: MovePlayback? {

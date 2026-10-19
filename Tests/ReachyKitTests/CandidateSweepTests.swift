@@ -5,11 +5,10 @@ import Testing
 /// The queue's rules, which lived inside `ConnectionScreen` and were reachable only
 /// through a snapshot until the sweep became a type of its own.
 ///
-/// Nothing here lets the sweep dial anything: every case runs against a session that
-/// is not `.idle`, or one whose automatic connection is paused, so `enqueue` fills the
-/// queue and `startAutoConnectIfNeeded` declines to drain it. That is the seam — the
-/// queueing rules are what this covers, and reaching the network is what it must not
-/// do.
+/// The queueing cases run against a session whose automatic connection is paused, so
+/// `enqueue` fills the queue and `startAutoConnectIfNeeded` declines to drain it. The
+/// drain cases at the end hand the session stub clients, so a drain dials nothing
+/// either: reaching the network is what no case here may do.
 @MainActor
 @Suite("CandidateSweep", .timeLimit(.minutes(1)))
 struct CandidateSweepTests {
@@ -71,5 +70,55 @@ struct CandidateSweepTests {
         sweep.enqueue([a, b])
 
         #expect(sweep.pending == [b])
+    }
+
+    // MARK: - The drain
+
+    /// Measured by a third party on one LAN: another unit held the fallback name, and
+    /// both reported `reachy_mini`. The remembered robot has a new lease, and its Bonjour
+    /// result resolves after the static candidates. Every client is a stub, so nothing
+    /// is dialled.
+    @Test("the drain passes over another robot on the fallback name and takes the remembered one")
+    func drainTakesTheRememberedRobot() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "CandidateSweepTests.\(UUID().uuidString)"))
+        let store = KnownRobotStore(defaults: defaults)
+        store.lastAddress = RobotAddress(host: "192.168.1.50")
+        store.lastHardwareID = "hw-mine"
+        let fallback = RobotAddress(host: "reachy-mini.local")
+        let newLease = RobotAddress(host: "192.168.1.60")
+        let stranger = AnsweringRobot(hardwareID: "hw-other")
+        let mine = AnsweringRobot(hardwareID: "hw-mine")
+        let session = RobotSession { address throws -> any RobotAPIClient in
+            switch address {
+            case fallback: stranger
+            case newLease: mine
+            default: throw URLError(.cannotConnectToHost)
+            }
+        }
+        session.knownRobots = store
+        let sweep = CandidateSweep(session: session, rescanInterval: .seconds(60))
+
+        sweep.start()
+        sweep.enqueue([newLease])
+        await waitUntil {
+            if case .connected = session.phase {
+                true
+            } else {
+                false
+            }
+        }
+
+        #expect(session.phase == .connected(mine.identity))
+        #expect(sweep.attempted.contains(fallback))
+        #expect(store.all.map(\.key) == ["hw-mine"])
+        sweep.stop()
+        session.disconnect()
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
     }
 }

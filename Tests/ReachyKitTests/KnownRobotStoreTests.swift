@@ -110,4 +110,18 @@ struct KnownRobotStoreTests {
 
         #expect(store.lastAddress?.host == "10.0.0.2")
     }
+
+    @Test("forgetting the robot the sweep holds to releases the hold, and only that robot")
+    func forgettingReleasesTheHold() throws {
+        let store = try makeStore()
+        store.remember(identity: RobotIdentity(hardwareID: "aaa"), address: RobotAddress(host: "10.0.0.1"))
+        store.remember(identity: RobotIdentity(hardwareID: "bbb"), address: RobotAddress(host: "10.0.0.2"))
+        store.lastHardwareID = "aaa"
+
+        store.forget("bbb")
+        #expect(store.lastHardwareID == "aaa")
+
+        store.forget("aaa")
+        #expect(store.lastHardwareID == nil)
+    }
 }

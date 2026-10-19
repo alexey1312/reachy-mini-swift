@@ -1,6 +1,8 @@
 ---
 paths:
   - "Sources/ReachyKit/Transport/**"
+  - "Sources/ReachyKit/Session/CandidateSweep.swift"
+  - "Sources/ReachyKit/Session/RobotSession+AutomaticConnect.swift"
   - "Apps/**"
 ---
 
@@ -13,6 +15,24 @@ link-local IPv6). Our rules:
 
 - Identify a robot by `GET /api/daemon/hardware-id`, never by IP.
 - Store the last successful address; manual IP entry is a first-class feature, not a fallback.
+- **An automatic attempt takes back only the robot this device connected to last.**
+  `CandidateSweep` dials the last address, loopback, `reachy-mini.local` and each Bonjour result,
+  and another unit can answer at any of them.
+  Two daemons on one LAN collide on the mDNS name and both report `reachy_mini`,
+  and the old DHCP lease can belong to the other unit now.
+  So `RobotSession.admitsAutomatically` compares the handshake's hardware id
+  with `KnownRobotStore.lastHardwareID` before the session claims or remembers anything.
+  Another robot, or a daemon with no hardware id, is passed over,
+  and the sweep goes on to its next candidate.
+  - Nothing is held when the last robot reported no hardware id,
+    so the simulator and a robot without the audio board connect as before.
+  - A robot set up over Bluetooth a moment ago (`pendingProvisionedHardwareID`) is taken.
+  - A manual connect is never held, and it moves the hold to the robot it reaches.
+    So when the old robot is gone for good, the reader taps the new one once in the list.
+    Forgetting the held robot releases the hold too.
+  - `lastHardwareID` stays on the device: the known-robot list is mirrored through iCloud,
+    so its newest entry can be a robot that another device used.
+  - Nothing on screen changes: a robot passed over looks like an address that did not answer.
 - Show the user which address is in use; provide a force-reconnect action.
 - Build URLs with `URLComponents` (brackets IPv6 correctly). Drop `fe80::` link-local candidates unless carrying a
   zone ID.
