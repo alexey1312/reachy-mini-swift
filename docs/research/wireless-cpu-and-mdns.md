@@ -99,15 +99,21 @@ Sources:
 
 - Rule 4 holds as written: a robot is its hardware id, never its name or its address.
   The name is not even unique between two units on one desk.
-- `CandidateSweep` (`Sources/ReachyUI/Connect/CandidateSweep.swift`) tries candidates in this order:
+- `CandidateSweep` tries candidates in this order:
   the last address, `127.0.0.1` on macOS and in the simulator, `reachy-mini.local`,
   and then each Bonjour result when it resolves.
-  It connects to the first daemon that answers.
-  `RobotSession.connect(to:automatically:)` does not compare that daemon's hardware id
-  with the robot this device remembers.
-  So when two daemons share a LAN and the remembered address has moved,
-  the static fallback can connect automatically to the other unit.
-  This follows from the code on 2026-10-19; nobody reproduced it with two robots.
+  On 2026-10-19 it connected to the first daemon that answered,
+  and nothing compared that daemon's hardware id with the robot this device remembers.
+  So when two daemons shared a LAN and the remembered address had moved,
+  the static fallback could connect automatically to the other unit.
+  That conclusion came from the code; nobody reproduced it with two robots.
+- [PR #219](https://github.com/alexey1312/reachy-mini-swift/pull/219) adds the guard:
+  an automatic attempt takes back only the robot this device connected to last,
+  and it passes over another robot or a daemon with no hardware id.
+  [PR #221](https://github.com/alexey1312/reachy-mini-swift/pull/221) reads the Bonjour `unit_id` first,
+  so the sweep does not dial another robot's advert, and the held robot's address goes first.
+  `.claude/rules/networking.md` describes the rule.
+  Nobody has checked either change with two real robots.
 - This client has no unicast sweep.
   Such a sweep would find a robot on a network where multicast does not pass.
   Central already covers that case for a user who signed in to Hugging Face.
