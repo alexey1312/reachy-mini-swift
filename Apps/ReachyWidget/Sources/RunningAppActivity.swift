@@ -93,6 +93,11 @@
         /// A `LiveActivityIntent`, so the system performs it in the **app's** process
         /// rather than in this one — which is where the Local Network permission was
         /// granted and where the session lives.
+        ///
+        /// It is also the card's primary action for double tap. Apple lists remote Live
+        /// Activities from iOS among the places that honour it, and only Apple Watch has
+        /// the gesture, so on the iPhone the modifier changes nothing. Each presentation
+        /// draws one Stop at most, which keeps to the rule of one primary action a scene.
         private func stop(_ context: ActivityViewContext<RunningAppActivityAttributes>) -> some View {
             Button(intent: StopRunningAppActivityIntent(robot: context.attributes.app.robotID)) {
                 Label(.reachy("Stop"), systemImage: "stop.fill")
@@ -100,6 +105,7 @@
             }
             .tint(Tone.danger.style)
             .buttonBorderShape(.circle)
+            .handGestureShortcut(.primaryAction)
         }
     }
 #endif

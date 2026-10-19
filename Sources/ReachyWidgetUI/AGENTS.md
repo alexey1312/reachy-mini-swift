@@ -654,6 +654,24 @@ and note first what it deliberately does _not_ say:
 running-app card on Apple Watch and the CarPlay dashboard with no watchOS app at all. That is more surface for a
 card that already earns its place, and neither refusal here touches it.
 It has shipped since: `RunningAppActivity` declares the family,
-a `FamilyLayout` wrapper reads `\.activityFamily` so the view still takes its layout as an argument,
-and `.small` is the lock-screen strip without its Stop —
-whether a button's intent reaches the phone from a watch with no app is a device question nobody has answered.
+and a `FamilyLayout` wrapper reads `\.activityFamily` so the view still takes its layout as an argument.
+`.small` drew the lock-screen strip without its Stop until 2026-10-19,
+because nobody knew if a button's intent reaches the phone from a watch with no app.
+Now it draws the Stop, and the extension marks that button `.handGestureShortcut(.primaryAction)`:
+Apple lists remote Live Activities from iOS among the places where double tap presses the primary action.
+
+- **The price is CarPlay.** `.small` is the CarPlay layout too,
+  the system deactivates Live Activity buttons there,
+  and no API tells the watch and CarPlay apart.
+  The HIG frames the choice the same way:
+  leave buttons out of the watch layout if people are likely to watch the activity while driving.
+  Nobody follows a desk robot's app from the road, so the Stop goes in.
+- **The card has the lock screen's insets** (`Space.md` across, `Space.sm` down).
+  The first recording of the Stop showed the artwork against the card's edge and the Stop 3 pt from the other,
+  because the closure draws to the edges and `.small` had no padding at all.
+- **Only a device can check any of this.** No reference image shows a tap or a double tap,
+  and the Simulator has no Smart Stack.
+  On 2026-10-19 the user installed TestFlight build 122 on a paired Apple Watch
+  and reported that everything works.
+  Nobody wrote down the steps one by one, so the numbers `docs/research/watchos.md` asks for are still open,
+  and nothing about CarPlay was recorded.
