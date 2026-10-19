@@ -23,9 +23,10 @@ public enum RunningAppActivityLayout: Sendable {
     case expandedBottom
     /// `ActivityFamily.small`: the Apple Watch Smart Stack and the CarPlay
     /// dashboard, which draw the Lock Screen closure at a size of their own. The
-    /// lock-screen strip without its Stop — whether a button's intent reaches the
-    /// phone from a watch that has no app is unmeasured, and a button that might do
-    /// nothing is worse than none.
+    /// lock-screen strip with its Stop, which the extension makes the watch's
+    /// double-tap action. CarPlay draws the same family and ignores Live Activity
+    /// buttons, and no API tells the two apart: `ReachyWidgetUI/AGENTS.md` records
+    /// that trade and the device check it waits on.
     case small
 }
 
@@ -159,8 +160,8 @@ public struct RunningAppActivityView<Stop: View>: View {
         }
     }
 
-    /// Title and state beside the artwork, and nothing else: on a watch face the
-    /// robot's name is a second line the state needs more.
+    /// Title and state beside the artwork, and the Stop when the card can honour one.
+    /// No robot name: on a watch face the state needs that second line more.
     private var small: some View {
         HStack(spacing: Space.sm) {
             AppArtworkTile(artwork: artwork, size: islandArtwork)
@@ -174,6 +175,9 @@ public struct RunningAppActivityView<Stop: View>: View {
                 caption
             }
             Spacer(minLength: 0)
+            if content.canStop {
+                stop
+            }
         }
     }
 

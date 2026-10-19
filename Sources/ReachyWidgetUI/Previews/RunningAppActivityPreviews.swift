@@ -51,18 +51,17 @@ func runningAppActivityPreviewCard(
 func runningAppActivityPreviewCardWithStop(
     _ content: RunningAppActivityContent,
     app: RunningAppActivityApp = .previewDancing,
-    isStale: Bool = false
+    isStale: Bool = false,
+    layout: RunningAppActivityLayout = .lockScreen
 ) -> some View {
-    RunningAppActivityView(app: app, content: content, isStale: isStale, layout: .lockScreen) {
+    let size = runningAppActivityPreviewSize(for: layout)
+    return RunningAppActivityView(app: app, content: content, isStale: isStale, layout: layout) {
         Button {} label: {
             Label("Stop", systemImage: "stop.fill").labelStyle(.iconOnly)
         }
         .buttonBorderShape(.circle)
     }
-    .frame(
-        width: RunningAppActivityPreviewSize.lockScreen.width,
-        height: RunningAppActivityPreviewSize.lockScreen.height
-    )
+    .frame(width: size.width, height: size.height)
     .background(.background.secondary, in: .rect(cornerRadius: 22))
 }
 
@@ -187,12 +186,13 @@ extension RunningAppActivityContent {
     }
 }
 
-// The Apple Watch Smart Stack and the CarPlay dashboard. No Stop, running or
-// failed — see `RunningAppActivityLayout.small`.
+// The Apple Watch Smart Stack and the CarPlay dashboard. The running card draws its
+// Stop, which double tap presses on the watch; the failed one cannot honour a stop and
+// draws none — see `RunningAppActivityLayout.small`.
 #Preview("Activity — Smart Stack", traits: .sizeThatFitsLayout) {
     VStack(alignment: .leading) {
-        runningAppActivityPreviewCard(.preview("Running"), layout: .small)
-        runningAppActivityPreviewCard(
+        runningAppActivityPreviewCardWithStop(.preview("Running"), layout: .small)
+        runningAppActivityPreviewCardWithStop(
             .preview(
                 "Process exited with code 1",
                 symbol: "exclamationmark.triangle.fill",

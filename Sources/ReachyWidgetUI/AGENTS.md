@@ -654,6 +654,17 @@ and note first what it deliberately does _not_ say:
 running-app card on Apple Watch and the CarPlay dashboard with no watchOS app at all. That is more surface for a
 card that already earns its place, and neither refusal here touches it.
 It has shipped since: `RunningAppActivity` declares the family,
-a `FamilyLayout` wrapper reads `\.activityFamily` so the view still takes its layout as an argument,
-and `.small` is the lock-screen strip without its Stop —
-whether a button's intent reaches the phone from a watch with no app is a device question nobody has answered.
+and a `FamilyLayout` wrapper reads `\.activityFamily` so the view still takes its layout as an argument.
+`.small` drew the lock-screen strip without its Stop until 2026-10-19,
+because nobody knew if a button's intent reaches the phone from a watch with no app.
+Now it draws the Stop, and the extension marks that button `.handGestureShortcut(.primaryAction)`:
+Apple lists remote Live Activities from iOS among the places where double tap presses the primary action.
+
+- **The price is CarPlay.** `.small` is the CarPlay layout too,
+  Apple's documentation says that Live Activity buttons do nothing there,
+  and no API tells the watch and CarPlay apart.
+  That is the "button that might do nothing" this file refuses everywhere else,
+  so the Stop stays only if the watch check shows that it works.
+- **The check is a device check.** No reference image shows a tap or a double tap,
+  and the Simulator has no Smart Stack.
+  `docs/research/watchos.md` lists the steps and holds the results.

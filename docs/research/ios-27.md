@@ -244,7 +244,8 @@ Ordered by how close each sits to something the app already does.
   **Adopted on 2026-09-30** — and not an iOS 27 API after all:
   the SDK marks `supplementalActivityFamilies`, `ActivityFamily` and `\.activityFamily` iOS 18.0,
   this app's floor, so it needed no availability check.
-  The running-app card draws a `.small` layout there, without its Stop.
+  The running-app card draws a `.small` layout there.
+  Since 2026-10-19 it carries its Stop as the watch's double-tap action (`docs/research/watchos.md`).
 - **App Intents**: `LongRunningIntent`, `CancellableIntent`, `ExecutionTargets`, `EntityCollection`,
   `SyncableEntity`, `RelevantEntities`, `@UnionValue`, and **`AppIntentsTesting`**, which drives intents through the
   real system paths. Nine controls plus Siri, Spotlight and Handoff are covered only indirectly today. **Schemas are
