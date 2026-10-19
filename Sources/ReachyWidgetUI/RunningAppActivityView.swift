@@ -26,7 +26,7 @@ public enum RunningAppActivityLayout: Sendable {
     /// lock-screen strip with its Stop, which the extension makes the watch's
     /// double-tap action. CarPlay draws the same family and ignores Live Activity
     /// buttons, and no API tells the two apart: `ReachyWidgetUI/AGENTS.md` records
-    /// that trade and the device check it waits on.
+    /// that trade and the watch check that settled it.
     case small
 }
 
@@ -164,8 +164,7 @@ public struct RunningAppActivityView<Stop: View>: View {
     /// No robot name: on a watch face the state needs that second line more.
     ///
     /// The lock screen's insets, because the closure draws to the card's edges and the
-    /// HIG asks for even margins inside the rounded shape. Whether the Smart Stack adds
-    /// margins of its own is part of the device check.
+    /// HIG asks for even margins inside the rounded shape.
     private var small: some View {
         HStack(spacing: Space.sm) {
             AppArtworkTile(artwork: artwork, size: islandArtwork)

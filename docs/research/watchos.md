@@ -80,13 +80,12 @@ The [HIG](https://developer.apple.com/design/human-interface-guidelines/live-act
 puts the same choice another way:
 leave buttons out of the watch layout if people are likely to watch the activity while driving.
 Nobody follows a desk robot's app from the road, so the Stop goes in.
-It stays only if the device check shows that it works on the watch.
+The device check below passed, so it stays.
 
 The card also got the lock screen's insets, 12 pt across and 8 pt down.
 The first recording showed the artwork against the card's edge,
 because the closure draws to the edges and `.small` had no padding.
 The HIG asks for even margins inside the rounded shape.
-Whether the Smart Stack adds margins of its own is part of the device check.
 
 ## Scenarios
 
@@ -153,4 +152,19 @@ Use the TestFlight build that carries the Stop on the watch card.
    On the watch, find the card in the Smart Stack, press its Stop, and then try double tap.
 6. Look at the card in CarPlay (Simulator → I/O → External Displays → CarPlay).
 
-The results go in this file.
+### Result, 2026-10-19
+
+The user installed TestFlight build 122 (0.7.3) on a paired Apple Watch
+and reported that everything works.
+That build is the first one with the Stop and the insets on the watch card;
+build 121 had the Stop without the insets and went to no tester.
+
+Nobody wrote down the steps one by one.
+So these answers are still open:
+which of the nine controls the gallery lists,
+the seconds from a tap to the motion,
+whether the configurable controls configure on the watch,
+what the watch shows when a command fails,
+whether the Smart Stack adds margins of its own,
+and what the Stop does in CarPlay.
+Write them here when someone measures them.
