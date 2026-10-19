@@ -20,9 +20,16 @@ extension RobotSession {
     ///
     /// A manual connect never asks, and it is how the user moves the hold to another robot.
     func admitsAutomatically(_ identity: RobotIdentity) -> Bool {
-        guard let expected = knownRobots.lastHardwareID else { return true }
+        guard knownRobots.lastHardwareID != nil else { return true }
         guard let reported = identity.hardwareID else { return false }
-        return reported == expected || reported == knownRobots.pendingProvisionedHardwareID
+        return admitsAutomatically(hardwareID: reported)
+    }
+
+    /// The same rule for a hardware id that arrives before any handshake: a Bonjour
+    /// advert's TXT `unit_id`, which `CandidateSweep` reads before it dials.
+    func admitsAutomatically(hardwareID: String) -> Bool {
+        guard let expected = knownRobots.lastHardwareID else { return true }
+        return hardwareID == expected || hardwareID == knownRobots.pendingProvisionedHardwareID
     }
 
     /// Called before the attempt resets, while `address` still names what was dialled.

@@ -24,6 +24,13 @@ link-local IPv6). Our rules:
   with `KnownRobotStore.lastHardwareID` before the session claims or remembers anything.
   Another robot, or a daemon with no hardware id, is passed over,
   and the sweep goes on to its next candidate.
+  - A Bonjour advert names its robot before any handshake: the daemon puts the hardware id in TXT `unit_id`.
+    While a robot is held, `CandidateSweep.resolve` does not resolve another robot's advert,
+    and it puts the held robot's address ahead of the candidates that wait, `reachy-mini.local` included.
+    A robot set up over Bluetooth a moment ago goes ahead too, because the session takes it.
+    An advert without `unit_id` (the legacy `_http._tcp` type) is queued as before, and the handshake decides.
+    `RobotSession.admitsAutomatically(hardwareID:)` holds the one rule for both checks.
+    The session stays the authority: the advert check only saves a handshake with another robot's daemon.
   - Nothing is held when the last robot reported no hardware id,
     so the simulator and a robot without the audio board connect as before.
   - A robot set up over Bluetooth a moment ago (`pendingProvisionedHardwareID`) is taken.
