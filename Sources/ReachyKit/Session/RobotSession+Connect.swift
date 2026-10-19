@@ -82,6 +82,13 @@ public extension RobotSession {
                 }
                 return false
             }
+            // Before anything is claimed or remembered: a robot passed over here must leave
+            // no trace, or the next sweep would start from its address.
+            guard !automatically || admitsAutomatically(handshake.identity) else {
+                logPassingOver(handshake.identity)
+                resetConnectionState()
+                return false
+            }
             // Claimed before the readiness stage so `startBackend()` has something
             // to talk to while the attempt sits on `.backendUnavailable`. Only the
             // stepper is mounted then, so the rest of the surface stays unreachable.
@@ -103,15 +110,18 @@ public extension RobotSession {
                 // without the Pollen audio device report none, and nil equal to nil made
                 // every such robot new to this device on every connect.
                 let wasProvisioned = handshake.identity.hardwareID
-                    .map { $0 == KnownRobots.pendingProvisionedHardwareID } ?? false
+                    .map { $0 == knownRobots.pendingProvisionedHardwareID } ?? false
                 // Before `remember`, which is what makes every robot known: the first run's
                 // fallback offers itself to a robot this device is meeting now (#169).
-                firstRun.isNewToDevice = !KnownRobots.all.contains { $0.key == handshake.identity.deduplicationKey }
+                firstRun.isNewToDevice = !knownRobots.all.contains { $0.key == handshake.identity.deduplicationKey }
                     || wasProvisioned
-                KnownRobots.lastAddress = address
-                KnownRobots.remember(identity: handshake.identity, address: address)
+                knownRobots.lastAddress = address
+                // Also on a manual connect, which is how the user moves the sweep to another
+                // robot. A robot with no hardware id clears it, and then nothing is held.
+                knownRobots.lastHardwareID = handshake.identity.hardwareID
+                knownRobots.remember(identity: handshake.identity, address: address)
                 if wasProvisioned {
-                    KnownRobots.pendingProvisionedHardwareID = nil
+                    knownRobots.pendingProvisionedHardwareID = nil
                 }
             }
             if case let .unsupported(reported, minimum) = handshake.compatibility {

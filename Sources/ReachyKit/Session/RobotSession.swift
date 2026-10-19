@@ -56,17 +56,6 @@ public final class RobotSession {
         case failed(ConnectionStage, message: String)
     }
 
-    /// The steps a connection walks through, in order — the stepper's row model.
-    public enum ConnectionStage: Int, CaseIterable, Equatable, Sendable {
-        case connect
-        case compatibility
-        case backend
-    }
-
-    public enum StageOutcome: Equatable, Sendable {
-        case pending, active, done, attention, failed
-    }
-
     /// Wake and sleep are long enough — a cold backend start is budgeted at 90 s —
     /// that the UI has to show what the robot is doing meanwhile.
     ///
@@ -176,6 +165,10 @@ public final class RobotSession {
     var firstRun = FirstRunState()
     /// What outlives a connection: the LAN channel the UI opens, and this device's record.
     public var firstRunServices = FirstRunServices()
+    /// The robots this device has met, the last address, and the robot an automatic
+    /// attempt is held to. A test replaces it with a store on a suite of its own, because
+    /// `--parallel` connects other sessions against the shared one at the same time.
+    var knownRobots = KnownRobots.store
     public internal(set) var moveActivity: MoveActivity?
 
     public var currentMove: MovePlayback? {
