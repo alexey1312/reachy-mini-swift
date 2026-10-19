@@ -76,7 +76,17 @@ and "buttons and toggles on Live Activities don't perform actions in CarPlay"
 ([Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities)).
 No API tells the watch and CarPlay apart.
 The rule in `Sources/ReachyWidgetUI/AGENTS.md` is that a button that might do nothing is worse than none.
-So the Stop stays only if the device check shows that it works on the watch.
+The [HIG](https://developer.apple.com/design/human-interface-guidelines/live-activities#watchOS)
+puts the same choice another way:
+leave buttons out of the watch layout if people are likely to watch the activity while driving.
+Nobody follows a desk robot's app from the road, so the Stop goes in.
+It stays only if the device check shows that it works on the watch.
+
+The card also got the lock screen's insets, 12 pt across and 8 pt down.
+The first recording showed the artwork against the card's edge,
+because the closure draws to the edges and `.small` had no padding.
+The HIG asks for even margins inside the rounded shape.
+Whether the Smart Stack adds margins of its own is part of the device check.
 
 ## Scenarios
 

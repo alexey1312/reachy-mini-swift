@@ -162,6 +162,10 @@ public struct RunningAppActivityView<Stop: View>: View {
 
     /// Title and state beside the artwork, and the Stop when the card can honour one.
     /// No robot name: on a watch face the state needs that second line more.
+    ///
+    /// The lock screen's insets, because the closure draws to the card's edges and the
+    /// HIG asks for even margins inside the rounded shape. Whether the Smart Stack adds
+    /// margins of its own is part of the device check.
     private var small: some View {
         HStack(spacing: Space.sm) {
             AppArtworkTile(artwork: artwork, size: islandArtwork)
@@ -179,6 +183,8 @@ public struct RunningAppActivityView<Stop: View>: View {
                 stop
             }
         }
+        .padding(.horizontal, Space.md)
+        .padding(.vertical, Space.sm)
     }
 
     private var expandedLeading: some View {

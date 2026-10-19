@@ -661,10 +661,15 @@ Now it draws the Stop, and the extension marks that button `.handGestureShortcut
 Apple lists remote Live Activities from iOS among the places where double tap presses the primary action.
 
 - **The price is CarPlay.** `.small` is the CarPlay layout too,
-  Apple's documentation says that Live Activity buttons do nothing there,
+  the system deactivates Live Activity buttons there,
   and no API tells the watch and CarPlay apart.
-  That is the "button that might do nothing" this file refuses everywhere else,
-  so the Stop stays only if the watch check shows that it works.
+  The HIG frames the choice the same way:
+  leave buttons out of the watch layout if people are likely to watch the activity while driving.
+  Nobody follows a desk robot's app from the road, so the Stop goes in,
+  but it stays only if the watch check shows that it works.
+- **The card has the lock screen's insets** (`Space.md` across, `Space.sm` down).
+  The first recording of the Stop showed the artwork against the card's edge and the Stop 3 pt from the other,
+  because the closure draws to the edges and `.small` had no padding at all.
 - **The check is a device check.** No reference image shows a tap or a double tap,
   and the Simulator has no Smart Stack.
   `docs/research/watchos.md` lists the steps and holds the results.
