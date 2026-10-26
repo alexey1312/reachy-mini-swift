@@ -72,6 +72,10 @@ if [ "$wants_developer_id" = true ] && [ "$notarize" = true ]; then
   require_asc_key
 fi
 
+if [ "$wants_appstore" = true ] && [ "$upload" = true ]; then
+  require_upload_number
+fi
+
 BUILD_NUMBER="$(build_number)"
 echo "Archiving build $BUILD_NUMBER." >&2
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-macOS.xcarchive

@@ -87,7 +87,7 @@ here.
    ```
 
    `release:ios` and `release:macos -- --channel appstore` still upload from this
-   Mac, for when the cloud cannot.
+   Mac, for when the cloud cannot, with a `REACHY_BUILD_NUMBER` named by hand.
 
 `release:macos` archives once and exports that archive twice, because
 `-exportArchive` re-signs per method — the two artifacts are the same build:
@@ -119,10 +119,13 @@ belongs to one channel and is ignored by the other.
 
 ### The build number
 
-`CFBundleVersion` is the commit count, computed by `build_number()` in
-`Scripts/release-env.sh` and passed to both archives as
-`CURRENT_PROJECT_VERSION`. Nothing about it is stored in the repository, which is
-why a release bumps `MARKETING_VERSION` and nothing else.
+What App Store Connect receives is numbered by Xcode Cloud (see “Xcode Cloud”
+below). On this Mac, `CFBundleVersion` is the commit count, computed by
+`build_number()` in `Scripts/release-env.sh` and passed to both archives as
+`CURRENT_PROJECT_VERSION` — for the Developer ID zip and the `--no-upload` exports;
+an upload from here takes `REACHY_BUILD_NUMBER` instead. Nothing about either is
+stored in the repository, which is why a release bumps `MARKETING_VERSION` and
+nothing else.
 
 **It reads the clone, not the project, and that is its one failure mode.**
 `git rev-list --count HEAD` counts _reachable_ commits, so a shallow clone answers
@@ -614,13 +617,19 @@ that session lapsed between releases twice. The cloud passes no `ARCHS=arm64`, s
 the Release configuration in `Apps/Project.swift` carries it for macOS, and
 `ci_post_xcodebuild.sh` checks the archived binary with `lipo`.
 
-**Xcode Cloud numbers every build itself.** Whatever `ci_post_clone.sh` stamps, the
-uploads carry the cloud's build number (90, 121, 125 — the run numbers). App Store
-Connect wants each Mac build above every Mac build before it, and the last local
-Mac build was 268, so the next build number was raised to 300 in App Store Connect →
-Xcode Cloud → Settings; no API sets it. Upload a Mac build from here only when the
-cloud cannot (`--channel appstore`): numbered by the commit count, it can land above
-the cloud's counter and turn the cloud's next Mac build away.
+**Xcode Cloud numbers every build itself, and that is the one counter.** App Store
+Connect gives each cloud upload the cloud's build number (90, 121, 125, 128 — the
+run numbers; Apple's _Setting the next build number for Xcode Cloud builds_), so
+`ci_post_clone.sh` no longer stamps one. A Mac build must be numbered above every
+Mac build before it, even across versions, and the last one uploaded from a Mac was
+268, so the next build number was raised to 300 in App Store Connect → Xcode Cloud →
+Settings → Build Number; no API sets it. `ci_post_clone.sh` fails a Mac build
+numbered 268 or less in seconds, rather than half an hour in.
+
+An upload from this Mac (`release:ios`, `release:macos -- --channel appstore`) needs
+`REACHY_BUILD_NUMBER`: a number above every build App Store Connect holds. Raise the
+cloud's next build number above it afterwards, or the cloud's next Mac build is
+turned away. `--no-upload` and the Developer ID zip keep the commit count.
 
 **`TUIST_CACHE_ENABLED=false` is exported before generating**, because
 `Apps/Tuist.swift` reads it at generation time and defaults it to true. The Xcode
