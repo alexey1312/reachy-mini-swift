@@ -38,7 +38,10 @@ let project = Project(
             // internal screens through `@testable import`, and it is the *package* target that has to
             // be built with testability for that to link.
             .debug(name: .debug, settings: ["ENABLE_TESTABILITY": "YES"]),
-            .release(name: .release),
+            // macOS ships arm64 alone. For Xcode Cloud, which takes no `ARCHS=arm64` on a command
+            // line as `release-macos.sh` does; the app links the packages' arm64 slices, and
+            // `ci_post_xcodebuild.sh` checks the archive with `lipo`.
+            .release(name: .release, settings: ["ARCHS[sdk=macosx*]": "arm64"]),
         ]
     ),
     targets: [

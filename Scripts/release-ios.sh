@@ -29,6 +29,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+if [ "$upload" = true ]; then
+  require_upload_number
+fi
 BUILD_NUMBER="$(build_number)"
 echo "Archiving build $BUILD_NUMBER." >&2
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-iOS.xcarchive

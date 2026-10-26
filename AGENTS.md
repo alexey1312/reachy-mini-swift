@@ -260,17 +260,30 @@ Generation stays last in that action, because the SourcePackages restore must co
 so anything that changes that variable must also run before `tuist generate`.
 **GitHub Actions is not the only CI, and the other one is not in this repository.** An Xcode Cloud workflow named
 `Hey Reachy | TestFlight (Public)` archives `main` and uploads it; its definition lives in App Store Connect and only
-`Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here. It archives iOS and visionOS
-(schemes `ReachyMini` and `ReachyVision`, one bundle ID) and **never macOS**, and
-`ci_post_clone.sh` exits non-zero on `CI_PRODUCT_PLATFORM = macOS` to keep it that way: `release:macos` archives once
-and exports that archive twice, and the half Xcode Cloud can produce (the App Store `.pkg`) is the half the local run
-already made — the notarized Developer ID zip needs a key that never enters CI, so a macOS action there is 28 minutes
-spent duplicating half a release. Three things had to be fixed there and each reads as something else. The build
-number is now the commit count **plus** `CI_BUILD_NUMBER`, because Xcode Cloud's counter starts at 1 while local
-releases upload `git rev-list --count HEAD`: on its own it archives underneath every build App Store Connect already
-holds and is rejected at _Prepare Build for App Store Connect_, 28 minutes in, over a number that lives on the server
-where neither the build nor the export can see it. The stamping `sed` now verifies its own substitution, because it
-rewrites a literal `tuist` happens to emit and a no-op ships `CFBundleVersion 1` silently. And `TUIST_CACHE_ENABLED`
+`Apps/ci_scripts/{ci_post_clone,ci_post_xcodebuild}.sh` is reviewable here.
+It archives iOS, visionOS, tvOS and macOS (schemes `ReachyMini`, `ReachyVision`, `ReachyTV`; one bundle ID).
+**macOS joined on 2026-10-26, as the Mac App Store half of a release only.**
+The notarized Developer ID zip needs an App Store Connect key that never enters CI,
+so `release:macos` still makes it locally, and that is now the task's default channel.
+The Mac App Store build was local until then, which tied each macOS release to an Apple ID session in Xcode on one Mac;
+it lapsed between releases twice.
+`ARCHS[sdk=macosx*]=arm64` sits in the Release configuration of `Apps/Project.swift` for the cloud,
+which takes no command line, and `ci_post_xcodebuild.sh` checks the archived binary with `lipo`.
+**One counter numbers every upload, and it is Xcode Cloud's.**
+App Store Connect gives every cloud upload the cloud's own build number —
+the uploads read 90, 121 and 125, the run numbers —
+and a Mac build must carry a number above every Mac build before it.
+The last local Mac build was 268, so the next build number in App Store Connect → Xcode Cloud → Settings
+was raised above it; no API sets that field.
+A local `--channel appstore` upload numbered by the commit count can land above the cloud's counter
+and turn the cloud's next Mac build away.
+So `ci_post_clone.sh` stamps no build number any more — it stamped the commit count plus `CI_BUILD_NUMBER` for months
+and every upload read the run number all the same — and it fails a Mac build numbered 268 or less in seconds,
+rather than at _Prepare Build for App Store Connect_ half an hour in, which is how cloud build 24 died.
+`release:ios` and `release:macos -- --channel appstore` upload only with a `REACHY_BUILD_NUMBER` named by hand
+(`require_upload_number`), because a commit-count number could land above the cloud's counter and turn its next Mac
+build away. Their `--no-upload` exports and the Developer ID zip keep the commit count.
+Two more things had to be fixed there. `TUIST_CACHE_ENABLED`
 is exported `false` **before** `mise run project`, for the reason the step order above gives — with
 `COMPILATION_CACHE_*` baked in and no cache service anywhere, every compile task waits out a CAS socket deadline; the
 tell is `CAS error: deadlineExceeded(… No such file or directory (errno: 2))` next to `swift compiler caching

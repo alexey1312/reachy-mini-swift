@@ -76,13 +76,18 @@ here.
    git tag 0.2.0 && git push origin 0.2.0
    ```
 
-3. Produce and ship the artifacts:
+3. Produce and ship the artifacts.
+   Xcode Cloud archives iOS, visionOS, tvOS and the Mac App Store build on every
+   push to `main` (see “Xcode Cloud” below).
+   What stays local is the notarized Developer ID zip:
 
    ```bash
-   mise run release:ios     # archive → TestFlight
-   mise run release:macos   # archive → both macOS channels (see below)
+   mise run release:macos   # archive → the notarized zip (see below)
    gh release upload 0.2.0 Apps/DerivedData/Export/macOS/HeyReachy-0.2.0.zip
    ```
+
+   `release:ios` and `release:macos -- --channel appstore` still upload from this
+   Mac, for when the cloud cannot, with a `REACHY_BUILD_NUMBER` named by hand.
 
 `release:macos` archives once and exports that archive twice, because
 `-exportArchive` re-signs per method — the two artifacts are the same build:
@@ -114,10 +119,13 @@ belongs to one channel and is ignored by the other.
 
 ### The build number
 
-`CFBundleVersion` is the commit count, computed by `build_number()` in
-`Scripts/release-env.sh` and passed to both archives as
-`CURRENT_PROJECT_VERSION`. Nothing about it is stored in the repository, which is
-why a release bumps `MARKETING_VERSION` and nothing else.
+What App Store Connect receives is numbered by Xcode Cloud (see “Xcode Cloud”
+below). On this Mac, `CFBundleVersion` is the commit count, computed by
+`build_number()` in `Scripts/release-env.sh` and passed to both archives as
+`CURRENT_PROJECT_VERSION` — for the Developer ID zip and the `--no-upload` exports;
+an upload from here takes `REACHY_BUILD_NUMBER` instead. Nothing about either is
+stored in the repository, which is why a release bumps `MARKETING_VERSION` and
+nothing else.
 
 **It reads the clone, not the project, and that is its one failure mode.**
 `git rev-list --count HEAD` counts _reachable_ commits, so a shallow clone answers
@@ -590,7 +598,7 @@ cannot manage provisioning profiles.
 The CLI also ships 23 agent skills (`asc install-skills`, pinned to a reviewed
 commit) covering TestFlight, metadata, submissions and signing.
 
-## Xcode Cloud (continuous TestFlight, iOS only)
+## Xcode Cloud (continuous TestFlight: iOS, visionOS, tvOS and the Mac App Store)
 
 `Apps/ci_scripts/ci_post_clone.sh` makes a generated project buildable on
 Xcode Cloud: it installs the pinned tools through the committed `bin/mise`
@@ -599,26 +607,29 @@ certificates leave the account — and TestFlight distribution is a post-action
 checkbox. The workflow itself lives in App Store Connect; the two scripts under
 `Apps/ci_scripts/` are the whole of what this repository can review.
 
-**It archives iOS and nothing else, and the script refuses a macOS action.**
-`release:macos` archives once and exports that archive twice — the notarized
-Developer ID zip _and_ the Mac App Store `.pkg`, which is the table above. Xcode
-Cloud can only ever produce the second of those, because the notary needs the
-App Store Connect key that deliberately never enters CI. So a macOS action there
-spends ~28 minutes minting a second copy of half a local release, from a second
-build-number counter. That is how build 24 failed: iOS archived green and macOS
-died at _Prepare Build for App Store Connect_.
+**It archives iOS, visionOS, tvOS and macOS, and the macOS action is the Mac App
+Store half of a release only.** The notarized Developer ID zip needs the App Store
+Connect key that deliberately never enters CI, so it stays local:
+`mise run release:macos` makes that channel alone by default, and
+`gh release upload` attaches the zip. The Mac App Store build moved to the cloud on
+2026-10-26, because a local one needs an Apple ID session in Xcode on one Mac, and
+that session lapsed between releases twice. The cloud passes no `ARCHS=arm64`, so
+the Release configuration in `Apps/Project.swift` carries it for macOS, and
+`ci_post_xcodebuild.sh` checks the archived binary with `lipo`.
 
-**The build number is the commit count plus `CI_BUILD_NUMBER`**, not
-`CI_BUILD_NUMBER` alone. Xcode Cloud's counter starts at 1 while local releases
-upload `git rev-list --count HEAD` (above), so on its own it archives underneath
-every build App Store Connect already holds for the version — rejected 28 minutes
-in, at the export, with nothing in the build pointing at the cause. The sum is
-above every local build by construction, ascending on both axes, and never
-_equal_ to the local number for the same commit, so there is no start-build-number
-to keep in step by hand any more. `build_number()` in `Scripts/release-env.sh`
-does the counting, which is also what deepens Xcode Cloud's shallow clone before
-counting it; `REACHY_BUILD_NUMBER` overrides the whole computation and can be set
-as an Xcode Cloud environment variable.
+**Xcode Cloud numbers every build itself, and that is the one counter.** App Store
+Connect gives each cloud upload the cloud's build number (90, 121, 125, 128 — the
+run numbers; Apple's _Setting the next build number for Xcode Cloud builds_), so
+`ci_post_clone.sh` no longer stamps one. A Mac build must be numbered above every
+Mac build before it, even across versions, and the last one uploaded from a Mac was
+268, so the next build number was raised to 300 in App Store Connect → Xcode Cloud →
+Settings → Build Number; no API sets it. `ci_post_clone.sh` fails a Mac build
+numbered 268 or less in seconds, rather than half an hour in.
+
+An upload from this Mac (`release:ios`, `release:macos -- --channel appstore`) needs
+`REACHY_BUILD_NUMBER`: a number above every build App Store Connect holds. Raise the
+cloud's next build number above it afterwards, or the cloud's next Mac build is
+turned away. `--no-upload` and the Developer ID zip keep the commit count.
 
 **`TUIST_CACHE_ENABLED=false` is exported before generating**, because
 `Apps/Tuist.swift` reads it at generation time and defaults it to true. The Xcode
