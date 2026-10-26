@@ -52,8 +52,10 @@ private struct ViewportColumnModifier: ViewModifier {
         viewport.source != nil && session.isAwake
     }
 
+    /// `barAxisIsKnown` too: an inspector shown before the shell knows its bars are
+    /// on the side is one that stays (`FloatingViewportModel.barAxisIsKnown`).
     private var isPresented: Bool {
-        model.placement == .column && hasSomethingToShow
+        model.placement == .column && hasSomethingToShow && model.barAxisIsKnown
     }
 
     /// Absent where this connection carries no teleop, so the joystick is not offered

@@ -37,8 +37,8 @@ final class WebAuthenticationBrowser: NSObject, HFWebAuthenticating {
         super.init()
     }
 
-    func authenticate(url: URL, callbackScheme: String) async throws -> URL {
-        anchor = Self.frontmostWindow()
+    func authenticate(url: URL, callbackScheme: String, presentingWindow: ASPresentationAnchor?) async throws -> URL {
+        anchor = presentingWindow ?? Self.frontmostWindow()
         // The sign-in ran in Safari's context, so the front application is Safari's
         // — and when it closes, macOS hands the front slot to whatever is behind it
         // rather than back to us. Under Stage Manager that is another stage
@@ -81,8 +81,14 @@ final class WebAuthenticationBrowser: NSObject, HFWebAuthenticating {
 }
 
 private extension WebAuthenticationBrowser {
-    /// Which window a sheet presented now would belong to. `@MainActor`, and it has
-    /// to stay that way — every call in it is UI state.
+    /// Which window a sheet presented now would belong to, when the caller did not
+    /// say. `@MainActor`, and it has to stay that way — every call in it is UI state.
+    ///
+    /// **Only a fallback.** With two windows (Split View on iPhone Duo, or an iPad)
+    /// both scenes are `foregroundActive`, so this picks one of them, which may be
+    /// the window the reader is not looking at. Screens pass their own window
+    /// (`WindowSceneHandle`) instead; this answers for a caller with no window at
+    /// hand, and for a Mac, whose key window is the one the click came from.
     static func frontmostWindow() -> ASPresentationAnchor {
         #if os(macOS)
             NSApplication.shared.keyWindow ?? ASPresentationAnchor()

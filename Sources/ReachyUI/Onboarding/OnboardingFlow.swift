@@ -30,7 +30,7 @@ struct OnboardingFlow: View {
                 .toolbarTitleStyle()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(.reachy("Cancel")) {
+                        ReachySheetDismissButton(.cancel) {
                             model.cancel()
                             onCancel()
                         }

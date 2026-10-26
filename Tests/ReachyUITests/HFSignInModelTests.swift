@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import HuggingFaceAuth
 @testable import ReachyUI
@@ -13,7 +14,11 @@ private final class FakeBrowser: HFWebAuthenticating, @unchecked Sendable {
     private(set) var opened: [URL] = []
     var result: Result<URL, any Error>?
 
-    func authenticate(url: URL, callbackScheme _: String) async throws -> URL {
+    func authenticate(
+        url: URL,
+        callbackScheme _: String,
+        presentingWindow _: ASPresentationAnchor?
+    ) async throws -> URL {
         lock.withLock { opened.append(url) }
         if let result {
             return try result.get()

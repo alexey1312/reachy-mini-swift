@@ -60,15 +60,20 @@ jobs:
     # Xcode Cloud use Xcode's Swift — and one step fewer per run.
     runs-on: xcode-27
     env:
-      # The stable symlink, never the versioned path: the image's own
-      # `/Applications/Xcode_27_beta_N.app` moved from beta 3 to beta 4 at one rollout.
+      # Xcode 27.1, named by its minor version. The iOS 27.1 SDK is what gives iPhone Duo
+      # an edge-to-edge app with vertical bars, and the Duo APIs (hinge, reserved regions,
+      # `toolbarVerticalEdge`) are absent from the 27.0 SDK, so a 27.0 job cannot compile
+      # this tree. The image carries 27.0, 27.1 and a 27.2 release candidate side by side
+      # (runner-images README of 2026-10-23), and its `Xcode.app` follows whichever one is
+      # the default — the reason this path names the version rather than that symlink.
+      # Only the iOS SDK is 27.1 in this Xcode; macOS, tvOS and visionOS stay 27.0.
       #
       # `Scripts/swiftpm-env.sh` deliberately does not fire here. It forces the Command
       # Line Tools' release SDK whenever the selected Xcode path contains `beta`, which
       # this one does not — so this job really does compile against the 27 SDK. A guard
       # that silently rescued CI would be the worst outcome available: green, and
       # proving nothing.
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -142,7 +147,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -159,9 +164,10 @@ jobs:
     name: App Build (macOS)
     # Every Xcode job sits on `xcode-27`, and the two-image split this comment used to
     # describe is gone with it: `macos-26` tops out at Xcode 26.6, so nothing in the
-    # macos-* family reaches the iOS 27 SDK. The label is a public preview image
-    # (actions/runner-images#14404) carrying Xcode 27 alone, iOS 27.0 as its only
-    # simulator runtime, and `iPhone 17 Pro`. Standard rather than `-xlarge`, so the
+    # macos-* family reaches the iOS 27 SDK. The label went generally available on
+    # 2026-10-15 and carries Xcode 27.0, 27.1 and a 27.2 release candidate, iOS 27.0 with
+    # the `iPhone 18` line, and iOS 27.1 with `iPhone Duo` alone (README of 2026-10-23).
+    # Standard rather than `-xlarge`, so the
     # five concurrent macOS slots are unchanged. `actool` compiles the macOS variant of
     # the Icon Composer `.icon` here, which is what 26.4.1 was pinned for.
     runs-on: xcode-27
@@ -174,14 +180,13 @@ jobs:
       id-token: write
       contents: read
     env:
-      # The stable symlink, not the versioned path: the image's own
-      # `/Applications/Xcode_27_beta_N.app` moved from beta 3 to beta 4 at one rollout
-      # and moves again at the next. Deliberately Xcode's own Swift, with no swift.org
+      # Xcode 27.1 for the iOS 27.1 SDK, for the reason the lint-test job gives.
+      # Deliberately Xcode's own Swift, with no swift.org
       # toolchain overlaid: xcodebuild cannot load the local package's manifest under
       # one (its clang fails to spawn the linker). These jobs exist to compile the app
       # shell and the Tuist manifest; lint-test is what holds the SwiftPM graph and runs
       # the suite, on the same image and the same Swift since #124's blocker was lifted.
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -228,7 +233,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -271,7 +276,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
       - uses: actions/checkout@v7
 
@@ -297,7 +302,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      DEVELOPER_DIR: "/Applications/Xcode_27.0.app/Contents/Developer"
+      DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
       # The image dropped `iPhone 17 Pro` for the iPhone 18 line (run 35601702391).
       REACHY_SNAPSHOT_SIM: "iPhone 18 Pro"
     steps:

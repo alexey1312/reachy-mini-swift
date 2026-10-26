@@ -50,7 +50,9 @@ struct TelepresenceSheet: View {
         .formStyle(.grouped)
         .navigationTitle(.reachy("Presence"))
         .toolbar {
-            Button(.reachy("Done"), action: dismiss)
+            ToolbarItem(placement: .cancellationAction) {
+                ReachySheetDismissButton(action: dismiss)
+            }
         }
     }
 

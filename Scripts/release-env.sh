@@ -20,6 +20,30 @@ if [ -f "$RELEASE_CONFIG" ]; then
   . "$RELEASE_CONFIG"
 fi
 
+# Refuses an iOS SDK older than 27.1 before anything is archived.
+#
+# The linked SDK alone decides what iPhone Duo gives the app. With the 27.0 SDK
+# the app is boxed beside the status bar and keeps horizontal bars; with 27.1 it
+# is edge to edge and its bars go vertical. No Info.plist key selects one or the
+# other, so an archive made by an older Xcode builds green and ships the boxed
+# app. The Xcode version of an Xcode Cloud workflow is a setting in App Store
+# Connect, outside this repository, which is why ci_post_clone.sh asks too.
+require_duo_sdk() {
+  local sdk
+  sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+  if [ "$(printf '%s\n%s\n' 27.1 "$sdk" | sort -V | head -n 1)" = 27.1 ]; then
+    return 0
+  fi
+  cat >&2 <<EOF
+The selected Xcode has the iOS $sdk SDK, and iPhone Duo needs an app linked
+against iOS 27.1 or later. Select Xcode 27.1 or later:
+
+  - locally: xcode-select, or DEVELOPER_DIR;
+  - on Xcode Cloud: the workflow's Environment in App Store Connect.
+EOF
+  exit 1
+}
+
 # Demanded by the two scripts that archive; asc.sh sources this file for the API key
 # alone and never signs anything, so the check cannot run on load.
 require_development_team() {

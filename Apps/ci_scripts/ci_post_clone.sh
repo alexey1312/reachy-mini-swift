@@ -66,6 +66,9 @@ fi
 # Xcode Cloud environment variable if the deepening ever fails.
 # shellcheck source=Scripts/release-env.sh
 . Scripts/release-env.sh
+# Before the build number, so a workflow left on Xcode 27.0 fails in seconds
+# rather than archiving an app that iPhone Duo boxes beside the status bar.
+require_duo_sdk
 COMMIT_COUNT="$(build_number)"
 BUILD_NUMBER=$((COMMIT_COUNT + ${CI_BUILD_NUMBER:-0}))
 echo "Archiving build $BUILD_NUMBER (commit count $COMMIT_COUNT + CI_BUILD_NUMBER ${CI_BUILD_NUMBER:-0})." >&2

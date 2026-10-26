@@ -180,11 +180,11 @@ struct AppDetailSheet: View {
         #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    // "Minimize" while the app holds the robot: closing this page
-                    // leaves it running, and only Stop ends it. That is the
-                    // contract a Telegram Mini App has, and the dock is where it
-                    // minimises to.
-                    Button(runningStatus == nil ? .reachy("Done") : .reachy("Minimize")) {
+                    // "Minimize" while the app holds the robot, which closing leaves running (only Stop ends it).
+                    Button(
+                        runningStatus == nil ? .reachy("Close") : .reachy("Minimize"),
+                        systemImage: runningStatus == nil ? "xmark" : "chevron.down"
+                    ) {
                         install.dismiss()
                         dismiss()
                     }

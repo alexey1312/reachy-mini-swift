@@ -81,6 +81,13 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
   `tuist setup cache` removes the old per-project agent, `tuist.cache.alexey1312_reachy-mini-swift`.
   Do not wait for a socket named after the project handle: the CI step did that and never found one.
   Check the agent with `launchctl list | grep tuist`.
+  **On Xcode 27.1 the cache can crash the build system while it replays a cached warning.**
+  The error is only "The Xcode build system has crashed. Build again to continue.", and building again repeats it.
+  The tell is a `SWBBuildService-*.ips` in `~/Library/Logs/DiagnosticReports` whose stack ends in
+  `replayCachedDiagnostics` → `FileSpecificDiagnosticConsumer` → `__throw_bad_optional_access`.
+  Measured on 2026-10-26: the snapshot scheme failed this way for one concrete simulator
+  while its generic build passed, and three new Swift 6 Sendable warnings were what it replayed.
+  One build with `COMPILATION_CACHE_ENABLE_CACHING=NO` gets through; removing the warnings made the cache work again.
 - **Build insights reach tuist.dev through a scheme post-action, not through a command.** `tuist generate` writes
   `tuist inspect build` into every generated scheme's build action (and `tuist inspect test` into
   `ReachyUISnapshotTests`' test action), pointing at the mise-installed binary by absolute path. That post-action
@@ -191,11 +198,20 @@ swift.org toolchain, where the swap now buys a legible error instead of the 401 
 does nothing and `swift build` sees the 27 SDK, measured at 32 s for the whole package. The
 `macos-*` family cannot host Xcode 27 at all — `macos-26` tops out at 26.6 — so the old two-image split is gone, and
 with it the reason 26.4.1 was pinned (`actool` failing `CompileAssetCatalogVariant` for the macOS variant of an Icon
-Composer `.icon` on 26.2). `xcode-27` is a public preview image (actions/runner-images#14404) carrying Xcode 27
-alone, iOS 27.0 as its only simulator runtime, and `iPhone 17 Pro`; the label is standard rather than `-xlarge`, so
-the five slots are unchanged. Point `DEVELOPER_DIR` at the `/Applications/Xcode_27.0.app` symlink, never the
-versioned path, which moved from `_beta_3` to `_beta_4` at one rollout. That image's core count has not been
-measured, so every timing quoted here is a `macos-15` number.
+Composer `.icon` on 26.2). `xcode-27` went generally available on 2026-10-15 and carries Xcode 27.0, 27.1 and a 27.2
+release candidate, iOS 27.0 with the `iPhone 18` line, and iOS 27.1 with `iPhone Duo` alone (README of 2026-10-23); the
+label is standard rather than `-xlarge`, so the five slots are unchanged.
+**Every job builds with `/Applications/Xcode_27.1.app`, and that is what iPhone Duo needs.**
+The linked SDK alone decides what the Duo gives the app: 27.0 boxes it beside the status bar with horizontal bars,
+27.1 makes it edge to edge with vertical bars, and no Info.plist key chooses.
+The Duo APIs (hinge, reserved regions, `toolbarVerticalEdge`) are absent from the 27.0 SDK as well.
+Name the minor version in the path: the image's `Xcode.app` follows whichever Xcode is the default.
+Only the **iOS** SDK is 27.1 in that Xcode — macOS, tvOS and visionOS are 27.0 —
+so a 27.1 API in shared code needs `#if os(iOS)` as well as `if #available(iOS 27.1, *)`.
+`require_duo_sdk` in `Scripts/release-env.sh` refuses an older iOS SDK in `release-ios.sh` and in Xcode Cloud's
+`ci_post_clone.sh`, because an archive from Xcode 27.0 builds green and ships the boxed app;
+Xcode Cloud's Xcode version is a workflow setting in App Store Connect, outside this repository.
+That image's core count has not been measured, so every timing quoted here is a `macos-15` number.
 **The previews job and the smoke job compile the same packages twice, on purpose.** Both build Debug for the iOS
 Simulator into the same `Debug-iphonesimulator` products directory, so one job running them in sequence really does
 reuse: the smoke step measured 9.9–10.7 min as its own job against **7.4** after the preview build in the same job.
@@ -592,6 +608,14 @@ either re-records everything or fails the run outright:
 
 So a reference named `…-iPhone-16-Pro.png` was rendered on an iPhone 17 Pro, at iPhone 16 Pro dimensions. A
 different iOS runtime renders text differently and every reference would have to be re-recorded.
+**The references stay on iOS 27.0 although the app builds with Xcode 27.1, because no other iPhone runs 27.1.**
+Both iOS 27.1 simulator runtimes, the 24A94425 that Xcode 27.1 installs and the 24A94232 that
+`xcodebuild -downloadPlatform iOS -buildVersion 24A94232` fetches, list `iPhone Duo` as their only device type,
+and `simctl create` answers "Incompatible device" for an iPhone 17 Pro (measured 2026-10-26).
+So the move to a newer runtime waits for one that carries the iPhone line, which 27.2 is expected to be.
+A fresh Xcode 27.1 machine has no iOS 27.0 runtime at all: `xcodebuild -downloadPlatform iOS -buildVersion 27.0`,
+then `xcrun simctl create "iPhone 17 Pro" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro
+com.apple.CoreSimulator.SimRuntime.iOS-27-0`.
 **Adding a size to `snapshot_devices` costs +816 references and roughly +100 MB of LFS**, one per preview per
 appearance, so weigh that before a third entry (#114 measured it and decided against).
 **Its position in the list used to be load-bearing, and it no longer is — fixed twice over.**

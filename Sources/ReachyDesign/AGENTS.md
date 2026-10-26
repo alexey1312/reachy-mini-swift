@@ -7,28 +7,30 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 
 ## What is here
 
-| File                           | Holds                                                                                                                                |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `Space.swift`                  | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
-| `Radius.swift`                 | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
-| `Tone.swift`                   | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
-| `ReachyTheme.swift`            | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, `shellTint`, and the `Color(hex:)` that paints a tile |
-| `ThemeStore.swift`             | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
-| `ThemeEnvironment.swift`       | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
-| `Typography.swift`             | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
-| `Motion.swift`                 | The animations the app runs, named — including the one that carries a gesture                                                        |
-| `Metrics.swift`                | Sizes fixed by what they represent rather than by their text                                                                         |
-| `StatusTone.swift`             | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
-| `ReachySurface.swift`          | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
-| `ReachyBadge.swift`            | A word in a capsule, on the `.badge` surface                                                                                         |
-| `ReachyInlineLabelStyle.swift` | `.reachyInline`: a `Label`'s glyph tight against its word, out of a `Form` row's icon column                                         |
-| `ReachySurfaceGroup.swift`     | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
-| `ReachyButton.swift`           | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
-| `ReachyActionButton.swift`     | The action button that puts width, target and colour _inside_ the label — full-width capsules, a dark-appearance label               |
-| `ReachyErrorRow.swift`         | One failure in a form row, with the way out beside it                                                                                |
-| `ReachyChrome.swift`           | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
-| `ReachySheet.swift`            | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
-| `ReachyTabAccessory.swift`     | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
+| File                             | Holds                                                                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Space.swift`                    | The 4-point layout rhythm, and the two rules for adopting it                                                                         |
+| `Radius.swift`                   | Corner radii, `Radius.rect(_:)` and `Radius.flush(to:_:)` — the only two handed out                                                  |
+| `Tone.swift`                     | Semantic colour roles over system styles; `.brand` is the one exception, resolving to `ReachyTheme`                                  |
+| `ReachyTheme.swift`              | The six-theme palette, `accent`, `title`, `colorSetName`, `alternateIconName`, `shellTint`, and the `Color(hex:)` that paints a tile |
+| `ThemeStore.swift`               | The chosen theme, persisted against an injected `UserDefaults`                                                                       |
+| `ThemeEnvironment.swift`         | `EnvironmentValues.reachyTheme` + `.reachyTheme(_:)`                                                                                 |
+| `Typography.swift`               | Text roles from semantic `Font`s, and `IconRatio` for glyph-as-artwork                                                               |
+| `Motion.swift`                   | The animations the app runs, named — including the one that carries a gesture                                                        |
+| `Metrics.swift`                  | Sizes fixed by what they represent rather than by their text                                                                         |
+| `StatusTone.swift`               | `StatusTone` + `ReachyStatusLabel`, the one shape a state caption renders in                                                         |
+| `ReachySurface.swift`            | `SurfaceRole` + `reachySurface(_:in:)`, and its safe-area form                                                                       |
+| `ReachyBadge.swift`              | A word in a capsule, on the `.badge` surface                                                                                         |
+| `ReachyInlineLabelStyle.swift`   | `.reachyInline`: a `Label`'s glyph tight against its word, out of a `Form` row's icon column                                         |
+| `ReachySurfaceGroup.swift`       | `GlassEffectContainer` — and why it cannot hold a `reachySurface`                                                                    |
+| `ReachyButton.swift`             | `ButtonEmphasis` + `reachyButton(_:)` — glass on the prominent tiers, bordered under a capture                                       |
+| `ReachyActionButton.swift`       | The action button that puts width, target and colour _inside_ the label — full-width capsules, a dark-appearance label               |
+| `ReachyErrorRow.swift`           | One failure in a form row, with the way out beside it                                                                                |
+| `ReachyChrome.swift`             | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
+| `ReachySheet.swift`              | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
+| `ReachySheetDismissButton.swift` | The button that puts a sheet away, with the iOS 26 role that gives it a symbol a vertical bar can carry                              |
+| `ReachyOverflowMenu.swift`       | `reachyOverflowMenu`: a screen's secondary actions in the bar's own overflow menu (iOS 27), and why it is a view modifier            |
+| `ReachyTabAccessory.swift`       | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 
 ## Rules
 

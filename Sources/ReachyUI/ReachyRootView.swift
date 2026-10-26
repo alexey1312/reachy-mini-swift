@@ -50,6 +50,12 @@ public struct ReachyRootView<Developer: View>: View {
     /// The robot's own data channel on the LAN, opened during a connect to read its
     /// first wake-up flag and kept while the first run it found is on screen (#169).
     @State private var firstRunLAN: FirstRunLANLink
+    #if os(iOS) || os(visionOS)
+        /// The scene this root is drawn in. One per root, because each window of the
+        /// app is a root of its own (`WindowSceneHandle` says why the app cannot ask
+        /// `UIApplication` instead).
+        @State private var windowScene = WindowSceneHandle()
+    #endif
 
     private let developer: Developer
 
@@ -196,6 +202,10 @@ public struct ReachyRootView<Developer: View>: View {
                 remoteLink: remoteLink
             )
         )
+        // Outermost, so that the sheets above see it as well.
+        #if os(iOS) || os(visionOS)
+        .readsWindowScene(into: windowScene)
+        #endif
     }
 
     /// The fork the old `robotTab` made, with one condition added. `.unreachable`

@@ -1,3 +1,4 @@
+import AuthenticationServices
 import ReachyDesign
 import ReachyKit
 import SwiftUI
@@ -19,6 +20,9 @@ import SwiftUI
         @State private var model = JSAppsPrototypeModel()
         @Environment(\.reachyOpenJSApp) private var openJSApp
         @Environment(\.colorScheme) private var colorScheme
+        #if os(iOS) || os(visionOS)
+            @Environment(\.windowScene) private var windowScene
+        #endif
 
         var body: some View {
             Form {
@@ -37,13 +41,24 @@ import SwiftUI
             session.connectedIdentity?.hardwareID
         }
 
+        /// The window this screen is drawn in, so that the sign-in sheet opens in it
+        /// and not in whichever window is in front (`WindowSceneHandle`). `nil` on a
+        /// Mac, where the key window is the one the click came from.
+        private var presentingWindow: ASPresentationAnchor? {
+            #if os(iOS) || os(visionOS)
+                windowScene?.current?.keyWindow
+            #else
+                nil
+            #endif
+        }
+
         private var accessSection: some View {
             Section {
                 if model.isAuthorized {
                     LabeledContent(.reachy("Signed in as"), value: model.webAccount.username ?? "")
                 } else {
                     Button(.reachy("Authorize web apps")) {
-                        Task { await model.authorize(hardwareID: hardwareID) }
+                        Task { await model.authorize(hardwareID: hardwareID, presentingWindow: presentingWindow) }
                     }
                     .disabled(model.isAuthorizing)
                 }

@@ -120,7 +120,7 @@ struct BLEConsoleScreen: View {
                 BLERecoveryCommandsSheet(model: model)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button(.reachy("Done")) { showsCommands = false }
+                            ReachySheetDismissButton { showsCommands = false }
                         }
                     }
             }

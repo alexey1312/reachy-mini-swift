@@ -59,6 +59,21 @@ final class FloatingViewportModel {
     /// intended behaviour and costs no code — both forms read this one input.
     var hasTabBar = false
 
+    /// Whether the shell knows yet if this window's bars stand on the side. The
+    /// column waits for it: an inspector shown on the first frames and taken away
+    /// a pass later stayed on screen, empty, over a blurred tab bar (iPhone Duo,
+    /// measured — `ReachyUI/AGENTS.md`). Known from the start below iOS 27.1.
+    var barAxisIsKnown = !FloatingViewportModel.readsBarAxis
+
+    static var readsBarAxis: Bool {
+        #if os(iOS)
+            if #available(iOS 27.1, *) {
+                return true
+            }
+        #endif
+        return false
+    }
+
     /// Whether the Live tab is the selected one. Written by the shell.
     var isLiveTabSelected = false
 
