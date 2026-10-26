@@ -53,6 +53,19 @@ env:
       - tapOn:
           id: "connect.submit"
 
+# A daemon that has never woken its robot up gets the first run (#169) in place of
+# the shell, and a fresh `.venv-sim` is exactly that daemon. Skipping writes the
+# robot's own flag, so only the first run against a new daemon takes this branch.
+# Text selectors are regular expressions, so the wait ends on whichever comes first.
+- extendedWaitUntil:
+    visible: "Skip setup|Moves"
+    timeout: 180000
+- runFlow:
+    when:
+      visible: "Skip setup"
+    commands:
+      - tapOn: "Skip setup"
+
 # Waited on "Moves" rather than "Robot": the bare word "Robot" also appears as a
 # Settings section header and as the Robot screen's own section, so it can match
 # while the gate is still up. Maestro matches text with no element-type filter,
