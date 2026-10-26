@@ -25,6 +25,7 @@ struct ConversationScreen: View {
         content
             .navigationTitle(.reachy("Conversation"))
             .toolbar { toolbar }
+            .reachyOverflowMenu(fallbackPlacement: .secondaryAction) { moreItems }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .sheet(isPresented: $isShowingVoices) {
                 ConversationVoiceSheet(app: app, session: session)
@@ -130,17 +131,19 @@ struct ConversationScreen: View {
             }
             .disabled(!model.isLive)
         }
-        .reachyVisibilityPriority(.high)
-        ReachyOverflowMenu(fallbackPlacement: .secondaryAction) {
-            Button(.reachy("Copy transcript"), systemImage: "doc.on.doc") {
-                Clipboard.copy(model.transcriptText)
-            }
-            .disabled(!model.hasTranscript)
-            Button(.reachy("Clear"), systemImage: "trash", role: .destructive) {
-                isConfirmingClear = true
-            }
-            .disabled(model.entries.isEmpty)
+    }
+
+    /// The transcript's two actions, in the bar's overflow menu (`reachyOverflowMenu`).
+    @ViewBuilder
+    private var moreItems: some View {
+        Button(.reachy("Copy transcript"), systemImage: "doc.on.doc") {
+            Clipboard.copy(model.transcriptText)
         }
+        .disabled(!model.hasTranscript)
+        Button(.reachy("Clear"), systemImage: "trash", role: .destructive) {
+            isConfirmingClear = true
+        }
+        .disabled(model.entries.isEmpty)
     }
 
     /// The app's own settings page, where the backend key is set. Nil over a relay and

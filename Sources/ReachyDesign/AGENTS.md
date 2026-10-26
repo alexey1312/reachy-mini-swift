@@ -29,8 +29,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachyChrome.swift`             | The iOS 26 bar behaviours, each a no-op below the floor                                                                              |
 | `ReachySheet.swift`              | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
 | `ReachySheetDismissButton.swift` | The button that puts a sheet away, with the iOS 26 role that gives it a symbol a vertical bar can carry                              |
-| `ReachyOverflowMenu.swift`       | A screen's secondary actions in the bar's own overflow menu (iOS 27), with the old menu below it                                     |
-| `ReachyToolbarPriority.swift`    | Which toolbar items a crowded bar keeps longest, and the custom item that joins a vertical bar                                       |
+| `ReachyOverflowMenu.swift`       | `reachyOverflowMenu`: a screen's secondary actions in the bar's own overflow menu (iOS 27), and why it is a view modifier            |
 | `ReachyFold.swift`               | iPhone Duo's fold: `FoldInsets`, `reachyClearOfFold()` and the reader the viewport uses                                              |
 | `ReachyTabAccessory.swift`       | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 

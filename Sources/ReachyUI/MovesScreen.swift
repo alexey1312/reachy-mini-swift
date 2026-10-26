@@ -171,7 +171,6 @@ struct MovesScreen: View {
                 }
                 .help(Text(.reachy("Sounds")))
             }
-            .reachyVisibilityPriority(.high)
         }
     }
 
