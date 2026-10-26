@@ -61,7 +61,7 @@ dprint = "0.63.0" # Markdown formatting
 # 519 tests passed, and all 2076 reference PNGs stayed byte-identical.
 # Keep the pin equal to the `.exact` requirements in Apps/Project.swift and Package.swift.
 "github:BarredEwe/Prefire[exe=prefire]" = "6.1.0"
-git-lfs = "3.8.0" # Snapshot reference images
+git-lfs = "3.8.1" # Snapshot reference images
 
 # --- Git & CI ---
 hk = "2.6.0"         # Git hooks manager (version must match hk.pkl package URI)
@@ -76,7 +76,7 @@ git-cliff = "2.14.2"  # Changelog generation
 
 # --- Simulator ---
 python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
-uv = "0.13.1"   # installs into that venv as APFS clones — see sim-daemon
+uv = "0.13.4"   # installs into that venv as APFS clones — see sim-daemon
 # Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
 # rather than left to a global `brew install` because CI and a fresh clone have no brew
 # copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
