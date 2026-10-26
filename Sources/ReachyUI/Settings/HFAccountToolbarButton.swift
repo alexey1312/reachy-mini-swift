@@ -82,23 +82,42 @@ extension View {
     /// Every other toolbar in this package leaves the placement to `.automatic`,
     /// which resolves trailing — that is where Settings already sits, and this has
     /// to be the other side of it.
+    @ViewBuilder
     func hfAccountToolbar(isPresented: Binding<Bool>) -> some View {
-        toolbar {
-            #if os(macOS)
+        #if os(macOS)
+            toolbar {
                 ToolbarItem(placement: .navigation) {
                     HFAccountToolbarButton { isPresented.wrappedValue = true }
                 }
-            #else
-                // The avatar is a custom view, and a toolbar keeps a custom view
-                // horizontal unless the item says otherwise. It is not a `Label`:
-                // a toolbar draws only an `Image` out of a label's icon, so a
-                // signed-in avatar came out as the word "Account" and an expired
-                // one as its warning glyph alone.
+            }
+        #elseif os(iOS)
+            // The avatar is a custom view, and a toolbar keeps a custom view
+            // horizontal unless the item says otherwise (iOS 27.1). It is not a
+            // `Label`: a toolbar draws only an `Image` out of a label's icon, so a
+            // signed-in avatar came out as the word "Account" and an expired one as
+            // its warning glyph alone. The version check sits here, in a view
+            // builder, because inside a toolbar builder it does not link in Release
+            // (`reachyOverflowMenu` has the error).
+            if #available(iOS 27.1, *) {
+                toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        HFAccountToolbarButton { isPresented.wrappedValue = true }
+                    }
+                    .axisBehavior(.verticalPreferred)
+                }
+            } else {
+                toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        HFAccountToolbarButton { isPresented.wrappedValue = true }
+                    }
+                }
+            }
+        #else
+            toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     HFAccountToolbarButton { isPresented.wrappedValue = true }
                 }
-                .reachyVerticalPreferred()
-            #endif
-        }
+            }
+        #endif
     }
 }

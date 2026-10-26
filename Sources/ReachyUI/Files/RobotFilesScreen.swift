@@ -109,6 +109,7 @@ struct RobotFilesScreen: View {
         .refreshable { await model.refresh() }
         .reachyRefreshToolbar { await model.refresh() }
         .toolbar { toolbarContent }
+        .reachyOverflowMenu(.reachy("Actions"), fallbackPlacement: .primaryAction) { moreItems }
         .modifier(FileTransferModifier(
             model: model,
             exported: $exported,
@@ -241,8 +242,8 @@ struct RobotFilesScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // Upload is what the screen is for, so it is an item of its own and the
-        // last one a crowded bar gives up; the rest share the bar's one "more".
+        // Upload is what the screen is for, so it is an item of its own; the rest
+        // share the bar's one "more" (`moreItems`).
         ToolbarItem(placement: .primaryAction) {
             Button {
                 replacing = nil
@@ -252,20 +253,6 @@ struct RobotFilesScreen: View {
             }
             .help(Text(.reachy("Upload a file…")))
         }
-        .reachyVisibilityPriority(.high)
-        ReachyOverflowMenu(.reachy("Actions"), fallbackPlacement: .primaryAction) {
-            Button {
-                isNamingFolder = true
-            } label: {
-                Label(.reachy("New folder"), systemImage: "folder.badge.plus")
-            }
-            Divider()
-            Button {
-                Task { await model.disconnect() }
-            } label: {
-                Label(.reachy("Disconnect"), systemImage: "xmark.circle")
-            }
-        }
         if model.canGoUp {
             ToolbarItem(placement: .navigation) {
                 Button {
@@ -274,6 +261,22 @@ struct RobotFilesScreen: View {
                     Label(.reachy("Enclosing folder"), systemImage: "chevron.up")
                 }
             }
+        }
+    }
+
+    /// Everything but Upload, in the bar's overflow menu (`reachyOverflowMenu`).
+    @ViewBuilder
+    private var moreItems: some View {
+        Button {
+            isNamingFolder = true
+        } label: {
+            Label(.reachy("New folder"), systemImage: "folder.badge.plus")
+        }
+        Divider()
+        Button {
+            Task { await model.disconnect() }
+        } label: {
+            Label(.reachy("Disconnect"), systemImage: "xmark.circle")
         }
     }
 

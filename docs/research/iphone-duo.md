@@ -78,8 +78,16 @@ Three things were wrong on the first build of `main` with Xcode 27.1:
 
 Every sheet's text-only "Done" and "Cancel" stayed horizontal at the top of a vertical bar.
 They now carry the iOS 26 roles (`ReachySheetDismissButton`), which give each one a symbol.
-The three "more" menus moved into the bar's own overflow menu (`ReachyOverflowMenu`, iOS 27),
-and the item each screen exists for ranks high (`reachyVisibilityPriority`).
+The three "more" menus moved into the bar's own overflow menu (`reachyOverflowMenu`, iOS 27).
+
+**A version check inside a toolbar builder does not link in Release with Xcode 27.1.**
+`ToolbarContentBuilder.buildLimitedAvailability` returns an opaque type whose descriptor SwiftUI does not export,
+so CI's Release builds failed with "Undefined symbol: opaque type descriptor for … buildLimitedAvailability"
+while every Debug build passed.
+The overflow menu and the avatar's vertical preference therefore make their check in a view builder,
+which erases the newer branch to `AnyView`.
+Visibility ranks (`visibilityPriority`, iOS 27) were dropped for the same reason:
+they apply to toolbar items one by one, so they cannot leave the toolbar builder.
 
 **The account avatar is not a `Label`, and that was measured.**
 Wrapped in one to give it a title, the toolbar drew a signed-in avatar as the word "Account"

@@ -54,6 +54,7 @@ struct LogConsoleView: View {
         .safeAreaInset(edge: .bottom) { statusBar }
         .logSearch($model.query, isOffered: !isEmbedded)
         .toolbar { toolbarContent }
+        .reachyOverflowMenu { moreItems }
         .confirmationDialog(
             model.clearConfirmation.title,
             isPresented: $confirmingClear,
@@ -190,24 +191,27 @@ struct LogConsoleView: View {
             }
             .disabled(model.visible.isEmpty)
         }
-        .reachyVisibilityPriority(.low)
-        ReachyOverflowMenu {
-            Picker(.reachy("Level"), selection: $model.minimumLevel) {
-                Text(.reachy("All")).tag(LogLevel.debug)
-                Text(.reachy("Info and above")).tag(LogLevel.info)
-                Text(.reachy("Warnings and above")).tag(LogLevel.warning)
-                Text(.reachy("Errors")).tag(LogLevel.error)
-            }
-            Picker(.reachy("Buffer"), selection: $capacity) {
-                ForEach(LogConsoleModel.capacities, id: \.self) { size in
-                    Text(.reachy("\(size) lines")).tag(size)
-                }
-            }
-            Divider()
-            Button(.reachy("Copy all"), systemImage: "doc.on.doc") { Clipboard.copy(model.copyText) }
-                .disabled(model.visible.isEmpty)
-            Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { confirmingClear = true }
+    }
+
+    /// What the bar's overflow menu holds: the filters and the two actions on the
+    /// whole buffer (`reachyOverflowMenu`).
+    @ViewBuilder
+    private var moreItems: some View {
+        Picker(.reachy("Level"), selection: $model.minimumLevel) {
+            Text(.reachy("All")).tag(LogLevel.debug)
+            Text(.reachy("Info and above")).tag(LogLevel.info)
+            Text(.reachy("Warnings and above")).tag(LogLevel.warning)
+            Text(.reachy("Errors")).tag(LogLevel.error)
         }
+        Picker(.reachy("Buffer"), selection: $capacity) {
+            ForEach(LogConsoleModel.capacities, id: \.self) { size in
+                Text(.reachy("\(size) lines")).tag(size)
+            }
+        }
+        Divider()
+        Button(.reachy("Copy all"), systemImage: "doc.on.doc") { Clipboard.copy(model.copyText) }
+            .disabled(model.visible.isEmpty)
+        Button(.reachy("Clear"), systemImage: "trash", role: .destructive) { confirmingClear = true }
     }
 
     /// The two loud levels borrow the design system's tones rather than naming the
