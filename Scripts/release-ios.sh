@@ -17,6 +17,7 @@ set -euo pipefail
 
 upload=true
 require_development_team
+require_duo_sdk
 while [ $# -gt 0 ]; do
   case "$1" in
   --no-upload) upload=false ;;
