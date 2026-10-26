@@ -7,13 +7,21 @@
 #
 # The workflow itself lives in App Store Connect, not here — this script and
 # ci_post_xcodebuild.sh are the whole of what is reviewable. It archives iOS
-# (scheme `ReachyMini`), visionOS (scheme `ReachyVision`) and tvOS (scheme
-# `ReachyTV`), all three with the same bundle ID, and **never macOS**: macOS TestFlight comes from `mise run release:macos`, which archives
-# once and exports that archive twice (notarized Developer ID zip *and* Mac App
-# Store .pkg). Xcode Cloud can only ever make the second of those — the notary
-# needs an App Store Connect key that deliberately never enters CI — so a macOS
-# action here duplicates half a local release for 28 minutes of compute. The
-# guard below says so out loud if one is ever added back.
+# (scheme `ReachyMini`), visionOS (scheme `ReachyVision`), tvOS (scheme
+# `ReachyTV`) and macOS (scheme `ReachyMini`), all with the same bundle ID.
+#
+# **macOS here is the Mac App Store half of a release, and only that half.** The
+# notarized Developer ID zip needs an App Store Connect key that deliberately
+# never enters CI, so it stays local: `mise run release:macos`, which now makes
+# that channel alone unless told otherwise. The Mac App Store build used to be
+# local too, and that tied every macOS release to an Apple ID session in Xcode on
+# one Mac, which lapsed between releases twice.
+#
+# One counter numbers every App Store Connect upload: Xcode Cloud's own. It sets
+# CFBundleVersion to its build number whatever the stamp below writes (the
+# uploads read 90, 121, 125 — run numbers), and a Mac build must carry a number
+# above every Mac build before it. The last local one was 268, so the next build
+# number in App Store Connect → Xcode Cloud → Settings had to start above it.
 #
 # Setup quirks, once:
 # - Create the workflow from a local Xcode with the generated workspace open
@@ -25,24 +33,6 @@
 set -euo pipefail
 
 cd "$CI_PRIMARY_REPOSITORY_PATH"
-
-# Delete this block to archive macOS here again, and read the header first: the
-# Developer ID zip that always ships cannot be produced on Xcode Cloud, so the
-# action can only ever mint a second copy of the App Store artifact
-# `release:macos` already made — from a second build-number counter. Folded to
-# lower case because the value is Apple's own spelling and only "macOS" is
-# documented; a guard that misses on a capital is a guard that is not there.
-if [ "$(printf '%s' "${CI_PRODUCT_PLATFORM:-}" | tr '[:upper:]' '[:lower:]')" = macos ]; then
-  cat >&2 <<'CONF'
-This workflow archived macOS, and this repository does not ship macOS from
-Xcode Cloud. Both macOS channels come out of one local archive:
-
-  mise run release:macos
-
-Remove the "Archive - macOS" action from the workflow in App Store Connect.
-CONF
-  exit 1
-fi
 
 # Computed before anything is installed or generated, so a clone this cannot
 # count fails in seconds rather than after a tuist generate.
