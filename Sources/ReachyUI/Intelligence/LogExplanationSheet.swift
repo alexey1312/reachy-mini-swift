@@ -106,11 +106,11 @@ struct LogExplanationSheet: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(.reachy("Done"), action: dismiss)
+            ReachySheetDismissButton(action: dismiss)
         }
         if case let .explained(explanation) = model.phase {
             ToolbarItem {
-                Button(.reachy("Copy")) { Clipboard.copy(explanation.text) }
+                Button(.reachy("Copy"), systemImage: "doc.on.doc") { Clipboard.copy(explanation.text) }
             }
         }
     }

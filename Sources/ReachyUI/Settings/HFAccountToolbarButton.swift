@@ -89,9 +89,15 @@ extension View {
                     HFAccountToolbarButton { isPresented.wrappedValue = true }
                 }
             #else
+                // The avatar is a custom view, and a toolbar keeps a custom view
+                // horizontal unless the item says otherwise. It is not a `Label`:
+                // a toolbar draws only an `Image` out of a label's icon, so a
+                // signed-in avatar came out as the word "Account" and an expired
+                // one as its warning glyph alone.
                 ToolbarItem(placement: .topBarLeading) {
                     HFAccountToolbarButton { isPresented.wrappedValue = true }
                 }
+                .reachyVerticalPreferred()
             #endif
         }
     }

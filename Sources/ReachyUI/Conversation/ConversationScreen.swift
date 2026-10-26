@@ -130,19 +130,16 @@ struct ConversationScreen: View {
             }
             .disabled(!model.isLive)
         }
-        ToolbarItem(placement: .secondaryAction) {
-            Menu {
-                Button(.reachy("Copy transcript"), systemImage: "doc.on.doc") {
-                    Clipboard.copy(model.transcriptText)
-                }
-                .disabled(!model.hasTranscript)
-                Button(.reachy("Clear"), systemImage: "trash", role: .destructive) {
-                    isConfirmingClear = true
-                }
-                .disabled(model.entries.isEmpty)
-            } label: {
-                Label(.reachy("More"), systemImage: "ellipsis.circle")
+        .reachyVisibilityPriority(.high)
+        ReachyOverflowMenu(fallbackPlacement: .secondaryAction) {
+            Button(.reachy("Copy transcript"), systemImage: "doc.on.doc") {
+                Clipboard.copy(model.transcriptText)
             }
+            .disabled(!model.hasTranscript)
+            Button(.reachy("Clear"), systemImage: "trash", role: .destructive) {
+                isConfirmingClear = true
+            }
+            .disabled(model.entries.isEmpty)
         }
     }
 

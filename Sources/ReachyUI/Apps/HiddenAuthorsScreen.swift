@@ -1,3 +1,4 @@
+import ReachyDesign
 import ReachyKit
 import SwiftUI
 
@@ -52,7 +53,7 @@ struct HiddenAuthorsScreen: View {
         .navigationTitle(.reachy("Hidden authors"))
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(.reachy("Done"), action: done)
+                ReachySheetDismissButton(.done, action: done)
             }
         }
     }

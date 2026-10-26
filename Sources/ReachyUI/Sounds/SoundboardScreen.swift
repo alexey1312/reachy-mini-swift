@@ -187,6 +187,7 @@ struct SoundboardScreen: View {
             }
             .help(Text(.reachy("Add a sound")))
         }
+        .reachyVisibilityPriority(.high)
     }
 
     // MARK: - Row actions

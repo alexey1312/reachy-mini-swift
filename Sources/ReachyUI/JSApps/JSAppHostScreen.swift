@@ -34,7 +34,7 @@ import SwiftUI
                 #endif
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button(.reachy("Close"), action: close)
+                            ReachySheetDismissButton(action: close)
                                 .disabled(model.phase == .leaving)
                         }
                     }

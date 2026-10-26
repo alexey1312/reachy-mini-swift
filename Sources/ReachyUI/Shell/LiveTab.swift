@@ -53,6 +53,7 @@ struct LiveTab: View {
                             }
                             .help(Text(.reachy("Controller")))
                         }
+                        .reachyVisibilityPriority(.high)
                     }
                     if FloatingViewportModel.offersSecondPlace {
                         ToolbarItem { optionsMenu }

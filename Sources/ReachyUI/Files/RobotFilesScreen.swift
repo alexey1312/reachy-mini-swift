@@ -241,29 +241,30 @@ struct RobotFilesScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // Upload is what the screen is for, so it is an item of its own and the
+        // last one a crowded bar gives up; the rest share the bar's one "more".
         ToolbarItem(placement: .primaryAction) {
-            Menu {
-                Button {
-                    replacing = nil
-                    isImporting = true
-                } label: {
-                    Label(.reachy("Upload a file…"), systemImage: "arrow.up.doc")
-                }
-                Button {
-                    isNamingFolder = true
-                } label: {
-                    Label(.reachy("New folder"), systemImage: "folder.badge.plus")
-                }
-                Divider()
-                Button {
-                    Task { await model.disconnect() }
-                } label: {
-                    Label(.reachy("Disconnect"), systemImage: "xmark.circle")
-                }
+            Button {
+                replacing = nil
+                isImporting = true
             } label: {
-                Label(.reachy("Actions"), systemImage: "ellipsis.circle")
+                Label(.reachy("Upload a file…"), systemImage: "arrow.up.doc")
             }
-            .help(Text(.reachy("Actions")))
+            .help(Text(.reachy("Upload a file…")))
+        }
+        .reachyVisibilityPriority(.high)
+        ReachyOverflowMenu(.reachy("Actions"), fallbackPlacement: .primaryAction) {
+            Button {
+                isNamingFolder = true
+            } label: {
+                Label(.reachy("New folder"), systemImage: "folder.badge.plus")
+            }
+            Divider()
+            Button {
+                Task { await model.disconnect() }
+            } label: {
+                Label(.reachy("Disconnect"), systemImage: "xmark.circle")
+            }
         }
         if model.canGoUp {
             ToolbarItem(placement: .navigation) {

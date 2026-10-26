@@ -73,6 +73,7 @@ struct LogConsoleScreen: View {
                 Button(.reachy("Explain"), systemImage: "sparkles") { showsExplanation = true }
                     .disabled(model.visible.isEmpty)
             }
+            .reachyVisibilityPriority(.low)
         }
     }
 
