@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import HuggingFaceAuth
 import Observation
@@ -8,9 +9,14 @@ import ReachyDesign
 /// A seam rather than a direct call: `ASWebAuthenticationSession` needs a real
 /// window to present from, cannot run in a test, and must never open during a
 /// snapshot.
+///
+/// `presentingWindow` is the window of the view that asked, or `nil` for "the
+/// front one". With two windows — Split View on iPhone Duo or an iPad — the front
+/// one is a guess, and a sign-in sheet in the other window is one the reader
+/// never sees.
 @MainActor
 protocol HFWebAuthenticating: Sendable {
-    func authenticate(url: URL, callbackScheme: String) async throws -> URL
+    func authenticate(url: URL, callbackScheme: String, presentingWindow: ASPresentationAnchor?) async throws -> URL
 }
 
 /// The sign-in half of the Hugging Face account card.
@@ -52,7 +58,7 @@ final class HFSignInModel {
         account.canSignInWithBrowser
     }
 
-    func signInWithBrowser() async {
+    func signInWithBrowser(presentingWindow: ASPresentationAnchor? = nil) async {
         guard offersBrowserSignIn else { return }
         errorText = nil
         isBusy = true
@@ -62,7 +68,8 @@ final class HFSignInModel {
             let url = try account.beginSignIn()
             let callback = try await browser.authenticate(
                 url: url,
-                callbackScheme: HFOAuthConfiguration.callbackScheme
+                callbackScheme: HFOAuthConfiguration.callbackScheme,
+                presentingWindow: presentingWindow
             )
             await account.completeSignIn(callback: callback)
             if case let .failed(reason) = account.state {
@@ -135,7 +142,11 @@ final class HFSignInModel {
     }
 
     private struct InertBrowser: HFWebAuthenticating {
-        func authenticate(url _: URL, callbackScheme _: String) async throws -> URL {
+        func authenticate(
+            url _: URL,
+            callbackScheme _: String,
+            presentingWindow _: ASPresentationAnchor?
+        ) async throws -> URL {
             throw HFSignInModel.Cancelled()
         }
     }

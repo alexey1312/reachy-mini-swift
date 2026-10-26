@@ -1,3 +1,4 @@
+import AuthenticationServices
 import HuggingFaceAuth
 import ReachyDesign
 import ReachyKit
@@ -22,6 +23,9 @@ struct HFAccountSection: View {
     @State private var confirmingSignOut = false
     @Environment(\.reachyPreviewMode) private var previewMode
     @Environment(\.openURL) private var openURL
+    #if os(iOS) || os(visionOS)
+        @Environment(\.windowScene) private var windowScene
+    #endif
 
     /// `@MainActor` because `RobotHFLinkModel` is: a defaulted argument whose value
     /// is main-actor-isolated compiles in the SwiftPM targets and not in the `Apps/`
@@ -165,6 +169,17 @@ struct HFAccountSection: View {
         }
     }
 
+    /// The window this card is drawn in, so that the sign-in sheet opens in it
+    /// and not in whichever window is in front (`WindowSceneHandle`). `nil` on a
+    /// Mac, where the key window is the one the click came from.
+    private var presentingWindow: ASPresentationAnchor? {
+        #if os(iOS) || os(visionOS)
+            windowScene?.current?.keyWindow
+        #else
+            nil
+        #endif
+    }
+
     @ViewBuilder
     private var signInControls: some View {
         switch model.account.state {
@@ -173,7 +188,7 @@ struct HFAccountSection: View {
         default:
             if model.offersBrowserSignIn {
                 Button {
-                    Task { await model.signInWithBrowser() }
+                    Task { await model.signInWithBrowser(presentingWindow: presentingWindow) }
                 } label: {
                     Label(.reachy("Sign in with Hugging Face"), systemImage: "person.badge.key")
                 }

@@ -34,17 +34,34 @@ private struct FloatingViewportModifier: ViewModifier {
     #if !os(macOS)
         @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    #if os(iOS)
+        @Environment(\.windowScene) private var windowScene
+    #endif
+    /// Whether this window's bars are on the side (iPhone Duo's outer display, and
+    /// its inner display in landscape). Written by `VerticalBarReader`, because the
+    /// environment value it reads is iOS 27.1 and a stored property cannot be.
+    @State private var barsAreVertical = false
+    @State private var barAxisIsKnown = !FloatingViewportModel.readsBarAxis
 
     /// **The one size-class branch in this target, and it is deliberate.** The rule
     /// is not "iPhone" but "wherever the shell draws a tab bar rather than a
     /// sidebar": a sidebar layout has the Live tab permanently beside the others
     /// and nothing to float. `ReachyUI/AGENTS.md` carries the same note, because
     /// the entry there used to say no branch was left.
+    ///
+    /// **Vertical bars are the second input, and the size class alone was wrong on
+    /// iPhone Duo.** Its inner display is regular by regular, so the size class
+    /// asked for the column — but in landscape `.sidebarAdaptable` draws a
+    /// *vertical tab bar* there, not a sidebar, and the inspector column drew that
+    /// tab bar blurred, with its five tabs unreadable. Measured on the iPhone Duo
+    /// simulator (Xcode 27.1, iOS 27.1), flat and in book pose, in a probe of this
+    /// shell and in the app. So a window whose bars are vertical gets the floating
+    /// window, the way the outer display already did.
     private var hasTabBar: Bool {
         #if os(macOS)
             false
         #else
-            horizontalSizeClass == .compact
+            horizontalSizeClass == .compact || barsAreVertical
         #endif
     }
 
@@ -77,8 +94,12 @@ private struct FloatingViewportModifier: ViewModifier {
                 }
                 .coordinateSpace(.floatingViewportBounds)
             }
+            .modifier(VerticalBarReader(isVertical: $barsAreVertical, isKnown: $barAxisIsKnown))
             .onChange(of: hasTabBar, initial: true) { _, value in
                 model.hasTabBar = value
+            }
+            .onChange(of: barAxisIsKnown, initial: true) { _, value in
+                model.barAxisIsKnown = value
             }
     }
 
@@ -102,13 +123,22 @@ private struct FloatingViewportModifier: ViewModifier {
     ///
     /// It can change with a finger down — the strip arrives on a poll — which is why
     /// nothing about this rectangle is captured when a gesture begins.
+    ///
+    /// **A tab bar on the side takes nothing from the bottom.** On iPhone Duo the
+    /// tab bar stands vertically beside the content, inside the trailing inset this
+    /// reader already lies within (measured: 382 × 644 with `tr84` on the outer
+    /// display), so subtracting a bottom bar as well parked the window 56 pt above
+    /// an empty strip. The running-app strip is another matter: it stays at the
+    /// bottom under a vertical tab bar (the tab's content inset grew from 34 to 72),
+    /// so its allowance stands.
     private func available(in geometry: GeometryProxy) -> CGRect {
         let accessory = model.hasBottomAccessory ? Metrics.tabAccessoryAllowance : 0
+        let tabBar = barsAreVertical ? 0 : Metrics.tabBarAllowance
         return CGRect(
             x: 0,
             y: 0,
             width: geometry.size.width,
-            height: max(0, geometry.size.height - Metrics.tabBarAllowance - accessory)
+            height: max(0, geometry.size.height - tabBar - accessory)
         )
     }
 
@@ -183,20 +213,66 @@ private struct FloatingViewportModifier: ViewModifier {
         /// placement; it stops the app asking a question the system has stopped
         /// promising to answer.
         ///
-        /// **Any window scene, deliberately not the `foregroundActive` one.**
-        /// `WebAuthenticationBrowser` filters on that and is right to — it is choosing a
-        /// window to present in. Here the filter is a silent failure: measured on an
-        /// iPhone 17 Pro with a landscape layout already laid out (reader 750 × 382,
-        /// l62 r62), `connectedScenes` held one scene reporting `.landscapeLeft`, and
-        /// `activationState` was not yet `foregroundActive` — so the filter returned nil,
-        /// the fallback said portrait, and the bleed came out zero with nothing to
-        /// re-run the body once the scene did activate. There is one scene here; asking
-        /// it what orientation it is drawing at needs no liveness test.
+        /// **The scene this window is drawn in, never one picked from
+        /// `connectedScenes`.** With two windows — Split View on iPhone Duo or an
+        /// iPad — `.first` is an arbitrary scene, so the root reads its own and hands
+        /// it down (`WindowSceneHandle`). It is not filtered on `foregroundActive`
+        /// either, and that filter is a silent failure: measured on an iPhone 17 Pro
+        /// with a landscape layout already laid out (reader 750 × 382, l62 r62), the
+        /// one scene reported `.landscapeLeft` while its `activationState` was not yet
+        /// `foregroundActive`, so a filter returned nil, the fallback said portrait,
+        /// and the bleed came out zero with nothing to re-run the body once the scene
+        /// did activate. Reading `current` here also subscribes this reader to the
+        /// handle, so a layout that ran before the root's reader attached runs again.
+        ///
+        /// **iPhone Duo needs no case of its own, and that is measured** (Xcode 27.1,
+        /// iPhone Duo simulator, iOS 27.1). In landscape its outer display insets
+        /// *one* side, by 84 pt, the side with the camera and the vertical bar —
+        /// `l0 tr84` in `.landscapeLeft`, `l84 tr0` in `.landscapeRight` — so the end
+        /// this reads is the one already flush with the glass, and the bleed is zero
+        /// both ways. The inner display does not take an orientation from the app at
+        /// all (`requestGeometryUpdate` answers `UISceneErrorDomain` 101).
         private var interfaceOrientation: UIInterfaceOrientation {
-            UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .first?
-                .effectiveGeometry.interfaceOrientation ?? .portrait
+            windowScene?.current?.effectiveGeometry.interfaceOrientation ?? .portrait
+        }
+    #endif
+}
+
+/// Reports whether the window's bars stand on the side.
+///
+/// `toolbarVerticalEdge` read outside a toolbar is the edge the window's bars
+/// prefer, and `nil` while they are horizontal (Apple, *Raise the bar with iPhone
+/// Duo*, 10:36). It exists in the iOS 27.1 SDK alone, so everything older reports
+/// horizontal bars, which is all it ever draws.
+private struct VerticalBarReader: ViewModifier {
+    @Binding var isVertical: Bool
+    @Binding var isKnown: Bool
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+            if #available(iOS 27.1, *) {
+                content.modifier(Edge27(isVertical: $isVertical, isKnown: $isKnown))
+            } else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
+
+    #if os(iOS)
+        @available(iOS 27.1, *)
+        private struct Edge27: ViewModifier {
+            @Binding var isVertical: Bool
+            @Binding var isKnown: Bool
+            @Environment(\.toolbarVerticalEdge) private var edge
+
+            func body(content: Content) -> some View {
+                content.onChange(of: edge != nil, initial: true) { _, value in
+                    isVertical = value
+                    isKnown = true
+                }
+            }
         }
     #endif
 }
