@@ -11,5 +11,6 @@ struct LiveUnavailableView: View {
             description: Text(.reachy("Start the motors and camera to see the live view."))
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .reachyClearOfFold()
     }
 }

@@ -54,11 +54,22 @@ struct ViewportView: View {
     var call: RobotCallController?
 
     @State private var showsPresence = false
+    /// Where the picture stops short of iPhone Duo's fold. Zero everywhere else.
+    @State private var pictureInsets = EdgeInsets()
 
     var body: some View {
         ViewportContent(model: model, makeTeleop: makeTeleop, standDown: standDown)
             .environment(\.headTrackingMayDrive, headTrackingMayDrive)
+            .environment(\.viewportPictureInsets, pictureInsets)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // **Picture on one side of the fold, controls on the other.** Folded like
+            // a book the picture keeps the leading side and the joystick, which hangs
+            // off the bottom-trailing corner, the trailing one; folded like a laptop the
+            // picture keeps the top half and the joystick the bottom, which is where the
+            // HIG puts controls in tabletop pose. Only the picture moves: the chrome
+            // stays over it at the top, and the pad and the hearing badge stay at the
+            // bottom of the whole viewport. One host per model, as before.
+            .reachyFoldInsets(toward: .leadingOrTop) { pictureInsets = $0 }
             .overlay(alignment: .topLeading) { chrome }
             .overlay(alignment: .bottomLeading) { hearing }
             .sheet(isPresented: $showsPresence) {

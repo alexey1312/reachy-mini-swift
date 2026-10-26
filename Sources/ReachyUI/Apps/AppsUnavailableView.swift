@@ -30,6 +30,7 @@ struct AppsUnavailableView: View {
                     String(localized: .reachy("Find one nearby")))
             }
         }
+        .reachyClearOfFold()
         .navigationTitle(.reachy("Apps"))
     }
 
