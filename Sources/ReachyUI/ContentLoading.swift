@@ -1,4 +1,5 @@
 import Foundation
+import ReachyDesign
 import SwiftUI
 
 private struct ContentLoadingModifier: ViewModifier {
@@ -14,6 +15,8 @@ private struct ContentLoadingModifier: ViewModifier {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // A label centred on a folded display sits on the crease.
+                .reachyClearOfFold()
                 .allowsHitTesting(false)
             }
         }

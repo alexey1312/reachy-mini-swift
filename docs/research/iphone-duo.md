@@ -110,18 +110,31 @@ which is black — so the flows run closed.
 | P2       | Outer, landscape       | Passed in the probe (insets above). The app was not rotated.                                                |
 | P3       | Inner, flat, landscape | Passed after the fix: tab bar sharp, content full width, window at the bottom-trailing corner.              |
 | P4       | Inner, portrait        | Not run: rotation has no command. The column still applies there, beside horizontal bars.                   |
-| P5       | Book pose              | Passed for the bars. What crosses the fold is the subject of the next change.                               |
-| P6       | Tabletop               | Not run: rotation has no command.                                                                           |
+| P5       | Book pose              | Passed: the bars stay sharp, the Live tab's picture keeps the leading side, and it comes back on unfolding. |
+| P6       | Tabletop               | Not run: rotation has no command. `FoldInsetsTests` holds the picture-on-top arithmetic.                    |
 | P8       | Split View             | Not run.                                                                                                    |
 | P9       | Multiple windows       | Not run: the app does not support multiple scenes yet.                                                      |
 | P10, P13 | Cameras                | Not applicable: the app uses no camera of the phone's.                                                      |
 | P14      | StandBy                | Not run: StandBy is unavailable in the iPhone Duo simulator (Xcode 27.1 known issues 187708663, 187708767). |
 | P16      | Physical checks        | Not run: device only.                                                                                       |
 
+## The fold
+
+In book pose the Live tab's picture used to sit centred across the crease.
+`ViewportView` now reads the active division region and moves the picture off it:
+to the leading side in book pose, to the top in tabletop pose.
+The joystick stays at the bottom-trailing corner of the whole viewport, so it lands on the other side.
+The centred empty and loading states move to the larger side of the fold (`reachyClearOfFold()`).
+Lists, forms and readable pages flow across the fold, as Apple's guidance asks of scrolling content.
+
+Measured at 90° on the iPhone Duo simulator: the twin kept x 0–455 pt and returned to the centre at 180°,
+with no relaunch.
+`ArrangementView` would also split by the fold,
+but its overlay style puts the primary at the top-leading corner at its own size while layered,
+which would move the joystick on every iPhone on iOS 27.1.
+
 ## What is left
 
-- The fold: content and controls that a book or tabletop pose splits — the Live tab's viewport and its joystick,
-  and the centred empty states.
 - Multiple windows, which the user decided to enable.
 - The hinge as an opt-in control of the antennas.
 - App Store screenshots for both displays, required from April 2027.

@@ -1439,6 +1439,34 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
 - Only _installed_ apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
   those cannot do what it promises — the same reason `ReachySpotlightIndex` leaves `.runningApp` out.
 
+## iPhone Duo's fold
+
+`ReachyDesign/ReachyFold.swift` holds the arithmetic and the reader; this target decides what moves.
+The fold reaches a view as an active division region and as nothing else —
+no safe-area inset, no margin, no trait —
+so a layout that waits for an inset to clear it waits for ever.
+`docs/research/iphone-duo.md` has the measurements.
+
+- **The viewport moves its picture and leaves its controls where they were.**
+  `ViewportView` reads the fold and hands `CameraViewport` and `SceneViewport` `\.viewportPictureInsets`,
+  which each applies to its renderer and its status only, _before_ the pad's overlay.
+  So in book pose the picture keeps the leading side and the bottom-trailing pad lands on the trailing one,
+  and in tabletop pose the picture keeps the top and the pad the bottom.
+  One host per model, as before: nothing is mounted twice and nothing changes identity.
+  Measured on the iPhone Duo simulator: the twin moved to the leading side at 90° and back to the centre at 180°,
+  with no relaunch, because `onGeometryChange` runs again when the regions change.
+- **`ArrangementView` was the other way, and it was not taken.**
+  Its overlay style puts the primary at the top-leading corner at its own size while layered
+  (measured by the iPhone Duo skill's probe), which would move the pad on every iPhone on iOS 27.1,
+  and it could not replace the inspector column without a second host.
+- **The centred empty and loading states take `reachyClearOfFold()`** —
+  `LiveUnavailableView`, `AppsUnavailableView`, `MovesUnavailableView` and `contentLoading`.
+  Lists, forms and readable pages do not: continuous scrolling content flows across a fold
+  (_Strike a pose with adaptive layouts on iPhone Duo_, 3:45).
+- **No reference covers any of it.** The suite renders on iOS 27.0, where the reader does nothing,
+  so the insets are zero in every capture and adopting them moved no reference.
+  `FoldInsetsTests` holds the arithmetic; the poses are a simulator check.
+
 ## Where the robot heard you
 
 `DirectionOfArrivalModel` + `DirectionOfArrivalIndicator`, mounted in `ViewportView`'s chrome row and owned by

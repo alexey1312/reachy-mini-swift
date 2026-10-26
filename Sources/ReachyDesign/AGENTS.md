@@ -30,6 +30,7 @@ A caller maps its own domain type onto a token (`RobotAppStatus.state` → `Stat
 | `ReachySheet.swift`              | The one axis a sheet declares on macOS, the one it measures, and why iOS reads none                                                  |
 | `ReachySheetDismissButton.swift` | The button that puts a sheet away, with the iOS 26 role that gives it a symbol a vertical bar can carry                              |
 | `ReachyOverflowMenu.swift`       | `reachyOverflowMenu`: a screen's secondary actions in the bar's own overflow menu (iOS 27), and why it is a view modifier            |
+| `ReachyFold.swift`               | iPhone Duo's fold: `FoldInsets`, `reachyClearOfFold()` and the reader the viewport uses                                              |
 | `ReachyTabAccessory.swift`       | The tab-view bottom accessory, its placement vocabulary, and its fallback                                                            |
 
 ## Rules

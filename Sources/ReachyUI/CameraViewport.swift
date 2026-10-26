@@ -20,9 +20,14 @@ struct CameraViewport: View {
     /// and the floating window both want.
     var standDown: TeleopStandDown?
 
+    @Environment(\.viewportPictureInsets) private var pictureInsets
+
     var body: some View {
         CameraVideoView(track: session.videoTrack)
             .overlay(alignment: .center) { status }
+            // The picture and its status keep off iPhone Duo's fold; the pad stays on
+            // the whole viewport, so it lands on the other side (`ViewportView`).
+            .padding(pictureInsets)
             .overlay(alignment: .bottomTrailing) { teleopControls }
     }
 
