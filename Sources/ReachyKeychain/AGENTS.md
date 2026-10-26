@@ -44,6 +44,11 @@ now this target holds the one copy and the one migration.
   `HFAccount.signOut` and the SSH screens call it with `try?`,
   so removing every copy possible is what counts.
   A write also deletes the old copy, but only as a best effort: reads find the new item first.
+- **Legacy queries must set `kSecUseDataProtectionKeychain` to `false` on macOS.**
+  An unspecified query can reach both keychains.
+  The legacy cleanup after a write then deletes the new protected item too (#224).
+  An explicit `false` limits every legacy read, update and delete to file-based keychains.
+  An explicit `true` limits protected queries to the data protection keychain.
 - **What stays behind:** an SSH item for a robot that the app never asks about again
   stays in the file-based keychain, because only a read moves it.
   A downgrade to a build before the move reads the file-based keychain only,
@@ -55,4 +60,5 @@ now this target holds the one copy and the one migration.
 `InMemoryKeychain` in `ReachyTestSupport` is the fake, and it can refuse one kind of call with a status.
 `KeychainItemsTests` holds the move,
 and the store tests in `HuggingFaceAuthTests` and `ReachySSHTests` hold what the user sees.
+`SecItemKeychainQueryTests` checks that legacy cleanup cannot reach protected items.
 The real data protection keychain is a manual check on a signed build.

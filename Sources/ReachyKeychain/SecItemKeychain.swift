@@ -8,9 +8,8 @@ import Security
 /// does not go to iCloud Keychain or into a backup. A credential restored onto
 /// another device is one that the user never put there.
 enum SecItemKeychain: KeychainBackend {
-    /// The keychain that `SecItem` uses when no attribute picks one. On iOS that is
-    /// the data protection keychain. On macOS it is the file-based login keychain,
-    /// where `kSecAttrAccessible` does not apply as it does on iOS.
+    /// The default keychain on iOS and the file-based keychain on macOS.
+    /// The macOS queries explicitly exclude the data protection keychain.
     case platformDefault
     /// macOS only: the data protection keychain, in one access group. The group is
     /// the app's application identifier, which no other app or extension has.
@@ -54,12 +53,17 @@ enum SecItemKeychain: KeychainBackend {
         }
     }
 
-    private func base(service: String, account: String) -> [String: Any] {
+    func base(service: String, account: String) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+        #if os(macOS)
+            // An unspecified query can reach both keychains. Legacy cleanup must
+            // not delete an item that the app just saved in the protected keychain.
+            query[kSecUseDataProtectionKeychain as String] = false
+        #endif
         if case let .dataProtection(accessGroup) = self {
             query[kSecUseDataProtectionKeychain as String] = true
             // On every call, not only on the add. Without it, a query matches all the

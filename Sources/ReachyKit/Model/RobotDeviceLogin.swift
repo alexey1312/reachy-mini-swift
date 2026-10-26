@@ -29,11 +29,9 @@ public struct RobotDeviceLogin: Sendable, Equatable, Decodable {
     /// The page to open: the pre-filled one where there is one — and only when it is
     /// Hugging Face's own.
     ///
-    /// The robot relays the URL the Hub gave it, and this app opens it in a browser
-    /// under a button that reads "Open huggingface.co". Anything on the network can
-    /// answer as a robot, so a host that is not one could hand over a look-alike
-    /// sign-in page there instead. `nil` for anything but `https` on
-    /// `huggingface.co`, and the caller opens nothing.
+    /// The robot provides the URL for the "Open huggingface.co" button.
+    /// A device on the network can impersonate the robot and provide a false sign-in page.
+    /// Accept only HTTPS pages on `huggingface.co` and `hf.co`.
     public var approvalURL: URL? {
         let page = verificationURIComplete ?? verificationURI
         return Self.isHubPage(page) ? page : nil
@@ -41,7 +39,7 @@ public struct RobotDeviceLogin: Sendable, Equatable, Decodable {
 
     static func isHubPage(_ url: URL) -> Bool {
         url.scheme?.lowercased() == "https"
-            && url.host()?.lowercased() == "huggingface.co"
+            && ["huggingface.co", "hf.co"].contains(url.host()?.lowercased() ?? "")
             && (url.port == nil || url.port == 443)
             && url.user() == nil
     }

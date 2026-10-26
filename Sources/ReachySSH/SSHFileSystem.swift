@@ -282,7 +282,7 @@
                     return ReachySSHError.directoryNotEmpty(status.message)
                 default: return ReachySSHError.transport(status.message)
                 }
-            case CitadelError.unauthorized:
+            case CitadelError.unauthorized, SSHClientError.allAuthenticationOptionsFailed:
                 return ReachySSHError.authenticationFailed
             default:
                 return ReachySSHError.transport(error.localizedDescription)
