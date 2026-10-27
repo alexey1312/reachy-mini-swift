@@ -26,6 +26,8 @@ struct WebSocketOriginTests {
         #expect(lines.contains("upgrade: websocket"))
         #expect(lines.contains("host: 127.0.0.1:\(port)"))
         #expect(!lines.contains { $0.hasPrefix("origin:") })
+        // Daemon 1.13.0 reads this off every handshake as well as every request.
+        #expect(lines.contains("x-reachy-client: \(ReachyClientHeader.value.lowercased())"))
     }
 }
 

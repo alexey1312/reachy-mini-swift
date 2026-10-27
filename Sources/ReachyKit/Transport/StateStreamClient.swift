@@ -108,7 +108,7 @@ public struct StateStreamClient: Sendable {
             var backoff = configuration.initialBackoff
             var diagnostics = StateStreamDiagnostics()
             while !Task.isCancelled {
-                let socket = session.webSocketTask(with: url)
+                let socket = session.webSocketTask(with: .toDaemon(url))
                 socket.resume()
                 // `receive()` does not observe task cancellation (see
                 // `ConversationRPCClient.read`), so a cancelled consumer would

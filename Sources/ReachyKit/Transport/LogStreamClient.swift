@@ -30,7 +30,7 @@ public struct LogStreamClient: Sendable {
         let task = Task { [url, session] in
             var backoff = Duration.milliseconds(500)
             while !Task.isCancelled {
-                let socket = session.webSocketTask(with: url)
+                let socket = session.webSocketTask(with: .toDaemon(url))
                 socket.resume()
                 await Self.read(from: socket, into: continuation) {
                     backoff = .milliseconds(500)
