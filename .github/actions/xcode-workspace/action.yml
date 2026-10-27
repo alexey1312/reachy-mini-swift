@@ -11,7 +11,8 @@ runs:
   steps:
     - uses: jdx/mise-action@v5.2.3
       with:
-        version: 2026.10.20
+        # Match bin/mise and the GitHub tool options in mise.toml.
+        version: "2026.10.20"
         experimental: true
         github_token: ${{ inputs.github-token }}
 
