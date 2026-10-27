@@ -17,6 +17,8 @@ actor ScriptedSignaling: RobotSignaling {
 
     private var continuation: AsyncStream<SignalingEvent>.Continuation?
     private(set) var sent: [Sent] = []
+    /// Why each `disconnect` hung up, in order.
+    private(set) var hangUps: [SignalingHangUp] = []
     private(set) var subscriptions = 0
 
     func events() -> AsyncStream<SignalingEvent> {
@@ -41,8 +43,9 @@ actor ScriptedSignaling: RobotSignaling {
         sent.append(.candidate(candidate, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid))
     }
 
-    func disconnect() {
+    func disconnect(_ hangUp: SignalingHangUp) {
         sent.append(.disconnect)
+        hangUps.append(hangUp)
     }
 
     var answers: Int {

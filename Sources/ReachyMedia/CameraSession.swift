@@ -177,7 +177,7 @@ public final class CameraSession {
         dataChannel.close()
         poseChannel.close()
         let signaling = signaling
-        Task { await signaling.disconnect() }
+        Task { await signaling.disconnect(.stop) }
         Task { @MainActor in MediaAudioSession.shared.cameraSessionStopped() }
     }
 
@@ -194,7 +194,7 @@ public final class CameraSession {
 
     public func stop() {
         isStarted = false
-        unsubscribe()
+        unsubscribe(.stop)
         disarmDeadline()
         stalledAttempts = 0
         teardownPeer()

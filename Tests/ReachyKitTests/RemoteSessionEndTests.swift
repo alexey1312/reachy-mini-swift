@@ -39,6 +39,26 @@ struct RemoteSessionEndTests {
         #expect(end.isWorthRetrying == false)
     }
 
+    /// Daemon 1.13.0 hands a quiet session's robot to the next one that asks.
+    /// Retrying would take it back from whoever asked.
+    @Test("a session taken over by a newer one is explained, and not worth retrying")
+    func explainsSupersession() {
+        let end = RemoteSessionEnd(reason: "superseded")
+
+        #expect(end.message.localizedCaseInsensitiveContains("took over"))
+        #expect(end.isWorthRetrying == false)
+    }
+
+    /// A daemon that is stopping will not answer a retry sent at once.
+    @Test("a robot shutting down says so, and is not retried at once")
+    func explainsAStoppingRobot() {
+        let end = RemoteSessionEnd(reason: "robot_stopping")
+
+        #expect(end.message.localizedCaseInsensitiveContains("shutting down"))
+        #expect(end.isWorthRetrying == false)
+        #expect(end.isNegotiationStall == false)
+    }
+
     /// The robot's negotiation watchdog ending a session is a stall, not a refusal:
     /// the camera spends its one retry on it rather than showing the code. Nothing a
     /// person did is one, or a robot somebody took would be retried out from under them.

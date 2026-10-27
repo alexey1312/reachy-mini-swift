@@ -13,6 +13,10 @@ enum SignalingMessage: Equatable, Sendable {
         /// taken, because on the LAN there is only ever one consumer asking.
         var isBusy = false
         var activeApp: String?
+        /// Central only, from the producer's `meta`: the ids that survive the robot
+        /// registering again under a new peer id.
+        var hardwareID: String?
+        var installID: String?
     }
 
     case welcome(peerID: String)
@@ -25,9 +29,10 @@ enum SignalingMessage: Equatable, Sendable {
     case sessionStarted(peerID: String, sessionID: String)
     case sdp(sessionID: String, type: String, sdp: String)
     case ice(sessionID: String, candidate: String, sdpMLineIndex: Int32, sdpMid: String?)
-    /// `reason` is central's: `robot_busy`, `robot_busy_local_app`,
-    /// `local_app_started`, `install_id_takeover`. The robot's own socket sends
-    /// none, so it stays optional.
+    /// `reason` is central's or the robot's: `robot_busy`, `robot_busy_local`,
+    /// `robot_busy_local_app`, `local_app_started`, `install_id_takeover`, and from
+    /// daemon 1.13.0 `superseded` and `robot_stopping`. This client sends one of
+    /// ``SignalingHangUp``'s. The robot's own socket sends none, so it stays optional.
     case endSession(sessionID: String, reason: String?)
     /// Central's refusal, answered in the body of the POST that asked for the
     /// session rather than over the event stream.
@@ -44,6 +49,14 @@ extension SignalingMessage: Codable {
 
     private struct Meta: Codable {
         var name: String?
+        var hardwareID: String?
+        var installID: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case name
+            case hardwareID = "hardware_id"
+            case installID = "install_id"
+        }
     }
 
     private struct SDPPayload: Codable {
@@ -138,7 +151,9 @@ extension SignalingMessage: Codable {
                     id: $0,
                     name: payload.meta?.name,
                     isBusy: payload.busy ?? false,
-                    activeApp: payload.activeApp
+                    activeApp: payload.activeApp,
+                    hardwareID: payload.meta?.hardwareID,
+                    installID: payload.meta?.installID
                 )
             }
         })
@@ -209,7 +224,7 @@ extension SignalingMessage: Codable {
                     ProducerPayload(
                         id: $0.id,
                         peerId: nil,
-                        meta: Meta(name: $0.name),
+                        meta: Meta(name: $0.name, hardwareID: $0.hardwareID, installID: $0.installID),
                         busy: $0.isBusy ? true : nil,
                         activeApp: $0.activeApp
                     )

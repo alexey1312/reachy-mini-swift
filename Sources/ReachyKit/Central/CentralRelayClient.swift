@@ -57,6 +57,14 @@ public actor CentralRelayClient {
         public let name: String?
         public let isBusy: Bool
         public let activeApp: String?
+        public var hardwareID: String?
+        public var installID: String?
+
+        /// The id that survives a new peer id, chosen the way `CentralRobot.id`
+        /// chooses it: `install_id`, else `hardware_id`.
+        public var stableID: String? {
+            installID ?? hardwareID
+        }
     }
 
     /// Domain-level, like `CameraSignalingClient.Event`: the wire type stays an
@@ -143,6 +151,9 @@ public actor CentralRelayClient {
         ))
     }
 
+    /// Seconds one `/send` may take. Twice the robot's own bound, for a phone's link.
+    static let sendTimeout: TimeInterval = 10
+
     public func endSession(_ sessionID: String, reason: String? = nil) async throws {
         try await send(.endSession(sessionID: sessionID, reason: reason))
     }
@@ -153,6 +164,11 @@ public actor CentralRelayClient {
     func send(_ message: SignalingMessage) async throws -> SignalingMessage? {
         var request = try await authorized(path: "/send")
         request.httpMethod = "POST"
+        // A small JSON POST that a healthy central answers at once. URLSession's 60 s
+        // default would hold a hang-up or an offer's answer for a minute on a link
+        // that dropped the packets; the robot bounds its own `/send` at 5 s since
+        // daemon 1.13.0 (`CENTRAL_SEND_TIMEOUT_S`).
+        request.timeoutInterval = Self.sendTimeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONCodec.web.encode(message)
 
@@ -241,7 +257,14 @@ public actor CentralRelayClient {
         switch message {
         case let .producerList(producers):
             .producers(producers.map {
-                Producer(peerID: $0.id, name: $0.name, isBusy: $0.isBusy, activeApp: $0.activeApp)
+                Producer(
+                    peerID: $0.id,
+                    name: $0.name,
+                    isBusy: $0.isBusy,
+                    activeApp: $0.activeApp,
+                    hardwareID: $0.hardwareID,
+                    installID: $0.installID
+                )
             })
         case let .sdp(sessionID, _, sdp):
             .offer(sessionID: sessionID, sdp: sdp)

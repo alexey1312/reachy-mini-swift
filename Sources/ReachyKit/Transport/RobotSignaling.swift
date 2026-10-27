@@ -10,7 +10,33 @@ public protocol RobotSignaling: Sendable {
     func events() async -> AsyncStream<SignalingEvent>
     func send(answerSDP: String) async
     func send(candidate: String, sdpMLineIndex: Int32, sdpMid: String?) async
-    func disconnect() async
+    /// Ends the session this carrier holds. `hangUp` says why, and only the relay
+    /// passes it on — see ``SignalingHangUp``.
+    func disconnect(_ hangUp: SignalingHangUp) async
+}
+
+public extension RobotSignaling {
+    /// The client is done with the robot.
+    func disconnect() async {
+        await disconnect(.stop)
+    }
+}
+
+/// Why this client ends a session, in the words the JS SDK sends to central.
+///
+/// From daemon 1.13.0 the robot reads an `endSession` **without** a reason as central's
+/// own bookkeeping, not as the client hanging up: while the peer link still carries
+/// the client's RTCP or data, it keeps the session (`central_signaling_relay.py`,
+/// pollen-robotics/reachy_mini#1480). A restart that sent no reason therefore left the
+/// old session alive, and the `startSession` after it was refused as
+/// `robot_busy_local` for up to the 12 s the robot waits before it calls a session
+/// idle. Any reason makes the hang-up deliberate.
+public enum SignalingHangUp: String, Sendable, Equatable {
+    /// The session is over: the screen closed, or the link was let go of.
+    case stop = "client_stop"
+    /// The session ends so that a new one can start at once — a stalled
+    /// negotiation, or a retry after one.
+    case redial = "client_redial"
 }
 
 /// The signaling half of a session, in the terms the media layer acts on.
@@ -32,6 +58,11 @@ public enum SignalingEvent: Sendable, Equatable {
     case failed(String)
 }
 
-/// The LAN carrier. It speaks `SignalingEvent` natively, so the conformance is
-/// empty — the protocol was extracted from this client's own shape.
-extension CameraSignalingClient: RobotSignaling {}
+/// The LAN carrier. It speaks `SignalingEvent` natively — the protocol was extracted
+/// from this client's own shape. The robot's own socket has no reason to carry:
+/// closing it ends the session there.
+extension CameraSignalingClient: RobotSignaling {
+    public func disconnect(_: SignalingHangUp) async {
+        await disconnect()
+    }
+}

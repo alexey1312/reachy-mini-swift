@@ -167,6 +167,21 @@ it is the phase that waits.
   `.stalled` drops signaling, ends the robot's half and closes both channels,
   and the viewport offers **Try again** (`retry()`), which refills the budget.
   Connecting refills it too, so a stream that drops after working gets the same one retry.
+- **Every hang-up says why, because from daemon 1.13.0 the robot listens for it.**
+  `unsubscribe(_:)` takes a `SignalingHangUp`:
+  `stop()` and `deinit` send `.stop`, a stall and `retry()` send `.redial`,
+  and over the relay the reason reaches the robot as `client_stop` or `client_redial`.
+  The robot now reads an `endSession` with no reason as central's own bookkeeping,
+  and keeps a session whose peer link still carries this device's RTCP or data (pollen-robotics/reachy_mini#1480).
+  So the attempt after a stall was refused as `robot_busy_local` for up to 12 s,
+  and shown as a robot in use.
+  The LAN socket ignores the reason: closing it ends the session there.
+- **`CentralSignalingTransport` acts only on an `endSession` for the session it holds.**
+  A `superseded` for the ghost a re-dial replaced arrives on the new session's stream,
+  and the transport used to end the new session on it.
+  It also follows the robot to a new peer id by `install_id` or `hardware_id`,
+  because a 1.13 robot registers again after two failed heartbeats,
+  and a restart that asked for the old id waited for a producer that never came back.
 - **On the LAN `.stalled` is probed, slowly, until the robot answers.**
   The robot does not say when it is back either,
   and a robot that comes back with its backend still up gives the viewport nothing to rebuild the session on:
