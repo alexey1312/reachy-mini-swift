@@ -30,7 +30,7 @@ struct RootSheets: ViewModifier {
                     HFSignInScreen(session: session, model: HFSignInModel(account: hfAccount))
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button(.reachy("Done")) { router.showsAccount = false }
+                                ReachySheetDismissButton { router.showsAccount = false }
                             }
                         }
                 }
@@ -58,7 +58,7 @@ struct RootSheets: ViewModifier {
                     PermissionsScreen(localNetworkProvenByConnection: isConnectedOverLAN)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button(.reachy("Done")) { router.showsPermissions = false }
+                                ReachySheetDismissButton { router.showsPermissions = false }
                             }
                         }
                 }

@@ -17,6 +17,7 @@ set -euo pipefail
 
 upload=true
 require_development_team
+require_duo_sdk
 while [ $# -gt 0 ]; do
   case "$1" in
   --no-upload) upload=false ;;
@@ -28,6 +29,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+if [ "$upload" = true ]; then
+  require_upload_number
+fi
 BUILD_NUMBER="$(build_number)"
 echo "Archiving build $BUILD_NUMBER." >&2
 ARCHIVE=Apps/DerivedData/Archives/ReachyMini-iOS.xcarchive

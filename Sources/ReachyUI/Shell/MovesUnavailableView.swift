@@ -12,6 +12,7 @@ struct MovesUnavailableView: View {
         } description: {
             Text(.reachy("Connect on the same network as the robot to play its recorded moves."))
         }
+        .reachyClearOfFold()
         .navigationTitle(.reachy("Moves"))
     }
 }

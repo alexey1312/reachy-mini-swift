@@ -65,6 +65,26 @@ struct RobotHFLinkModelDeviceCodeTests {
         #expect(cancelled.cancellations == 0)
     }
 
+    @Test("the robot links through hf.co", arguments: [false, true])
+    func linksThroughTheShortDomain(prefilled: Bool) async throws {
+        let page = try #require(URL(string: "https://hf.co/oauth/device"))
+        let complete = try #require(URL(string: "https://hf.co/oauth/device?user_code=WDJB-MJHT"))
+        let login = RobotDeviceLogin(
+            sessionID: "abc",
+            userCode: "WDJB-MJHT",
+            verificationURI: page,
+            verificationURIComplete: prefilled ? complete : nil
+        )
+        let model = model(start: login, readings: [.authorized(username: "alexey1312")])
+        var opened: [URL] = []
+
+        await model.linkWithDeviceCode(session: .preview()) { opened.append($0) }
+
+        #expect(opened == [prefilled ? complete : page])
+        #expect(model.isLinked)
+        #expect(model.linkError == nil)
+    }
+
     /// Anything on the network can answer as a robot, and the page is opened under
     /// a button that reads "Open huggingface.co".
     @Test("a sign-in page that is not Hugging Face's is not opened, and the robot is stopped")

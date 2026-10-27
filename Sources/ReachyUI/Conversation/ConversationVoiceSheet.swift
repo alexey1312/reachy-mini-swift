@@ -34,7 +34,7 @@ struct ConversationVoiceSheet: View {
             .navigationTitle(.reachy("Voice & personality"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(.reachy("Done")) { dismiss() }
+                    ReachySheetDismissButton(.done) { dismiss() }
                 }
             }
             .task {

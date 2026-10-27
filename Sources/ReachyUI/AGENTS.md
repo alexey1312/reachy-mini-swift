@@ -20,6 +20,25 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     once — while having the one thing an iPhone does not, which is width to spare. The flag now picks **which** second
     place: a tab bar gets the floating window, a sidebar gets a trailing column. Only `isEnabled` collapses everything
     to `.inline` now, and that is still the pre-window shape, `viewportIsOnScreen` included.
+  - **On iPhone Duo the size class gave the wrong answer, so vertical bars are a second input.**
+    The inner display is regular by regular, and in landscape `.sidebarAdaptable` draws a **vertical tab bar** there,
+    not a sidebar.
+    The size class sent the viewport to the column, and the inspector drew that tab bar blurred, five ghosts nobody
+    can read.
+    Measured on the iPhone Duo simulator (Xcode 27.1, iOS 27.1), flat and in book pose,
+    in a probe of this shell and in the app itself.
+    So `hasTabBar` is also true while `toolbarVerticalEdge` is non-`nil` (iOS 27.1, read by `VerticalBarReader`),
+    and the inner display in landscape gets the floating window, the way the outer display always did.
+    - **`.defaultTabBarPlacement(.sidebar)` was the other fix, and it was measured and declined.**
+      It puts the five tabs in a 280 pt sidebar, and with the column beside it the content keeps **207 pt** of 951.
+      It would also turn every iPad's top tab bar into a sidebar by default, which is a product change of its own.
+    - **The inner display in portrait was not measured.** Its bars are horizontal, so the size class still picks the
+      column there.
+      The app cannot rotate that display itself (`requestGeometryUpdate` answers `UISceneErrorDomain` 101),
+      so it is a Device Hub check: rotate, and look at the tab bar beside the column.
+    - **`available(in:)` drops the tab bar's 56 pt under vertical bars, and keeps the running-app strip's.**
+      The side bar lies inside the trailing inset the reader already stops at,
+      while the accessory stays at the bottom: the tab's bottom inset grew from 34 to 72 pt with it up.
   - **`placement` has four cases and three hosts, so `!isInline` is no longer the overlay's condition.** `isWindowed`
     is — `.floating` or `.docked` — and the two mount points (`FloatingViewportModifier`, `FloatingViewport.body`)
     both read it. Left asking `!isInline` they draw the window **over** the column, because a column is not inline
@@ -91,6 +110,14 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
     glass has to be told which end to reach at or it goes under the island. It forks no layout: one point moves by up
     to 62 pt, and everything else about the overlay is unchanged. A third branch owes an answer of the same kind —
     a question the size class cannot answer at all, not a screen it looks better on.
+    - **The scene it asks is the one this window is drawn in**, handed down by the root as `WindowSceneHandle`
+      (`WindowSceneReader.swift`). It used to be `UIApplication.shared.connectedScenes.first`, which is an arbitrary
+      scene once there are two windows — Split View on iPhone Duo, or an iPad.
+      The same handle gives the Hugging Face sign-in its window.
+    - **iPhone Duo needs no case of its own, measured on its simulator.** Its outer display in landscape insets
+      **one** side, by 84 pt — the side with the camera hole and the vertical bar (`l0 tr84` in `.landscapeLeft`,
+      `l84 tr0` in `.landscapeRight`) — so the end this reads is already flush with the glass and the bleed is zero
+      both ways. A reserved-region (`.occlusion`) rewrite was planned for it and dropped: there was nothing to fix.
     - **Both of its cases shipped inverted first, and nothing in this repository could have caught it.**
       `UIInterfaceOrientation.landscapeLeft` **is** `UIDeviceOrientationLandscapeRight` — the enum is defined as the
       device's with left and right swapped, and Apple's "home button on the right side" sentence documents the
@@ -1411,6 +1438,34 @@ searching for a dance offers to play it. The conformances live in `ReachyWidgetU
   miss the ordinary case: the widget and Shortcuts both start and install apps with this process not running.
 - Only _installed_ apps are indexed. The catalogue holds hundreds nobody has, and a row offering to start one of
   those cannot do what it promises — the same reason `ReachySpotlightIndex` leaves `.runningApp` out.
+
+## iPhone Duo's fold
+
+`ReachyDesign/ReachyFold.swift` holds the arithmetic and the reader; this target decides what moves.
+The fold reaches a view as an active division region and as nothing else —
+no safe-area inset, no margin, no trait —
+so a layout that waits for an inset to clear it waits for ever.
+`docs/research/iphone-duo.md` has the measurements.
+
+- **The viewport moves its picture and leaves its controls where they were.**
+  `ViewportView` reads the fold and hands `CameraViewport` and `SceneViewport` `\.viewportPictureInsets`,
+  which each applies to its renderer and its status only, _before_ the pad's overlay.
+  So in book pose the picture keeps the leading side and the bottom-trailing pad lands on the trailing one,
+  and in tabletop pose the picture keeps the top and the pad the bottom.
+  One host per model, as before: nothing is mounted twice and nothing changes identity.
+  Measured on the iPhone Duo simulator: the twin moved to the leading side at 90° and back to the centre at 180°,
+  with no relaunch, because `onGeometryChange` runs again when the regions change.
+- **`ArrangementView` was the other way, and it was not taken.**
+  Its overlay style puts the primary at the top-leading corner at its own size while layered
+  (measured by the iPhone Duo skill's probe), which would move the pad on every iPhone on iOS 27.1,
+  and it could not replace the inspector column without a second host.
+- **The centred empty and loading states take `reachyClearOfFold()`** —
+  `LiveUnavailableView`, `AppsUnavailableView`, `MovesUnavailableView` and `contentLoading`.
+  Lists, forms and readable pages do not: continuous scrolling content flows across a fold
+  (_Strike a pose with adaptive layouts on iPhone Duo_, 3:45).
+- **No reference covers any of it.** The suite renders on iOS 27.0, where the reader does nothing,
+  so the insets are zero in every capture and adopting them moved no reference.
+  `FoldInsetsTests` holds the arithmetic; the poses are a simulator check.
 
 ## Where the robot heard you
 

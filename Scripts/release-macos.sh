@@ -1,10 +1,17 @@
 #!/bin/bash
-# Archive the macOS app (Release, signed) and ship it through both distribution
-# channels: the Mac App Store (TestFlight) and Developer ID (notarized zip).
+# Archive the macOS app (Release, signed) and ship it through one or both
+# distribution channels: Developer ID (notarized zip) and the Mac App Store.
 #
-#   mise run release:macos                             # both channels
+#   mise run release:macos                             # notarized zip only
 #   mise run release:macos -- --channel appstore       # TestFlight only
-#   mise run release:macos -- --channel developer-id   # notarized zip only
+#   mise run release:macos -- --channel both           # both channels
+#
+# **The Mac App Store build comes from Xcode Cloud now**, with every push to
+# `main` (`Apps/ci_scripts/ci_post_clone.sh`), so the default is the half the
+# cloud cannot make. Upload from here only when the cloud cannot: App Store
+# Connect wants each Mac build above every Mac build before it, and the cloud's
+# counter is the one that numbers them. A local upload numbered by the commit
+# count can land above that counter and turn the cloud's next Mac build away.
 #   mise run release:macos -- --no-notarize            # developer-id: stop after signing
 #   mise run release:macos -- --no-upload              # appstore: export a .pkg locally
 #
@@ -22,7 +29,7 @@ set -euo pipefail
 # shellcheck source=Scripts/release-env.sh
 . "$(dirname "$0")/release-env.sh"
 
-channel=both
+channel=developer-id
 notarize=true
 upload=true
 require_development_team
@@ -63,6 +70,10 @@ esac
 # account like the iOS one, for the reason release-env.sh documents.
 if [ "$wants_developer_id" = true ] && [ "$notarize" = true ]; then
   require_asc_key
+fi
+
+if [ "$wants_appstore" = true ] && [ "$upload" = true ]; then
+  require_upload_number
 fi
 
 BUILD_NUMBER="$(build_number)"

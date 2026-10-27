@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import HuggingFaceAuth
 import Observation
@@ -70,7 +71,7 @@ import ReachyKit
         }
 
         /// The second authorization: same client, `openid profile` only.
-        func authorize(hardwareID: String?) async {
+        func authorize(hardwareID: String?, presentingWindow: ASPresentationAnchor? = nil) async {
             authorizationError = nil
             isAuthorizing = true
             defer { isAuthorizing = false }
@@ -78,7 +79,8 @@ import ReachyKit
                 let url = try webAccount.beginSignIn()
                 let callback = try await browser.authenticate(
                     url: url,
-                    callbackScheme: HFOAuthConfiguration.callbackScheme
+                    callbackScheme: HFOAuthConfiguration.callbackScheme,
+                    presentingWindow: presentingWindow
                 )
                 await webAccount.completeSignIn(callback: callback)
                 if case let .failed(reason) = webAccount.state {

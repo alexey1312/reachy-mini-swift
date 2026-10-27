@@ -20,6 +20,57 @@ if [ -f "$RELEASE_CONFIG" ]; then
   . "$RELEASE_CONFIG"
 fi
 
+# Refuses an iOS SDK older than 27.1 before anything is archived.
+#
+# The linked SDK alone decides what iPhone Duo gives the app. With the 27.0 SDK
+# the app is boxed beside the status bar and keeps horizontal bars; with 27.1 it
+# is edge to edge and its bars go vertical. No Info.plist key selects one or the
+# other, so an archive made by an older Xcode builds green and ships the boxed
+# app. The Xcode version of an Xcode Cloud workflow is a setting in App Store
+# Connect, outside this repository, which is why ci_post_clone.sh asks too.
+require_duo_sdk() {
+  local sdk
+  sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+  if [ "$(printf '%s\n%s\n' 27.1 "$sdk" | sort -V | head -n 1)" = 27.1 ]; then
+    return 0
+  fi
+  cat >&2 <<EOF
+The selected Xcode has the iOS $sdk SDK, and iPhone Duo needs an app linked
+against iOS 27.1 or later. Select Xcode 27.1 or later:
+
+  - locally: xcode-select, or DEVELOPER_DIR;
+  - on Xcode Cloud: the workflow's Environment in App Store Connect.
+EOF
+  exit 1
+}
+
+# Refuses an App Store Connect upload numbered by the commit count.
+#
+# **One counter numbers every upload, and it is Xcode Cloud's.** App Store Connect
+# gives each cloud build the cloud's own build number, and a Mac build must carry a
+# number above every Mac build before it, even across versions. A local upload
+# numbered by the commit count can land above the cloud's counter, and then the
+# cloud's next Mac build is turned away after a whole archive; or below a build the
+# same version already holds, which ITMS-90061 rejects. So an upload from this Mac
+# names its number, and whoever names it raises the cloud's next build number above
+# it afterwards (`ci_post_clone.sh` has where).
+require_upload_number() {
+  [ -n "${REACHY_BUILD_NUMBER:-}" ] && return 0
+  cat >&2 <<NOTE
+Uploads to App Store Connect come from Xcode Cloud, which numbers them itself:
+every push to main archives iOS, visionOS, tvOS and the Mac App Store build.
+
+To upload from this Mac anyway, name a number above every build App Store Connect
+holds, then raise Xcode Cloud's next build number above it:
+
+  mise run asc -- builds list --app 6799644194 --limit 5
+  REACHY_BUILD_NUMBER=<n> mise run <the same task>
+
+Without uploading, pass --no-upload.
+NOTE
+  exit 1
+}
+
 # Demanded by the two scripts that archive; asc.sh sources this file for the API key
 # alone and never signs anything, so the check cannot run on load.
 require_development_team() {
@@ -106,12 +157,9 @@ EOF
 # only if a build is ever uploaded with a number the commit count does not reach —
 # `mise run asc -- builds list --app 6799644194` is what says otherwise.
 #
-# **Xcode Cloud is exactly that case, for iOS.** It archives every push to main and
-# stamps the commit count *plus* CI_BUILD_NUMBER (Apps/ci_scripts/ci_post_clone.sh),
-# so its numbers run ahead of this one and a plain `release:ios` from a later commit
-# can still land underneath them. Raise the floor to the last iOS build before
-# releasing iOS by hand, or pass REACHY_BUILD_NUMBER — the alternative is finding out
-# from ITMS-90061 after the archive has been compiled, signed and sent.
+# The commit count numbers what this Mac builds and keeps: the notarized Developer ID
+# zip and the `--no-upload` exports. What goes to App Store Connect is numbered by
+# Xcode Cloud (`require_upload_number` below).
 BUILD_NUMBER_FLOOR=150
 
 # Echoes the CFBundleVersion to archive with. REACHY_BUILD_NUMBER overrides the

@@ -90,7 +90,7 @@ struct DaemonUpdateScreen: View {
                     .navigationTitle(.reachy("Update log"))
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button(.reachy("Done")) { showsLog = false }
+                            ReachySheetDismissButton { showsLog = false }
                         }
                     }
                 }

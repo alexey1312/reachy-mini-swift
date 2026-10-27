@@ -36,9 +36,13 @@ struct SceneViewport: View {
         _paintsTwin = AppStorage(wrappedValue: TwinPaint.defaultValue, TwinPaint.key, store: defaults)
     }
 
+    @Environment(\.viewportPictureInsets) private var pictureInsets
+
     var body: some View {
         RobotSceneView(model: model)
             .overlay(alignment: .center) { status }
+            // As `CameraViewport` does: the twin keeps off the fold, the pad does not move.
+            .padding(pictureInsets)
             .overlay(alignment: .bottomTrailing) { teleopControls }
             // Keyed on the model as well as the colour: `ViewportModel` builds a new
             // `RobotSceneModel` per connection and can hand it to this same view, and

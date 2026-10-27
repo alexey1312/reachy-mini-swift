@@ -25,3 +25,16 @@ if [ -z "${CI_ARCHIVE_PATH:-}" ]; then
 fi
 
 Scripts/check-appintents-metadata.sh "$CI_ARCHIVE_PATH"
+
+# What ships on macOS is arm64 alone, and in Xcode Cloud only Apps/Project.swift's
+# Release setting says so: the cloud passes no `ARCHS=arm64` on a command line the
+# way release-macos.sh does. Drop that setting and the archive goes back to a
+# universal binary with the build still green, so the artifact is what is read.
+if [ "$(printf '%s' "${CI_PRODUCT_PLATFORM:-}" | tr '[:upper:]' '[:lower:]')" = macos ]; then
+  BINARY="$CI_ARCHIVE_PATH/Products/Applications/ReachyMini.app/Contents/MacOS/ReachyMini"
+  SLICES=$(lipo -archs "$BINARY")
+  if [ "$SLICES" != "arm64" ]; then
+    echo "Expected an arm64-only macOS binary, got '$SLICES'." >&2
+    exit 1
+  fi
+fi

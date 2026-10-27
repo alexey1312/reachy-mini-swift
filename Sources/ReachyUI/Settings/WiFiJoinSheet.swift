@@ -43,7 +43,7 @@ struct WiFiJoinSheet: View {
                 // a `.task`, so dismissing does not cancel it. Left enabled it
                 // finished against a model nobody was watching, while the robot may
                 // already have been switching networks.
-                Button(.reachy("Cancel")) { onFinish() }
+                ReachySheetDismissButton(.cancel) { onFinish() }
                     .disabled(model.phase == .sending)
             }
         }
