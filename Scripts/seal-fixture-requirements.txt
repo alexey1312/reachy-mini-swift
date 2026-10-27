@@ -1,4 +1,4 @@
 # Only for Scripts/generate-seal-fixture.py, run by hand. Kept apart from
 # sim-requirements.txt, whose checksum pins the daemon baseline and whose every
 # change forces a full MuJoCo venv rebuild.
-cryptography==46.0.3
+cryptography==48.0.1

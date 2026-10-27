@@ -11,6 +11,8 @@ runs:
   steps:
     - uses: jdx/mise-action@v5
       with:
+        # Match bin/mise. Newer versions reject the pinned GitHub tool options.
+        version: "2026.10.10"
         experimental: true
         github_token: ${{ inputs.github-token }}
 
