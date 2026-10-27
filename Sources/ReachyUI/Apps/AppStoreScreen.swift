@@ -62,7 +62,9 @@ struct AppStoreScreen: View {
                 }
             }
 
-            if model.isOverRelay {
+            // A 1.13 relay lists, updates and removes like the LAN, and the app's
+            // page says the one thing it still cannot do.
+            if model.isOverRelay, !model.listsInstalled {
                 Section {
                     relayNotice
                 }

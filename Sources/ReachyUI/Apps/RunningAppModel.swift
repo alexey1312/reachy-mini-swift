@@ -330,7 +330,7 @@ final class RunningAppModel {
     /// The one writer of `lastError` and its clock.
     func recordFailure(_ error: any Error) {
         let previous = lastError
-        lastError.recordDaemonFailure(error)
+        lastError.recordAppStoreFailure(error)
         // Stamped only when the message actually changed: a cancelled call
         // reports nothing and leaves the slot as it was, so it must not restart
         // the clock on a refusal somebody is still reading.

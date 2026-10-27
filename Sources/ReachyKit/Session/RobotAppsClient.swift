@@ -24,10 +24,16 @@ public protocol RobotAppsClient: Sendable {
     /// it, because a job can be followed and a single reply cannot.
     var installsFromCatalogue: Bool { get }
 
-    /// Whether the daemon restarts an app in one request. The relay has no such
-    /// verb — `apps.*` is start, stop, status and install — so a Restart there is
-    /// a control with nothing behind it.
+    /// Whether the daemon restarts an app in one request. The relay before daemon
+    /// 1.13.0 has no such verb, so a Restart there is a control with nothing behind
+    /// it; `RobotSession.canRestartApp` adds the 1.13 relay back.
     var offersRestart: Bool { get }
+
+    /// Whether this transport is the relay, which from daemon 1.13.0 also lists
+    /// what is installed, installs by Space id, removes, updates, restarts and
+    /// reports each job's progress (`RobotSession.hasRelayAppStore`). A transport
+    /// cannot read the version itself, so the session decides.
+    var carriesRelayAppStore: Bool { get }
 
     /// Everything the daemon can offer, catalogue and installed together.
     func availableApps() async throws -> [RobotApp]
@@ -56,6 +62,10 @@ public protocol RobotAppsClient: Sendable {
     /// on the robot whether anybody waits or not.
     func installFromCatalogue(named name: String) async throws -> AppJobMonitor.Outcome
 
+    /// One app's update, as the relay's `apps.check_update` answers it. The LAN
+    /// asks for every app at once instead (``appUpdates(force:)``).
+    func appUpdateCheck(named name: String) async throws -> AppUpdateCheck
+
     /// Cached daemon-side for five minutes unless forced.
     func appUpdates(force: Bool) async throws -> AppUpdatesSummary
 
@@ -79,6 +89,14 @@ public extension RobotAppsClient {
 
     var offersRestart: Bool {
         true
+    }
+
+    var carriesRelayAppStore: Bool {
+        false
+    }
+
+    func appUpdateCheck(named _: String) async throws -> AppUpdateCheck {
+        throw URLError(.unsupportedURL)
     }
 
     func availableApps() async throws -> [RobotApp] {

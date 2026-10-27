@@ -200,11 +200,17 @@ public actor RemoteControlChannel {
     ///
     /// The stream ends when the channel does, so a console reading it learns that
     /// the session is over rather than sitting frozen with no explanation.
-    public func broadcasts(ofType type: String) -> AsyncStream<Data> {
+    ///
+    /// `buffering` is the newest 500 frames unless a listener needs every one:
+    /// the job ledger counts lines, and a dropped one would shift every index after it.
+    public func broadcasts(
+        ofType type: String,
+        buffering: AsyncStream<Data>.Continuation.BufferingPolicy = .bufferingNewest(500)
+    ) -> AsyncStream<Data> {
         startReading()
         let (stream, continuation) = AsyncStream.makeStream(
             of: Data.self,
-            bufferingPolicy: .bufferingNewest(500)
+            bufferingPolicy: buffering
         )
         let id = UUID()
         listeners[type, default: [:]][id] = continuation

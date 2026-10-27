@@ -21,7 +21,12 @@ extension AppStoreModel {
     }
 
     func hasUpdate(_ app: RobotApp) -> Bool {
-        guard let updates, let twin = installedTwin(of: app) else { return false }
+        guard let twin = installedTwin(of: app) else { return false }
+        // A 1.13 relay's answer for this one app, where the relay has no summary.
+        if let checked = relayUpdates[twin.name] {
+            return checked
+        }
+        guard let updates else { return false }
         return updates.hasUpdate(for: twin) || updates.hasUpdate(for: app)
     }
 

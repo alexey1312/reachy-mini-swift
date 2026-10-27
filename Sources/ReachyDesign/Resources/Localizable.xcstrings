@@ -25781,6 +25781,209 @@
           }
         }
       }
+    },
+    "Starting this app on wake-up needs the robot's own network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Damit diese App beim Aufwachen startet, braucht es das eigene Netzwerk des Roboters."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que esta app se inicie al despertar, hace falta la red del propio robot."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer cette app au réveil nécessite le réseau du robot."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы это приложение запускалось при пробуждении, нужна собственная сеть робота."
+          }
+        }
+      }
+    },
+    "This robot's software cannot do this over Hugging Face. Update the robot, or connect on its own network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Software dieses Roboters kann das über Hugging Face nicht. Aktualisiere den Roboter oder verbinde dich über sein eigenes Netzwerk."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El software de este robot no puede hacerlo a través de Hugging Face. Actualiza el robot o conéctate en su propia red."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le logiciel de ce robot ne peut pas le faire via Hugging Face. Mettez le robot à jour ou connectez-vous sur son propre réseau."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПО этого робота не умеет делать это через Hugging Face. Обновите робота или подключитесь через его собственную сеть."
+          }
+        }
+      }
+    },
+    "Another app is being installed, updated or removed on the robot. Try again when it is done.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf dem Roboter wird gerade eine andere App installiert, aktualisiert oder entfernt. Versuche es erneut, wenn das fertig ist."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el robot se está instalando, actualizando o eliminando otra app. Vuelve a intentarlo cuando termine."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre app est en cours d'installation, de mise à jour ou de suppression sur le robot. Réessayez une fois l'opération terminée."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На роботе сейчас устанавливается, обновляется или удаляется другое приложение. Повторите, когда это закончится."
+          }
+        }
+      }
+    },
+    "This app is running. Stop it first, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App läuft. Stoppe sie zuerst und versuche es dann erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app se está ejecutando. Detenla primero y vuelve a intentarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app est en cours d'exécution. Arrêtez-la d'abord, puis réessayez."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это приложение запущено. Сначала остановите его, затем повторите."
+          }
+        }
+      }
+    },
+    "The robot starts this app on wake-up. Turn that off on the robot's own network first, then remove it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter startet diese App beim Aufwachen. Schalte das zuerst über das eigene Netzwerk des Roboters aus und entferne sie dann."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot inicia esta app al despertar. Desactívalo primero en la red del propio robot y luego elimínala."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot lance cette app au réveil. Désactivez d'abord cette option sur le réseau du robot, puis supprimez-la."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот запускает это приложение при пробуждении. Сначала отключите это через собственную сеть робота, затем удалите приложение."
+          }
+        }
+      }
+    },
+    "Hugging Face has no Reachy Mini app at this address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face hat unter dieser Adresse keine Reachy-Mini-App."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face no tiene ninguna app de Reachy Mini en esta dirección."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hugging Face n'a aucune app Reachy Mini à cette adresse."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На Hugging Face нет приложения Reachy Mini по этому адресу."
+          }
+        }
+      }
+    },
+    "Another app is running on the robot. Stop it first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf dem Roboter läuft eine andere App. Stoppe sie zuerst."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app se está ejecutando en el robot. Detenla primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre app est en cours d'exécution sur le robot. Arrêtez-la d'abord."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На роботе запущено другое приложение. Сначала остановите его."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
