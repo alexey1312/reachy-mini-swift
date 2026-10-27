@@ -269,10 +269,11 @@ swift test --skip-build --parallel 2>&1 | xcsift
 
 [tasks."test:filter"]
 description = "Run tests with filter (usage: mise run test:filter ReachyKitTests)"
+usage = 'arg "<filter>" help="A test type or test name"'
 run = """
 set -o pipefail
 . Scripts/swiftpm-env.sh
-swift test --parallel --filter {{arg(name='filter')}} 2>&1 | xcsift
+swift test --parallel --filter "$usage_filter" 2>&1 | xcsift
 """
 
 # Flows drive the actual app binary on a simulator — the one wiring nothing else
@@ -591,12 +592,13 @@ cd Apps && exec env -u TOOLCHAINS "$TUIST" generate --no-open
 
 [tasks."inspect:bundle"]
 description = "Upload an iOS app-bundle size analysis to tuist.dev"
+usage = 'arg "[bundle]" default="Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app" help="The iOS app bundle"'
 # Runs from Apps/ because tuist only searches upward for Tuist.swift; from the repo
 # root it reports the project as unconnected instead of naming the wrong cwd.
 run = '''
 #!/bin/bash
 set -euo pipefail
-BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
+BUNDLE="$usage_bundle"
 if [ ! -e "$BUNDLE" ]; then
   echo "No bundle at $BUNDLE — build for a device first (see CLAUDE.local.md)." >&2
   exit 1
@@ -612,12 +614,13 @@ cd Apps && exec "$TUIST" inspect bundle "$BUNDLE"
 
 [tasks.share]
 description = "Upload a built app to tuist.dev Previews and print the share link"
+usage = 'arg "[bundle]" default="Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app" help="The signed iOS app bundle"'
 # The Debug-iphoneos default is the `mise run device` product: signed with the personal
 # team, so the preview installs on registered devices — the unsigned CI build would not.
 run = '''
 #!/bin/bash
 set -euo pipefail
-BUNDLE="{{arg(name='bundle', default='Apps/DerivedData/Build/Products/Debug-iphoneos/ReachyMini.app')}}"
+BUNDLE="$usage_bundle"
 if [ ! -e "$BUNDLE" ]; then
   echo "No bundle at $BUNDLE — run 'mise run device -- --build-only' first." >&2
   exit 1
