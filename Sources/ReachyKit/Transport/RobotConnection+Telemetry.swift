@@ -5,12 +5,13 @@ extension RobotConnection: RobotTelemetryClient {
     public func telemetry() async throws -> RobotTelemetry? {
         switch try await client.getTelemetryApiTelemetryGet() {
         case let .ok(response):
-            return try RobotTelemetry(response.body.json)
+            try RobotTelemetry(response.body.json)
+        // The route postdates the robot: nothing to show, nothing gone wrong. A case
+        // of its own, because swiftformat's `redundantReturn` rewrote a `return nil`
+        // inside an `if` here into a bare `nil` that does not compile.
+        case .undocumented(404, _):
+            nil
         case let .undocumented(statusCode, payload):
-            // The route postdates the robot: nothing to show, nothing gone wrong.
-            if statusCode == 404 {
-                return nil
-            }
             throw await ReachyKitError.fromStatusCode(statusCode, detail: Self.detail(of: payload))
         }
     }
@@ -20,7 +21,7 @@ extension RobotConnection: RobotTelemetryClient {
     public func setTelemetry(enabled: Bool) async throws -> RobotTelemetry {
         switch try await client.setTelemetryApiTelemetryPut(body: .json(.init(enabled: enabled))) {
         case let .ok(response):
-            return try RobotTelemetry(response.body.json)
+            try RobotTelemetry(response.body.json)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, payload):

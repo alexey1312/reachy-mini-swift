@@ -10,8 +10,8 @@ import SwiftUI
 
 /// Not `private`: Prefire copies each body into a generated file, where a private
 /// helper is out of reach.
+@MainActor
 extension RobotSession {
-    @MainActor
     static func previewRelayStore(runningApp: RobotAppStatus? = nil) -> RobotSession {
         .preview(
             status: .preview(wirelessVersion: false, version: "1.13.0"),
