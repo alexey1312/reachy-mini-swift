@@ -25665,6 +25665,122 @@
           }
         }
       }
+    },
+    "Usage data": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutzungsdaten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos de uso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Données d'utilisation"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные об использовании"
+          }
+        }
+      }
+    },
+    "Share anonymous usage data": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonyme Nutzungsdaten teilen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir datos de uso anónimos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager des données d'utilisation anonymes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправлять анонимные данные об использовании"
+          }
+        }
+      }
+    },
+    "A setting on the robot turns this off, so the robot sends nothing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Einstellung auf dem Roboter schaltet dies aus, daher sendet der Roboter nichts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un ajuste del robot lo desactiva, así que el robot no envía nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un réglage du robot désactive cette option : le robot n'envoie donc rien."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это отключено настройкой на роботе, поэтому робот ничего не отправляет."
+          }
+        }
+      }
+    },
+    "The robot tells Pollen Robotics which software and apps it runs, and where they fail. It never sends your account, your network, logs, the camera or audio. This choice belongs to the robot and applies to every app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter teilt Pollen Robotics mit, welche Software und Apps er ausführt und wo sie fehlschlagen. Er sendet nie dein Konto, dein Netzwerk, Protokolle, Kamera oder Audio. Diese Wahl gehört zum Roboter und gilt für jede App."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot indica a Pollen Robotics qué software y apps ejecuta y dónde fallan. Nunca envía tu cuenta, tu red, registros, la cámara ni el audio. Esta opción pertenece al robot y se aplica a todas las apps."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot indique à Pollen Robotics quels logiciels et apps il exécute, et où ils échouent. Il n'envoie jamais votre compte, votre réseau, les journaux, la caméra ni l'audio. Ce choix appartient au robot et s'applique à toutes les apps."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Робот сообщает Pollen Robotics, какие программы и приложения он запускает и где они дают сбой. Он никогда не отправляет ваш аккаунт, сеть, журналы, видео с камеры или звук. Этот выбор относится к роботу и действует для всех приложений."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

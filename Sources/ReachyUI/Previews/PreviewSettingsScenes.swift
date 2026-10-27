@@ -21,6 +21,18 @@ extension PreviewScene {
         .preview()
     }
 
+    /// The usage data switch on its own.
+    ///
+    /// The screen draws it only after a read, which no capture makes, so every
+    /// `Settings —` reference stays as it was and these carry the section's states.
+    static func telemetrySection(_ model: RobotTelemetryModel) -> some View {
+        Form {
+            TelemetrySection(session: .preview(), model: model)
+        }
+        .formStyle(.grouped)
+        .preview()
+    }
+
     /// The attribution section on its own.
     ///
     /// Captured here rather than through `SettingsScreen` for the same reason the

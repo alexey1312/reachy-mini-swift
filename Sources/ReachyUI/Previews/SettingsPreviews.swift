@@ -32,6 +32,31 @@ import SwiftUI
     PreviewScene.settings(.preview(status: .preview(state: .stopped)))
 }
 
+// MARK: - Usage data
+
+// Daemon 1.13.0 sends Pollen anonymous usage events while this is on, and every
+// state below is one a reader can land in from the robot's own answer.
+
+#Preview("Usage data — shared") {
+    PreviewScene.telemetrySection(.preview())
+}
+
+#Preview("Usage data — not shared") {
+    PreviewScene.telemetrySection(.preview(RobotTelemetry(isEnabled: false, isDisabledByEnvironment: false)))
+}
+
+// A variable on the robot holds it off, so the switch is off and cannot move, and
+// the footer says why rather than leaving a dead control.
+#Preview("Usage data — turned off on the robot") {
+    PreviewScene.telemetrySection(.preview(RobotTelemetry(isEnabled: true, isDisabledByEnvironment: true)))
+}
+
+// The robot could not save the choice: the switch is back where the robot is, and
+// the daemon's own sentence says why.
+#Preview("Usage data — not saved") {
+    PreviewScene.telemetrySection(.preview(lastError: "Could not save setting: read-only file system (HTTP 500)"))
+}
+
 // MARK: - The Advanced group
 
 // Behind a row on a real screen, so a reference taken through `SettingsScreen`
