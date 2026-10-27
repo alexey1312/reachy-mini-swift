@@ -221,6 +221,9 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     reading, which is why it looked like a cache that did nothing rather than a cache that was told no. It is 8 MB
     now, and four robots of it is what the eviction window costs. The guard against the next round of this is a test
     fixture built to the measured size (`storesACatalogueTheSizeARealRobotAnswers`), not the log line.
+    Daemon 1.13.0 stopped shipping `siblings` in the catalogue (pollen-robotics/reachy_mini#1420),
+    and an installed app carries its file list only from its own install.
+    The 8 MB stays, for every robot before 1.13.
   - **The directory name is `SHA256(deduplicationKey)` and the raw key is _also_ inside the record.** A robot's name
     is free text somebody typed, so a `/` or a `..` in it would leave the cache directory on write —
     `GeometryCache.isSafeMeshName` refuses such a name and hashing is cheaper. The copy inside the file is what makes
