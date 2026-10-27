@@ -12,7 +12,7 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 - REST: OpenAPI 3.1 at `Sources/ReachyKit/openapi.json`; canonical source
   `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/<ref>/docs/source/API/openapi.json`.
   Refresh with `./bin/mise run update-spec <tag>` —
-  the tag of the release `testedVersion` names (`v1.12.0` now).
+  the tag of the release `testedVersion` names (`v1.13.0` now).
   Without a tag it takes `main`, which runs ahead of every release.
   The task also normalizes `anyOf: [X, {type: null}]` branches
   that swift-openapi-generator silently drops (`Scripts/normalize-openapi.py`). Swagger UI at `http://<host>:8000/docs`
@@ -709,7 +709,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   the Constrained Baseline caps filter survives only on the fallback path,
   and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
   The client sets no codec preference and takes whatever H.264 the offer carries.
-- Daemon 1.9.0 is the minimum API version and 1.12.0 the tested baseline. Enforce
+- Daemon 1.9.0 is the minimum API version and 1.13.0 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a
