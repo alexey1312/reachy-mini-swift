@@ -13,7 +13,6 @@ concurrency:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  MISE_GITHUB_GITHUB_ATTESTATIONS: false
   # Read by Apps/Tuist.swift at generation. Off for every job: with the
   # COMPILATION_CACHE_* settings baked in but no cache service, each compile task
   # waits out a CAS socket deadline. The cache was measured on CI and does not pay
