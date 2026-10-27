@@ -981,6 +981,19 @@ Start.
   and Restart is gone from the page and the dock because the relay has no verb for it.
   The note was a row of that section once, and with the three controls gone
   it was a lone grey sentence in an empty card.
+- **From daemon 1.13.0 the relay's store is the LAN's, minus the startup app.**
+  `isOverRelay` still means any relay, because the catalogue is still this device's reading of the Hub,
+  and the store's failures are worded by it.
+  `listsInstalled` is the new question: the LAN, and a relay with `RobotSession.hasRelayAppStore`.
+  It brings back the Installed section, Update and Remove on the page and Restart on the page and the dock,
+  and it retires `relayTwin`, because a robot that lists its apps needs no guess.
+  Start on wake-up stays behind `!isOverRelay`, and the footer says the robot's own network is where it is.
+  The relay has no update summary, so `checkUpdateOverRelay` asks `apps.check_update` for the app on screen,
+  and a row shows an update badge only after its page was opened.
+  The relay's refusals are said by `AppStoreRefusalCaption` (`recordAppStoreFailure`),
+  with an unknown reason left in the daemon's words.
+  The six `… over the relay on 1.13` previews park a 1.13.0 status on the session;
+  the older relay previews park none, so they keep the 1.10 store and did not move.
 
 ## Report, hide and the notice (App Review 1.2)
 

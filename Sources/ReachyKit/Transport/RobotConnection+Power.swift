@@ -30,13 +30,20 @@ public extension RobotConnection {
         }
     }
 
+    /// From daemon 1.13.0 a mode the robot cannot enter answers 409 with a `detail`:
+    /// gravity compensation needs Placo, which stock Wireless robots lack
+    /// (pollen-robotics/reachy_mini#1454). That is not the busy daemon a 409 means
+    /// everywhere else, so the sentence is kept rather than classified away.
     func setMotorMode(_ mode: Components.Schemas.MotorControlMode) async throws {
         switch try await client.setMotorModeApiMotorsSetModeModePost(path: .init(mode: mode)) {
         case .ok:
             return
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
-        case let .undocumented(statusCode, _):
+        case let .undocumented(statusCode, payload):
+            if statusCode == 409, let detail = await Self.detail(of: payload) {
+                throw ReachyKitError.daemonRefused(statusCode: 409, detail: detail)
+            }
             throw ReachyKitError.fromStatusCode(statusCode)
         }
     }

@@ -47,7 +47,7 @@ public actor SetTargetClient {
 
     public func connect() {
         guard socket == nil else { return }
-        let socket = session.webSocketTask(with: url)
+        let socket = session.webSocketTask(with: .toDaemon(url))
         socket.resume()
         self.socket = socket
         drainTask = Task { [weak self] in

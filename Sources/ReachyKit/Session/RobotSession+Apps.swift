@@ -17,17 +17,19 @@ public extension RobotSession {
     /// Whether this robot installs by name over the relay — daemon 1.10.0's
     /// `apps.install`, with the Hub's catalogue in place of the robot's.
     ///
-    /// The store a relayed session can show is that much and no more: a catalogue
-    /// to browse and an Install that waits for its answer. What is installed, the
-    /// updates, the removals and the startup app stay HTTP. Gated on the version
-    /// like ``canControlRunningApp``, and for the same reason.
+    /// The store a relayed 1.10–1.12 robot can show is that much and no more: a
+    /// catalogue to browse and an Install that waits for its answer. Gated on the
+    /// version like ``canControlRunningApp``, and for the same reason. False from
+    /// 1.13.0, where the relay installs by Space id as a job instead
+    /// (``hasRelayAppStore``).
     var canInstallFromCatalogue: Bool {
         (client as? any RobotAppsClient)?.installsFromCatalogue == true && !predatesRelayCommands
+            && !hasRelayAppStore
     }
 
     /// Whether there is a store to show at all — the daemon's own, or the relay's.
     var canBrowseApps: Bool {
-        canManageApps || canInstallFromCatalogue
+        canManageApps || canInstallFromCatalogue || hasRelayAppStore
     }
 
     /// Whether the app already running can be watched and stopped from here.
@@ -42,9 +44,10 @@ public extension RobotSession {
     }
 
     /// Whether Restart has anything behind it. A client that never said otherwise
-    /// can, which keeps every surface that predates the relay exactly as it was.
+    /// can, which keeps every surface that predates the relay exactly as it was,
+    /// and the relay can from daemon 1.13.0 (`apps.restart`).
     var canRestartApp: Bool {
-        (client as? any RobotAppsClient)?.offersRestart != false
+        (client as? any RobotAppsClient)?.offersRestart != false || hasRelayAppStore
     }
 
     /// The whole catalogue, installed apps included — the daemon's own
@@ -69,6 +72,11 @@ public extension RobotSession {
     func installedApps(refresh: Bool = false) async throws -> [RobotApp] {
         if !refresh, let cached = installedAppsCache {
             return cached
+        }
+        // A relayed robot before 1.13.0 has no listing verb. Asked anyway — and
+        // `describedFromInstalled` asks on every dock poll — it answers `-32601`.
+        if (client as? any RobotAppsClient)?.carriesRelayAppStore == true, !hasRelayAppStore {
+            throw ReachyKitError.appsUnavailable
         }
         let apps = try await withAppsClient { try await $0.installedApps() }
         installedAppsCache = apps
@@ -197,24 +205,6 @@ public extension RobotSession {
         installedAppsCache = nil
         await forgetPersistedCatalogue()
         return try await appsClient.installFromCatalogue(named: app.slug)
-    }
-
-    /// Follows one job to its end over the socket *and* the poll — see
-    /// `AppJobMonitor` for why neither alone is enough.
-    func appJobEvents(
-        jobID: String,
-        configuration: AppJobMonitor.Configuration = .install
-    ) throws -> AsyncStream<AppJobMonitor.Event> {
-        guard let address else { throw ReachyKitError.notConnected }
-        guard let client = client as? any RobotAppsClient else { throw ReachyKitError.appsUnavailable }
-        return AppJobMonitor(
-            configuration: configuration,
-            logs: {
-                (try? JobLogStreamClient.appsManager(address: address, jobID: jobID).events())
-                    ?? AsyncStream { $0.finish() }
-            },
-            job: { try await client.appJob(id: jobID) }
-        ).events()
     }
 
     func appUpdates(force: Bool = false) async throws -> AppUpdatesSummary {

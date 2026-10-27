@@ -196,7 +196,7 @@ Two different things, and which one you want depends on what you are working on:
   No daemon, no network, no Python,
   and the only one of the two that runs on a phone.
   Use it for the UI, the 3D viewer and the kinematics.
-- **A real daemon in MuJoCo simulation** — `./bin/mise run sim-daemon`; the tested daemon baseline is **1.12.0**. Use
+- **A real daemon in MuJoCo simulation** — `./bin/mise run sim-daemon`; the tested daemon baseline is **1.13.0**. Use
   it for anything about the _protocol_: it is upstream's own code answering. The daemon's OpenAPI spec is committed
   at `Sources/ReachyKit/openapi.json` and refreshed with `./bin/mise run update-spec`.
 

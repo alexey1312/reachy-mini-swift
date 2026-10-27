@@ -80,7 +80,7 @@ public struct JobLogStreamClient: Sendable {
             bufferingPolicy: .bufferingNewest(1000)
         )
         let task = Task { [url, session] in
-            let socket = session.webSocketTask(with: url)
+            let socket = session.webSocketTask(with: .toDaemon(url))
             socket.resume()
             defer {
                 socket.cancel(with: .goingAway, reason: nil)

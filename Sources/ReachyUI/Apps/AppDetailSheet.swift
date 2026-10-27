@@ -194,6 +194,7 @@ struct AppDetailSheet: View {
             .task {
                 guard !previewMode else { return }
                 await model.loadInstalledIfNeeded(session: session)
+                await model.checkUpdateOverRelay(app)
             }
             .interactiveDismissDisabled(install.isBusy)
             .confirmationDialog(
@@ -253,20 +254,6 @@ struct AppDetailSheet: View {
                     .foregroundStyle(Tone.danger.style)
             }
             processControls(status)
-        }
-    }
-
-    /// The last thing the app printed before it died. The daemon keeps ten stderr
-    /// lines here, and on a robot whose journal is not served over the network this
-    /// is the only crash output there is.
-    private func failureRow(_ error: String) -> some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            Text(.reachy("Last output"))
-                .font(Typography.status.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(error)
-                .font(Typography.consoleLine)
-                .textSelection(.enabled)
         }
     }
 
@@ -333,14 +320,18 @@ struct AppDetailSheet: View {
                 if let transition = session.powerTransition {
                     PowerTransitionRow(transition: transition)
                 }
-                if !model.isOverRelay {
+                // Update and Remove need a robot that lists what it has; the startup
+                // app is HTTP alone, so a 1.13 relay offers the first two only.
+                if model.listsInstalled {
                     if model.hasUpdate(app) {
                         Button(.reachy("Update"), systemImage: "arrow.down.circle") {
                             perform(.update(installed))
                         }
                     }
-                    Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
-                        .disabled(model.busy)
+                    if !model.isOverRelay {
+                        Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
+                            .disabled(model.busy)
+                    }
                     Button(.reachy("Remove"), systemImage: "trash", role: .destructive) {
                         confirmingRemoval = true
                     }

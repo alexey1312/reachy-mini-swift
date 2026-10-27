@@ -54,6 +54,9 @@ final class AppStoreModel {
     /// Ids this visit installed over the relay, which keeps no list to read back.
     /// See `relayTwin(of:)`.
     private(set) var installedOverRelay: Set<String> = []
+    /// `apps.check_update` answers by installed name, from daemon 1.13.0's relay,
+    /// which has no summary to fill `updates` from. See `checkUpdateOverRelay`.
+    var relayUpdates: [String: Bool] = [:]
 
     private let pins: PinnedAppStore
     /// Mirrors the store so `@Observable` sees a pin land. Reading the store in
@@ -192,7 +195,7 @@ final class AppStoreModel {
             let apps = try await session.appCatalogue(refresh: refresh || catalogueIsWarmed || linkedSinceGate)
             guard loadID == requestID, !Task.isCancelled else { return }
             catalogue = apps.filter { !$0.isInstalled }
-            installed = apps.filter(\.isInstalled)
+            takeInstalled(from: apps)
             hasCatalogueResult = true
             attemptedCatalogueLoad = true
             catalogueIsWarmed = false
@@ -216,7 +219,9 @@ final class AppStoreModel {
         // The running app is not assigned here — `currentApp()` writes it into the
         // session. A failed call therefore leaves the last known app standing
         // rather than blanking the dock, which is what a mid-restart daemon
-        // deserves.
+        // deserves. A 1.13 relay's installed list goes first, so the running app
+        // is described from it.
+        guard await readInstalledOverRelay(requestID) else { return }
         _ = try? await session.currentApp()
         // The relay carries none of the three below — the lock, the startup app and
         // the update check are all HTTP — and asking would collect three refusals.
@@ -233,6 +238,24 @@ final class AppStoreModel {
         self.startupApp = startupApp
         // Kept on failure: cleared badges would assert that everything is up to date.
         self.updates = updates ?? self.updates
+    }
+
+    /// The installed half of `list-available`. A 1.13 relay's catalogue is the Hub's
+    /// and holds nothing installed, so the robot's own list is read instead of the
+    /// section being blanked here (`readInstalledOverRelay`).
+    private func takeInstalled(from apps: [RobotApp]) {
+        guard !session.hasRelayAppStore else { return }
+        installed = apps.filter(\.isInstalled)
+    }
+
+    /// False when a later load took over while this one waited.
+    private func readInstalledOverRelay(_ requestID: UUID) async -> Bool {
+        guard session.hasRelayAppStore, let listed = try? await session.installedApps(refresh: true) else {
+            return true
+        }
+        guard loadID == requestID, !Task.isCancelled else { return false }
+        installed = listed
+        return true
     }
 
     /// Whether the context menu may offer Start.
@@ -280,7 +303,7 @@ final class AppStoreModel {
     /// record: an install the robot confirmed is an installed app for the rest of
     /// this visit.
     func reloadInstalled(session: RobotSession, after job: AppInstallModel.State) async {
-        guard !isOverRelay else {
+        guard listsInstalled else {
             if case let .succeeded(.install(app)) = job {
                 installedOverRelay.insert(app.id)
             }
@@ -288,7 +311,12 @@ final class AppStoreModel {
         }
         installed = await (try? session.installedApps(refresh: true)) ?? installed
         _ = try? await session.currentApp()
-        startupApp = try? await session.startupApp()
+        // An update just ran, or an app came or went: an earlier check is stale.
+        relayUpdates = [:]
+        // The startup app is HTTP alone.
+        if !isOverRelay {
+            startupApp = try? await session.startupApp()
+        }
     }
 
     private func run(_ work: () async throws -> Void) async {
@@ -298,7 +326,7 @@ final class AppStoreModel {
             try await work()
             lastError = nil
         } catch {
-            lastError.recordDaemonFailure(error)
+            lastError.recordAppStoreFailure(error)
         }
     }
 }

@@ -45,7 +45,9 @@ public actor RobotCatalogueCache {
     /// the Hub's file listing per Space. At the 2 MB this started at, every write was
     /// refused and the cache stored a catalogue not once. What the headroom buys is
     /// the Hub roughly doubling; past that a cold start goes back to a spinner, which
-    /// is the one failure this store is allowed to have.
+    /// is the one failure this store is allowed to have. Daemon 1.13.0 ships no
+    /// `siblings` in the catalogue any more (pollen-robotics/reachy_mini#1420), so its
+    /// record is a fraction of that; the ceiling stays for the robots before it.
     static let maxRecordBytes = 8 * 1024 * 1024
     /// The connected robot plus three. Enough that moving between two robots is
     /// free, small enough that the directory cannot grow without bound.

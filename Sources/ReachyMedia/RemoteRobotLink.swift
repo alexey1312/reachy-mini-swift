@@ -27,7 +27,11 @@ public final class RemoteRobotLink {
     public convenience init(robot: CentralRobot, relay: CentralRelayClient) {
         self.init(
             camera: CameraSession(
-                signaling: CentralSignalingTransport(relay: relay, robotPeerID: robot.peerID)
+                signaling: CentralSignalingTransport(
+                    relay: relay,
+                    robotPeerID: robot.peerID,
+                    robotIdentity: robot.meta?.installID ?? robot.meta?.hardwareID
+                )
             ),
             // Central knows the robot's name and the channel does not, so the
             // listing the user picked from is where it comes from.

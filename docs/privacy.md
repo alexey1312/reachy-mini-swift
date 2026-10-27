@@ -6,7 +6,7 @@ permalink: /privacy.html
 
 # Privacy Policy — Hey Reachy
 
-Last updated: 10 August 2026.
+Last updated: 27 October 2026.
 
 **Hey Reachy collects nothing.** There is no server behind this app, no account with the developer, no analytics, no
 crash reporting SDK and no advertising. Nothing you do in the app is sent anywhere the app does not need to reach to
@@ -17,6 +17,17 @@ do its job.
 **Your robot.** The app is a client for the daemon that runs on the Reachy Mini Wireless itself. Commands, the state
 stream, camera and audio, the recorded moves, the file browser — all of it goes directly between your device and your
 robot over your own network. None of it passes through the developer.
+With each request the app tells the robot its own name, its version and the operating system it runs on
+(the `X-Reachy-Client` header), and nothing about you.
+
+**Pollen Robotics, through the robot and not through the app.**
+From software version 1.13.0 the robot itself sends Pollen Robotics a few anonymous usage events:
+that it started, a daily heartbeat, which robot apps start, stop, install and update,
+and which kinds of client connect to it, this app among them.
+Pollen says that these events never include IP addresses, robot names,
+your Hugging Face identity, hardware ids, logs, camera or audio.
+The robot sends them, not the app, and the switch **Share anonymous usage data** in Settings turns them off.
+See [Pollen's telemetry documentation](https://huggingface.co/docs/reachy_mini/SDK/telemetry).
 
 **Hugging Face, only if you sign in.** Signing in is optional and drives three features: installing robot apps from
 Hugging Face Spaces, listing robots your account has linked, and reaching a robot outside its network through the

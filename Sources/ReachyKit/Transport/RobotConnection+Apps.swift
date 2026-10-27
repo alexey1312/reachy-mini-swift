@@ -203,7 +203,7 @@ extension RobotConnection {
         guard let url = address.httpURL(path: path) else {
             throw ReachyKitError.invalidAddress(address)
         }
-        var request = URLRequest(url: url)
+        var request = URLRequest.toDaemon(url)
         request.httpMethod = method
         request.httpBody = body
         if let contentType {

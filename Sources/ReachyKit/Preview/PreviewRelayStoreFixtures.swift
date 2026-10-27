@@ -11,13 +11,18 @@
     public struct PreviewRelayStoreClient: RobotAPIClient, RobotAppsClient {
         public var identity: RobotIdentity
         public var status: Components.Schemas.DaemonStatus
+        /// Daemon 1.13.0's relay store. The session decides on the version it holds,
+        /// so a preview of it parks a 1.13.0 status on the session too.
+        public var carriesRelayAppStore: Bool
 
         public init(
             identity: RobotIdentity = .preview,
-            status: Components.Schemas.DaemonStatus = .preview(wirelessVersion: false, version: "1.11.0")
+            status: Components.Schemas.DaemonStatus = .preview(wirelessVersion: false, version: "1.11.0"),
+            carriesRelayAppStore: Bool = false
         ) {
             self.identity = identity
             self.status = status
+            self.carriesRelayAppStore = carriesRelayAppStore
         }
 
         public var offersAppStore: Bool {

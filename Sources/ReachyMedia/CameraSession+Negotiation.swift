@@ -51,7 +51,7 @@ extension CameraSession {
         guard isStarted, phase == .stalled else { return }
         // A probe may be listening, and a carrier serves one subscription at a time.
         if eventsTask != nil {
-            unsubscribe()
+            unsubscribe(.redial)
         }
         stalledAttempts = 0
         phase = .connecting
@@ -87,13 +87,17 @@ extension CameraSession {
 
     /// Drops the subscription and ends the robot's half of it. Best-effort
     /// `endSession`; on the LAN the socket closing would do as much.
-    func unsubscribe() {
+    ///
+    /// `hangUp` says whether a new session follows at once. Over the relay it is
+    /// what lets that one through: daemon 1.13.0 keeps a live session whose
+    /// `endSession` carries no reason (`SignalingHangUp`).
+    func unsubscribe(_ hangUp: SignalingHangUp) {
         eventsTask?.cancel()
         eventsTask = nil
         let previous = ending
         ending = Task { [signaling] in
             await previous?.value
-            await signaling.disconnect()
+            await signaling.disconnect(hangUp)
         }
     }
 
@@ -103,7 +107,7 @@ extension CameraSession {
         guard isStarted else { return }
         stalledAttempts += 1
         teardownPeer()
-        unsubscribe()
+        unsubscribe(.redial)
         disarmDeadline()
         guard stalledAttempts < Self.attemptsBeforeStalling else {
             // An ending, not a lull: commands waiting on the control channel fail now

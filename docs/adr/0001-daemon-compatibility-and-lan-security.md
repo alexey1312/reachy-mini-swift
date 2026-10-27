@@ -14,7 +14,7 @@ The daemon exposes motion commands over plaintext HTTP/WebSocket and has no auth
 ## Decision: compatibility
 
 - Daemon 1.9.0 is the minimum supported version.
-  The tested baseline is `DaemonCompatibilityPolicy.testedVersion` — 1.12.0 since 2026-10-16 —
+  The tested baseline is `DaemonCompatibilityPolicy.testedVersion` — 1.13.0 since 2026-10-27 —
   and is raised whenever a release has been verified against it;
   the minimum moves only by a decision of its own.
 - Handshake reads status/version before identity or any robot command.

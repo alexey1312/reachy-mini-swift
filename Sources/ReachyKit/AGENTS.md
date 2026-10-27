@@ -221,6 +221,9 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     reading, which is why it looked like a cache that did nothing rather than a cache that was told no. It is 8 MB
     now, and four robots of it is what the eviction window costs. The guard against the next round of this is a test
     fixture built to the measured size (`storesACatalogueTheSizeARealRobotAnswers`), not the log line.
+    Daemon 1.13.0 stopped shipping `siblings` in the catalogue (pollen-robotics/reachy_mini#1420),
+    and an installed app carries its file list only from its own install.
+    The 8 MB stays, for every robot before 1.13.
   - **The directory name is `SHA256(deduplicationKey)` and the raw key is _also_ inside the record.** A robot's name
     is free text somebody typed, so a `/` or a `..` in it would leave the cache directory on write —
     `GeometryCache.isSafeMeshName` refuses such a name and hashing is cheaper. The copy inside the file is what makes
@@ -348,9 +351,30 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     `.relaySilent` needs `get_version` to answer and `apps.status` to stay silent.
     `get_version` alone named a slow `apps.stop` or a slow app a dead relay, with the advice to restart the robot.
     `apps.stop` also waits 30 s, not the reply budget, because the daemon answers it only after the app exits.
-  - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart`,
+  - **`offersRestart` is a third flag for the same reason.** There is no `apps.restart` before 1.13.0,
     and a Restart left on a throwing default was a button answering `NSURLErrorDomain -1002` —
     unreachable only while the decoding bug kept the relayed dock empty.
+  - **From daemon 1.13.0 the relay carries the store's half too, and the session decides that, not the transport.**
+    `RemoteRobotConnection+AppStore` speaks `apps.list_installed`, `install_space`, `remove`, `update`,
+    `check_update`, `job_status` and `restart`;
+    `carriesRelayAppStore` says the transport can,
+    and `RobotSession.hasRelayAppStore` adds a version **known** to be 1.13.0,
+    because an older robot answers each verb with `-32601` while `apps.install` still works for it.
+    From there `canInstallFromCatalogue` is false, so an install is a followed job, as on the LAN,
+    and `canRestartApp` is true.
+    `offersAppStore` stays false: the startup app, the update summary and the lock are HTTP alone,
+    and the catalogue is still the Hub's, so it is still not persisted.
+  - **A relay job's log comes from `RelayAppJobLedger`, which listens before the job exists.**
+    `apps.job_progress` frames carry no index, are never repeated,
+    and can arrive before the reply that names their job,
+    so the ledger subscribes before the first job verb and keeps every job from line 0.
+    That index is `apps.job_status`'s `logs` index, which is what lets `AppJobMonitor`'s one cursor
+    keep the poll and the stream from doubling a line.
+    An `apps.update` answered `started: false` joined a job already running: its stream carries the end alone,
+    and its lines come from the poll.
+    `unknown_job` is passed on as the LAN's 404, so the monitor ends on `.daemonRestarted` over either link.
+  - **`installedApps()` refuses an older relayed robot without sending anything.**
+    `describedFromInstalled` asks for the list on every dock poll, and each ask would collect a `-32601`.
 - **`FirstWakeUpClient` is the data channel's alone, and that is the daemon's doing, not a gap here.**
   The robot keeps one `first_wake_up_completed` flag that Pollen's apps gate their first-run wizard on (#157),
   and it is answered by `process_command` alone:

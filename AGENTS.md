@@ -465,6 +465,13 @@ They are wired now; the entries are here because each failure reads as something
   the first start after the venv rebuild bound :8000 about eight minutes later,
   and `test:sim` passed seven cases with the WebRTC one timing out on the same `not-negotiated (-4)`,
   with `Jump Desktop Microphone` still the default input.
+  **1.13.0 sends anonymous usage events to Pollen by default**, so `sim-daemon` exports
+  `REACHY_MINI_TELEMETRY=0` unless `REACHY_SIM_TELEMETRY=1`.
+  The media server's `:8443` is fixed in the daemon (`media_manager.py`), so a second daemon beside a running one
+  needs `--no-media`; with it and `--fastapi-port`, HTTP and telemetry answer, and the JSON-RPC relay does not,
+  because it is reached over the WebRTC data channel alone — `/ws/sdk` does not route it.
+  The relay's reply shapes were therefore read by driving the daemon's own `JsonRpcRelay` from the venv's Python
+  with a real `AppManager` (issue #234).
 
 **Device builds are one command: `mise run device`** (`Scripts/device-run.sh`, also the Conductor run button in
 `.conductor/settings.toml`). It finds the phone itself — `devicectl list devices --json-output` carries both

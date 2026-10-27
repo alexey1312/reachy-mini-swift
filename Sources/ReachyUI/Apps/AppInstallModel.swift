@@ -270,7 +270,8 @@ final class AppInstallModel {
     /// The announcement inherits that rule for free: a cancelled call returns before
     /// the assignment, so nothing is said about a job whose screen went away.
     private func fail(on error: any Error, operation: Operation) {
-        guard let message = RobotSession.message(for: error) else { return }
+        guard let logged = RobotSession.message(for: error) else { return }
+        let message = AppStoreRefusalCaption.sentence(for: error) ?? logged
         state = .failed(operation, message)
         announce(.failed(message))
     }

@@ -109,6 +109,12 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// retrying this one. Appended, like every case since ``daemonLogsUnavailable``.
     case untrustedHost(host: String)
 
+    /// This connection cannot read the robot's telemetry choice — the in-app
+    /// simulator has no daemon. See ``RobotTelemetryClient``.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case telemetryUnavailable
+
     /// The `detail` that guard answers with, verbatim.
     static let untrustedHostDetail = "Untrusted Host header"
 
@@ -151,7 +157,8 @@ public enum ReachyKitError: Error, Sendable, Equatable {
              .renameUnavailable, .appsUnavailable, .hfAuthUnavailable,
              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
              .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
-             .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable, .audioLevelsUnavailable:
+             .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable, .audioLevelsUnavailable,
+             .telemetryUnavailable:
             nil
         }
     }
@@ -214,6 +221,8 @@ extension ReachyKitError: LocalizedError {
             "The conversation cannot be reached over this connection"
         case .audioLevelsUnavailable:
             "The robot's audio cannot be reached over this connection"
+        case .telemetryUnavailable:
+            "The robot's usage data setting cannot be reached over this connection"
         case let .untrustedHost(host):
             "The robot does not answer to “\(host)” — connect with its IP address or its .local name"
         case let .soundTooLarge(bytes, limit):

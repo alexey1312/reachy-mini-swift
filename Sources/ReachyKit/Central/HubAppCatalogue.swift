@@ -8,10 +8,14 @@ import ReachyJSON
 /// Over the relay nothing does — the JSON-RPC relay has `apps.install` and no
 /// `apps.list` — but the catalogue is the Hub's to begin with, and this is the
 /// query the robot itself runs when `apps.install` looks a name up:
-/// `ensure_startup_app_installed` searches `hf_space.list_all_apps`, which is
-/// `HfApi.list_spaces(filter="reachy_mini_python_app", sort="likes", limit=500)`.
-/// Listing exactly that is what keeps every card here installable by name. A
-/// wider list would offer apps the robot then refuses as "not in the catalog".
+/// `ensure_startup_app_installed` searches `hf_space.list_all_apps`, which up to
+/// daemon 1.12 is `HfApi.list_spaces(filter="reachy_mini_python_app", sort="likes",
+/// limit=500)`. From 1.13.0 the daemon reads the same query over plain HTTP and
+/// follows the `Link` header past the first 500 (pollen-robotics/reachy_mini#1420),
+/// and so does this. Listing that query is what keeps every card here installable
+/// by name. A wider list would offer apps the robot then refuses as "not in the
+/// catalog". Up to 1.12 the robot still stops at 500, which the Hub's 471 apps of
+/// 2026-10-01 do not reach.
 ///
 /// So this is narrower than the LAN store, and on purpose:
 ///
@@ -91,11 +95,37 @@ public struct HubAppCatalogue: Sendable {
         return first + rest
     }
 
+    /// Pages the Hub hands out after the first. Twenty pages is ten thousand apps;
+    /// a `Link` that never ends is a bug on one side or the other, not a catalogue.
+    static let maxPages = 20
+
     private func listing() async throws -> [Space] {
-        let (data, response) = try await session.data(from: Self.spacesURL)
-        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-        guard (200 ..< 300).contains(statusCode) else { throw Failure.http(statusCode) }
-        return try JSONCodec.web.decode([Lenient<Space>].self, from: data).compactMap(\.value)
+        var spaces: [Space] = []
+        var next: URL? = Self.spacesURL
+        var pages = 0
+        while let url = next, pages <= Self.maxPages {
+            let (data, response) = try await session.data(from: url)
+            let http = response as? HTTPURLResponse
+            let statusCode = http?.statusCode ?? -1
+            guard (200 ..< 300).contains(statusCode) else { throw Failure.http(statusCode) }
+            spaces += try JSONCodec.web.decode([Lenient<Space>].self, from: data).compactMap(\.value)
+            next = Self.nextPage(in: http?.value(forHTTPHeaderField: "Link"))
+            pages += 1
+        }
+        return spaces
+    }
+
+    /// The `rel="next"` target of an RFC 8288 `Link` header, the Hub's pagination.
+    static func nextPage(in header: String?) -> URL? {
+        guard let header else { return nil }
+        for link in header.split(separator: ",") {
+            let parts = link.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard let target = parts.first, target.hasPrefix("<"), target.hasSuffix(">"),
+                  parts.dropFirst().contains(where: { $0.replacingOccurrences(of: " ", with: "") == #"rel="next""# })
+            else { continue }
+            return URL(string: String(target.dropFirst().dropLast()))
+        }
+        return nil
     }
 
     private func curatedIDs() async -> [String] {

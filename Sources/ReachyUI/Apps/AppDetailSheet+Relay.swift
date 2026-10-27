@@ -32,8 +32,9 @@ extension AppDetailSheet {
     }
 
     /// The footer of the section Update, Start on wake-up and Remove would fill:
-    /// `note`, and over the relay, above it, why the three are absent — all three
-    /// are HTTP, and the relay carries none of them.
+    /// `note`, and over the relay, above it, why some are absent. Before daemon
+    /// 1.13.0 the relay carries none of the three; from it, every one but the
+    /// startup app, which stays HTTP.
     ///
     /// In the footer and not a row: as the section's one row, the sentence was a lone
     /// grey line in an empty card. A stack, because a footer handed two bare views
@@ -42,9 +43,16 @@ extension AppDetailSheet {
     func actionsFooter(@ViewBuilder _ note: () -> some View) -> some View {
         if model.isOverRelay, model.installedTwin(of: app) != nil {
             VStack(alignment: .leading, spacing: Space.sm) {
-                Text(
-                    .reachy("Updating or removing this app, and starting it on wake-up, need the robot's own network.")
-                )
+                if model.listsInstalled {
+                    Text(.reachy("Starting this app on wake-up needs the robot's own network."))
+                } else {
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "Updating or removing this app, and starting it on wake-up, need the robot's own network."
+                        )
+                    )
+                }
                 note()
             }
         } else {

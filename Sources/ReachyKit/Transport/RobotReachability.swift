@@ -12,7 +12,7 @@ public enum RobotReachability {
         session: URLSession = .shared
     ) async -> Bool {
         guard let url = address.httpURL(path: "/api/daemon/hardware-id") else { return false }
-        var request = URLRequest(url: url)
+        var request = URLRequest.toDaemon(url)
         request.timeoutInterval = timeout
 
         guard let (_, response) = try? await session.data(for: request),

@@ -4,11 +4,12 @@ import Foundation
 extension RemoteRobotConnection: RobotAppsClient {
     // Daemon 1.10.0 put the apps API behind JSON-RPC on this channel and routes by
     // namespace: it answers `apps.*` itself and relays everything else to the app.
-    // It answers four verbs — `status`, `start`, `stop` and `install` — and that
-    // is the whole surface: the installed list, removals, updates and the startup
-    // app stay HTTP, which is what `offersAppStore` says.
+    // Up to 1.12 it answers four verbs — `status`, `start`, `stop` and `install`.
+    // 1.13.0 adds the installed list, install by Space id, removal, update, restart
+    // and followed jobs (`RemoteRobotConnection+AppStore`). The startup app, the
+    // update summary and the lock stay HTTP, which is what `offersAppStore` says.
 
-    /// Not the daemon's store: no installed list, and no jobs to follow.
+    /// Not the daemon's HTTP store: no startup app, no update summary, no lock.
     public nonisolated var offersAppStore: Bool {
         false
     }
@@ -75,12 +76,22 @@ extension RemoteRobotConnection: RobotAppsClient {
 
     // MARK: The running app
 
-    /// No `apps.restart`. Stop-then-start is not a safe stand-in either: `apps.stop`
-    /// answers only once the daemon's whole stop is over, return to zero included,
-    /// which can outlast the reply budget — and a start sent on that timeout would
-    /// race a slot still taken.
+    /// No `apps.restart` before daemon 1.13.0, and `RobotSession.canRestartApp`
+    /// adds it back from there. Stop-then-start is not a safe stand-in for an older
+    /// robot: `apps.stop` answers only once the daemon's whole stop is over, return
+    /// to zero included, which can outlast the reply budget — and a start sent on
+    /// that timeout would race a slot still taken.
     public nonisolated var offersRestart: Bool {
         false
+    }
+
+    /// `apps.restart`, from daemon 1.13.0: stop-then-start on the robot, answered
+    /// with the status it reached. On the stop's budget, because the stop half
+    /// waits for the app to exit as `apps.stop` does.
+    public func restartCurrentApp() async throws -> RobotAppStatus {
+        let reply = try await control.call("apps.restart", timeout: Self.appStopTimeout, expecting: AppStatusReply.self)
+        guard let status = reply.appStatus else { throw ReachyKitError.appsUnavailable }
+        return status
     }
 
     public func currentAppStatus() async throws -> RobotAppStatus? {

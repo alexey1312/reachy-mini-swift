@@ -12,7 +12,7 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 - REST: OpenAPI 3.1 at `Sources/ReachyKit/openapi.json`; canonical source
   `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/<ref>/docs/source/API/openapi.json`.
   Refresh with `./bin/mise run update-spec <tag>` —
-  the tag of the release `testedVersion` names (`v1.12.0` now).
+  the tag of the release `testedVersion` names (`v1.13.0` now).
   Without a tag it takes `main`, which runs ahead of every release.
   The task also normalizes `anyOf: [X, {type: null}]` branches
   that swift-openapi-generator silently drops (`Scripts/normalize-openapi.py`). Swagger UI at `http://<host>:8000/docs`
@@ -201,6 +201,105 @@ A message that fits is sent unchanged.
   Nothing this app sends comes near that.
 - Central relays chunks to a remote session unchanged.
 
+## Daemon 1.13.0
+
+Released 2026-10-26 (issue #234).
+The release notes name telemetry and the eMudhra certificates;
+the diff holds 73 commits, and the relay's session rules are the change that matters most here.
+Every reply shape below was read off the v1.13.0 source and, where noted, off the daemon itself:
+`curl` against `sim-daemon` 1.13.0, and the daemon's own `JsonRpcRelay` driven with a real `AppManager`.
+
+### Telemetry
+
+- `GET /api/telemetry` → `{enabled, disabled_by_env}`; `PUT` takes `{enabled}` and answers the same shape.
+  A 1.12 daemon answers 404 (measured), which `RobotConnection` reads as "no setting".
+  A failed write is a 500 with `Could not save setting: …`.
+- `disabled_by_env` is true while `REACHY_MINI_TELEMETRY` is `0`/`false`/`no`/`off`,
+  or `DO_NOT_TRACK` or `HF_HUB_DISABLE_TELEMETRY` is set.
+  Nothing is sent then, and a `PUT` still stores the choice (measured).
+  `mise run sim-daemon` sets `REACHY_MINI_TELEMETRY=0` unless `REACHY_SIM_TELEMETRY=1`.
+- The data channel has `get_telemetry` and `set_telemetry {enabled}`,
+  answered `{command, status, enabled, disabled_by_env}`.
+  A write that could not be saved answers `status: "error"` with the choice it kept.
+  **An older daemon answers an unknown typed command with `{"error": "Invalid command: …"}` and no `command`**
+  (`_handle_webrtc_message`), which matches no waiter on `RemoteControlChannel`,
+  so `canShareTelemetry` asks the relay only from a version known to be 1.13.0.
+- **`X-Reachy-Client`** on any HTTP request or WebSocket handshake names the client to the daemon's counter.
+  It must match `^([a-z_]{1,16})/([0-9A-Za-z.+-]{1,32})(?: \(([a-z]{1,16})\))?$`, or it is dropped without a word.
+  Types other than `desktop`, `mobile`, `web` and `python_sdk` are counted as `other`,
+  and operating systems other than `macos`, `windows`, `linux`, `ios` and `android` as `other`.
+  This app sends `hey_reachy/<version> (<os>)` to the daemon's port alone (`ReachyClientHeader`).
+  One `client_connected` event per distinct value per daemon run, at most 50.
+
+### Relayed sessions
+
+- **An `endSession` with no `reason` is central's bookkeeping now, not the client hanging up.**
+  While the session's peer link is live — the client's RTCP (`on-ssrc-active`) or any data-channel message
+  within 12 s (`SESSION_LINK_IDLE_S`) — the robot keeps it (#1480).
+  A new `startSession` then ends every session that is settled (10 s old) and idle as `superseded`,
+  and is refused as `robot_busy_local` while any one is live.
+  So a client that restarts must hang up with a reason: the JS SDK sends `client_stop`, `client_disconnect`
+  and `client_redial`, and `SignalingHangUp` sends the first and the last.
+- The robot also ends sessions with `robot_stopping` as the daemon stops (bounded at 2 s),
+  and negotiation failures (`ice_negotiation_timeout`, `peer_connection_failed`) now reach a relayed client.
+- **The robot registers with central again after two failed heartbeats**, and its peer id changes when it does.
+  Its producer `meta` carries `hardware_id` (when the audio board is there),
+  `session_liveness: "peer"` and `session_active`.
+  `CentralSignalingTransport` follows the robot by `install_id`, else `hardware_id`,
+  as the JS SDK's `_redialTargetResolver` does.
+- **An `endSession` may arrive for a session the client already left** — the `superseded` for the ghost a re-dial
+  replaced — so a client acts only on one naming the session it holds (the JS SDK's #1496).
+- The robot bounds each `/send` to central at 5 s; this client bounds its own at 10 s.
+
+### The relay's store (1.13.0)
+
+`jsonrpc_relay.py` at v1.13.0 (#1471, #1477). Errors carry `error.data.reason`, code -32000 unless noted;
+missing params are `invalid_params` / -32602, and an unknown verb is `method_not_found` / -32601 —
+which is also what 1.12 answers for every verb here.
+
+| Verb | Params | Result | Refusals |
+| --- | --- | --- | --- |
+| `apps.list_installed` | — | `{apps: [{name, description, url, space_id, title, emoji, private, custom_app_url}]}` | — |
+| `apps.install_space` | `space_id` (`owner/repo`) | `{job_id, name}` | `not_found`, `busy`, `app_running` |
+| `apps.remove` | `name` | `{job_id}` | `busy`, `app_running`, `startup_app` |
+| `apps.update` | `name` | `{started, job_id}` | `busy`, `app_running` (did not stop in 25 s) |
+| `apps.check_update` | `name` | `{installed, version, update_available, checkable, updating, error}` | — |
+| `apps.job_status` | `job_id` | `{job_id, command, status, logs}` | `unknown_job` |
+| `apps.restart` | — | `{state, error, info}` | `not_running`, `already_running` |
+
+- **`apps.job_progress` notifications** `{job_id, command, status, line, final}` go to every client,
+  one per log line and a last one with `line: null, final: true`.
+  They carry no line index, are never sent again, and nothing orders them against the reply that names the job,
+  so `RelayAppJobLedger` listens before the first job verb and keeps every job from line 0.
+  A line frame can already say `status: "failed"`; only the `final` one ends the job.
+- `apps.update` stops the app first when it is the one running.
+  `started: false` means a job for that app was already running, and `job_id` is that job.
+- **`busy` covers REST jobs too**: the relay refuses while any job in `bg_job_register` is active.
+  `apps.start` now refuses with `busy` while that app has a job,
+  and `apps.stop` with nothing running answers `not_running` (1.12 sent -32603).
+- `apps.remove` refuses the startup app, because clearing it needs the FastAPI state the REST route has.
+  There is no relay verb for the startup app, the update summary or the lock.
+- `unknown_job` is the LAN's 404 — the job register is in memory — and `RemoteRobotConnection` passes it on as one.
+
+### Smaller changes
+
+- `POST /api/motors/set_mode/{mode}` answers 409 with a `detail` when the robot cannot enter the mode:
+  gravity compensation needs Placo, which stock Wireless robots lack (#1454).
+  `sim-daemon` accepts it (200, measured), so the 409 is covered by stubs alone.
+  The data channel's `set_motor_mode` answers `{error, command: "set_motor_mode"}` for the same case,
+  while its success is keyed `motor_mode` — so that error matches no waiter here and sits out the reply budget.
+  No screen offers gravity compensation, so that is recorded rather than fixed.
+- The catalogue (`list-available`) no longer carries `siblings`, its `runtime` is the Hub's raw shape,
+  dates end in `…000Z`, and the HF listing follows the `Link` header past 500 (#1420).
+  Nothing this client decodes changed.
+- Camera JPEG frames (`MediaManager.get_frame_jpeg`, the Python SDK's) are now browser-safe.
+  This client receives H.264 over WebRTC and reads no JPEG.
+- **eMudhra (CVE-2026-111943).** The SDK requires `certifi>=2026.10.19`, `pip>=26.2.2` and `uv>=0.13.4`.
+  This client trusts Apple's store, not certifi, and is unaffected.
+  A robot's own venvs need the in-place update in Pollen's installation guide;
+  `/update/start` to 1.13.0 brings the new certifi into the daemon venv by its dependency floor,
+  but neither the hash-pinned pip bootstrap nor a uv upgrade.
+
 ## Bluetooth service
 
 Read `services/bluetooth/bluetooth_service.py` in `.venv-sim` — the dispatch table is one `if/elif` chain and settles
@@ -385,9 +484,10 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   `ConversationClient`/`ConversationChannel` is the capability, with `ConversationRPCClient` (LAN) and
   `RemoteConversation` (relay) as its two arms; `RobotSession.canControlConversation` carries the version gate,
   because 1.9.0 mounts no relay and each verb would spend a full reply budget finding that out.
-- **The relay's own `apps.*` is four verbs, and its replies are not the REST shapes.**
-  `status`, `start`, `stop` and `install` (`jsonrpc_relay.py:_handle_apps`, unchanged on `main` since #1266) —
+- **Up to 1.12 the relay's own `apps.*` is four verbs, and its replies are not the REST shapes.**
+  `status`, `start`, `stop` and `install` (`jsonrpc_relay.py:_handle_apps`, unchanged from #1266 to 1.12.0) —
   no list, no restart, no remove, no update, no startup app.
+  1.13.0 adds the store's half; see "The relay's store (1.13.0)" below.
   `status` and `start` answer `{state, error, info: {name, description, url}}`:
   **no `source_kind`**, which `AppInfo` requires, and no `extra`.
   Decoding `info` as an `AppInfo` therefore threw for every running app,
@@ -709,7 +809,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   the Constrained Baseline caps filter survives only on the fallback path,
   and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
   The client sets no codec preference and takes whatever H.264 the offer carries.
-- Daemon 1.9.0 is the minimum API version and 1.12.0 the tested baseline. Enforce
+- Daemon 1.9.0 is the minimum API version and 1.13.0 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a

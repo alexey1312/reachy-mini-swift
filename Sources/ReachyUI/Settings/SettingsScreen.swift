@@ -20,7 +20,10 @@ struct SettingsScreen: View {
     @State private var nameDraft = ""
     @State private var isRenaming = false
     @State private var renameError: String?
+    /// Read once per visit, and only by a screen that is not a capture.
+    @State private var telemetry = RobotTelemetryModel()
     @FocusState private var nameFocused: Bool
+    @Environment(\.reachyPreviewMode) private var previewMode
     private var identity: RobotIdentity? {
         switch session.phase {
         case let .connected(identity), let .unreachable(identity): identity
@@ -31,6 +34,11 @@ struct SettingsScreen: View {
     var body: some View {
         Form {
             robotSection
+            // Under the robot because it is the robot's setting, not the app's: the
+            // robot sends the events, for every app that talks to it.
+            if session.canShareTelemetry {
+                TelemetrySection(session: session, model: telemetry)
+            }
             // `canAdjustAudio` as well as a running backend: the in-app simulator
             // reports its backend ready and has no speaker, and without the second
             // test this section drew two dead sliders over a raw URL error.
@@ -58,6 +66,10 @@ struct SettingsScreen: View {
         .readablePage()
         .navigationTitle(.reachy("Settings"))
         .onAppear { nameDraft = identity?.name ?? "" }
+        .task {
+            guard !previewMode, session.canShareTelemetry else { return }
+            await telemetry.load(session: session)
+        }
     }
 
     /// Above Advanced rather than in it: everything in that group is about a robot

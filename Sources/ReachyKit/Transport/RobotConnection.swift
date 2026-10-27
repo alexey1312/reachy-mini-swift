@@ -68,9 +68,13 @@ public actor RobotConnection {
             )
         }
 
+        // Every request names this app to the daemon (`ReachyClientHeader`). On the
+        // client rather than the session, because an injected session keeps its own
+        // configuration and would drop a header set there.
         client = Client(
             serverURL: serverURL,
-            transport: makeTransport(makeSession(timeout: 3.5))
+            transport: makeTransport(makeSession(timeout: 3.5)),
+            middlewares: [ReachyClientMiddleware()]
         )
         readinessSession = makeSession(timeout: 10)
         assetSession = makeSession(timeout: 20, resourceTimeout: 120)
@@ -79,7 +83,8 @@ public actor RobotConnection {
         self.hubSession = hubSession
         hubClient = Client(
             serverURL: serverURL,
-            transport: makeTransport(hubSession)
+            transport: makeTransport(hubSession),
+            middlewares: [ReachyClientMiddleware()]
         )
     }
 
@@ -191,7 +196,7 @@ public actor RobotConnection {
         guard let url = address.httpURL(path: "/api/state/full") else {
             throw ReachyKitError.invalidAddress(address)
         }
-        var request = URLRequest(url: url)
+        var request = URLRequest.toDaemon(url)
         request.httpMethod = "GET"
         let (_, response) = try await readinessSession.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -365,7 +370,7 @@ public actor RobotConnection {
         guard let url = address.httpURL(path: "/api/kinematics/stl/\(filename)") else {
             throw ReachyKitError.invalidAddress(address)
         }
-        let (data, response) = try await assetSession.data(from: url)
+        let (data, response) = try await assetSession.data(for: .toDaemon(url))
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }

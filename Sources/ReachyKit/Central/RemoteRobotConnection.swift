@@ -35,6 +35,9 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// live in `RemoteRobotConnection+Moves`, a sibling file, and an extension
     /// cannot hold a stored property.
     var playbackHandle: String?
+    /// Every app job's progress from daemon 1.13.0, kept from its first line — see
+    /// `RemoteRobotConnection+AppStore`.
+    let jobs = RelayAppJobLedger()
 
     public init(
         control: RemoteControlChannel,

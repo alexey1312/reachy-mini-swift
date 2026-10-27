@@ -24,6 +24,15 @@ public struct RemoteSessionEnd: Equatable, Sendable {
                 ?? "An app was started on the robot, which takes priority."
         case "install_id_takeover":
             "This robot was opened from another device."
+        // Daemon 1.13.0: a new session asked for the robot while this one had gone
+        // quiet for 12 s — no RTCP and no data from this device — so the robot took
+        // it for a ghost. A session this device hung up on is filtered out before
+        // here, so what arrives is somebody else's.
+        case "superseded":
+            "Another session took over this robot."
+        // Daemon 1.13.0: sent to every session as the daemon stops.
+        case "robot_stopping":
+            "The robot is shutting down."
         default:
             // The raw code, so a bug report can name what a later central invented.
             "The session ended (\(reason))."
@@ -44,7 +53,7 @@ public struct RemoteSessionEnd: Equatable, Sendable {
     /// retrying is how two devices fight over it.
     public var isWorthRetrying: Bool {
         switch reason {
-        case "local_app_started", "install_id_takeover": false
+        case "local_app_started", "install_id_takeover", "superseded", "robot_stopping": false
         default: true
         }
     }
