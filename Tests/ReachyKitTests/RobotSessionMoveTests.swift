@@ -56,7 +56,8 @@ struct RobotSessionMoveTests {
         try await session.playMove(dataset: "library", move: "second")
         let events = client.events
         #expect(events.first == "play:library:first")
-        #expect(try #require(events.firstIndex(of: "stop:move-1")) < events.firstIndex(of: "play:library:second")!)
+        #expect(try #require(events.firstIndex(of: "stop:move-1")) <
+            #require(events.firstIndex(of: "play:library:second")))
         #expect(session.currentMove?.uuid == "move-2")
         session.disconnect()
     }

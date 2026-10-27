@@ -83,8 +83,7 @@ enum CallRequestRouting {
         connectedRobotName: String? = nil
     ) -> Decision {
         guard let connectedRobotID else { return .waitForConnection }
-        guard let requestRobotID else { return .proceed }
-        guard requestRobotID != connectedRobotID, requestRobotID != connectedRobotName else {
+        guard let requestRobotID, requestRobotID != connectedRobotID, requestRobotID != connectedRobotName else {
             return .proceed
         }
         return .liveTabOnly

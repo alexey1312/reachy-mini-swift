@@ -63,8 +63,7 @@ final class ConnectProgressModel {
 
     /// The session moved. Safe to call with a phase that is already showing.
     func observe(_ phase: RobotSession.ConnectionPhase) {
-        guard phase != queue.last else { return }
-        guard phase != displayed || !queue.isEmpty else { return }
+        guard phase != queue.last, phase != displayed || !queue.isEmpty else { return }
 
         if dwell == .zero || showsWithoutWaiting(phase) {
             cancelDrain()

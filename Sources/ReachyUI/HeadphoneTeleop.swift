@@ -224,8 +224,7 @@ final class HeadphoneTeleop {
 
     /// The watchdog's one step. Called on a timer while switched on, and by tests.
     func checkForSilence(at instant: ContinuousClock.Instant) {
-        guard status == .following, let lastReading else { return }
-        guard lastReading.duration(to: instant) > Self.staleAfter else { return }
+        guard status == .following, let lastReading, lastReading.duration(to: instant) > Self.staleAfter else { return }
         // Released while still following: `releaseHead` puts back only a head it led.
         releaseHead()
         status = .waiting

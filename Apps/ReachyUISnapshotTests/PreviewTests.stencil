@@ -19,18 +19,24 @@ import SnapshotTesting
 #endif
 
 @MainActor class {PREVIEW_FILE_NAME}Tests: XCTestCase {
-    private var simulatorDevice: String?{% if argument.simulatorDevice %} = "{{ argument.simulatorDevice|default:nil }}"{% endif %}
-    private var requiredOSVersion: Int?{% if argument.simulatorOSVersion %} = {{ argument.simulatorOSVersion }}{% endif %}
-    private let snapshotDevices: [String]{% if argument.snapshotDevices %} = {{ argument.snapshotDevices|split:"|" }}{% else %} = []{% endif %}
-#if os(iOS)
-    private let deviceConfig: DeviceConfig = ViewImageConfig.iPhoneX.deviceConfig
-#elseif os(tvOS)
-    private let deviceConfig: DeviceConfig = ViewImageConfig.tv.deviceConfig
-#elseif os(macOS)
-    private let deviceConfig = DeviceConfig()
-#endif
-
-
+    private let session = PrefireSnapshotSession(
+        {% if argument.simulatorDevice %}
+        simulatorDevice: "{{ argument.simulatorDevice }}",
+        {% endif %}
+        {% if argument.simulatorOSVersion %}
+        osVersion: {{ argument.simulatorOSVersion }},
+        {% endif %}
+        {% if argument.snapshotDevices %}
+        devices: {{ argument.snapshotDevices|split:"|" }},
+        {% endif %}
+        {% if argument.drawHierarchyInKeyWindowDefaultEnabled %}
+        drawHierarchyInKeyWindow: {{ argument.drawHierarchyInKeyWindowDefaultEnabled }},
+        {% endif %}
+        {% if argument.fullPageSnapshots %}
+        fullPage: true,
+        {% endif %}
+        waitDefaults: SnapshotWaitDefaults({% if argument.snapshotWaitForIdle %}waitForIdle: {{ argument.snapshotWaitForIdle }}{% if argument.snapshotWaitTimeout %}, {% endif %}{% endif %}{% if argument.snapshotWaitTimeout %}timeout: {{ argument.snapshotWaitTimeout }}{% endif %})
+    )
     {% if argument.file %}
 
     private var file: StaticString { .init(stringLiteral: "{{ argument.file }}") }
@@ -39,64 +45,45 @@ import SnapshotTesting
     @MainActor override func setUp() async throws {
         try await super.setUp()
 
-        prepareEnvironment()
+        session.prepareEnvironment()
     }
 
     // MARK: - PreviewProvider
 
-    // Every capture below is wrapped in `.reachyTheme(.fallback)` and
-    // `.reachyPreviewMode(true)`. The second is not optional: `reachyButton` draws
-    // glass outside preview mode, and `.buttonStyle(.glass)` blanks a headless
-    // capture outright — `Design — buttons` and the asleep banner came back as
-    // white rectangles the one time a preview without `.preview()` met it. Set
-    // here, no preview can forget it.
-    // Not wrapped in `.reachyTheme`, unlike the Macros section below — deliberately:
-    // this repo has no `PreviewProvider`-conforming type, so the loop below generates
-    // zero tests. Wrap it the same way if one is ever added here.
     {% for type in types.types where type.kind != "protocol" and (type.implements.PrefireProvider or type.based.PrefireProvider or type|annotated:"PrefireProvider") %}
     func test_{{ type.name|lowerFirstLetter|replace:"_Previews", ""|replace:".", "_" }}() {
-        for variant in snapshotVariants {
-            for preview in {{ type.name }}._allPreviews {
-                let prefireSnapshot = PrefireSnapshot(preview, device: preview.device?.snapshotDeviceConfig() ?? deviceConfig)
-                if let failure = assertSnapshot(for: prefireSnapshot, variant: variant) {
-                    XCTFail(failure)
-                }
-            }
-        }
+        assertSnapshots(of: {{ type.name }}._allPreviews)
     }
     {%- if not forloop.last %}
 
     {% endif %}
     {% endfor %}
     {% if argument.previewsMacrosDict %}
+
     // MARK: - Macros
 
     {% for macroModel in argument.previewsMacrosDict %}
+{# Written once for both kinds of preview below, indented where it is used. #}
+{% set snapshotAssertion %}assertSnapshots(for: PrefireSnapshot(
+    {
+        {% if macroModel.properties and not macroModel.hasArguments %}PreviewWrapper{{ macroModel.componentTestName }}(){% else %}Group {
+            {{ macroModel.body|indent:12 }}
+        }
+        .reachyTheme(.fallback)
+        .reachyPreviewMode(true)
+        .snapshotScrollEdge(){% endif %}
+    },
+    name: "{{ macroModel.displayName }}{% if macroModel.hasArguments %}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument)){% endif %}",
+    isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
+    device: session.device{% if macroModel.fixedLayoutSize %},
+    fixedLayoutSize: {{ macroModel.fixedLayoutSize }}{% endif %}
+)){% endset %}
     func test_{{ macroModel.componentTestName }}_Preview() {
         {% if macroModel.hasArguments %}
-        for variant in snapshotVariants {
-            for (previewArgumentIndex, previewArgument) in ({{ macroModel.arguments }}).enumerated() {
-                let {{ macroModel.argumentPattern }} = previewArgument
+        for (previewArgumentIndex, previewArgument) in ({{ macroModel.arguments }}).enumerated() {
+            let {{ macroModel.argumentPattern }} = previewArgument
 
-                let prefireSnapshot = PrefireSnapshot(
-                    {
-                        Group {
-                            {{ macroModel.body|indent:28 }}
-                        }
-                        .reachyTheme(.fallback)
-                        .reachyPreviewMode(true)
-                        .snapshotScrollEdge()
-                    },
-                    name: "{{ macroModel.displayName }}-\(previewArgumentIndex + 1)-\(String(describing: previewArgument))",
-                    isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
-                    device: deviceConfig,
-                    fixedLayoutSize: {% if macroModel.fixedLayoutSize %}{{ macroModel.fixedLayoutSize }}{% else %}nil{% endif %}
-                )
-
-                if let failure = assertSnapshot(for: prefireSnapshot, variant: variant) {
-                    XCTFail(failure)
-                }
-            }
+            {{ snapshotAssertion|indent:12 }}
         }
         {% else %}
         {% if macroModel.properties %}
@@ -104,38 +91,16 @@ import SnapshotTesting
             {{ macroModel.properties }}
             var body: some View {
                 Group {
-                    {{ macroModel.body|indent:16 }}
+                    {{ macroModel.body|indent:20 }}
                 }
                 .reachyTheme(.fallback)
                 .reachyPreviewMode(true)
                 .snapshotScrollEdge()
             }
         }
-        {% endif %}
-        for variant in snapshotVariants {
-            let prefireSnapshot = PrefireSnapshot(
-                {
-                    {% if macroModel.properties %}
-                    PreviewWrapper{{ macroModel.componentTestName }}()
-                    {% else %}
-                    Group {
-                        {{ macroModel.body|indent:20 }}
-                    }
-                    .reachyTheme(.fallback)
-                    .reachyPreviewMode(true)
-                    .snapshotScrollEdge()
-                    {% endif %}
-                },
-                name: "{{ macroModel.displayName }}",
-                isScreen: {% if macroModel.isScreen == 1 %}true{% else %}false{% endif %},
-                device: deviceConfig,
-                fixedLayoutSize: {% if macroModel.fixedLayoutSize %}{{ macroModel.fixedLayoutSize }}{% else %}nil{% endif %}
-            )
 
-            if let failure = assertSnapshot(for: prefireSnapshot, variant: variant) {
-                XCTFail(failure)
-            }
-        }
+        {% endif %}
+        {{ snapshotAssertion|indent:8 }}
         {% endif %}
     }
     {%- if not forloop.last %}
@@ -143,172 +108,129 @@ import SnapshotTesting
     {% endif %}
     {% endfor %}
     {% endif %}
-    // MARK: Private
 
-    // PREFIRE FORK — besides the `.reachyTheme` / `.reachyPreviewMode` wrapping above,
-    // the edits against the 6.1.0 built-in template are `SnapshotVariant`, the two
-    // members below it, and the `for variant in snapshotVariants` loop every test above
-    // builds its `PrefireSnapshot` inside. They replace the template's
-    // `assertSnapshots(for:)`, and they are iOS-only, like the snapshot target; the
-    // template's own `os(macOS)` branches elsewhere are left as Prefire wrote them.
-    //
-    // Every preview is captured in both appearances. The light name is left exactly as
-    // Prefire wrote it and dark takes a `-dark` suffix, which is what let this land
-    // without re-recording a single existing reference.
-    //
-    // The appearance has to arrive as a *trait*. `preferredColorScheme` wants a window
-    // scene this host has no equivalent of, and `\.colorScheme` in the environment moves
-    // SwiftUI's own colours while leaving UIKit-backed ones light — a half-dark image is
-    // worse than none. swift-snapshot-testing feeds this collection to
-    // `setOverrideTraitCollection`, which reaches both.
-    //
-    // The `PrefireSnapshot` is built inside the loop, once per capture, and that is
-    // load-bearing. Its initialiser evaluates the preview body once and keeps the view,
-    // so building it once and reassigning `device` rendered one instance four times —
-    // and a preview's models are classes, so whatever the first render did to them the
-    // other three inherited. `DeviceCheckView` stops its browser `onDisappear`, and every
-    // reference of `Device check — robots found` but the first read "No robots found".
+    // MARK: - SnapshotTesting
+
+    private func assertSnapshots(of previews: [_Preview], testName: String = #function, filePath: StaticString = #filePath, line: UInt = #line) {
+        for preview in previews {
+            assertSnapshots(for: session.snapshot(of: preview, testName: testName), filePath: filePath, line: line)
+        }
+    }
+
+    // PREFIRE FORK: This template starts from Prefire 6.5.0.
+    // Each macro uses the Reachy theme and preview mode.
+    // Preview mode disables glass in captures.
+    // The helper creates a new preview for each device and appearance.
+    // Preview models must not share state between captures.
+    // Light names stay unchanged. Dark names use the "-dark" suffix.
+    private func assertSnapshots<Content: SwiftUI.View>(for makeSnapshot: @autoclosure () -> PrefireSnapshot<Content>, filePath: StaticString = #filePath, line: UInt = #line) {
+        if session.render != nil {
+            for failure in session.failures(of: makeSnapshot(), verify: verify) {
+                XCTFail(failure, file: filePath, line: line)
+            }
+            return
+        }
+
+        for variant in snapshotVariants {
+            var snapshot = makeSnapshot()
+            if let variant {
+                guard let device = DeviceConfig.named(variant.deviceName) else {
+                    XCTFail("Unknown snapshot device: \(variant.deviceName)", file: filePath, line: line)
+                    continue
+                }
+                snapshot.name += "-\(variant.deviceName)\(variant.suffix)"
+                snapshot.device = device
+                // A small inset keeps the view on its window and preserves system margins.
+                // The inset rounds to zero pixels.
+                snapshot.device.safeArea = UIEdgeInsets(top: 0, left: 0, bottom: 0.000_001, right: 0)
+                snapshot.traits = UITraitCollection { traits in
+                    traits.displayScale = 2.0
+                    traits.userInterfaceStyle = variant.style
+                }
+            }
+
+            do {
+                if let failure = verify(try session.capture(snapshot)) {
+                    XCTFail(failure, file: filePath, line: line)
+                }
+            } catch {
+                XCTFail(error.description, file: filePath, line: line)
+            }
+        }
+    }
+
     private struct SnapshotVariant {
         let deviceName: String
         let suffix: String
         let style: UIUserInterfaceStyle
     }
 
-    /// Device-major, light before dark. `[nil]` — one capture, named as Prefire names
-    /// it — when `snapshot_devices` is empty.
     private var snapshotVariants: [SnapshotVariant?] {
-        guard !snapshotDevices.isEmpty else { return [nil] }
+        guard !session.devices.isEmpty else { return [nil] }
 
-        return snapshotDevices.flatMap { deviceName in
+        return session.devices.flatMap { deviceName in
             [("", UIUserInterfaceStyle.light), ("-dark", .dark)].map { suffix, style in
                 SnapshotVariant(deviceName: deviceName, suffix: suffix, style: style)
             }
         }
     }
 
-    private func assertSnapshot<Content: SwiftUI.View>(for prefireSnapshot: PrefireSnapshot<Content>, variant: SnapshotVariant?) -> String? {
-        guard let variant else {
-            return assertSnapshot(for: prefireSnapshot)
-        }
-        guard let device = PreviewDevice(rawValue: variant.deviceName).snapshotDeviceConfig() else {
-            fatalError("Unknown device name from configuration file: \(variant.deviceName). Supported devices: \(PreviewDevice.supportedSnapshotDeviceNames.joined(separator: ", "))")
-        }
-
-        var snapshot = prefireSnapshot
-
-        snapshot.name = "\(prefireSnapshot.name)-\(variant.deviceName)\(variant.suffix)"
-        snapshot.device = device
-
-        // Ignore specific device safe area — but not with an exact `.zero`. On `.zero`,
-        // swift-snapshot-testing moves the view to (10 000, 10 000), off its window, and
-        // then renders it with `renderInContext:`, which runs one more layout pass. Off
-        // the window the view has no system minimum layout margins, so each view that
-        // pass lays out gets a 0 pt margin. On an iPhone `.searchable` leaves the large
-        // title to that pass, so the Apps, Daemon logs and Recovery journal titles were
-        // captured flush against the leading edge while a device insets them by 16 pt.
-        // One millionth of a point keeps the view on its window and rounds away before
-        // it reaches a pixel. The move keeps a host app's own safe area out of the
-        // capture, and this bundle has no host app. On the window a `Form` also draws
-        // its scroll edge effect, which `snapshotScrollEdge()` hides.
-        snapshot.device.safeArea = UIEdgeInsets(top: 0, left: 0, bottom: 0.000_001, right: 0)
-
-        // Ignore specific device display scale
-        snapshot.traits = UITraitCollection { traits in
-            traits.displayScale = 2.0
-            traits.userInterfaceStyle = variant.style
-        }
-
-        return assertSnapshot(for: snapshot)
-    }
-
-    private func assertSnapshot<Content: SwiftUI.View>(for prefireSnapshot: PrefireSnapshot<Content>) -> String? {
-        let (previewView, preferences) = prefireSnapshot.loadViewWithPreferences()
-
-        #if os(macOS)
-        let strategy: Snapshotting<NSView, NSImage> = .wait(
-            for: preferences.delay,
-            on: .image(
-                precision: preferences.precision,
-                perceptualPrecision: preferences.perceptualPrecision,
-                size: prefireSnapshot.device.size
-            )
-        )
-        #else
-        {% if argument.fullPageSnapshots %}
-        let snapshotDevice = prefireSnapshot.fullPageDevice(delay: preferences.delay)
-        {% else %}
-        let snapshotDevice = prefireSnapshot.device
-        {% endif %}
-        let strategy: Snapshotting<AnyView, UIImage> = .wait(
-            for: preferences.delay,
-            on: .image(
-                {% if argument.drawHierarchyInKeyWindowDefaultEnabled %}
-                drawHierarchyInKeyWindow: {{ argument.drawHierarchyInKeyWindowDefaultEnabled }},
-                {% endif %}
-                precision: preferences.precision,
-                perceptualPrecision: preferences.perceptualPrecision,
-                layout: prefireSnapshot.isScreen ? .device(config: snapshotDevice.imageConfig) : .sizeThatFits,
-                traits: prefireSnapshot.traits
-            )
-        )
-        #endif
-
-        let failure = verifySnapshot(
-            of: previewView,
-            as: strategy,
-            record: preferences.record ? .all : nil{% if argument.file %},
-            file: file{% endif %},
-            testName: prefireSnapshot.name
-        )
+    private func verify(_ capture: PrefireSnapshotCapture) -> String? {
+        let record: SnapshotTestingConfiguration.Record? = capture.record ? .all : nil
+{% set reference %}record: record,{% if argument.file %} file: file,{% endif %}{% endset %}
 
         #if canImport(AccessibilitySnapshot) && (os(iOS) || os(tvOS))
-            let vc = UIHostingController(rootView: previewView)
-            vc.view.frame = UIScreen.main.bounds
-            {% if argument.fullPageSnapshots %}
-            if prefireSnapshot.isScreen, let height = snapshotDevice.size?.height {
-                vc.view.frame.size.height = height
-            }
-            {% endif %}
+        SnapshotTesting.assertSnapshot(
+            of: capture.accessibilityController(),
+            as: .wait(for: capture.delay, on: .accessibilityImage(showActivationPoints: .always)),
+            {{ reference }}
+            testName: capture.name + ".accessibility"
+        )
+        #endif
 
-            SnapshotTesting.assertSnapshot(
-                of: vc,
-                as: .wait(for: preferences.delay, on: .accessibilityImage(showActivationPoints: .always)),
-                record: preferences.record ? .all : nil{% if argument.file %},
-                file: file{% endif %},
-                testName: prefireSnapshot.name + ".accessibility"
+        switch capture.comparison {
+        #if os(macOS)
+        case let .view(size):
+            return verifySnapshot(
+                of: capture.view,
+                as: .wait(
+                    for: capture.delay,
+                    on: .image(precision: capture.precision, perceptualPrecision: capture.perceptualPrecision, size: size)
+                ),
+                {{ reference }}
+                testName: capture.name
+            )
+        #else
+        case let .image(image):
+            return verifySnapshot(
+                of: image,
+                as: .image(precision: capture.precision, perceptualPrecision: capture.perceptualPrecision, scale: capture.traits.displayScale),
+                {{ reference }}
+                testName: capture.name
+            )
+        case let .view(device):
+            return verifySnapshot(
+                of: capture.view,
+                as: .wait(
+                    for: capture.delay,
+                    on: .image(
+                        drawHierarchyInKeyWindow: session.drawHierarchyInKeyWindow,
+                        precision: capture.precision,
+                        perceptualPrecision: capture.perceptualPrecision,
+                        layout: device.map { .device(config: ViewImageConfig(safeArea: $0.safeArea, size: $0.size, traits: $0.traits)) } ?? .sizeThatFits,
+                        traits: capture.traits
+                    )
+                ),
+                {{ reference }}
+                testName: capture.name
             )
         #endif
-        return failure
-    }
-
-    private func prepareEnvironment() {
-        #if os(iOS) || os(tvOS)
-        if let simulatorDevice, let deviceModel = ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] {
-            guard deviceModel.contains(simulatorDevice) else {
-                fatalError("Switch to using \(simulatorDevice) for these tests. (You are using \(deviceModel))")
-            }
         }
-
-        if let requiredOSVersion {
-            let osVersion = ProcessInfo().operatingSystemVersion
-            guard osVersion.majorVersion == requiredOSVersion else {
-                fatalError("Switch to iOS \(requiredOSVersion) for these tests. (You are using \(osVersion))")
-            }
-        }
-
-        UIView.setAnimationsEnabled(false)
-        #endif
     }
 }
 
-// MARK: - SnapshotTesting + Extensions
-
 private extension SwiftUI.View {
-    /// No scroll edge effect in a capture. The stencil keeps each view on its window
-    /// (see `safeArea` above), and on the window a `Form` draws the effect at its top
-    /// edge with no bar over it — a dark band across the first card of every dark
-    /// reference. Off the window it never drew, so hiding it keeps those references
-    /// as they were. No reference covers the effect: it is a probe question.
+    // Hide the scroll edge effect to preserve the existing references.
     @ViewBuilder
     func snapshotScrollEdge() -> some SwiftUI.View {
         if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
@@ -318,62 +240,3 @@ private extension SwiftUI.View {
         }
     }
 }
-
-#if os(iOS) || os(tvOS)
-private extension DeviceConfig {
-    var imageConfig: ViewImageConfig { ViewImageConfig(safeArea: safeArea, size: size, traits: traits) }
-}
-
-private extension ViewImageConfig {
-    var deviceConfig: DeviceConfig { DeviceConfig(safeArea: safeArea, size: size, traits: traits) }
-
-    /// Portrait iPhone config for devices without a matching SnapshotTesting preset.
-    static func iPhone(width: CGFloat, height: CGFloat, top: CGFloat, traits: UITraitCollection) -> ViewImageConfig {
-        ViewImageConfig(safeArea: UIEdgeInsets(top: top, left: 0, bottom: 34, right: 0), size: CGSize(width: width, height: height), traits: traits)
-    }
-}
-
-private extension PreviewDevice {
-    static var snapshotDeviceGroups: [(names: [String], config: ViewImageConfig)] {
-        #if os(iOS)
-        [
-            (["iPhone 17 Pro Max"], .iPhone(width: 440, height: 956, top: 62, traits: .iPhone13ProMax(.portrait))),
-            (["iPhone 17", "iPhone 17 Pro"], .iPhone(width: 402, height: 874, top: 62, traits: .iPhone13(.portrait))),
-            (["iPhone Air"], .iPhone(width: 420, height: 912, top: 68, traits: .iPhone13ProMax(.portrait))),
-            (["iPhone 16 Plus", "iPhone 15 Plus"], .iPhone(width: 430, height: 932, top: 59, traits: .iPhone13ProMax(.portrait))),
-            (["iPhone 17e", "iPhone 16e"], .iPhone13),
-            (["iPhone 16 Pro Max", "iPhone 15 Pro Max", "iPhone 14 Pro Max", "iPhone 14 Plus", "iPhone 13 Pro Max", "iPhone 12 Pro Max"], .iPhone13ProMax),
-            (["iPhone 16 Pro", "iPhone 15 Pro", "iPhone 14 Pro", "iPhone 13 Pro", "iPhone 12 Pro"], .iPhone13Pro),
-            (["iPhone 16", "iPhone 15", "iPhone 14", "iPhone 13", "iPhone 12", "iPhone 11", "iPhone 10", "iPhone X"], .iPhoneX),
-            (["iPhone 6", "iPhone 6s", "iPhone 7", "iPhone 8", "iPhone SE (2nd generation)", "iPhone SE (3rd generation)"], .iPhone8),
-            (["iPhone 6 Plus", "iPhone 6s Plus", "iPhone 8 Plus"], .iPhone8Plus),
-            (["iPhone SE (1st generation)"], .iPhoneSe),
-            (["iPad"], .iPad10_2),
-            (["iPad Mini"], .iPadMini),
-            (["iPad Pro 11"], .iPadPro11),
-            (["iPad Pro 12.9"], .iPadPro12_9),
-        ]
-        #elseif os(tvOS)
-        [(["Apple TV"], .tv)]
-        #endif
-    }
-
-    static var supportedSnapshotDeviceNames: [String] {
-        snapshotDeviceGroups.flatMap(\.names)
-    }
-
-    func snapshotDevice() -> ViewImageConfig? {
-        Self.snapshotDeviceGroups.first { $0.names.contains(rawValue) }?.config
-    }
-
-    func snapshotDeviceConfig() -> DeviceConfig? {
-        snapshotDevice()?.deviceConfig
-    }
-}
-#endif
-
-#if os(macOS)
-private extension PreviewDevice {
-    func snapshotDeviceConfig() -> DeviceConfig? { nil }
-}
-#endif

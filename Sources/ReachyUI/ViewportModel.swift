@@ -177,8 +177,7 @@ final class ViewportModel {
     }
 
     func setContent(_ next: Content) {
-        guard content != next else { return }
-        guard next != .scene || offersScene else { return }
+        guard content != next, next != .scene || offersScene else { return }
         content = next
         activate()
     }

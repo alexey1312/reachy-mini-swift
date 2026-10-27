@@ -31,9 +31,10 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
   `arm64_sonoma.bottle` — a Mach-O binary — into `platforms.linux-arm64`. Lock a single-platform tool with
   `./bin/mise lock -p macos-arm64 <tool>` so the entry names only the platform it exists on, and disable it elsewhere
   in `bootstrap.sh` (which is also what keeps `mise install` from failing the whole run on an Intel Mac).
-- A `github:` tool takes **`bin=`** to name a bare binary asset and `exe=` to name one inside an archive, and picking
-  the wrong one fails late: `[exe=asc]` installs an unrunnable `asc_3.7.0_macOS` and only errors at "couldn't exec
-  process". Prefire ships a tarball and so uses `exe`; `asc` ships the binary itself and uses `bin`.
+- A `github:` tool uses **`bin=`** for a bare binary asset.
+  Use `rename_exe=` for an executable inside an archive.
+  mise 2026.10.20 rejects the old `exe=` option.
+  Prefire uses `rename_exe=prefire`; `asc` uses `bin=asc`.
 - The `hk` version in `mise.toml` must match the `hk@X.Y.Z` package URI in `hk.pkl`, and the `prefire` pin in
   `[tools]` must match the `.exact` requirement in `Apps/Project.swift` — the forked `PreviewTests.stencil` is only
   valid against that one version. Bump each pair together; `mise run lint` enforces both lockstep pairs.

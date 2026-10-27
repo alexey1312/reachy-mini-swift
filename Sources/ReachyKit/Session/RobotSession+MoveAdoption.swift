@@ -26,8 +26,8 @@ extension RobotSession {
         guard powerTransition == nil else { return }
         let attemptID = connectionAttemptID
         moveRestoreTask = Task {
-            guard let running = try? await client.runningMoveUUIDs() else { return }
-            guard !Task.isCancelled, connectionAttemptID == attemptID,
+            guard let running = try? await client.runningMoveUUIDs(),
+                  !Task.isCancelled, connectionAttemptID == attemptID,
                   powerTransition == nil, currentMove == nil
             else { return }
             guard let playback = adoptable(from: running) else {

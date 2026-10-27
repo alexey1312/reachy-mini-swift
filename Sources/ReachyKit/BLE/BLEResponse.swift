@@ -109,9 +109,9 @@ public enum BLEReply: Equatable, Sendable {
         case let .echo(command):
             throw BLECommandError.other("The robot did not understand “\(command)”.")
         case .pong:
-            return "PONG"
+            "PONG"
         case let .ok(text), let .payload(text):
-            return text
+            text
         }
     }
 

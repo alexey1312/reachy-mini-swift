@@ -14,22 +14,21 @@ permissions:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MISE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  MISE_GITHUB_GITHUB_ATTESTATIONS: false
 
 jobs:
   release:
     name: GitHub Release
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           # git-cliff walks the whole history to find the previous tag.
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v5
+      - uses: jdx/mise-action@v5.2.3
         with:
-          # Match bin/mise. Newer versions reject the pinned GitHub tool options.
-          version: "2026.10.10"
+          # Match bin/mise and the GitHub tool options in mise.toml.
+          version: "2026.10.20"
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
