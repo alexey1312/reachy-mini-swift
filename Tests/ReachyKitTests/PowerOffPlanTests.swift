@@ -55,7 +55,7 @@ private final class PlanClient: RobotAPIClient, RobotAppsClient, @unchecked Send
 
     func startupApp() async throws -> String? {
         switch startup {
-        case let .set(name): return name
+        case let .set(name): name
         case .unanswered: throw URLError(.timedOut)
         }
     }

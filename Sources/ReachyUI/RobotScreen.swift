@@ -119,8 +119,7 @@ struct RobotScreen: View {
     /// `.unavailable` and the section says so instead of offering a sign-in that
     /// could not connect.
     private func prepareHealth() {
-        guard health == nil else { return }
-        guard let robot = identity?.deduplicationKey else { return }
+        guard health == nil, let robot = identity?.deduplicationKey else { return }
         health = RobotHealthModel(
             readIMU: { [session] in try await session.imuReading() },
             files: session.address.flatMap { _ in RobotFileSystems.ssh(robot: robot) },

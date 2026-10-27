@@ -169,7 +169,7 @@ public actor RobotConnection {
     public func fullState() async throws -> Components.Schemas.FullState {
         switch try await client.getFullStateApiStateFullGet() {
         case let .ok(response):
-            return try response.body.json
+            try response.body.json
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -205,7 +205,7 @@ public actor RobotConnection {
     public func daemonStatus() async throws -> Components.Schemas.DaemonStatus {
         switch try await client.getDaemonStatusApiDaemonStatusGet() {
         case let .ok(response):
-            return try response.body.json
+            try response.body.json
         case let .undocumented(statusCode, payload):
             // The first request of every handshake, so a host the daemon refuses is
             // caught here or nowhere — and "HTTP 400" alone says nothing to act on.
@@ -228,7 +228,7 @@ public actor RobotConnection {
             body: .json(.init(name: name))
         ) {
         case let .ok(response):
-            return try response.body.json.name ?? name
+            try response.body.json.name ?? name
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -318,7 +318,7 @@ public actor RobotConnection {
     public func setVolume(_ percent: Int) async throws -> AudioLevel {
         switch try await client.setVolumeApiVolumeSetPost(body: .json(.init(volume: percent))) {
         case let .ok(response):
-            return try AudioLevel(response.body.json)
+            try AudioLevel(response.body.json)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -333,7 +333,7 @@ public actor RobotConnection {
     public func setMicrophoneVolume(_ percent: Int) async throws -> AudioLevel {
         switch try await client.setMicrophoneVolumeApiVolumeMicrophoneSetPost(body: .json(.init(volume: percent))) {
         case let .ok(response):
-            return try AudioLevel(response.body.json)
+            try AudioLevel(response.body.json)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):

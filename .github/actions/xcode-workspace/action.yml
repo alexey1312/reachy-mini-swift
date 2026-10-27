@@ -9,8 +9,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: jdx/mise-action@v5
+    - uses: jdx/mise-action@v5.2.3
       with:
+        version: 2026.10.20
         experimental: true
         github_token: ${{ inputs.github-token }}
 
@@ -20,7 +21,7 @@ runs:
     # workspace path for the reason that cache is: workspace-state.json records the
     # WebRTC xcframework's location absolutely, so a copy restored elsewhere sends
     # SwiftPM looking where the artifact is not.
-    - uses: actions/cache@v6
+    - uses: actions/cache@v6.1.0
       with:
         path: Apps/DerivedData/SourcePackages
         key: ${{ runner.os }}-xcspm-${{ github.workspace }}-${{ hashFiles('Package.resolved', 'Apps/Project.swift') }}

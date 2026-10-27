@@ -19,7 +19,7 @@ extension RobotConnection: HFAuthClient {
     public func saveHFToken(_ token: String) async throws -> String? {
         switch try await hubClient.saveTokenApiHfAuthSaveTokenPost(body: .json(.init(token: token))) {
         case let .ok(response):
-            return try response.body.json.username
+            try response.body.json.username
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, payload):

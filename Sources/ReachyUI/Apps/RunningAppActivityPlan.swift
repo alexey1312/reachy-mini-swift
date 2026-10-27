@@ -144,8 +144,7 @@ struct RunningAppActivityPlan: Equatable, Sendable {
     private mutating func released(_ reading: Reading) -> [Effect] {
         // A restart is not a release: the daemon stops the app and starts it again
         // behind one request, and the gap reads exactly like an app that ended.
-        guard !reading.isRestarting else { return [] }
-        guard let live else { return [] }
+        guard !reading.isRestarting, let live else { return [] }
         self.live = nil
         let key = live.app.runKey
         guard case .error = reading.status?.state else {
@@ -257,8 +256,7 @@ struct RunningAppActivityPlan: Equatable, Sendable {
     // MARK: - Reconciliation and the reader's own actions
 
     private mutating func observed(_ apps: [RunningAppActivityApp], at _: Date) -> [Effect] {
-        guard let live else { return [] }
-        guard !apps.contains(where: { $0.runKey == live.app.runKey }) else { return [] }
+        guard let live, !apps.contains(where: { $0.runKey == live.app.runKey }) else { return [] }
         // Gone without this process ending it: the reader swiped it, or the system
         // hit the eight-hour cap. Both mean the same thing here — do not bring it
         // back on the next foreground pass.

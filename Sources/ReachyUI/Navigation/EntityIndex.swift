@@ -59,8 +59,8 @@ enum ReachyEntityIndex {
         // Named `current` rather than `stamp`: a local `let stamp = stamp(…)`
         // shadows the static it is calling.
         let current = stamp(robotID: robotID, apps: apps, moves: moves, sounds: sounds)
-        guard defaults.string(forKey: stampKey) != current else { return }
-        guard await index(apps: apps, moves: moves, sounds: sounds) else { return }
+        guard defaults.string(forKey: stampKey) != current,
+              await index(apps: apps, moves: moves, sounds: sounds) else { return }
         defaults.set(current, forKey: stampKey)
     }
 

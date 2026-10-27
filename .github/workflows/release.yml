@@ -21,13 +21,14 @@ jobs:
     name: GitHub Release
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           # git-cliff walks the whole history to find the previous tag.
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v5
+      - uses: jdx/mise-action@v5.2.3
         with:
+          version: 2026.10.20
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 

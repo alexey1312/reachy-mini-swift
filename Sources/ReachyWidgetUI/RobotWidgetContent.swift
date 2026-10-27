@@ -127,8 +127,8 @@ public struct RobotWidgetContent: Equatable, Sendable {
         apps: RobotAppsCache?,
         at date: Date
     ) -> RobotAppSummary? {
-        guard case let .fresh(snapshot) = state, let apps else { return nil }
-        guard let name = snapshot.runningAppName(at: date) ?? snapshot.runningAppTitle(at: date) else { return nil }
+        guard case let .fresh(snapshot) = state, let apps,
+              let name = snapshot.runningAppName(at: date) ?? snapshot.runningAppTitle(at: date) else { return nil }
         return apps.installed.first { $0.name == name || $0.title == name }
     }
 

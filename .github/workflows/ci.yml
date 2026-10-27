@@ -75,10 +75,11 @@ jobs:
       # proving nothing.
       DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: jdx/mise-action@v5
+      - uses: jdx/mise-action@v5.2.3
         with:
+          version: 2026.10.20
           experimental: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -94,7 +95,7 @@ jobs:
         run: mise run lint
 
       - name: Cache SPM dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: .build
           # Keyed on the workspace path: .build/workspace-state.json records the WebRTC
@@ -149,7 +150,7 @@ jobs:
     env:
       DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/xcode-workspace
         with:
@@ -188,7 +189,7 @@ jobs:
       # the suite, on the same image and the same Swift since #124's blocker was lifted.
       DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/xcode-workspace
         with:
@@ -235,7 +236,7 @@ jobs:
     env:
       DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/xcode-workspace
         with:
@@ -278,7 +279,7 @@ jobs:
     env:
       DEVELOPER_DIR: "/Applications/Xcode_27.1.app/Contents/Developer"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/xcode-workspace
         with:
@@ -306,7 +307,7 @@ jobs:
       # The image dropped `iPhone 17 Pro` for the iPhone 18 line (run 35601702391).
       REACHY_SNAPSHOT_SIM: "iPhone 18 Pro"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/xcode-workspace
         with:
@@ -346,7 +347,7 @@ jobs:
       # by visible text, where seeing the screen is most of the diagnosis.
       - name: Upload Maestro debug output
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: maestro-debug
           path: |

@@ -82,9 +82,8 @@ public extension RobotSound {
     /// the identity here, so a silently rewritten one would make the device's copy and
     /// the robot's two different sounds, and a saved shortcut point at neither.
     static func isSafeName(_ name: String) -> Bool {
-        guard !name.isEmpty, name != ".", name != ".." else { return false }
-        guard !name.contains("/"), !name.contains("\\") else { return false }
-        guard !name.contains("\"") else { return false }
+        guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\\"),
+              !name.contains("\"") else { return false }
         return name.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) }
     }
 

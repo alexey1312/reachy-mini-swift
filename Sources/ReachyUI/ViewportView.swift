@@ -289,6 +289,7 @@ enum ViewportStatus {
     }
 }
 
+@MainActor
 extension View {
     /// Floating controls sit on top of video and 3D alike, so they carry their own
     /// backing rather than relying on whatever is behind them for contrast.
@@ -303,7 +304,6 @@ extension View {
     /// while macOS drew the button's own rectangle around the glyph inside it, and
     /// only that rectangle answered a click. A `Button` takes
     /// `ViewportControlButtonStyle`; a `Menu` puts this on its label.
-    @MainActor
     func viewportControlLabelStyle() -> some View {
         modifier(ViewportControlStyle())
     }
@@ -326,7 +326,6 @@ extension View {
     /// build came out visibly smaller and flatter. Only the last row honours the
     /// label, and honouring the label is what makes the whole disc clickable rather
     /// than just the glyph.
-    @MainActor
     func viewportControlMenuStyle() -> some View {
         menuIndicator(.hidden)
             .buttonStyle(.plain)

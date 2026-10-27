@@ -93,10 +93,9 @@ extension RobotSession {
     public func refreshMoveActivity() async {
         // A parking with no uuid yet is `recentre`'s, awaiting its own reply.
         guard let client = movesClient, let activity = moveActivity, let uuid = activity.uuid,
-              !isStoppingMove
-        else { return }
-        guard let running = try? await client.runningMoveUUIDs() else { return }
-        guard moveActivity?.uuid == uuid, !running.contains(uuid) else { return }
+              !isStoppingMove,
+              let running = try? await client.runningMoveUUIDs(),
+              moveActivity?.uuid == uuid, !running.contains(uuid) else { return }
         await finish(activity, client: client)
     }
 

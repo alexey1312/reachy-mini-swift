@@ -232,8 +232,7 @@ extension RobotSession {
     /// - a remote session has no `goto` at all, `RemoteRobotConnection` leaving it
     ///   to the throwing default in `RobotAPIClient`.
     private func returnToBase(client: any RobotAPIClient) async {
-        guard isAwake, !isRemote, moveActivity == nil else { return }
-        guard let moves = client as? any MovePlaybackClient else { return }
+        guard isAwake, !isRemote, moveActivity == nil, let moves = client as? any MovePlaybackClient else { return }
         _ = await recentre(client: moves)
     }
 

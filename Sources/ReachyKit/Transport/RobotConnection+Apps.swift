@@ -23,7 +23,7 @@ extension RobotConnection: RobotAppsClient {
     public func availableApps() async throws -> [RobotApp] {
         switch try await hubClient.listAllAvailableAppsApiAppsListAvailableGet() {
         case let .ok(response):
-            return try response.body.json.map(RobotApp.init)
+            try response.body.json.map(RobotApp.init)
         case let .undocumented(statusCode, _):
             throw ReachyKitError.fromStatusCode(statusCode)
         }
@@ -34,7 +34,7 @@ extension RobotConnection: RobotAppsClient {
             path: .init(sourceKind: .installed)
         ) {
         case let .ok(response):
-            return try response.body.json.map(RobotApp.init)
+            try response.body.json.map(RobotApp.init)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -77,7 +77,7 @@ extension RobotConnection: RobotAppsClient {
     public func installApp(_ app: RobotApp) async throws -> String {
         switch try await hubClient.installAppApiAppsInstallPost(body: .json(app.info)) {
         case let .ok(response):
-            return try Self.jobID(in: response.body.json.additionalProperties)
+            try Self.jobID(in: response.body.json.additionalProperties)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -92,7 +92,7 @@ extension RobotConnection: RobotAppsClient {
             body: .json(.init(spaceId: spaceID))
         ) {
         case let .ok(response):
-            return try Self.jobID(in: response.body.json.additionalProperties)
+            try Self.jobID(in: response.body.json.additionalProperties)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -105,7 +105,7 @@ extension RobotConnection: RobotAppsClient {
     public func removeApp(named name: String) async throws -> String {
         switch try await hubClient.removeAppApiAppsRemoveAppNamePost(path: .init(appName: name)) {
         case let .ok(response):
-            return try Self.jobID(in: response.body.json.additionalProperties)
+            try Self.jobID(in: response.body.json.additionalProperties)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -116,7 +116,7 @@ extension RobotConnection: RobotAppsClient {
     public func updateApp(named name: String) async throws -> String {
         switch try await hubClient.updateAppApiAppsUpdateAppNamePost(path: .init(appName: name)) {
         case let .ok(response):
-            return try Self.jobID(in: response.body.json.additionalProperties)
+            try Self.jobID(in: response.body.json.additionalProperties)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -133,7 +133,7 @@ extension RobotConnection: RobotAppsClient {
     public func appUpdates(force: Bool) async throws -> AppUpdatesSummary {
         switch try await hubClient.checkAppUpdatesApiAppsCheckUpdatesGet(query: .init(force: force)) {
         case let .ok(response):
-            return try AppUpdatesSummary(response.body.json)
+            try AppUpdatesSummary(response.body.json)
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):
@@ -144,7 +144,7 @@ extension RobotConnection: RobotAppsClient {
     public func startupApp() async throws -> String? {
         switch try await hubClient.getStartupAppApiAppsStartupAppGet() {
         case let .ok(response):
-            return try response.body.json.startupApp
+            try response.body.json.startupApp
         case let .undocumented(statusCode, _):
             throw ReachyKitError.fromStatusCode(statusCode)
         }
@@ -155,7 +155,7 @@ extension RobotConnection: RobotAppsClient {
     public func setStartupApp(_ name: String?) async throws -> String? {
         switch try await hubClient.setStartupAppApiAppsStartupAppPut(body: .json(.init(startupApp: name))) {
         case let .ok(response):
-            return try response.body.json.startupApp
+            try response.body.json.startupApp
         case .unprocessableContent:
             throw ReachyKitError.daemonRejected(statusCode: 422)
         case let .undocumented(statusCode, _):

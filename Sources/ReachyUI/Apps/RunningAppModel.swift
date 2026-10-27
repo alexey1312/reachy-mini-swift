@@ -168,8 +168,7 @@ final class RunningAppModel {
     /// "there is nothing to open yet" is the ordinary case rather than a reason to give
     /// up. What retires it is ``expansionRequestWindow`` elapsing.
     func visibleStatusChanged(_ status: RobotAppStatus?, at date: Date = Date()) {
-        guard status != nil else { return }
-        guard let requested = requestedExpansion else { return }
+        guard status != nil, let requested = requestedExpansion else { return }
         requestedExpansion = nil
         guard date.timeIntervalSince(requested) <= Self.expansionRequestWindow else { return }
         isExpanded = true

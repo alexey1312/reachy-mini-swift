@@ -18,10 +18,10 @@ let project = Project(
         // Exact, not `upToNextMajor`: `ReachyUISnapshotTests/PreviewTests.stencil` is a fork of
         // this version's built-in test template, and a floated minor would render it against a
         // changed set of Stencil arguments.
-        .remote(url: "https://github.com/BarredEwe/Prefire", requirement: .exact("6.1.0")),
+        .remote(url: "https://github.com/BarredEwe/Prefire", requirement: .exact("6.5.0")),
         .remote(
             url: "https://github.com/pointfreeco/swift-snapshot-testing",
-            requirement: .upToNextMajor(from: "1.19.4")
+            requirement: .upToNextMajor(from: "1.19.7")
         ),
     ],
     settings: .settings(

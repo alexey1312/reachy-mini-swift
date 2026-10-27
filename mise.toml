@@ -25,10 +25,10 @@ git config core.hooksPath .githooks 2>/dev/null || true
 [tools]
 # --- Swift Development ---
 # Swift itself is managed by swiftly via .swift-version, not by mise.
-swiftformat = "0.63.1" # Swift code formatting
+swiftformat = "0.64.3" # Swift code formatting
 swiftlint = "0.65.1"   # Swift linting
-xcsift = "1.6.0"       # xcodebuild/swift output filtering
-tuist = "4.212.0"      # Xcode project generation (Apps/)
+xcsift = "1.7.2"       # xcodebuild/swift output filtering
+tuist = "4.214.0"      # Xcode project generation (Apps/)
 # Keep this at 4.210.0 or later. With a tuist.dev session, `tuist generate` asks
 # `/api/cache/endpoints` for the binary cache, also if `TUIST_CACHE_ENABLED=false`:
 # that variable sets `enableCaching` and nothing more. When the account's cache is cold, the
@@ -44,11 +44,11 @@ tuist = "4.212.0"      # Xcode project generation (Apps/)
 # `#filePath`: Prefire writes the absolute path of each generated file as a literal.
 
 # --- Documentation & Formatting ---
-dprint = "0.63.0" # Markdown formatting
+dprint = "0.64.3" # Markdown formatting
 
 # --- Snapshots & Storybook ---
 # The release ships a single lowercase `prefire` binary, which the backend cannot guess from the
-# repository name — hence the explicit exe option.
+# repository name. Use rename_exe for an executable in an archive.
 # A bump is a migration, not a version change:
 # `Apps/ReachyUISnapshotTests/PreviewTests.stencil` is a fork of *this version's* built-in
 # template, and the runtime API under it changes between releases.
@@ -60,41 +60,41 @@ dprint = "0.63.0" # Markdown formatting
 # 6.1.0 was moved that way on 2026-10-15 and moved no reference:
 # 519 tests passed, and all 2076 reference PNGs stayed byte-identical.
 # Keep the pin equal to the `.exact` requirements in Apps/Project.swift and Package.swift.
-"github:BarredEwe/Prefire[exe=prefire]" = "6.1.0"
-git-lfs = "3.8.0" # Snapshot reference images
+"github:BarredEwe/Prefire[rename_exe=prefire]" = { version = "6.5.0", os = ["macos"] }
+git-lfs = "3.8.1" # Snapshot reference images
 
 # --- Git & CI ---
-hk = "2.6.0"         # Git hooks manager (version must match hk.pkl package URI)
+hk = "2.9.0"         # Git hooks manager (version must match hk.pkl package URI)
 actionlint = "1.7.12" # GitHub Actions linting
+shellcheck = "0.11.0" # Shell checks used by actionlint
 git-cliff = "2.14.2"  # Changelog generation
 
 # --- Release ---
 # The release ships a bare binary rather than an archive, and that decides the option:
-# `bin` renames a single downloaded file, `exe` (used for Prefire above) only renames one
-# extracted from an archive and here leaves an unrunnable `asc_<version>_macOS`.
-"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.14.3" # App Store Connect API client
+# `bin` renames a single downloaded file. `rename_exe` renames an extracted executable.
+"github:rorkai/App-Store-Connect-CLI[bin=asc]" = "5.17.1" # App Store Connect API client
 
 # --- Simulator ---
-python = "3.12" # for sim-daemon venv: mujoco ships no wheels for newer pythons
-uv = "0.13.1"   # installs into that venv as APFS clones — see sim-daemon
+python = "3.12.16" # for sim-daemon venv: mujoco ships no wheels for newer pythons
+uv = "0.13.6"   # installs into that venv as APFS clones — see sim-daemon
 # Slims a simulator by disabling ~170 background daemons (see `simulator:slim`). Pinned here
 # rather than left to a global `brew install` because CI and a fresh clone have no brew
-# copy to find, and the release ships a tarball — hence `exe` and not `bin`. macOS arm64
-# is the only asset it publishes, so bootstrap.sh disables it everywhere else.
-"github:MobAI-App/simslim[exe=simslim]" = "0.12.2"
+# copy to find. The release contains a tarball for macOS arm64 only.
+# The OS filter also prevents mise from locking a Homebrew bottle for Linux.
+"github:MobAI-App/simslim[rename_exe=simslim]" = { version = "0.13.0", os = ["macos/arm64"] }
 
 # --- End-to-end flows ---
-# Neither `bin` nor `exe`, unlike the two entries above. The release is one 315 MB
+# Do not set `bin` or `rename_exe` here. The release contains one
 # Gradle distZip whose every entry sits under `maestro/`, and mise strips that single
 # top-level directory by itself — leaving `bin/maestro` beside the `lib/*.jar` its
 # launcher script resolves relative to itself. Naming either option, or `bin_path`,
 # disables that strip and separates the two.
 # The tag is `cli-<version>`, so that is what the pin says: `mise ls-remote maestro`
 # lists `cli-2.11.0`, not `2.11.0`.
-maestro = "cli-2.11.0" # End-to-end flows on a simulator (Apps/Maestro)
+maestro = "cli-2.12.0" # End-to-end flows on a simulator (Apps/Maestro)
 # Maestro is a JVM application and this machine had no Java at all. Exact rather than
 # `21`, which is the fuzzy-selector shape that makes the next re-lock a wide diff.
-java = "temurin-21.0.12+101.0.LTS" # Maestro's runtime, nothing else uses it
+java = { version = "temurin-21.0.13+9.0.LTS", os = ["linux", "macos"] } # Maestro's runtime
 
 [tasks.build]
 description = "Build the Swift package (debug)"
@@ -508,7 +508,7 @@ if [ -n "$DRIFT" ]; then
 fi
 # The forked PreviewTests.stencil is only valid against one Prefire, which is why the
 # package requirement is .exact — the CLI in [tools] and both manifests move in lockstep.
-PREFIRE_CLI="$(sed -nE 's|^"github:BarredEwe/Prefire\[exe=prefire\]" = "([0-9.]+)".*|\1|p' mise.toml)"
+PREFIRE_CLI="$(sed -nE 's|^"github:BarredEwe/Prefire\[rename_exe=prefire\]" = \{ version = "([0-9.]+)".*|\1|p' mise.toml)"
 PREFIRE_PKG="$(sed -nE 's|.*BarredEwe/Prefire", requirement: \.exact\("([0-9.]+)"\).*|\1|p' Apps/Project.swift)"
 PREFIRE_ROOT="$(sed -nE 's|.*BarredEwe/Prefire", exact: "([0-9.]+)".*|\1|p' Package.swift)"
 if [ -z "$PREFIRE_CLI" ] || [ "$PREFIRE_CLI" != "$PREFIRE_PKG" ] || [ "$PREFIRE_CLI" != "$PREFIRE_ROOT" ]; then

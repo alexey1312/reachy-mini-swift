@@ -167,9 +167,8 @@ struct JobNotificationPlan: Equatable, Sendable {
     private mutating func settle(_ notice: Notice, _ result: Result, at date: Date) -> [Effect] {
         // Always consumed, even when nothing is posted: a job settles once, and a
         // second settle for the same key is a repeat this must not announce.
-        guard running.remove(notice.key) != nil else { return [] }
-        guard isPermitted else { return [] }
-        guard let copy = Self.announcement(for: notice, result) else { return [] }
+        guard running.remove(notice.key) != nil, isPermitted,
+              let copy = Self.announcement(for: notice, result) else { return [] }
         return [.post(Request(
             // Two genuinely separate runs of the same job stack in Notification
             // Centre rather than replacing one another. Milliseconds rather than

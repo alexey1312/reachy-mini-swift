@@ -125,8 +125,7 @@ enum ReachySpotlightIndex {
             Locale.preferredLanguages.first ?? "",
             name,
         ].joined(separator: "|")
-        guard defaults.string(forKey: stampKey) != stamp else { return }
-        guard await index(appName: name) else { return }
+        guard defaults.string(forKey: stampKey) != stamp, await index(appName: name) else { return }
         defaults.set(stamp, forKey: stampKey)
     }
 

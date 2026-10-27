@@ -15,7 +15,7 @@ public extension RobotConnection {
     func wakeUp() async throws -> String {
         switch try await client.playWakeUpApiMovePlayWakeUpPost() {
         case let .ok(response):
-            return try response.body.json.uuid
+            try response.body.json.uuid
         case let .undocumented(statusCode, _):
             throw ReachyKitError.fromStatusCode(statusCode)
         }
@@ -24,7 +24,7 @@ public extension RobotConnection {
     func gotoSleep() async throws -> String {
         switch try await client.playGotoSleepApiMovePlayGotoSleepPost() {
         case let .ok(response):
-            return try response.body.json.uuid
+            try response.body.json.uuid
         case let .undocumented(statusCode, _):
             throw ReachyKitError.fromStatusCode(statusCode)
         }

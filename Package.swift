@@ -30,21 +30,21 @@ let package = Package(
         .library(name: "ReachyWidgetUI", targets: ["ReachyWidgetUI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.7.0"),
-        .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.8.0"),
-        .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.1.0"),
-        .package(url: "https://github.com/stasel/WebRTC.git", from: "155.0.0"),
+        .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.14.3"),
+        .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.13.3"),
+        .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.4.0"),
+        .package(url: "https://github.com/stasel/WebRTC.git", from: "156.0.0"),
         // The same library for tvOS and visionOS, which stasel ships no slice for.
         // `exact:` because its version is Chromium's milestone and build, not semver,
         // and `ReachyMedia` names its symbols by hand (`WebRTCNames.swift`).
-        .package(url: "https://github.com/livekit/webrtc-xcframework.git", exact: "150.7871.3"),
+        .package(url: "https://github.com/livekit/webrtc-xcframework.git", exact: "150.7871.04"),
         // Pre-1.0, where a minor bump is a breaking change, so `upToNextMinor`
         // rather than the `from:` every other dependency here uses.
-        .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.9.2")),
+        .package(url: "https://github.com/orlandos-nl/Citadel", .upToNextMinor(from: "0.12.1")),
         // No target here uses these two; `Apps/Project.swift` does. Declared so SwiftPM (and
         // Dependabot) pin the same 25 packages Xcode does instead of dropping five of them.
-        .package(url: "https://github.com/BarredEwe/Prefire", exact: "6.1.0"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.19.4"),
+        .package(url: "https://github.com/BarredEwe/Prefire", exact: "6.5.0"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.19.7"),
     ],
     targets: [
         // This app's own Hugging Face session — sign-in, token custody, renewal.
