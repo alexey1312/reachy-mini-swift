@@ -75,9 +75,7 @@ private func visionInfoPlist(appGroup: String) -> [String: Plist.Value] {
         ),
         "ITSAppUsesNonExemptEncryption": .boolean(false),
         "LSApplicationCategoryType": .string("public.app-category.utilities"),
-        "NSLocalNetworkUsageDescription": .string(
-            "Discovers and connects to your Reachy Mini robot on the local network."
-        ),
+        "NSLocalNetworkUsageDescription": .string(PurposeString.localNetwork),
         "NSBonjourServices": .array([
             .string("_reachy-mini._tcp"),
             .string("_http._tcp"),
@@ -85,12 +83,8 @@ private func visionInfoPlist(appGroup: String) -> [String: Plist.Value] {
         "NSAppTransportSecurity": .dictionary([
             "NSAllowsLocalNetworking": .boolean(true),
         ]),
-        "NSBluetoothAlwaysUsageDescription": .string(
-            "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
-        ),
-        "NSMicrophoneUsageDescription": .string(
-            "Talk to people near your Reachy Mini through its speaker."
-        ),
+        "NSBluetoothAlwaysUsageDescription": .string(PurposeString.bluetooth),
+        "NSMicrophoneUsageDescription": .string(PurposeString.microphone),
         // No `NSMotionUsageDescription` and no world-sensing string: the headset's
         // pose comes from `queryDeviceAnchor`, which needs neither.
         "UIBackgroundModes": .array([.string("audio")]),

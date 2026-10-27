@@ -28,9 +28,7 @@ public extension Target {
                 // name is the primary image stack's.
                 "CFBundleIconName": .string("App Icon"),
                 // The same three keys the phone needs to find and reach a robot on the LAN.
-                "NSLocalNetworkUsageDescription": .string(
-                    "Discovers and connects to your Reachy Mini robot on the local network."
-                ),
+                "NSLocalNetworkUsageDescription": .string(PurposeString.localNetworkTV),
                 "NSBonjourServices": .array([
                     .string("_reachy-mini._tcp"),
                     .string("_http._tcp"),

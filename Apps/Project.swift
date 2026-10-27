@@ -85,10 +85,9 @@ let project = Project(
                 // Connect never asks per build.
                 "ITSAppUsesNonExemptEncryption": .boolean(false),
                 "LSApplicationCategoryType": .string("public.app-category.utilities"),
-                // Phase 0.4 device checks: Local Network permission + Bonjour + ATS
-                "NSLocalNetworkUsageDescription": .string(
-                    "Discovers and connects to your Reachy Mini robot on the local network."
-                ),
+                // Phase 0.4 device checks: Local Network permission + Bonjour + ATS.
+                // Every `PurposeString` carries an example, which App Review asks for.
+                "NSLocalNetworkUsageDescription": .string(PurposeString.localNetwork),
                 "NSBonjourServices": .array([
                     .string("_reachy-mini._tcp"),
                     .string("_http._tcp"),
@@ -100,18 +99,12 @@ let project = Project(
                 // iOS 18: no capability, and no pairing prompt either, since the robot
                 // registers a NoInputNoOutput Just-Works agent.
                 // NSBluetoothPeripheralUsageDescription is iOS 12 and earlier — omitted.
-                "NSBluetoothAlwaysUsageDescription": .string(
-                    "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
-                ),
+                "NSBluetoothAlwaysUsageDescription": .string(PurposeString.bluetooth),
                 // Phase 2 camera: WebRTC mic uplink (client mic → robot speaker)
-                "NSMicrophoneUsageDescription": .string(
-                    "Talk to people near your Reachy Mini through its speaker."
-                ),
+                "NSMicrophoneUsageDescription": .string(PurposeString.microphone),
                 // Head tracking from headphones (`HeadphoneTeleop`). Core Motion crashes the
                 // app at `startDeviceMotionUpdates` when this key is absent, on iOS and macOS.
-                "NSMotionUsageDescription": .string(
-                    "Turns your Reachy Mini's head with yours, using headphones that track head movement."
-                ),
+                "NSMotionUsageDescription": .string(PurposeString.motion),
                 "UILaunchScreen": .dictionary([:]),
                 // Two modes for a call framed through LiveCommunicationKit, and
                 // only one of them is about the background. `audio` keeps the
@@ -259,9 +252,7 @@ let project = Project(
                 // the usage string is what the system would show if it ever had a
                 // screen to ask from, which an extension does not — so the
                 // permission has to already exist from the app having connected.
-                "NSLocalNetworkUsageDescription": .string(
-                    "Wakes your Reachy Mini and starts its apps on the local network."
-                ),
+                "NSLocalNetworkUsageDescription": .string(PurposeString.localNetworkWidget),
                 "NSBonjourServices": .array([
                     .string("_reachy-mini._tcp"),
                     .string("_http._tcp"),

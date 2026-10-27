@@ -7,31 +7,31 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Richtet das Wi-Fi deines Reachy Mini ein und stellt einen Roboter wieder her, der das Netzwerk nicht erreicht."
+            "value": "Die App nutzt Bluetooth, um deinen Reachy Mini einzurichten und seine WLAN-Verbindung zu reparieren. Zum Beispiel sendet die App deinen WLAN-Namen und dein Passwort verschlüsselt an den Roboter, damit er deinem Netzwerk beitreten kann."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sets up your Reachy Mini's Wi-Fi and recovers a robot that can't reach the network."
+            "value": "The app uses Bluetooth to set up your Reachy Mini and to repair its Wi-Fi connection. For example, the app sends your Wi-Fi name and password to the robot, encrypted, so that the robot can join your network."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Configura el Wi-Fi de tu Reachy Mini y recupera un robot que no puede alcanzar la red."
+            "value": "La app usa Bluetooth para configurar tu Reachy Mini y reparar su conexión Wi-Fi. Por ejemplo, la app envía al robot el nombre y la contraseña de tu red Wi-Fi, cifrados, para que el robot pueda unirse a tu red."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Configure le Wi-Fi de votre Reachy Mini et récupère un robot qui ne parvient pas à joindre le réseau."
+            "value": "L'app utilise le Bluetooth pour configurer votre Reachy Mini et réparer sa connexion Wi-Fi. Par exemple, l'app envoie au robot le nom et le mot de passe de votre réseau Wi-Fi, chiffrés, pour que le robot puisse rejoindre votre réseau."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настраивает Wi-Fi вашего Reachy Mini и восстанавливает робота, который не может подключиться к сети."
+            "value": "Приложение использует Bluetooth, чтобы настроить ваш Reachy Mini и восстановить его подключение к Wi-Fi. Например, приложение передаёт роботу имя и пароль вашей сети Wi-Fi в зашифрованном виде, чтобы робот смог подключиться к сети."
           }
         }
       }
@@ -77,31 +77,31 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Findet deinen Reachy Mini im lokalen Netzwerk und verbindet sich mit ihm."
+            "value": "Die App nutzt das lokale Netzwerk, um deinen Reachy Mini zu finden und zu steuern. Zum Beispiel zeigt die App das Kamerabild des Roboters und sendet deine Joystick-Bewegungen an den Roboter."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Discovers and connects to your Reachy Mini robot on the local network."
+            "value": "The app uses the local network to find and control your Reachy Mini. For example, the app shows the robot's camera video and sends your joystick moves to the robot."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Detecta tu robot Reachy Mini en la red local y se conecta a él."
+            "value": "La app usa la red local para encontrar y controlar tu Reachy Mini. Por ejemplo, la app muestra el vídeo de la cámara del robot y envía al robot los movimientos de tu joystick."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Détecte votre robot Reachy Mini sur le réseau local et s'y connecte."
+            "value": "L'app utilise le réseau local pour trouver et piloter votre Reachy Mini. Par exemple, l'app affiche la vidéo de la caméra du robot et envoie au robot les mouvements de votre joystick."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Находит вашего робота Reachy Mini в локальной сети и подключается к нему."
+            "value": "Приложение использует локальную сеть, чтобы найти ваш Reachy Mini и управлять им. Например, приложение показывает видео с камеры робота и передаёт роботу движения джойстика."
           }
         }
       }
@@ -112,31 +112,31 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sprich über den Lautsprecher deines Reachy Mini mit Menschen in seiner Nähe."
+            "value": "Die App sendet deine Stimme an den Lautsprecher deines Reachy Mini. Zum Beispiel kannst du aus einem anderen Raum mit Menschen in der Nähe des Roboters sprechen."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Talk to people near your Reachy Mini through its speaker."
+            "value": "The app sends your voice to your Reachy Mini's speaker. For example, you can talk to people near the robot when you are in another room."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Habla con las personas cerca de tu Reachy Mini a través de su altavoz."
+            "value": "La app envía tu voz al altavoz de tu Reachy Mini. Por ejemplo, puedes hablar con las personas cerca del robot cuando estás en otra habitación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parlez aux personnes près de votre Reachy Mini via son haut-parleur."
+            "value": "L'app envoie votre voix au haut-parleur de votre Reachy Mini. Par exemple, vous pouvez parler aux personnes près du robot depuis une autre pièce."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Говорите с людьми рядом с вашим Reachy Mini через его динамик."
+            "value": "Приложение передаёт ваш голос на динамик вашего Reachy Mini. Например, вы можете говорить с людьми рядом с роботом из другой комнаты."
           }
         }
       }
@@ -147,31 +147,31 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dreht den Kopf deines Reachy Mini mit deinem – über Kopfhörer, die Kopfbewegungen erfassen."
+            "value": "Die App liest die Kopfbewegungen aus deinen Kopfhörern, um den Kopf deines Reachy Mini zu drehen. Wenn du zum Beispiel mit AirPods Pro den Kopf nach links drehst, dreht der Roboter seinen Kopf nach links. Die App liest keine Fitness- oder Aktivitätsdaten."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turns your Reachy Mini's head with yours, using headphones that track head movement."
+            "value": "The app reads head movement from your headphones to turn your Reachy Mini's head. For example, when you turn your head to the left with AirPods Pro on, the robot turns its head to the left. The app does not read fitness or activity data."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gira la cabeza de tu Reachy Mini con la tuya, con auriculares que siguen el movimiento de la cabeza."
+            "value": "La app lee el movimiento de la cabeza desde tus auriculares para girar la cabeza de tu Reachy Mini. Por ejemplo, si giras la cabeza a la izquierda con unos AirPods Pro puestos, el robot gira la cabeza a la izquierda. La app no lee datos de actividad física."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tourne la tête de votre Reachy Mini avec la vôtre, grâce à des écouteurs qui suivent les mouvements de la tête."
+            "value": "L'app lit les mouvements de tête captés par vos écouteurs pour tourner la tête de votre Reachy Mini. Par exemple, si vous tournez la tête vers la gauche avec des AirPods Pro, le robot tourne la tête vers la gauche. L'app ne lit aucune donnée de forme ou d'activité physique."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Поворачивает голову вашего Reachy Mini вместе с вашей с помощью наушников, которые отслеживают движения головы."
+            "value": "Приложение считывает движения головы с ваших наушников, чтобы поворачивать голову вашего Reachy Mini. Например, если в AirPods Pro вы повернёте голову влево, робот тоже повернёт голову влево. Приложение не читает данные о фитнесе и активности."
           }
         }
       }
