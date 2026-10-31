@@ -846,6 +846,8 @@ and the audit of what iOS 27 still asks of this app.
 what visionOS refuses, why it is a target of its own, and what only a headset can check.
 No CI job builds it, so a change to `Sources/` that visionOS also compiles needs the local
 `xcodebuild -workspace Apps/ReachyMiniApps.xcworkspace -scheme ReachyVision -destination 'generic/platform=visionOS Simulator' build`.
+`docs/research/accessories.md` is Pollen's NFC hats and Hoverboard base:
+what upstream has written for each, what this app would add, and when to start.
 
 **`docs/` is also the GitHub Pages root**, served at `https://alexey1312.github.io/reachy-mini-swift/` by Pages' own
 Jekyll (Settings → Pages → Deploy from a branch → `main` → `/docs`). There is no workflow, no mise task and no Ruby
