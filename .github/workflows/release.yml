@@ -25,7 +25,7 @@ jobs:
           # git-cliff walks the whole history to find the previous tag.
           fetch-depth: 0
 
-      - uses: jdx/mise-action@v5.2.3
+      - uses: jdx/mise-action@v5.2.4
         with:
           # Match bin/mise and the GitHub tool options in mise.toml.
           version: "2026.10.20"
