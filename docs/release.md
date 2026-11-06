@@ -513,7 +513,9 @@ mise run asc -- screenshots upload --app 6799644194 --version-id <tvOS version i
   to say a screen is ready. Look at each PNG before uploading.
 
 The Apple TV store text has a tree of its own, `metadata/tvos/`,
-because the TV app does less than the phone and its first version cannot take `whatsNew`.
+because the TV app does less than the phone.
+Its first version could not take `whatsNew`, and from 0.7.5, the first update, the store needs it.
+visionOS still has not shipped, so `metadata/visionos/` carries none.
 It carries no `app-info/`, so a push manages the version text alone
 and leaves the name, the subtitle and the privacy URL that every platform shares to `metadata/app-info/`:
 
