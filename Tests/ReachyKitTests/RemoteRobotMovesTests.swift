@@ -66,6 +66,48 @@ struct RemoteRobotMovesTests {
         #expect(try await connection.runningMoveUUIDs().count == 1)
     }
 
+    /// From 1.14.0 the slot refuses a second holder (pollen-robotics/reachy_mini#1513).
+    /// The replies are `process_command`'s own, and the two shapes are both real:
+    /// `play_recorded_move` carries `status`, the coroutine routes do not.
+    @Test("a refusal from the move slot is one error, whichever command met it", arguments: [
+        (
+            "play_recorded_move",
+            #"{"command":"play_recorded_move","status":"error","error":"a move is already running"}"#
+        ),
+        ("goto_target", #"{"error":"a move is already running","command":"goto_target"}"#),
+        ("goto_sleep", #"{"error":"a move is already running","command":"goto_sleep"}"#),
+        ("wake_up", #"{"error":"a move is already running","command":"wake_up"}"#),
+    ])
+    func aRefusalIsOneError(command: String, reply: String) async throws {
+        let connection = RemoteRobotConnection(
+            channel: FakeDataChannel(replies: [command: reply]),
+            timeout: .seconds(2)
+        )
+
+        await #expect(throws: ReachyKitError.moveBusy) {
+            switch command {
+            case "play_recorded_move": _ = try await connection.playMove(dataset: "library", move: "happy")
+            case "goto_target": _ = try await connection.gotoNeutral(duration: 1)
+            case "goto_sleep": _ = try await connection.gotoSleep()
+            default: _ = try await connection.wakeUp()
+            }
+        }
+    }
+
+    /// Any other refusal keeps the robot's own words, which is what `Failure` is for.
+    @Test("another refusal is left as the robot said it")
+    func anotherRefusalIsLeftAlone() async {
+        let reply = #"{"command":"play_recorded_move","status":"error","error":"Move not found"}"#
+        let connection = RemoteRobotConnection(
+            channel: FakeDataChannel(replies: ["play_recorded_move": reply]),
+            timeout: .seconds(2)
+        )
+
+        await #expect(throws: RemoteControlChannel.Failure.robot("Move not found")) {
+            _ = try await connection.playMove(dataset: "library", move: "happy")
+        }
+    }
+
     @Test("an idle robot is sent no stop")
     func leavesAnIdleRobotAlone() async throws {
         let (connection, channel) = connection(moveRunning: false)

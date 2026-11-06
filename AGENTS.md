@@ -465,6 +465,12 @@ They are wired now; the entries are here because each failure reads as something
   the first start after the venv rebuild bound :8000 about eight minutes later,
   and `test:sim` passed seven cases with the WebRTC one timing out on the same `not-negotiated (-4)`,
   with `Jump Desktop Microphone` still the default input.
+  **1.14.0 on that same Mac did not get past `Daemon version: 1.14.0`, measured on 2026-11-06.**
+  The process sat at 0 % CPU, and `sample <pid>` showed `gst_osx_audio_device_provider_probe` in a `mach_msg`
+  to the audio server under `gst_core_audio_open_device`: a wedge, not the registry scan.
+  `GST_PLUGIN_FEATURE_RANK` did not keep the provider off.
+  Renaming `libgstosxaudio.dylib` to `.disabled` in that worktree's `.venv-sim` did, and the daemon bound 90 s later,
+  so a daemon that only has to answer HTTP can be had that way, with no audio and no `test:sim` WebRTC case.
   **1.13.0 sends anonymous usage events to Pollen by default**, so `sim-daemon` exports
   `REACHY_MINI_TELEMETRY=0` unless `REACHY_SIM_TELEMETRY=1`.
   The media server's `:8443` is fixed in the daemon (`media_manager.py`), so a second daemon beside a running one

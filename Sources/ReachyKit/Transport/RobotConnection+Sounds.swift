@@ -42,9 +42,10 @@ extension RobotConnection: SoundboardClient {
         }
     }
 
-    /// - Important: this answers `{"status": "ok"}` for a name that matches nothing.
-    ///   The media server logs the miss and returns, so a 200 is not evidence a sound
-    ///   is playing — see ``SoundboardClient``.
+    /// - Important: before daemon 1.14.0 this answers `{"status": "ok"}` for a name
+    ///   that matches nothing. The media server logs the miss and returns, so a 200 is
+    ///   not evidence a sound is playing — see ``SoundboardClient``. From 1.14.0 that
+    ///   is a 404, which arrives here as an undocumented status.
     public func playSound(named filename: String) async throws {
         switch try await client.playSoundApiMediaPlaySoundPost(body: .json(.init(file: filename))) {
         case .ok:

@@ -21,10 +21,15 @@ public extension RobotConnection {
         }
     }
 
+    /// The refusal matters more here than anywhere: `RobotPower.sleep()` cuts the
+    /// motors once this task ends, and a sleep refused for another move ends at once.
+    /// Cutting them then drops the head in the middle of that move.
     func gotoSleep() async throws -> String {
         switch try await client.playGotoSleepApiMovePlayGotoSleepPost() {
         case let .ok(response):
-            try response.body.json.uuid
+            let uuid = try response.body.json.uuid
+            try await requireStarted(uuid)
+            return uuid
         case let .undocumented(statusCode, _):
             throw ReachyKitError.fromStatusCode(statusCode)
         }

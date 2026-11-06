@@ -20,6 +20,58 @@ struct RobotConnectionMoveTests {
         #expect(RobotConnection.zeroAntennas == [-0.1745, 0.1745])
     }
 
+    /// From 1.14.0 a play over another move still answers 200 with a task id, and the
+    /// task fails at once. The route registers it before answering, so a task already
+    /// off the list never played. `moveRoutesWaitOutADownload` below shows that a list
+    /// that cannot be read leaves the play standing.
+    @Test("a play that is gone from the list at once was refused")
+    func aPlayGoneFromTheListWasRefused() async throws {
+        let session = StubURLProtocol.makeSession([
+            "/api/move/play/recorded-move-dataset/library/happy": .init(statusCode: 200, json: #"{"uuid": "move-1"}"#),
+            "/api/move/running": .init(statusCode: 200, json: #"[]"#),
+        ])
+
+        await #expect(throws: ReachyKitError.moveBusy) {
+            _ = try await makeConnection(session).playMove(dataset: "library", move: "happy")
+        }
+    }
+
+    @Test("a play on the list is the move that started")
+    func aPlayOnTheListStarted() async throws {
+        let session = StubURLProtocol.makeSession([
+            "/api/move/play/recorded-move-dataset/library/happy": .init(statusCode: 200, json: #"{"uuid": "move-1"}"#),
+            "/api/move/running": .init(statusCode: 200, json: #"[{"uuid": "move-1"}]"#),
+        ])
+
+        #expect(try await makeConnection(session).playMove(dataset: "library", move: "happy") == "move-1")
+    }
+
+    /// The order `RobotPower.sleep()` depends on: a refused sleep has to throw before
+    /// the motors are cut, or the head drops in the middle of the other move.
+    @Test("a sleep that is gone from the list at once was refused")
+    func aSleepGoneFromTheListWasRefused() async throws {
+        let session = StubURLProtocol.makeSession([
+            "/api/move/play/goto_sleep": .init(statusCode: 200, json: #"{"uuid": "move-1"}"#),
+            "/api/move/running": .init(statusCode: 200, json: #"[]"#),
+        ])
+
+        await #expect(throws: ReachyKitError.moveBusy) {
+            _ = try await makeConnection(session).gotoSleep()
+        }
+    }
+
+    /// `wake_up` stands down at once on a robot already awake at the zero pose, so an
+    /// empty list there says nothing. Nothing is read back.
+    @Test("a wake-up is not read back")
+    func aWakeUpIsNotReadBack() async throws {
+        let session = StubURLProtocol.makeSession([
+            "/api/move/play/wake_up": .init(statusCode: 200, json: #"{"uuid": "move-1"}"#),
+            "/api/move/running": .init(statusCode: 200, json: #"[]"#),
+        ])
+
+        #expect(try await makeConnection(session).wakeUp() == "move-1")
+    }
+
     /// The constant and the call are asserted separately on purpose: changing one
     /// without the other is the mistake, and only the wire form catches it.
     ///

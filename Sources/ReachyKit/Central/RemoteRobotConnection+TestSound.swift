@@ -11,7 +11,8 @@ import Foundation
 /// the identical file through the identical call; only the route in front differs.
 ///
 /// The reply is `{"status": "ok", "command": "play_sound"}` and says nothing about
-/// whether anything was heard — `play_sound` is a no-op without a media server, the
+/// whether anything was heard, although from 1.14.0 a file the robot does not hold is
+/// answered with an `error` — `play_sound` is a no-op without a media server, the
 /// same silence the LAN route has. That is why every caller asks a person.
 extension RemoteRobotConnection: TestSoundClient {
     /// The asset the LAN route plays, named once so the two cannot drift.

@@ -233,6 +233,7 @@ struct RobotSessionDaemonParkingTests {
             ("1.11.0" as String?, false, false),
             ("1.9.0", true, false),
             ("1.11.0", true, true),
+            ("1.14.0", true, false),
         ]
     )
     func playsTheSleepWhereNoResetIsComing(version: String?, withApp: Bool, overRelay: Bool) async throws {

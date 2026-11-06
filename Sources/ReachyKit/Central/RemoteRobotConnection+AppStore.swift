@@ -38,8 +38,9 @@ extension RemoteRobotConnection: RelayAppJobClient {
         ).jobID
     }
 
-    /// `apps.remove {name}`, a job. Refused with `startup_app` for the app the robot
-    /// starts on wake-up: unsetting that is HTTP.
+    /// `apps.remove {name}`, a job. Before daemon 1.14.0 it is refused with
+    /// `startup_app` for the app the robot starts on wake-up. From 1.14.0 it clears
+    /// that setting first, the way the HTTP route does.
     public func removeApp(named name: String) async throws -> String {
         await jobs.listen(to: control)
         return try await control.call("apps.remove", params: ["name": .string(name)], expecting: JobReply.self).jobID
@@ -60,6 +61,37 @@ extension RemoteRobotConnection: RelayAppJobClient {
             await jobs.markJoined(reply.jobID)
         }
         return reply.jobID
+    }
+
+    /// `apps.get_startup`: `{name}`, null for none (pollen-robotics/reachy_mini#1476).
+    ///
+    /// Asked here rather than behind a session gate, because `PowerOffPlan` and the
+    /// widgets reach this with no session. An older relay would answer `-32601`, and
+    /// before 1.10.0 nothing would answer at all, so a version not known to carry the
+    /// verb never sends it. The refusal is what every other transport without this
+    /// route gives.
+    public func startupApp() async throws -> String? {
+        try await requireRelayStartupApp()
+        return try await control.call("apps.get_startup", expecting: StartupReply.self).name
+    }
+
+    /// `apps.set_startup {name}`. Null clears it, and the key has to be there: the
+    /// daemon refuses a bare `{}` rather than read it as a clear.
+    @discardableResult
+    public func setStartupApp(_ name: String?) async throws -> String? {
+        try await requireRelayStartupApp()
+        return try await control.call(
+            "apps.set_startup",
+            params: ["name": name.map(RemoteValue.string) ?? .null],
+            expecting: StartupReply.self
+        ).name
+    }
+
+    private func requireRelayStartupApp() async throws {
+        let version = try await identity().version
+        guard DaemonCompatibilityPolicy.isKnownAtLeast("1.14.0", reported: version) else {
+            throw ReachyKitError.appsUnavailable
+        }
     }
 
     /// `apps.job_status {job_id}`: `{job_id, command, status, logs}`.
@@ -157,6 +189,11 @@ extension RemoteRobotConnection: RelayAppJobClient {
             }
             return app
         }
+    }
+
+    /// `{name}`, null when no app is set.
+    private struct StartupReply: Decodable {
+        let name: String?
     }
 
     private struct JobReply: Decodable {

@@ -212,6 +212,22 @@ struct RobotSessionMoveTests {
         session.disconnect()
     }
 
+    /// The move that holds the slot owns the robot, so there is nobody to tell.
+    @Test("a parking the daemon refused for another move is not reported")
+    func aRefusedParkingIsNotAFailure() async throws {
+        let client = MoveRobotClient()
+        let session = try await session(client)
+        try await session.playMove(dataset: "library", move: "wave")
+        client.failGotoNeutral = true
+        client.gotoNeutralFailure = ReachyKitError.moveBusy
+
+        let failures = await session.stopMove()
+
+        #expect(failures.isEmpty)
+        #expect(session.isRecentring == false)
+        session.disconnect()
+    }
+
     /// `goto_sleep` is a move task, and the daemon runs it beside a dance that is
     /// still going — the two fight over the head, and the motors go anyway. The
     /// move has to be off the daemon's list first, exactly as the running app is

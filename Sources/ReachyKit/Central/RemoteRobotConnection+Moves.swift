@@ -30,7 +30,7 @@ public extension RemoteRobotConnection {
     func playMove(dataset: String, move: String) async throws -> String {
         let handle = UUID().uuidString
         do {
-            try await control.perform("play_recorded_move", payload: [
+            try await performMotion("play_recorded_move", payload: [
                 "move_name": .string(move),
                 "dataset_name": .string(dataset),
             ])
@@ -99,7 +99,7 @@ public extension RemoteRobotConnection {
     /// Walks the head, body and antennas back to the pose `gotoNeutral` sends over
     /// HTTP — the same numbers, since the neutral is the robot's, not the route's.
     func gotoNeutral(duration: TimeInterval) async throws -> String {
-        try await control.perform("goto_target", payload: [
+        try await performMotion("goto_target", payload: [
             "head": .array([.number(0), .number(0), .number(0), .number(0), .number(0), .number(0)]),
             "antennas": .array([.number(-0.1745), .number(0.1745)]),
             "body_yaw": .number(0),
@@ -109,6 +109,22 @@ public extension RemoteRobotConnection {
         playbackHandle = handle
         return handle
     }
+
+    /// A command that takes the daemon's move slot.
+    ///
+    /// From 1.14.0 the slot refuses a second holder out loud
+    /// (pollen-robotics/reachy_mini#1513), and every motion command answers with the
+    /// same words. Those words are the robot's English, so they become the one case a
+    /// caller can branch on. `MOVE_BUSY_ERROR` in `io/protocol.py`.
+    func performMotion(_ command: String, payload: [String: RemoteValue] = [:]) async throws {
+        do {
+            try await control.perform(command, payload: payload)
+        } catch let RemoteControlChannel.Failure.robot(message) where message == Self.moveBusyMessage {
+            throw ReachyKitError.moveBusy
+        }
+    }
+
+    private static let moveBusyMessage = "a move is already running"
 
     /// Nothing to send: `stop_move` silences the move's own sound as it interrupts
     /// it, so by the time this is reached the player is already quiet.

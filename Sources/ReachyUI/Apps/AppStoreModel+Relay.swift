@@ -16,6 +16,18 @@ extension AppStoreModel {
         !isOverRelay || session.hasRelayAppStore
     }
 
+    /// Whether the robot can say which app the antennas start, and be told: the LAN
+    /// always, the relay from daemon 1.14.0.
+    var offersStartupApp: Bool {
+        !isOverRelay || session.hasRelayStartupApp
+    }
+
+    /// The startup app on a relay that can say, and nil on one that cannot.
+    func startupAppOverRelay() async -> String? {
+        guard session.hasRelayStartupApp else { return nil }
+        return try? await session.startupApp()
+    }
+
     /// The sections this transport can fill. Over an older relay that is Discover
     /// alone: nothing there lists what is installed, and an Installed section
     /// holding only this visit's installs would read as everything the robot has.

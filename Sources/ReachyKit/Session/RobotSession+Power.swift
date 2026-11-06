@@ -50,16 +50,19 @@ public extension RobotSession {
     /// traceback nobody asked for, in place of the app the user deliberately left
     /// running. `releaseRunningApp()` is where the waiting is explained.
     ///
-    /// **From 1.10.0 that stop is itself a sleep (#166).** Freeing the app slot
-    /// schedules the daemon's `reset_to_sleep()` 1.5 s later, and no motion or
+    /// **From 1.10.0 to 1.13 that stop is itself a sleep (#166).** Freeing the app
+    /// slot schedules the daemon's `reset_to_sleep()` 1.5 s later, and no motion or
     /// motor route cancels it — so a `goto_sleep` of our own would not replace it,
     /// it would run beside it, and `set_mode/disabled` could cut the torque while
-    /// the daemon's trajectory is still moving. Where ``daemonParksAfterApps``
-    /// holds, the sleep is therefore the daemon's, watched under the
-    /// `.goingToSleep` already claimed here. The parking after an app chases a
-    /// reset that never comes only for a robot this session woke; this always
-    /// does: the user asked for sleep, and nobody else has taken the robot. One
-    /// who has — an app holding it again — keeps it.
+    /// the daemon's trajectory is still moving. Where
+    /// ``daemonParksAfterRequestedStop`` holds, the sleep is therefore the daemon's,
+    /// watched under the `.goingToSleep` already claimed here. The parking after an
+    /// app chases a reset that never comes only for a robot this session woke; this
+    /// always does: the user asked for sleep, and nobody else has taken the robot.
+    /// One who has — an app holding it again — keeps it.
+    ///
+    /// **From 1.14.0 no such sleep is on its way.** The stop leaves the robot awake
+    /// in the zero pose, so the animation below follows at once.
     func sleep() async {
         guard let client, powerTransition == nil else { return }
         robotError = nil
@@ -73,7 +76,7 @@ public extension RobotSession {
         do {
             try assertSupportedDaemon()
             await releaseMove()
-            if await releaseRunningApp(), daemonParksAfterApps {
+            if await releaseRunningApp(), daemonParksAfterRequestedStop {
                 guard await watchIdleReset(client: client, attemptID: attemptID) == .timedOut else { return }
             }
             try await RobotPower(client: client, configuration: configuration).sleep()
@@ -99,8 +102,8 @@ public extension RobotSession {
     /// teardown, and doing so while the app is still handing it back is what the
     /// wait exists to prevent.
     ///
-    /// **From 1.10.0 that release also schedules the daemon's own sleep, and here
-    /// the stop is what cancels it** — `Daemon.stop` unwires the free-slot hook and
+    /// **From 1.10.0 to 1.13 that release also schedules the daemon's own sleep, and
+    /// here the stop is what cancels it** — `Daemon.stop` unwires the free-slot hook and
     /// sets `is_shutting_down`, which ends a reset still inside its 1.5 s debounce.
     /// The stop leaves two round trips after the slot clears (the stop's own
     /// re-read, then this request), so on any network this app is usable on it
@@ -214,16 +217,17 @@ extension RobotSession {
     /// does not mean the app is gone: the daemon sets `stopping` before any I/O and
     /// clears its own slot on the last line of `stop_current_app`, past the
     /// return-to-zero it performs on the app's behalf (`apps/manager.py:283`,
-    /// `:355`). Parking on top of that hand-back puts two motions on one robot, and
-    /// the daemon runs both: `play_move`'s guard is a re-entrant lock taken on its
-    /// one event-loop thread, so it never refuses, and the two fight over the head.
+    /// `:355`). Parking on top of that hand-back puts two motions on one robot.
+    /// Before 1.14.0 the daemon runs both: `play_move`'s guard is a re-entrant lock
+    /// taken on its one event-loop thread, so it never refuses, and the two fight over
+    /// the head. From 1.14.0 it refuses the second, and the parking would not happen.
     ///
     /// Neither a refusal nor a timeout aborts anything. Parking the robot matters
     /// more than proof that the app let go, the same trade `waitForMoveToFinish`
     /// makes; the failure goes on the screen and the transition carries on.
     ///
     /// Answers whether an app let go of the robot because of this call — the one
-    /// case in which a 1.10.0 daemon has a sleep of its own on the way.
+    /// case in which a daemon from 1.10.0 to 1.13 has a sleep of its own on the way.
     @discardableResult
     func releaseRunningApp() async -> Bool {
         guard runningApp?.isBusy == true else { return false }

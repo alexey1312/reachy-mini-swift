@@ -40,6 +40,7 @@ public protocol MovePlaybackClient: Sendable {
     /// first play would otherwise block on a Hugging Face download the user is
     /// waiting through. A transport with nothing to warm does nothing.
     func preload(dataset: String) async throws
+    /// Throws ``ReachyKitError/moveBusy`` when the robot refuses it for another move.
     func playMove(dataset: String, move: String) async throws -> String
     func runningMoveUUIDs() async throws -> Set<String>
     func stopMove(uuid: String) async throws

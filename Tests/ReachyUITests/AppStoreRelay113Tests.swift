@@ -31,6 +31,14 @@ struct AppStoreRelay113Tests {
         #expect(older.sections == [.discover])
     }
 
+    /// An older relay answers these verbs with `-32601`, so the toggle would only ever
+    /// show a refusal there.
+    @Test("the startup app is offered from 1.14.0, and only from it")
+    func startupAppFollowsTheVersion() {
+        #expect(AppStoreModel.preview(session: session(version: "1.14.0")).offersStartupApp)
+        #expect(!AppStoreModel.preview(session: session(version: "1.13.0")).offersStartupApp)
+    }
+
     /// With a list to read, a card is installed because the robot says so, never
     /// because this visit guessed it.
     @Test("the installed list answers, not this visit's guess")

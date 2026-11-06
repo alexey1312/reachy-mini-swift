@@ -14,11 +14,13 @@ import Foundation
 ///   and ``sounds()`` lists that directory alone. A reboot empties it, so the
 ///   device's own library is the durable one (``SoundLibraryStore``) and the robot is
 ///   a cache in front of it.
-/// - **``playSound(named:)`` cannot fail for a file that is not there.** The media
-///   server logs the miss and returns; the route answers `{"status": "ok"}`
-///   regardless — the same shape as `wobbling/enable`. So a caller that has not just
-///   listed the library has not established that anything will be heard, which is
-///   why every play in this app is preceded by a list.
+/// - **Before daemon 1.14.0 ``playSound(named:)`` cannot fail for a file that is not
+///   there.** The media server logs the miss and returns; the route answers
+///   `{"status": "ok"}` regardless — the same shape as `wobbling/enable`. So a caller
+///   that has not just listed the library has not established that anything will be
+///   heard, which is why every play in this app is preceded by a list. From 1.14.0
+///   the route answers 404 instead (pollen-robotics/reachy_mini#1537), and the list
+///   stays for the older robots.
 /// - **Only playing needs a backend.** `play_sound` and `stop_sound` sit behind the
 ///   `get_backend` check and answer 503 without one; `sounds`, `upload` and `delete`
 ///   take no daemon dependency at all and work on a robot whose motors were never

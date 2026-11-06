@@ -10,10 +10,19 @@ public extension RobotSession {
     /// On a version known to be 1.13.0 or newer, and withheld otherwise: unlike
     /// ``canControlRunningApp`` this gate needs the evidence, because a robot that
     /// lacks these verbs answers each with `-32601` while `apps.install` still works
-    /// for it. The startup app, the update summary and the lock stay HTTP.
+    /// for it. The update summary and the lock stay HTTP, and the startup app is
+    /// ``hasRelayStartupApp``'s.
     var hasRelayAppStore: Bool {
         guard (client as? any RobotAppsClient)?.carriesRelayAppStore == true else { return false }
         return DaemonCompatibilityPolicy.isKnownAtLeast("1.13.0", reported: lastStatus?.version)
+    }
+
+    /// Whether the relay reads and sets the app the antennas start
+    /// (`apps.get_startup`, `apps.set_startup`, pollen-robotics/reachy_mini#1476).
+    /// Needs the evidence for the same reason ``hasRelayAppStore`` does.
+    var hasRelayStartupApp: Bool {
+        guard (client as? any RobotAppsClient)?.carriesRelayAppStore == true else { return false }
+        return DaemonCompatibilityPolicy.isKnownAtLeast("1.14.0", reported: lastStatus?.version)
     }
 
     /// Follows one job to its end over the socket *and* the poll — see

@@ -92,7 +92,7 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
   be. The **wait** is not politeness: a 200 from `stop-current-app` is not the app letting go (the daemon sets
   `stopping` before any I/O and clears its own slot on the last line, past the return-to-zero it performs on the
   app's behalf), so parking on top of it puts two motions on one robot,
-  and the daemon runs both — they write the head target in turn. Bounded by `appStopTimeout` and never fatal: a refusal is
+  and before 1.14.0 the daemon runs both — they write the head target in turn. Bounded by `appStopTimeout` and never fatal: a refusal is
   reported and a timeout is ignored, because a head held up for the daemon's one-way `stopping` wedge is the worse
   outcome. The intent-side twin is `RobotAppRelease` in `ReachyWidgetUI`, on a much shorter budget.
 - **An app start is the mirror image of that hand-back, and the daemon does neither end.**
@@ -141,8 +141,18 @@ Transport + domain core. No UI imports (SwiftUI/UIKit forbidden here). Swift 6 s
     and, because somebody asked for sleep, chases a reset that never comes.
     The relay keeps the session's own parking, because every data-channel frame cancels the reset first.
     Why each condition holds, with the daemon's line numbers, is in `.claude/rules/daemon-api.md`.
-- **The daemon has exactly one move slot and does not guard it, and everything in `RobotSession+Moves` follows from
-  that.**
+  - **From 1.14.0 a stop leaves the robot awake at zero, and only an app that ended by itself takes that sleep.**
+    `parkAfterApp(ending:)` reads which one this was off the reading that noticed it:
+    a stop clears the slot, and an ended app stays named as `done` or `error`.
+    `daemonParksAfterRequestedStop` is the stop's half of `daemonParksAfterApps`.
+    After a stop nothing is sent for a robot somebody else woke, because the daemon has already put it at zero,
+    and a robot this session woke goes straight to sleep.
+    `sleep()` plays its animation at once, and a session that kept waiting would hold every control off for 12 s.
+- **The daemon has exactly one move slot, and everything in `RobotSession+Moves` follows from that.**
+  From 1.14.0 it refuses a second holder, and a refusal is `ReachyKitError.moveBusy` on either transport.
+  Over HTTP that takes `RobotConnection.requireStarted`, because the route still answers 200.
+  A refused parking is not reported: the move that holds the slot owns the robot.
+  Before 1.14.0 the slot is not guarded at all.
   `play_move` opens with `if not self._try_start_move(): return` (`backend/abstract.py`),
   and `_try_start_move` is `RLock.acquire(blocking=False)`.
   Every HTTP, WebSocket and data-channel route runs `play_move` as a coroutine on the one event-loop thread,
