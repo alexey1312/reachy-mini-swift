@@ -145,7 +145,9 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
         )
     }
 
-    private func identity() async throws -> (version: String, hardwareID: String) {
+    /// Not `private`: the startup-app verbs in `RemoteRobotConnection+AppStore` gate
+    /// on the version, and an extension in a sibling file cannot see this otherwise.
+    func identity() async throws -> (version: String, hardwareID: String) {
         if let identityCache {
             return identityCache
         }
@@ -161,7 +163,24 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
         )
         let identity = (version: version.version, hardwareID: hardware.hardwareID)
         identityCache = identity
+        await sayHello(ifAskedBy: version)
         return identity
+    }
+
+    /// Names this client to the robot's anonymous telemetry, once per session.
+    ///
+    /// The data channel has no header, so from daemon 1.14.0 `client_hello` carries
+    /// what `X-Reachy-Client` carries over HTTP (pollen-robotics/reachy_mini#1532).
+    /// It says the same three things, and no more: no `app`, which is for a page on a
+    /// Space.
+    ///
+    /// `client_hello` in the `get_version` reply is the robot's own telemetry switch.
+    /// It is absent before 1.14.0 and false while the owner has telemetry off, and
+    /// either way nothing is sent. The command has no reply, so nothing waits for
+    /// one, and a send that fails costs this session nothing.
+    private func sayHello(ifAskedBy version: VersionReply) async {
+        guard version.clientHello == true else { return }
+        try? await control.send("client_hello", payload: ["client": .string(ReachyClientHeader.value)])
     }
 
     /// Built by decoding the daemon's own wire format rather than through the
@@ -273,6 +292,12 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
 
     private struct VersionReply: Decodable {
         let version: String
+        let clientHello: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case version
+            case clientHello = "client_hello"
+        }
     }
 
     private struct HardwareIDReply: Decodable {

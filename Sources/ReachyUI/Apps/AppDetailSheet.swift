@@ -320,15 +320,15 @@ struct AppDetailSheet: View {
                 if let transition = session.powerTransition {
                     PowerTransitionRow(transition: transition)
                 }
-                // Update and Remove need a robot that lists what it has; the startup
-                // app is HTTP alone, so a 1.13 relay offers the first two only.
+                // Update and Remove need a robot that lists what it has, and a 1.13
+                // relay offers those two alone. The startup app needs 1.14 there.
                 if model.listsInstalled {
                     if model.hasUpdate(app) {
                         Button(.reachy("Update"), systemImage: "arrow.down.circle") {
                             perform(.update(installed))
                         }
                     }
-                    if !model.isOverRelay {
+                    if model.offersStartupApp {
                         Toggle(.reachy("Start on wake-up"), isOn: startupBinding)
                             .disabled(model.busy)
                     }

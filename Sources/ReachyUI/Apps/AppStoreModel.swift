@@ -223,9 +223,16 @@ final class AppStoreModel {
         // is described from it.
         guard await readInstalledOverRelay(requestID) else { return }
         _ = try? await session.currentApp()
-        // The relay carries none of the three below — the lock, the startup app and
-        // the update check are all HTTP — and asking would collect three refusals.
-        guard !isOverRelay else { return }
+        // The relay carries the startup app from daemon 1.14.0, and neither of the
+        // other two below — the lock and the update check are HTTP — so asking for
+        // those would collect two refusals.
+        guard !isOverRelay else {
+            let startupApp = await startupAppOverRelay()
+            if loadID == requestID, !Task.isCancelled {
+                self.startupApp = startupApp
+            }
+            return
+        }
         // Read first, assign behind the same guard as the catalogue: a refresh
         // started meanwhile must not have its decoration overwritten by this
         // older load finishing last.
@@ -313,8 +320,8 @@ final class AppStoreModel {
         _ = try? await session.currentApp()
         // An update just ran, or an app came or went: an earlier check is stale.
         relayUpdates = [:]
-        // The startup app is HTTP alone.
-        if !isOverRelay {
+        // Removing the startup app clears it on the robot, so the old reading is stale.
+        if offersStartupApp {
             startupApp = try? await session.startupApp()
         }
     }
