@@ -26,7 +26,8 @@ struct RobotAppRelease: Sendable {
         /// Nothing held the robot, so nothing was stopped.
         case idle
         /// An app was stopped, and the daemon stopped naming it — the one case in
-        /// which a 1.10.0 daemon has a sleep of its own on the way (`RobotSleep`).
+        /// which a daemon from 1.10.0 to 1.13 has a sleep of its own on the way
+        /// (`RobotSleep`).
         case released
         /// The stop was refused, or the app never let go inside the budget.
         case held

@@ -108,19 +108,21 @@ public struct RobotAppLauncher: Sendable {
             }
             return try await Readiness(client.daemonStatus())
         }
-        // From 1.10.0 a freed slot is a sleep already on its way (#173), and no
-        // motion route cancels it, so a `goto` would put a second trajectory on the
-        // head. The relay is left out by type, as `RobotSleep` leaves it out: there
-        // the `goto` is a data-channel frame, which cancels the reset before it
-        // runs and so parks the robot instead of racing the daemon.
-        let daemonSleepsIt = !(client is RemoteRobotConnection) && handshake.status.resetsToSleepAfterApps
+        // From 1.10.0 to 1.13 a freed slot is a sleep already on its way (#173), and
+        // no motion route cancels it, so a `goto` would put a second trajectory on
+        // the head. The relay is left out by type, as `RobotSleep` leaves it out:
+        // there the `goto` is a data-channel frame, which cancels the reset before
+        // it runs and so parks the robot instead of racing the daemon. From 1.14.0
+        // the stop itself ends awake in the zero pose, so there is nothing to send.
+        let daemonSleepsIt = !(client is RemoteRobotConnection) && handshake.status.sleepsAfterRequestedAppStop
+        let daemonParksIt = handshake.status.returnsToZeroAfterRequestedStop
         // Parking is playback work, and a transport without it simply stays where
         // the app left the robot — the same trade `RobotSession.recentre` makes.
         park = { [moves = client as? any MovePlaybackClient] in
             if daemonSleepsIt {
                 return true
             }
-            guard let moves else { return false }
+            guard !daemonParksIt, let moves else { return false }
             do {
                 _ = try await moves.gotoNeutral(duration: configuration.recentreDuration)
             } catch {
@@ -181,14 +183,18 @@ public struct RobotAppLauncher: Sendable {
     /// robot was already clear. Nothing here wakes it — stopping a process needs no
     /// motors.
     ///
-    /// **From 1.10.0, over the LAN, the daemon puts the robot to sleep and this
-    /// sends nothing after the stop (#173).** Freeing the slot schedules its
+    /// **From 1.14.0 the stop is the whole of it.** The daemon returns the robot to
+    /// the zero pose and leaves it awake (pollen-robotics/reachy_mini#1488), so this
+    /// sends nothing more and the outcome does not promise a sleep.
+    ///
+    /// **From 1.10.0 to 1.13, over the LAN, the daemon puts the robot to sleep and
+    /// this sends nothing after the stop (#173).** Freeing the slot schedules its
     /// `reset_to_sleep()` 1.5 s later — the head lifts to the zero pose, the sleep
     /// animation plays, the motors are cut — and no motion route cancels it, so a
     /// `goto` here would be a second trajectory beside the daemon's. The outcome
     /// says so, because the robot will not be awake by the time anybody reads it.
     ///
-    /// **Anywhere else it parks the robot at zero, and never puts it to sleep** —
+    /// **Anywhere older it parks the robot at zero, and never puts it to sleep** —
     /// before 1.10.0, on a `--no-media` daemon (the reset runs on the loop the media
     /// server builds), and over the relay, where the `goto` is a data-channel frame
     /// that cancels the reset before it runs. An app leaves the head wherever its

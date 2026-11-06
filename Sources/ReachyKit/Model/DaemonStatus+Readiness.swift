@@ -56,4 +56,23 @@ public extension Components.Schemas.DaemonStatus {
         noMedia != true && cameraSpecsName?.isEmpty == false && mediaReleased != true
             && DaemonCompatibilityPolicy.isKnownAtLeast("1.10.0", reported: version)
     }
+
+    /// Whether a stop somebody asked for ends with the robot awake in the zero pose.
+    ///
+    /// From 1.14.0 `stop_current_app` runs `reset_to_init()` itself and releases the
+    /// slot with `cleaned_up=True`, which skips the idle reset
+    /// (pollen-robotics/reachy_mini#1488). The motors stay on. `reset_to_init()` also
+    /// clears gravity compensation and head tracking, so a `goto` after it adds
+    /// nothing. The one exception is a failed lift, which falls back to the idle reset.
+    var returnsToZeroAfterRequestedStop: Bool {
+        DaemonCompatibilityPolicy.isKnownAtLeast("1.14.0", reported: version)
+    }
+
+    /// Whether a stop somebody asked for ends in ``resetsToSleepAfterApps``' sleep.
+    ///
+    /// An app that ends by itself still takes that sleep on every version from
+    /// 1.10.0. Only the requested stop changed, so the two questions stay apart.
+    var sleepsAfterRequestedAppStop: Bool {
+        resetsToSleepAfterApps && !returnsToZeroAfterRequestedStop
+    }
 }

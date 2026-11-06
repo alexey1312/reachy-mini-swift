@@ -210,6 +210,7 @@ struct RobotSleepTests {
             ("1.9.0" as String?, nil as Bool?),
             (nil, nil),
             ("1.11.0", true),
+            ("1.14.0", nil),
         ]
     )
     func readsOnceWhereThereIsNoReset(version: String?, noMedia: Bool?) async throws {

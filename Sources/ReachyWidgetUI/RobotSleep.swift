@@ -72,13 +72,16 @@ public struct RobotSleep: Sendable {
 
     /// Everything after the app has been dealt with.
     ///
-    /// **From 1.10.0 a released app is a sleep already on its way (#166).** Freeing
-    /// the slot schedules the daemon's `reset_to_sleep()` 1.5 s later, and no motion
-    /// or motor route cancels it — so playing `goto_sleep` here would put a second
-    /// trajectory on the head, and `set_mode/disabled` could cut the torque under
-    /// the daemon's. That sleep is waited for instead, and chased only if it never
-    /// comes: the user asked for a robot asleep, not for a robot the daemon was
+    /// **From 1.10.0 to 1.13 a released app is a sleep already on its way (#166).**
+    /// Freeing the slot schedules the daemon's `reset_to_sleep()` 1.5 s later, and no
+    /// motion or motor route cancels it — so playing `goto_sleep` here would put a
+    /// second trajectory on the head, and `set_mode/disabled` could cut the torque
+    /// under the daemon's. That sleep is waited for instead, and chased only if it
+    /// never comes: the user asked for a robot asleep, not for a robot the daemon was
     /// expected to put to sleep.
+    ///
+    /// **From 1.14.0 the stop this type sent leaves the robot awake**, so the first
+    /// reading in `awaitIdleReset` ends the wait and the animation follows at once.
     ///
     /// The relay is left out by type rather than by reading: there every command
     /// cancels the reset before it runs, and so does the `get_state` frame a relayed
@@ -106,7 +109,7 @@ public struct RobotSleep: Sendable {
     /// that ran to its own end left the chase no time: the intent was cancelled
     /// mid-sleep, reported a timeout, and left the motors enabled.
     private func awaitIdleReset() async -> Bool {
-        guard let first = try? await daemon.daemonStatus(), first.resetsToSleepAfterApps else { return false }
+        guard let first = try? await daemon.daemonStatus(), first.sleepsAfterRequestedAppStop else { return false }
         var deadline = ContinuousClock.now + configuration.idleResetTimeout
         if let budget = self.deadline {
             deadline = min(deadline, budget - configuration.moveCompletionTimeout - Self.requestReserve)

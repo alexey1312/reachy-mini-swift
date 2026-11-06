@@ -52,6 +52,11 @@ struct AppLifecycleState: Equatable, Sendable {
 /// all: `monitor_process` releases the robot-app lock in its `finally` and does
 /// nothing else. From 1.10.0 that release schedules the daemon's own sleep, which
 /// is what ``daemonParksAfterApps`` is about.
+///
+/// **From 1.14.0 the two ends of an app run take different roads**
+/// (pollen-robotics/reachy_mini#1488). A stop somebody asked for leaves the robot
+/// awake in the zero pose, the daemon's own work, and only an app that ended by
+/// itself still takes that sleep. ``parkAfterApp(ending:)`` tells them apart.
 extension RobotSession {
     /// Whether `restart-current-app` is between its two halves.
     ///
@@ -69,9 +74,9 @@ extension RobotSession {
     /// whether that meant waking it.
     ///
     /// Two steps, and the first is easy to leave out. **The move slot is freed
-    /// first**, because the daemon has exactly one and never refuses a second
-    /// caller: an app started over a running dance has its first motions run
-    /// beside the dance, both writing the head target. `sleep()` opens with the
+    /// first**, because the daemon has exactly one: an app started over a running
+    /// dance has its first motions run beside the dance, both writing the head
+    /// target, and from 1.14.0 they are refused instead. `sleep()` opens with the
     /// same `releaseMove()` for the same reason, and the wake animation would
     /// collide with the dance too.
     ///
@@ -102,10 +107,13 @@ extension RobotSession {
 
     /// Puts the robot back where it was before an app took it.
     ///
-    /// One entry point for three events that are the same event: the user pressed
-    /// Stop, the app exited, or the app crashed. `noteAppReleased` decides when,
-    /// and does so from a reading that arrived.
-    func parkAfterApp() async {
+    /// One entry point for three events: the user pressed Stop, the app exited, or
+    /// the app crashed. `noteAppReleased` decides when, and does so from a reading
+    /// that arrived.
+    ///
+    /// `ending` is that reading, and it says which of the three this was. See
+    /// ``daemonParks(after:)``.
+    func parkAfterApp(ending: RobotAppStatus?) async {
         // A power transition parks the robot itself, and both rungs of it reach
         // here through their own `releaseRunningApp()`. Sending a `goto` into that
         // puts two motions on one robot, and the daemon runs both — they write
@@ -120,17 +128,37 @@ extension RobotSession {
         // status cannot prove that the daemon has a loop to run the reset on, and
         // a robot this session woke is not left awake with its torque on when the
         // reset never comes.
-        if daemonParksAfterApps {
+        if daemonParks(after: ending) {
             let owner = appLifecycle.takeWakeOwnership()
-            guard await followDaemonParking(client: client) == .timedOut, owner != nil else { return }
+            let watch = await followDaemonParking(client: client)
+            guard watch == .timedOut || watch == .stopped, owner != nil else { return }
             await sleep()
             return
         }
         if appLifecycle.takeWakeOwnership() != nil {
             await sleep()
-        } else {
+        } else if ending != nil || lastStatus?.returnsToZeroAfterRequestedStop != true {
             await returnToBase(client: client)
         }
+    }
+
+    /// Whether the daemon sleeps by itself after the end this reading shows.
+    ///
+    /// **The reading tells the two ends apart, whoever asked.** `stop_current_app`
+    /// clears the slot on its last line, so a stop reads as no app at all. An app
+    /// that ended by itself stays named as `done` or `error` until something replaces
+    /// it. That holds for a stop from another device or a widget too, which no state
+    /// in this session could know about.
+    ///
+    /// The one exception is short: a stop whose process exits before the daemon has
+    /// cancelled its monitor reads as `done` or `error` until the lift to zero ends.
+    /// ``watchIdleReset(client:attemptID:)`` catches that when the slot clears, so a
+    /// real crash does not have to wait for it.
+    ///
+    /// Waiting on a sleep that a 1.14.0 daemon will not start would hold the screen
+    /// on "going to sleep", with every control off, for all of `idleResetTimeout`.
+    private func daemonParks(after ending: RobotAppStatus?) -> Bool {
+        ending == nil ? daemonParksAfterRequestedStop : daemonParksAfterApps
     }
 
     /// Whether the daemon puts the robot to sleep by itself once an app lets go.
@@ -149,6 +177,12 @@ extension RobotSession {
     ///   relayed status is a `get_state` frame.
     var daemonParksAfterApps: Bool {
         !isRemote && lastStatus?.resetsToSleepAfterApps == true
+    }
+
+    /// ``daemonParksAfterApps`` for a stop somebody asked for, which from 1.14.0
+    /// leaves the robot awake in the zero pose.
+    var daemonParksAfterRequestedStop: Bool {
+        !isRemote && lastStatus?.sleepsAfterRequestedAppStop == true
     }
 
     /// Shows the daemon's own parking as the transition it is, and sends nothing.
@@ -196,6 +230,8 @@ extension RobotSession {
         case abandoned
         /// `idleResetTimeout` passed with the robot still awake.
         case timedOut
+        /// The slot cleared, which from 1.14.0 means a stop and no sleep to wait for.
+        case stopped
     }
 
     /// Reads the status until the daemon's reset has cut the motors, under a
@@ -217,8 +253,22 @@ extension RobotSession {
             if !status.isAwake {
                 return .asleep
             }
+            if await slotClearedByStop() {
+                return .stopped
+            }
         }
         return .timedOut
+    }
+
+    /// Whether a daemon that stays awake after a stop has stopped naming the app.
+    ///
+    /// An app that ended by itself stays named for as long as nothing replaces it, so
+    /// only a stop gets here. A read that fails leaves the last app standing, and
+    /// that concludes nothing.
+    private func slotClearedByStop() async -> Bool {
+        guard lastStatus?.returnsToZeroAfterRequestedStop == true else { return false }
+        try? await refreshCurrentApp()
+        return runningApp == nil
     }
 
     /// The zero pose, for a robot somebody else woke.
@@ -259,6 +309,6 @@ extension RobotSession {
         // `restart-current-app` is stop-then-start behind one request, so the gap
         // between its halves is not an app letting go.
         guard !appLifecycle.isRestarting else { return }
-        Task { await parkAfterApp() }
+        Task { await parkAfterApp(ending: current) }
     }
 }
