@@ -124,6 +124,36 @@ struct SimulatorIntegrationTests {
     /// The name is unique per run and deleted at the end, so a failure leaves one file in
     /// the daemon's `/tmp` and nothing else. **On `sim-daemon` the play comes out of the
     /// host Mac's own speaker** — the same warning `/api/volume/*` carries.
+    /// The two things `RobotConnection.requireStarted` assumes, against the daemon
+    /// itself: a free slot lists its task before the route answers, and a taken one
+    /// answers 200 for a task that is already gone. From 1.14.0.
+    @Test("a sleep over a running move is refused and leaves the move running", .timeLimit(.minutes(1)))
+    func aTakenSlotRefusesASleep() async throws {
+        let connection = try RobotConnection(address: address)
+        try await connection.setMotorMode(.enabled)
+
+        let running = try await connection.gotoNeutral(duration: 2)
+        #expect(try await connection.runningMoveUUIDs().contains(running))
+
+        await #expect(throws: ReachyKitError.moveBusy) {
+            _ = try await connection.gotoSleep()
+        }
+        #expect(try await connection.runningMoveUUIDs().contains(running))
+        try await connection.stopMove(uuid: running)
+    }
+
+    /// `/api/media/play_sound` before 1.14.0 answered `ok` for a name that matches nothing.
+    @Test("a sound the robot does not hold is a 404", .timeLimit(.minutes(1)))
+    func aMissingSoundIs404() async throws {
+        let connection = try RobotConnection(address: address)
+
+        await #expect {
+            try await connection.playSound(named: "no-such-sound.wav")
+        } throws: { error in
+            (error as? ReachyKitError)?.statusCode == 404
+        }
+    }
+
     @Test("a sound round-trips through the daemon", .timeLimit(.minutes(1)))
     func soundRoundTrip() async throws {
         let connection = try RobotConnection(address: address)

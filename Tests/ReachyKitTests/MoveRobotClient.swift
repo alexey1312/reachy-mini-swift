@@ -34,6 +34,8 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
     var cancelStopMove = false
     var failStopSound = false
     var failGotoNeutral = false
+    /// What a failing `gotoNeutral` throws, for the refusal a caller reads differently.
+    var gotoNeutralFailure: any Error = MoveFailure.failed
     /// How long the parking `goto`'s reply takes. The relay answers only once the
     /// walk has finished, so there it is the whole parking.
     var neutralReplyDelay: Duration = .zero
@@ -136,7 +138,7 @@ final class MoveRobotClient: RobotAPIClient, MovePlaybackClient, @unchecked Send
             return (activeUUID!, failGotoNeutral, neutralReplyDelay)
         }
         if shouldFail {
-            throw MoveFailure.failed
+            throw gotoNeutralFailure
         }
         // Filed on the daemon already; only the reply is still on its way.
         if delay != .zero {

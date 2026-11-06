@@ -206,12 +206,12 @@ public actor RemoteRobotConnection: RobotAPIClient, RobotUnlinkClient, MovePlayb
     /// The channel answers `wake_up` only once the animation has finished, so
     /// there is no id to track and nothing to poll — see `runningMoveUUIDs`.
     public func wakeUp() async throws -> String {
-        try await control.perform("wake_up")
+        try await performMotion("wake_up")
         return ""
     }
 
     public func gotoSleep() async throws -> String {
-        try await control.perform("goto_sleep")
+        try await performMotion("goto_sleep")
         return ""
     }
 

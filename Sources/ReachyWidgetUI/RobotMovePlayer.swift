@@ -11,11 +11,12 @@ import ReachyKit
 ///
 /// **Two daemon facts shape the whole sequence, and neither says a word.** A play
 /// route does not touch the motor mode, so an asleep robot accepts it, makes the
-/// sound and does not move; and `play_move`'s guard never refuses a second play
-/// (a re-entrant lock, taken on the daemon's one event-loop thread), so a play
-/// issued over a running move runs beside it and the two fight over the head.
-/// Waking and clearing the slot are therefore not politeness — without them, the
-/// intent reports success over a robot that did nothing, or that jerks.
+/// sound and does not move; and before 1.14.0 `play_move`'s guard never refuses a
+/// second play (a re-entrant lock, taken on the daemon's one event-loop thread), so
+/// a play issued over a running move runs beside it and the two fight over the head.
+/// From 1.14.0 that second play is refused, and the transport says so. Waking and
+/// clearing the slot are therefore not politeness — without them, the intent reports
+/// success over a robot that did nothing, or that jerks.
 public struct RobotMovePlayer: Sendable {
     public struct Outcome: Equatable, Sendable {
         /// The daemon's task id, which is the only handle on a running move —

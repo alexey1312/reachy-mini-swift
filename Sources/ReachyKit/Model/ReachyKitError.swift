@@ -115,6 +115,14 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// Appended, like every case since ``daemonLogsUnavailable``.
     case telemetryUnavailable
 
+    /// The daemon refused a move because another one holds its one move slot. From
+    /// 1.14.0, on every transport (pollen-robotics/reachy_mini#1513). The holder may
+    /// be a robot app, another device or the daemon's own reset, and none of those
+    /// is on the list this client can clear.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case moveBusy
+
     /// The `detail` that guard answers with, verbatim.
     static let untrustedHostDetail = "Untrusted Host header"
 
@@ -158,7 +166,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
              .daemonLogsUnavailable, .teleopUnavailable, .powerTransitionInFlight,
              .soundboardUnavailable, .soundTooLarge, .soundTypeUnsupported, .soundNameRejected,
              .audioTuningUnavailable, .movesUnavailable, .conversationUnavailable, .audioLevelsUnavailable,
-             .telemetryUnavailable:
+             .telemetryUnavailable, .moveBusy:
             nil
         }
     }
@@ -223,6 +231,8 @@ extension ReachyKitError: LocalizedError {
             "The robot's audio cannot be reached over this connection"
         case .telemetryUnavailable:
             "The robot's usage data setting cannot be reached over this connection"
+        case .moveBusy:
+            "The robot is finishing another move; try again in a moment"
         case let .untrustedHost(host):
             "The robot does not answer to “\(host)” — connect with its IP address or its .local name"
         case let .soundTooLarge(bytes, limit):

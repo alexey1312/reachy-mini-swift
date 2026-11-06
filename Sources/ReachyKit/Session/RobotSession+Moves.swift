@@ -61,9 +61,10 @@ extension RobotSession {
     public func playMove(dataset: String, move: String) async throws {
         guard let client = movesClient else { throw ReachyKitError.movesUnavailable }
         // Whatever the robot is doing has to be off the daemon's task list before
-        // the new move is asked for. The daemon does not refuse a play over a
-        // running move — both run, and both write the head target — so a floor
-        // that will not clear throws here and the play is never sent.
+        // the new move is asked for. Before 1.14.0 the daemon does not refuse a play
+        // over a running move — both run, and both write the head target — and from
+        // 1.14.0 it does. So a floor that will not clear throws here either way and
+        // the play is never sent.
         try await clearTheFloor(client: client)
         let identity = MovePlayback.Identity(dataset: dataset, move: move)
         let uuid: String
@@ -101,9 +102,10 @@ extension RobotSession {
 
     /// Frees the daemon's move slot before a power transition claims it.
     ///
-    /// `goto_sleep` is a move task like any dance, and the daemon runs it beside
-    /// one that is playing: the two write the head target in turn, and
-    /// `set_mode/disabled` cuts the motors a moment later, mid-pose. This is the
+    /// `goto_sleep` is a move task like any dance. Before 1.14.0 the daemon runs it
+    /// beside one that is playing: the two write the head target in turn, and
+    /// `set_mode/disabled` cuts the motors a moment later, mid-pose. From 1.14.0 it
+    /// refuses the sleep, and the robot stays awake. This is the
     /// motion half of what `releaseRunningApp()` does for a running app — hand the
     /// robot back before parking it. Parking is skipped here because the
     /// transition *is* the parking.
@@ -121,11 +123,17 @@ extension RobotSession {
     /// `play_move` guards the daemon's one move slot with a non-blocking
     /// `RLock.acquire` (`backend/abstract.py`), and every HTTP, WebSocket and
     /// data-channel route runs it as a coroutine on the one event-loop thread. The
-    /// lock is re-entrant on that thread, so the guard never refuses: a second play
-    /// starts, both write the head target at 100 Hz, and its `play_sound` restarts
-    /// the music. So `moveActivity` is not enough — a move from the widget, from
-    /// another device or from before a relaunch is stopped too. Throws when a move
-    /// will not stop, because a play sent over it is that collision.
+    /// lock is re-entrant on that thread, so before 1.14.0 the guard never refuses: a
+    /// second play starts, both write the head target at 100 Hz, and its `play_sound`
+    /// restarts the music. From 1.14.0 the second play is refused, which is no better
+    /// for somebody who asked for the new dance. So `moveActivity` is not enough — a
+    /// move from the widget, from another device or from before a relaunch is stopped
+    /// too. Throws when a move will not stop, because a play sent over it is that
+    /// collision.
+    ///
+    /// Only the daemon's task list can be cleared. A move an app or a script plays
+    /// through the SDK is on no list, and ``ReachyKitError/moveBusy`` is what a play
+    /// over one of those gets.
     ///
     /// Parking is deliberately skipped: it is a move task of its own, so returning
     /// to neutral here would put a `goto` beside the very play this clears the
@@ -251,8 +259,11 @@ extension RobotSession {
     ///
     /// The phase is claimed before the `goto` is sent, not when it answers. In
     /// between, the rows were live, and a dance tapped there played beside the
-    /// parking, because the daemon runs both. Over the relay that gap was the
+    /// parking, or from 1.14.0 was refused by it. Over the relay that gap was the
     /// whole walk: `goto_target` answers only once it has finished.
+    ///
+    /// A parking that is refused is not a failure anybody can act on: the move that
+    /// holds the slot owns the robot, the same reading `returnToBase` gives it.
     func recentre(client: any MovePlaybackClient) async -> [String] {
         let pending = MoveActivity.recentring(uuid: nil)
         moveActivity = pending
@@ -267,6 +278,9 @@ extension RobotSession {
         } catch {
             if moveActivity == pending {
                 moveActivity = nil
+            }
+            if case ReachyKitError.moveBusy = error {
+                return []
             }
             guard let message = Self.message(for: error) else { return [] }
             return ["Neutral: \(message)"]
