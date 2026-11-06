@@ -256,6 +256,18 @@ and whether the robot needs an OS update.
 
 The `upstream-release` issue that each reachy_mini release opens here is the checkpoint.
 
+**Checked at v1.14.0 (#243), on 2026-11-06: no row has started.**
+`main` is the v1.14.0 tag, and nothing in its tree or in `io/protocol.py` names NFC, privacy or the base.
+
+- **Hats.** [reachy_mini#1554](https://github.com/pollen-robotics/reachy_mini/pull/1554),
+  opened from branch `1204c-nfc-json-rpc`, is now the PR to watch, and #1448 has been idle since 2026-10-12.
+  It carries the REST routes and the `nfc.*` verbs of the table above, keeps `dump` on the LAN,
+  adds the error codes `DISABLED`, `NO_BOARD`, `DRIVER_MISSING`, `PORT_CONFLICT` and `LINK_ERROR`, and is off in simulation.
+  The conversation app released v1.2.0 on 2026-11-04 with no `rfid.*` on `main`, so that half still waits too.
+- **Privacy.** #1455 is open, idle since 2026-10-20.
+- **Hoverboard.** reachy_mini_mobile_app#129 is open.
+  Pollen's mobile app 0.11.6 shipped the telepresence tab (#128) without it.
+
 Questions to ask Pollen:
 
 - Does the base get a daemon-owned `overboard.*` namespace, or the legacy `overboard_drive` type?

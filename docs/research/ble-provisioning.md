@@ -76,6 +76,27 @@ Written against the stubs like everything above, and added from #156.
       and confirm `WIFI_CONNECT_ENC` answers `ERROR: Not connected. Please authenticate first.`
       until the PIN is entered again.
 
+## Since daemon 1.14
+
+Daemon 1.14.0 changes what a phone with a stale bond meets (pollen-robotics/reachy_mini#1520).
+The agent now answers `RequestAuthorization`, and the service forgets every bonded peer that is not an input or audio
+device each time it starts, so a phone's automatic re-pairing goes through.
+Before it, BlueZ refused to pair again with a peer it held keys for, and only forgetting the robot on the phone helped.
+This app has no words for that case: `CoreBluetoothTransport` puts `error.localizedDescription` on the screen.
+An iOS app cannot remove a bond for the person, so on an older robot the way out is Settings → Bluetooth.
+Pollen's mobile app shows a "Forget the old pairing" screen for it (reachy_mini_mobile_app#137), and has not run it on iOS.
+
+- [ ] A stale bond on a 1.14 robot: setup connects with no step in Settings.
+- [ ] A stale bond on a 1.13 robot: what `CBError` arrives, and what the screen says.
+- [ ] A factory robot on daemon 1.8.x, which is below `DaemonCompatibilityPolicy.minimumVersion`:
+      the connect ends on `DaemonUpdateScreen`, and the update completes.
+      Pollen reports that OS image v0.2.6 ships 1.8.2 and v0.2.7 ships 1.8.3, and that sign-in fails on them
+      (reachy_mini_mobile_app#140).
+- [ ] An update from 1.11 or older to 1.14 keeps the robot signed in, with no relink (#1519).
+
+If the serial number label no longer matches the board, the PIN comes from `dfu-util -l` on the robot:
+it is the last five digits of the `serial` field of the `Reachy Mini Audio DFU` lines (#1510).
+
 ## Recovery scripts
 
 Run them in this order. The first three are the way back; the last one is the one you cannot undo.

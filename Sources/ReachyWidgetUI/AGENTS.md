@@ -236,9 +236,10 @@ the next pair.
 
 - **`RobotMovePlayer` exists because both of the daemon's move traps are silent.** A play route never touches the
   motor mode, so an asleep robot accepts it, plays the sound and does not move;
-  and `play_move`'s guard never refuses a second play —
+  and before 1.14.0 `play_move`'s guard never refuses a second play —
   it is a re-entrant lock, taken on the daemon's one event-loop thread —
   so a play issued over a running move runs beside it, and the two fight over the head.
+  From 1.14.0 the transport throws `moveBusy` instead.
   Waking and clearing the slot are therefore not politeness — without them, the intent reports success over a robot
   that did nothing, or that jerks. Both are pinned by mutation: delete the wake and `wakesBeforePlaying` goes red, delete
   `clearTheFloor` and three tests do.
@@ -313,6 +314,8 @@ the next pair.
   The relay is excluded by type, because a relayed status read would cancel the reset it watched.
 - **`RobotAppLauncher.stop()` sends nothing after the stop where the daemon parks the robot itself (#173),
   and parks it at zero everywhere else — and never sleeps it.**
+  From 1.14.0 the stop leaves the robot awake at zero, so nothing follows it on any transport and `robotSleeps` is false.
+  `RobotSleep` reads the same fact through `sleepsAfterRequestedAppStop`, and plays its animation at once.
   From 1.10.0 a freed slot schedules the daemon's `reset_to_sleep()`, and no motion route cancels it,
   so on a LAN daemon with a media server a `goto` would be a second trajectory beside the daemon's.
   Deciding that costs no request: `RobotIntentTarget.VerifiedConnection` carries the handshake it verified,

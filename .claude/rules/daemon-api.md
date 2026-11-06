@@ -12,7 +12,7 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 - REST: OpenAPI 3.1 at `Sources/ReachyKit/openapi.json`; canonical source
   `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/<ref>/docs/source/API/openapi.json`.
   Refresh with `./bin/mise run update-spec <tag>` —
-  the tag of the release `testedVersion` names (`v1.13.0` now).
+  the tag of the release `testedVersion` names (`v1.14.0` now).
   Without a tag it takes `main`, which runs ahead of every release.
   The task also normalizes `anyOf: [X, {type: null}]` branches
   that swift-openapi-generator silently drops (`Scripts/normalize-openapi.py`). Swagger UI at `http://<host>:8000/docs`
@@ -34,6 +34,10 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
     - **Never send `with_target_*`.** The frame builder asserts on them and the loop's blanket `except` swallows it,
       so the socket stays open and delivers nothing ever again. The only outward sign is a deduplicated
       `Skipping full-state frame:` line in the daemon journal. `StateStreamOptions` cannot express these on purpose.
+      1.14.0 puts `target_*` on the `FullState` model (#1458), so the answer stops dropping them
+      and each key is null without its flag.
+      The assertion stays: `target_head_pose` is None until something sets a target,
+      and upstream's fix for that is the open #1528.
   - `/api/move/ws/set_target` — live teleop
   - `/api/move/ws/updates`, `/api/move/ws/raw/write`
   - `/logs/ws/daemon` — daemon journal (NOTE: mounted at app root, not under `/api`, and ONLY with
@@ -261,11 +265,13 @@ which is also what 1.12 answers for every verb here.
 | --- | --- | --- | --- |
 | `apps.list_installed` | — | `{apps: [{name, description, url, space_id, title, emoji, private, custom_app_url}]}` | — |
 | `apps.install_space` | `space_id` (`owner/repo`) | `{job_id, name}` | `not_found`, `busy`, `app_running` |
-| `apps.remove` | `name` | `{job_id}` | `busy`, `app_running`, `startup_app` |
+| `apps.remove` | `name` | `{job_id}` | `busy`, `app_running`; `startup_app` before 1.14 |
 | `apps.update` | `name` | `{started, job_id}` | `busy`, `app_running` (did not stop in 25 s) |
 | `apps.check_update` | `name` | `{installed, version, update_available, checkable, updating, error}` | — |
 | `apps.job_status` | `job_id` | `{job_id, command, status, logs}` | `unknown_job` |
 | `apps.restart` | — | `{state, error, info}` | `not_running`, `already_running` |
+| `apps.get_startup` (1.14) | — | `{name}`, null for none | — |
+| `apps.set_startup` (1.14) | `name`, or null to clear | `{name}` | `invalid_params` for a missing key, `not_installed` |
 
 - **`apps.job_progress` notifications** `{job_id, command, status, line, final}` go to every client,
   one per log line and a last one with `line: null, final: true`.
@@ -277,8 +283,12 @@ which is also what 1.12 answers for every verb here.
 - **`busy` covers REST jobs too**: the relay refuses while any job in `bg_job_register` is active.
   `apps.start` now refuses with `busy` while that app has a job,
   and `apps.stop` with nothing running answers `not_running` (1.12 sent -32603).
-- `apps.remove` refuses the startup app, because clearing it needs the FastAPI state the REST route has.
-  There is no relay verb for the startup app, the update summary or the lock.
+- Before 1.14.0 `apps.remove` refuses the startup app, because clearing it needs the FastAPI state the REST route has.
+  From 1.14.0 the daemon owns that watcher, so the verb clears the setting and carries on, as the REST route does.
+  `apps.set_startup` needs the key: a bare `{}` is refused, so that nothing clears the setting by accident.
+  `RemoteRobotConnection.startupApp()` holds the version gate itself,
+  because `PowerOffPlan` and the widgets reach it with no session.
+  There is no relay verb for the update summary or the lock.
 - `unknown_job` is the LAN's 404 — the job register is in memory — and `RemoteRobotConnection` passes it on as one.
 
 ### Smaller changes
@@ -395,6 +405,13 @@ were fresh reports a Wi-Fi blip as a wedged daemon. And the two are not one situ
 is dead and the slot is not, while a stuck `starting` means nothing ever ran, so `WedgedAppNotice` reads the state
 rather than assuming a stop.
 
+Upstream found one cause of that wedge in #1523, open at 1.14.0:
+the pose reading after the process exits sits outside any `try`, so a raise skips `current_app = None`.
+1.14.0 keeps `get_current_head_pose()` there and adds `stop_running_move()` beside it.
+#1533 also names a stop whose client goes away as a cause.
+This client does not give up first: the LAN route runs on the 35 s session and the relay's `apps.stop` waits 30 s,
+against 20 s for the app, 1 s for a left-over move and 1.5 s for the lift.
+
 ## An app's own control surface (`/rpc`) — not the daemon's
 
 A robot app may serve its own settings and semantic status on a port of its own. The daemon only reports it, in
@@ -487,7 +504,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 - **Up to 1.12 the relay's own `apps.*` is four verbs, and its replies are not the REST shapes.**
   `status`, `start`, `stop` and `install` (`jsonrpc_relay.py:_handle_apps`, unchanged from #1266 to 1.12.0) —
   no list, no restart, no remove, no update, no startup app.
-  1.13.0 adds the store's half; see "The relay's store (1.13.0)" below.
+  1.13.0 adds the store's half, and 1.14.0 the startup app; see "The relay's store (1.13.0)" below.
   `status` and `start` answer `{state, error, info: {name, description, url}}`:
   **no `source_kind`**, which `AppInfo` requires, and no `extra`.
   Decoding `info` as an `AppInfo` therefore threw for every running app,
@@ -581,10 +598,13 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     bytes — `GET` answers names. So the durable copy has to live on the client, and a sound the robot has but the
     client does not is unrecoverable. `SoundLibraryStore` is this app's half of that, in the App Group's
     *Application Support* rather than `Caches` for exactly this reason.
-  - **`POST /api/media/play_sound` answers `{"status": "ok"}` for a name that matches nothing.** `media_server.py`
-    logs "Sound file … not found in assets directory or given path" and returns. Same shape as `wobbling/enable`: a
-    200 is not evidence of a sound. Only a listing beforehand can establish it, which is what `RobotSoundPlayer` and
-    `SoundboardModel` both do before playing.
+  - **Before 1.14.0 `POST /api/media/play_sound` answers `{"status": "ok"}` for a name that matches nothing.**
+    `media_server.py` logs "Sound file … not found in assets directory or given path" and returns. Same shape as
+    `wobbling/enable`: a 200 is not evidence of a sound. Only a listing beforehand can establish it, which is what
+    `RobotSoundPlayer` and `SoundboardModel` both do before playing.
+    From 1.14.0 that is a 404 with `no such sound: not uploaded, not a file, not an asset` (#1537),
+    measured against the simulator, and the data channel answers the same words as an `error`.
+    The listing stays, for the older robots.
   - **`POST /api/media/sounds/upload` is `multipart/form-data`, field name `file`.** Validation is two-stage and the
     order is visible in the two different 400s: the extension allow-list first
     (`.wav .mp3 .ogg .oga .opus .flac .m4a .aac`, answered as `Unsupported file extension; allowed: …`), then a
@@ -631,15 +651,36 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   recorded move are indistinguishable in `GET /api/move/running` — which returns `[{uuid}]` and no other field. There
   is no route that names a running move. `POST /api/move/stop` awaits the cancellation before answering, so a 200
   means the slot is already free.
-  - **The daemon never refuses a second move, and its own comment says it does.**
+  - **Before 1.14.0 the daemon never refuses a second move, and its own comment says it does.**
     `play_move` opens with `if not self._try_start_move(): return`,
     and `_try_start_move` is `threading.RLock().acquire(blocking=False)`.
     Every HTTP, WebSocket and data-channel route runs `play_move` as a coroutine on the one event-loop thread,
-    so the lock is re-entrant there and the acquire always succeeds — on every version from 1.9 to `main`.
+    so the lock is re-entrant there and the acquire always succeeds — on every version from 1.9 to 1.13.
     A second play therefore runs beside the first: both write the head target in turn at 100 Hz,
     and the second `play_sound` restarts the music.
     `_async_play_recorded_move` carries the comment "a double-tap is a no-op"; it is not.
     The client stops every running move before a play — `RobotSession.clearTheFloor`, `RobotMovePlayer`.
+  - **From 1.14.0 it refuses, and over HTTP the refusal is easy to miss (#1513).**
+    `_IN_MOVE` tells a nested call from a sibling task, and a second move raises `MoveBusyError`.
+    `wake_up`, `goto_sleep` and the resets hold the guard for their whole sequence.
+    Measured against the simulator on 2026-11-06:
+    - `POST /api/move/goto`, `play/goto_sleep` and `play/recorded-move-dataset/…` still answer **200 with a uuid**.
+      The refusal reaches only `/api/move/ws/updates`, as `move_started` then `move_failed`
+      with `details: "a move is already running"`, and this client holds no such socket.
+    - The list tells them apart. An accepted task is in `GET /api/move/running` when the POST answers,
+      9 ms on loopback, and a refused one is already gone.
+      That is `RobotConnection.requireStarted`, used by `playMove` and `gotoSleep`.
+      `wake_up` is left out, because it stands down on a robot already awake at zero.
+      Reading the motors would not do: the MuJoCo backend reports `enabled` even after a full sleep.
+    - **A refused sleep has to throw before `set_mode/disabled`**, or the head drops under whatever holds the slot.
+    - The data channel says so itself: `{"command", "status": "error", "error"}` from `play_recorded_move`,
+      and `{"error", "command"}` from `goto_target`, `wake_up` and `goto_sleep`.
+      `RemoteRobotConnection.performMotion` turns those words into `ReachyKitError.moveBusy`.
+    - **A move from the SDK is on no list.** `running` stays empty under a Python `goto_target` that holds the slot,
+      so `clearTheFloor` cannot clear it, and a play over one is refused.
+      The reverse also holds: a dance from this app makes a running app's own `goto_target` raise `MoveBusyError`.
+      An app that does not catch it dies with a traceback.
+      The Moves tab still offers rows while an app runs, as Pollen's dashboard does.
   - **Both recorded-move routes load the dataset before they answer**,
     through `RecordedMoves(dataset)`, which downloads what is not cached.
     Only `DEFAULT_DATASETS` — the two Pollen libraries — are preloaded at startup,
@@ -736,7 +777,22 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   Over the relay the session keeps its own parking.
   Each of its commands cancels the reset before running, so there they replace it rather than race it —
   and a relayed status read is a `get_state` frame, so watching the reset would cancel it too.
-  **A deliberate sleep with an app running is left to the reset as well (#166).**
+  **From 1.14.0 a stop somebody asked for is not a sleep (#1488).**
+  `stop_current_app` runs `reset_to_init()` itself, releases the slot with `cleaned_up=True`, which skips the reset,
+  and the robot stays awake at zero with its motors on.
+  An app that exits or crashes still takes the reset, on the same 1.5 s debounce.
+  Measured against the simulator on 2026-11-06 by head height, with `motor_control_mode` no use there:
+  after a stop the head stood at zero for all of a 12 s watch,
+  and after `done` and `error` it was on its way to −42 mm about 2.6 s later.
+  **The reading tells them apart.** A stop clears the slot, so `current-app-status` answers null,
+  and an app that ended by itself stays named as `done` or `error`, which holds for a stop from another device too.
+  `RobotSession.parkAfterApp(ending:)` reads that, through `daemonParksAfterApps` and `daemonParksAfterRequestedStop`,
+  and a session that kept waiting would hold "going to sleep" for all of `idleResetTimeout` over a robot that stays up.
+  The exception is short: when the stopped process exits before `stop_current_app` cancels its monitor,
+  the slot reads `done` or `error` until the lift ends, seen once in ten stops on the simulator.
+  `watchIdleReset` therefore ends on a slot that clears.
+  An `error` app also keeps its slot until somebody stops it: `start-app` answers 400 `An app is already running`.
+  **A deliberate sleep with an app running is left to the reset as well (#166), up to 1.13.**
   `RobotSession.sleep()` and `RobotSleep` stop the app first, which frees the slot and schedules the reset,
   so where it applies they watch the motors read disabled instead of playing a `goto_sleep` into it.
   Unlike the parking after an app, a reset that never comes is chased with the sleep that was asked for,
@@ -764,7 +820,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
     the client's sleep and its power-off therefore stop the app first *and wait for the daemon to stop naming it* —
     a 200 from `stop-current-app` is not the app letting go (see the `stopping` section above), and parking on top
     of the return-to-zero the daemon runs on the app's behalf puts two motions on one robot,
-    and the daemon runs both, because `play_move`'s guard never refuses. `RobotSession.releaseRunningApp` and
+    and before 1.14.0 the daemon runs both, because `play_move`'s guard never refuses. `RobotSession.releaseRunningApp` and
     `RobotAppRelease`.
 - `daemon/start?wake_up=<bool>` returns a job id immediately and starts the backend in the background (409 while
   another job runs); poll `daemon/status` until `running`. With `wake_up=true` the daemon enables the motors itself.
@@ -809,7 +865,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   the Constrained Baseline caps filter survives only on the fallback path,
   and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
   The client sets no codec preference and takes whatever H.264 the offer carries.
-- Daemon 1.9.0 is the minimum API version and 1.13.0 the tested baseline. Enforce
+- Daemon 1.9.0 is the minimum API version and 1.14.0 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a
