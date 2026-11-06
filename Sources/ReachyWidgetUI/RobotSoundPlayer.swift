@@ -19,9 +19,10 @@ import ReachyKit
 /// refusal on this surface that reports itself.
 ///
 /// **What it does have to check is presence**, and that is the whole reason this type
-/// exists rather than a bare call: `play_sound` answers `{"status": "ok"}` for a name
-/// that matches nothing, and uploads live in `/tmp`. So a shortcut naming a sound the
-/// robot lost over a restart would otherwise report success into silence, for ever.
+/// exists rather than a bare call: before daemon 1.14.0 `play_sound` answers
+/// `{"status": "ok"}` for a name that matches nothing, and uploads live in `/tmp`. So a
+/// shortcut naming a sound the robot lost over a restart would otherwise report success
+/// into silence, for ever. From 1.14.0 that is a 404, and the sentence is the same one.
 public struct RobotSoundPlayer: Sendable {
     public enum Failure: Error, LocalizedError, Equatable {
         /// The robot does not have this sound any more — almost always because it
@@ -58,7 +59,12 @@ public struct RobotSoundPlayer: Sendable {
         guard available.contains(where: { $0.filename == filename }) else {
             throw Failure.notOnRobot(RobotSound.displayName(filename))
         }
-        try await library.playSound(named: filename)
+        do {
+            try await library.playSound(named: filename)
+        } catch let error as ReachyKitError where error.statusCode == 404 {
+            // The file went between the list and the play.
+            throw Failure.notOnRobot(RobotSound.displayName(filename))
+        }
     }
 
     /// Ends whatever the daemon's media player is playing, which may be a recorded

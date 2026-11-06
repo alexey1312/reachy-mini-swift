@@ -73,6 +73,21 @@ struct RobotSoundPlayerTests {
     /// The sentence names the sound and where to fix it, because nothing in this process
     /// can: sending it again means 25 MiB and a GStreamer probe, which is not what a
     /// control's few seconds are for.
+    /// From daemon 1.14.0 a file gone between the list and the play is a 404, and it
+    /// is the same news as a file the list did not name.
+    @Test("a sound that goes between the list and the play is refused by name")
+    func refusesWhatWentAfterTheList() async throws {
+        let robot = StubSoundboard(onRobot: ["tada.m4a"])
+        robot.playFailure = ReachyKitError.daemonRefused(
+            statusCode: 404,
+            detail: "no such sound: not uploaded, not a file, not an asset"
+        )
+
+        await #expect(throws: RobotSoundPlayer.Failure.notOnRobot("tada")) {
+            try await RobotSoundPlayer(client: robot).play(named: "tada.m4a")
+        }
+    }
+
     @Test("the refusal is a sentence a reader can act on")
     func namesTheSoundAndTheFix() {
         let message = RobotSoundPlayer.Failure.notOnRobot("air horn").errorDescription
