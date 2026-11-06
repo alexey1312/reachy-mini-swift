@@ -1484,7 +1484,7 @@
   "/api/media/play_sound": {
    "post": {
     "summary": "Play Sound",
-    "description": "Play a sound file on the robot's speaker.\n\nThe *file* field can be:\n- An absolute path on the daemon's filesystem.\n- A filename relative to the built-in assets directory.\n- A filename previously uploaded to the sounds temp directory.",
+    "description": "Play a sound file on the robot's speaker.\n\nThe *file* field can be:\n- An absolute path on the daemon's filesystem.\n- A filename relative to the built-in assets directory.\n- A filename previously uploaded to the sounds temp directory.\n\nAnswers 404 when the file is none of these.",
     "operationId": "play_sound_api_media_play_sound_post",
     "requestBody": {
      "content": {
@@ -3163,8 +3163,26 @@
       ],
       "title": "Head Pose"
      },
+     "target_head_pose": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/XYZRPYPose"
+       },
+       {
+        "$ref": "#/components/schemas/Matrix4x4Pose"
+       }
+      ],
+      "title": "Target Head Pose"
+     },
      "head_joints": {
       "title": "Head Joints",
+      "items": {
+       "type": "number"
+      },
+      "type": "array"
+     },
+     "target_head_joints": {
+      "title": "Target Head Joints",
       "items": {
        "type": "number"
       },
@@ -3174,8 +3192,19 @@
       "title": "Body Yaw",
       "type": "number"
      },
+     "target_body_yaw": {
+      "title": "Target Body Yaw",
+      "type": "number"
+     },
      "antennas_position": {
       "title": "Antennas Position",
+      "items": {
+       "type": "number"
+      },
+      "type": "array"
+     },
+     "target_antennas_position": {
+      "title": "Target Antennas Position",
       "items": {
        "type": "number"
       },

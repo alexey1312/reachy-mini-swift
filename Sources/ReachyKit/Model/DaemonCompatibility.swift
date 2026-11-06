@@ -11,17 +11,22 @@ public enum DaemonCompatibility: Equatable, Sendable {
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
 public enum DaemonCompatibilityPolicy {
     public static let minimumVersion = "1.9.0"
-    /// Raised to 1.13.0. It adds `GET/PUT /api/telemetry` and its two data-channel
-    /// commands, reads an `X-Reachy-Client` header (pollen-robotics/reachy_mini#1472,
-    /// #1487), and gives the JSON-RPC relay the installed list, removals, updates,
-    /// restart and followed jobs (#1471, #1477). It also changes behaviour this client
-    /// meets: the relay keeps a session whose peer link is live when an `endSession`
-    /// carries no reason (#1480), and `motors/set_mode` answers 409 for gravity
-    /// compensation without Placo (#1454). The committed spec is the v1.13.0 tag's.
-    /// 1.12.0 before it changed no surface: it brought the credential store (#1367),
-    /// the `Host` guard (#1423), fixed sign-in sentences (#1363) and `message_chunk`
-    /// frames (#1438).
-    public static let testedVersion = "1.13.0"
+    /// Raised to 1.14.0. A stop somebody asked for no longer ends in the daemon's own
+    /// sleep: the robot stays awake in the zero pose (pollen-robotics/reachy_mini#1488),
+    /// so `RobotSession.parkAfterApp` now tells a stop from an app that ended by itself.
+    /// A second move is refused instead of run beside the first (#1513), `play_sound`
+    /// answers 404 for a name it does not hold (#1537), and the data channel gains
+    /// `apps.get_startup`, `apps.set_startup` (#1476) and `client_hello` (#1532). The
+    /// committed spec is the v1.14.0 tag's.
+    /// 1.13.0 before it added `GET/PUT /api/telemetry` and its two data-channel
+    /// commands, reads an `X-Reachy-Client` header (#1472, #1487), and gives the
+    /// JSON-RPC relay the installed list, removals, updates, restart and followed jobs
+    /// (#1471, #1477). The relay keeps a session whose peer link is live when an
+    /// `endSession` carries no reason (#1480), and `motors/set_mode` answers 409 for
+    /// gravity compensation without Placo (#1454).
+    /// 1.12.0 changed no surface: it brought the credential store (#1367), the `Host`
+    /// guard (#1423), fixed sign-in sentences (#1363) and `message_chunk` frames (#1438).
+    public static let testedVersion = "1.14.0"
 
     /// Whether the daemon is *known* to be older than `floor`.
     ///

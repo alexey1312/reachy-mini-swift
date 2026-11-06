@@ -5,15 +5,15 @@ import Testing
 struct DaemonCompatibilityTests {
     @Test("tested baseline is supported")
     func baseline() {
-        #expect(DaemonCompatibilityPolicy.evaluate("1.13.0") == .supported)
-        #expect(DaemonCompatibilityPolicy.evaluate("v1.13.0") == .supported)
+        #expect(DaemonCompatibilityPolicy.evaluate("1.14.0") == .supported)
+        #expect(DaemonCompatibilityPolicy.evaluate("v1.14.0") == .supported)
     }
 
     /// A daemon between the minimum and the tested baseline is supported outright,
     /// not warned about — the warning is for versions this client has never seen.
     @Test(
         "daemons between the minimum and the baseline are supported",
-        arguments: ["1.9.0", "1.9.5", "1.10.0", "1.10.5", "1.11.0", "1.12.0"]
+        arguments: ["1.9.0", "1.9.5", "1.10.0", "1.10.5", "1.11.0", "1.12.0", "1.13.0"]
     )
     func withinRange(version: String) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .supported)
@@ -27,7 +27,7 @@ struct DaemonCompatibilityTests {
         ))
     }
 
-    @Test("newer compatible versions connect with a warning", arguments: ["1.13.1", "1.14.0"])
+    @Test("newer compatible versions connect with a warning", arguments: ["1.14.1", "1.15.0"])
     func newer(version: String) {
         #expect(DaemonCompatibilityPolicy.evaluate(version) == .untestedNewer(
             reported: version,
