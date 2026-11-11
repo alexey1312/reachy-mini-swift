@@ -27,8 +27,13 @@ so a target with no ReachyKit can link it.
 - **An action returns before the work it starts ends.**
   `do` answers with the tree as it is when the action returns.
   The client polls `ls` for the state it expects (project rule 7), and does not sleep.
-- **The server is `#if DEBUG`, and it binds `127.0.0.1`.**
-  A Release build does not contain the type.
+- **Every file of this target is inside `#if DEBUG`, and the server binds `127.0.0.1`.**
+  A Release build of the target is empty.
+  That is measured and not assumed: with only the server inside `#if DEBUG`,
+  a Release app that linked ReachyUI still carried 853 symbols of this target,
+  because Xcode links a package target that is a dependency whether or not a file imports it.
+  The check is `nm <Release binary> | grep -c ReachyIntrospection.Introspection`, which must print 0.
+  `ReachyIntrospect` is a Debug tool for the same reason.
   A simulator shares the loopback of its Mac, so a client on the Mac reaches an iOS build.
   A real device is out of reach, and that is accepted.
 - **The wire format is one JSON object for each line**, in both directions.

@@ -64,7 +64,9 @@ A node is an extension over a model as the model is.
 
 ### 3. The server is Debug only, on the loopback only, behind a launch argument
 
-`IntrospectionServer` is inside `#if DEBUG`, so a Release build does not contain it.
+Every file of the kit is inside `#if DEBUG`, so a Release build contains no part of it.
+The server alone was not enough: a Release app that linked ReachyUI still carried 853 symbols of the kit,
+because Xcode links a package target that is a dependency whether or not a file imports it.
 The listener binds `127.0.0.1`.
 A simulator shares the loopback of its Mac; a real device is out of reach, and that is accepted.
 The app starts the server only for `--reachy-introspect <port>`.
