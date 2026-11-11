@@ -110,6 +110,7 @@ All three answers were measured on 2026-11-11.
   from the close of the first-launch sheet to the Settings tab.
   The Maestro flow for the gate alone took 17 s on the same simulator, and 30 s with its driver.
   The same path in process, as a swift-testing case, takes 0.18 s.
+  On the Debug macOS app, started with `open -n -g … --args --reachy-introspect 8766`, the path took 2.5 s.
 - **The move of one screen's state into a model cost 144 lines of model and 111 lines of tests**,
   and it took 60 lines out of the view (64 added, 124 removed across three files).
   That is the price of every later screen that keeps its state in `@State`.
