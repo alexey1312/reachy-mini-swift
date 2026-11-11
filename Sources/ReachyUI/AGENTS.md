@@ -564,6 +564,42 @@ Shared SwiftUI views for all platforms (macOS/iPadOS/iOS). Depends on ReachyKit 
   listed configuration would disagree with it. The widget extension is an appex, not an app, and the requirement does
   not reach it.
 
+## The introspection tree
+
+A Debug build started with `--reachy-introspect <port>` serves its screens as a tree
+(`docs/adr/0007-introspection-tree.md`, `.claude/skills/drive-app`).
+The kit and its rules are in `Sources/ReachyIntrospection/AGENTS.md`.
+The nodes of this target are in `Sources/ReachyUI/Introspection`, all inside `#if DEBUG`.
+
+- **A node needs a model, and `@State` is out of its reach.**
+  `ConnectGateModel` exists for that reason: `ConnectionScreen` held eleven `@State` properties
+  and its actions were private methods of the view.
+  A further screen pays the same price before it gets a node.
+- **The screen owns `ConnectGateModel`, and the root does not.**
+  The root lives for the whole run, so a root-owned model would bring a gate back after a disconnect
+  with the old address and an open Developer disclosure.
+  The screen registers its model with `.introspected(_:)` when it appears.
+  The registry holds it weakly, and is in the environment only below `RootIntrospection`:
+  a preview and a snapshot have none, so the modifier does nothing there.
+- **The fork of the tree is the fork of `ReachyRootView.body`**, asked through
+  `ConnectProgressModel.releasesGate(for:)`.
+  Change one and change the other.
+  A root sheet comes first in the tree, because a sheet covers what is under it.
+- **A node writes the condition of each control a second time.**
+  `submit` is offered while the address parses, and `startSimulator` while the disclosure is open
+  and the phase accepts a choice.
+  When a `disabled` changes on the screen, change the matching line in the node.
+  `IntrospectionGateTests` holds the five controls with an `AccessibilityID` to five actions
+  (`ConnectGateModel.actionForControl`) and notices nothing else.
+- **A node's state is a private `Encodable` struct beside the node.**
+  A domain type does not become `Codable` for this, because it then looks fit for `JSONCodec.stored`.
+  `ConnectionPhase.introspectionName` is a name for an agent to compare, and not a caption.
+- **A test with no view does the view's one line of wiring.**
+  `ConnectionScreen` hands each phase to `ConnectProgressModel` in an `onChange`,
+  so the journey test calls `progress.observe(session.phase)` in its wait.
+- **Not covered:** the screens inside the tabs, Forget, the row for a daemon on this Mac,
+  `DaemonUpdateScreen` and the first run.
+
 ## The joystick's rotation zone
 
 `JoystickMapping` and `TeleopDriver` live in `Sources/ReachyTeleop`, which the TV app links too.

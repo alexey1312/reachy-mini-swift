@@ -142,6 +142,7 @@ simulator the tests run on (`REACHY_SKIP_SIMSLIM=1` opts out — see **The tests
 ./bin/mise run test:smoke     # Maestro: build, install, walk the connect gate on a simulator
 ./bin/mise run test:smoke:sim # Same plus the full user path against a running sim-daemon
 ./bin/mise run test:flows     # Re-run the flows against the installed app, no compile (13 s)
+./bin/mise run introspect -- ls  # Read or drive a running Debug build as JSON (.claude/skills/drive-app)
 ./bin/mise run release:ios    # Archive Release and upload to TestFlight (docs/release.md)
 ./bin/mise run release:macos  # Archive, notarize, staple and zip for Developer ID
 ./bin/mise run asc -- ...     # App Store Connect CLI with the release key loaded
@@ -345,6 +346,17 @@ replaced by those flows (ADR 0005). Four things about that are worth knowing bef
     So tabs and segments are still matched by visible English text,
     the language pin stays, and `assertVisible: "Nearby"` is still weaker than the `app.buttons["Nearby"]` it replaced.
   - **An identifier does not change a pixel**, so adding one moves no reference image.
+
+**A Debug build also serves its screens as a tree an agent can read, and that is not a Maestro flow.**
+Start the app with `--reachy-introspect <port>` and use `mise run introspect -- ls` or `-- do <action> [json]`.
+Each screen with a node answers with its name, its state as JSON and its actions,
+and the tree refuses an action that is not on the focused node.
+It is one part of Shopify's Reflex architecture; `docs/adr/0007-introspection-tree.md` says why only that part.
+The server is `#if DEBUG` and binds `127.0.0.1`, so a Release build does not contain it.
+`--reachy-smoke` does not start it, because that argument stops every `onAppear` of the app.
+The connect gate, the three root sheets and the tab shell have nodes; the screens inside the tabs have none.
+A behavior test drives the same tree in process (`IntrospectionGateTests`), with no socket and no simulator.
+`.claude/skills/drive-app` is the procedure, and `Sources/ReachyIntrospection/AGENTS.md` has the rules for a node.
 
 Tier 2 (`test:smoke:sim`) is tagged `daemon` and excluded from `test:smoke` by tag, the way `test:sim` is gated on
 `REACHY_SIM_HOST` — a plain run skips it. Its host arrives as a flow variable (`-e HOST=…`), not through the
@@ -836,7 +848,7 @@ Consult `.claude/rules/` when working in the matching area:
 | `.claude/rules/networking.md` | Discovery, ATS, Local Network permission |
 
 Per-target notes live beside the code:
-`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI,ReachyKeychain,ReachyTeleop}/AGENTS.md`
+`Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI,ReachyKeychain,ReachyTeleop,ReachyIntrospection}/AGENTS.md`
 and `Apps/ReachyStickers/AGENTS.md`
 (`CLAUDE.md` is a symlink to it).
 **`ReachyKeychain/AGENTS.md` owns every `SecItem` call** —
