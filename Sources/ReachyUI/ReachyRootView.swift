@@ -178,6 +178,8 @@ public struct ReachyRootView<Developer: View>: View {
                 reconnect: connectRemotely
             )
         )
+        // The tree an agent reads, for a run started with `--reachy-introspect`.
+        .modifier(RootIntrospection(session: session, router: router, progress: progress))
         #endif
         .modifier(
             RootLifecycle(

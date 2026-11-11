@@ -1,8 +1,7 @@
 # ADR 0007: An introspection tree for agents — one part of Reflex, and no reducers
 
-- Status: Proposed —
-  the kit stands,
-  and the questions under **What the first two screens have to answer** are measured before this is Accepted
+- Status: Accepted for the connect gate and the tab shell.
+  A node for a further screen is a decision for that screen, by the price measured below
 - Date: 2026-11-11
 
 ## Context
@@ -98,18 +97,43 @@ There is one platform here, so a behavior test is a swift-testing suite that dri
 Shopify names a macro that could write a node.
 Two or three nodes do not pay for a macro target.
 
-## What the first two screens have to answer
+## What the first two screens answered
 
-The connect gate and `ReachyRouter` come first.
-The gate has no model: `ConnectionScreen` holds its state in eleven `@State` properties,
-and its actions are private methods of the view.
-A node needs a model to read, so the gate's state moves into a `ConnectGateModel` first.
+The connect gate and `ReachyRouter` came first.
+The gate had no model: `ConnectionScreen` held its state in eleven `@State` properties,
+and its actions were private methods of the view.
+A node needs a model to read, so the gate's state moved into `ConnectGateModel` first.
+All three answers were measured on 2026-11-11.
 
-- **Open:** the time of the path "gate → simulator → tabs" through the socket, against 13 s for `test:flows`.
-- **Open:** the size of the move of one screen's state into a model.
-  That number is the price of every later screen.
-- **Open:** whether the move changes a reference image.
-  The expected answer is none of the 1,880.
+- **The path "gate → simulator → tabs" takes 1.1 s through the socket.**
+  That is five commands and three polls of `ls` on an iPhone 17 Pro simulator (iOS 27.0),
+  from the close of the first-launch sheet to the Settings tab.
+  The Maestro flow for the gate alone took 17 s on the same simulator, and 30 s with its driver.
+  The same path in process, as a swift-testing case, takes 0.18 s.
+  On the Debug macOS app, started with `open -n -g … --args --reachy-introspect 8766`, the path took 2.5 s.
+- **The move of one screen's state into a model cost 144 lines of model and 111 lines of tests**,
+  and it took 60 lines out of the view (64 added, 124 removed across three files).
+  That is the price of every later screen that keeps its state in `@State`.
+- **No reference image moved.**
+  535 snapshot tests passed after the move,
+  and the checksums of the references were equal before and after the run.
+
+### What the nodes do not cover
+
+- **The screens inside the five tabs.**
+  The shell is the focused node on every tab.
+- **Three things on the gate**: Forget, whose confirmation is `@State` of `NetworkRobotsSection`;
+  the row for a daemon on this Mac; and `DaemonUpdateScreen`.
+- **The first run**, which has a name in the tree and no action.
+- **A real device.** The server binds the loopback.
+
+### The model stays with its screen
+
+The plan was for the root to own `ConnectGateModel`.
+The screen owns it, because the root lives for the whole run:
+a gate that came back after a disconnect would keep the old address and an open Developer disclosure.
+So the screen registers its model when it appears (`.introspected(_:)`),
+through a registry in the environment that only an introspected run reads.
 
 ## Consequences
 
@@ -121,3 +145,6 @@ A node needs a model to read, so the gate's state moves into a `ConnectGateModel
   The reference images stay the check for those.
 - A screen whose state is in `@State` needs that state in a model before it can have a node.
   That is a refactor for each screen, and this ADR does not commit to it beyond the first two.
+- A node writes the condition of each control a second time.
+  A `disabled` that changes on the screen must change in the node,
+  and only the five controls with an `AccessibilityID` have a test that notices.

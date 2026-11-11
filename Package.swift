@@ -138,8 +138,8 @@ let package = Package(
             // rows and the widget's tiles draw. The arrow points this way round on
             // purpose: the widget target must stay clear of ReachyMedia.
             dependencies: [
-                "HuggingFaceAuth", "ReachyDesign", "ReachyJSON", "ReachyKit", "ReachyMedia", "ReachyScene",
-                "ReachySimulator", "ReachySSH", "ReachyTeleop", "ReachyWidgetUI",
+                "HuggingFaceAuth", "ReachyDesign", "ReachyIntrospection", "ReachyJSON", "ReachyKit", "ReachyMedia",
+                "ReachyScene", "ReachySimulator", "ReachySSH", "ReachyTeleop", "ReachyWidgetUI",
             ],
             // `Previews` sits beside the views it documents but is compiled by the Xcode targets
             // in `Apps/`, not by this one: `#Preview` is an external macro whose implementation
@@ -195,7 +195,8 @@ let package = Package(
         // The app as a tree an agent can read and drive: a node for each screen, with
         // its state as JSON and its actions by name. On Foundation, Network and
         // `ReachyJSON` alone, so that a target with no ReachyKit can link it. Not a
-        // product until `ReachyUI` links it — see docs/adr/0007-introspection-tree.md.
+        // product: `ReachyUI` links it, for Debug builds alone, and the apps link
+        // `ReachyUI` — see docs/adr/0007-introspection-tree.md.
         .target(
             name: "ReachyIntrospection",
             dependencies: ["ReachyJSON"],
@@ -278,7 +279,7 @@ let package = Package(
             // `ReachySimulator` for the client a simulated viewport source carries.
             dependencies: [
                 "ReachyUI", "ReachyKit", "ReachyMedia", "ReachySimulator", "ReachyTeleop", "ReachyWidgetUI",
-                "HuggingFaceAuth",
+                "HuggingFaceAuth", "ReachyIntrospection",
             ]
         ),
         .testTarget(

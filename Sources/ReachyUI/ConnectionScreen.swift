@@ -90,6 +90,7 @@ struct ConnectionScreen: View {
             }
         }
         .onAppear(perform: appeared)
+        .introspected(model)
         .sheet(isPresented: $model.showsOnboarding) {
             OnboardingFlow(onFinish: model.finishOnboarding) { model.showsOnboarding = false }
                 .reachySheet()
