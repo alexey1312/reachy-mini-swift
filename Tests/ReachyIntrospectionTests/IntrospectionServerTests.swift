@@ -44,14 +44,26 @@ struct IntrospectionServerTests {
         #expect(refused.ok == false)
     }
 
+    /// A stopped listener closes a moment after `stop()` returns, and it can still
+    /// answer in that moment. So the test waits for the refusal (project rule 7).
     @Test("a client with no app behind the port gets a reason, not a hang")
     func reportsNoListener() async throws {
         let server = IntrospectionServer(tree: tree(over: Counter()))
         let port = try await server.start()
         server.stop()
+        let client = IntrospectionClient(port: port)
 
-        await #expect(throws: IntrospectionClient.Failure.self) {
-            _ = try await IntrospectionClient(port: port).send(IntrospectionRequest(cmd: .list))
+        var failure: (any Error)?
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while failure == nil, ContinuousClock.now < deadline {
+            do {
+                _ = try await client.send(IntrospectionRequest(cmd: .list))
+                try await Task.sleep(for: .milliseconds(20))
+            } catch {
+                failure = error
+            }
         }
+
+        #expect(failure is IntrospectionClient.Failure)
     }
 }

@@ -10,6 +10,8 @@ public struct IntrospectionClient: Sendable {
     public enum Failure: Error, CustomStringConvertible {
         case notListening(port: UInt16, reason: String)
         case closedBeforeAnswer
+        /// The connection broke after it opened: the app quit, or its listener closed.
+        case connectionLost(reason: String)
 
         public var description: String {
             switch self {
@@ -20,6 +22,8 @@ public struct IntrospectionClient: Sendable {
                 """
             case .closedBeforeAnswer:
                 "the app closed the connection before it answered"
+            case let .connectionLost(reason):
+                "the connection to the app broke (\(reason))"
             }
         }
     }
@@ -35,7 +39,16 @@ public struct IntrospectionClient: Sendable {
     }
 
     /// Sends one line and returns the line that answers it, without its newline.
+    /// Every transport error arrives as a `Failure`, so the tool prints a sentence.
     public func sendLine(_ line: Data) async throws -> Data {
+        do {
+            return try await exchange(line)
+        } catch let error as NWError {
+            throw Failure.connectionLost(reason: String(describing: error))
+        }
+    }
+
+    private func exchange(_ line: Data) async throws -> Data {
         let connection = NWConnection(
             host: .ipv4(.loopback),
             port: NWEndpoint.Port(rawValue: port) ?? .any,
