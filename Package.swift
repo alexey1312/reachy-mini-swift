@@ -192,6 +192,26 @@ let package = Package(
             name: "ReachyGeometryExport",
             dependencies: ["ReachyKit", "ReachySimulator"]
         ),
+        // The app as a tree an agent can read and drive: a node for each screen, with
+        // its state as JSON and its actions by name. On Foundation, Network and
+        // `ReachyJSON` alone, so that a target with no ReachyKit can link it. Not a
+        // product until `ReachyUI` links it — see docs/adr/0007-introspection-tree.md.
+        .target(
+            name: "ReachyIntrospection",
+            dependencies: ["ReachyJSON"],
+            exclude: ["AGENTS.md", "CLAUDE.md"]
+        ),
+        // The client of that tree, `mise run introspect`. An executable for the
+        // reason `ReachyGeometryExport` is one: the request and response types are
+        // the app's own.
+        .executableTarget(
+            name: "ReachyIntrospect",
+            dependencies: ["ReachyIntrospection", "ReachyJSON"]
+        ),
+        .testTarget(
+            name: "ReachyIntrospectionTests",
+            dependencies: ["ReachyIntrospection"]
+        ),
         .testTarget(
             name: "ReachyDesignTests",
             dependencies: ["ReachyDesign"]
