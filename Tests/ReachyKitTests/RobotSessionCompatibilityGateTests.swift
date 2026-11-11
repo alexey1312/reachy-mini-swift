@@ -98,8 +98,16 @@ private final class OldDaemonClient: RobotAPIClient, AudioLevelClient, DaemonUpd
 @MainActor
 @Suite("RobotSession compatibility gate")
 struct RobotSessionCompatibilityGateTests {
+    /// A store of its own. An automatic attempt takes only the robot the store holds
+    /// (`admitsAutomatically`), and other suites connect against the shared store at
+    /// the same time: with it, `latchesOnAutomaticAttempts` was passed over and stayed
+    /// `.idle` in about one run in four of the whole package.
     private func makeSession(_ client: OldDaemonClient) -> RobotSession {
-        RobotSession { _ in client }
+        let session = RobotSession { _ in client }
+        if let defaults = UserDefaults(suiteName: "RobotSessionCompatibilityGateTests.\(UUID().uuidString)") {
+            session.knownRobots = KnownRobotStore(defaults: defaults)
+        }
+        return session
     }
 
     private func requirement(of session: RobotSession) -> DaemonUpdateRequirement? {
