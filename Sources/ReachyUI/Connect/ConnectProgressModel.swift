@@ -86,6 +86,22 @@ final class ConnectProgressModel {
         startDrainIfNeeded()
     }
 
+    /// Whether the root may replace the gate with the shell.
+    ///
+    /// A function of the session's phase and this model, and not a property of the
+    /// root view, so that a test and the introspection tree ask the same question
+    /// the root asks. `ReachyRootView.isConnectedEnough` carries why each case
+    /// answers as it does.
+    func releasesGate(for phase: RobotSession.ConnectionPhase) -> Bool {
+        switch phase {
+        case let .connected(identity):
+            !holdsGate && displayed == .connected(identity)
+        case .unreachable:
+            true
+        case .idle, .connecting: false
+        }
+    }
+
     /// Nothing queued survives the attempt being abandoned.
     func reset() {
         cancelDrain()

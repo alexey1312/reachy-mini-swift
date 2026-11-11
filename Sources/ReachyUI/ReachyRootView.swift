@@ -221,13 +221,7 @@ public struct ReachyRootView<Developer: View>: View {
     /// behaves exactly as it did before this existed. `.unreachable` bypasses both:
     /// a later network blip belongs to the shell and must never resurrect the gate.
     private var isConnectedEnough: Bool {
-        switch session.phase {
-        case let .connected(identity):
-            !progress.holdsGate && progress.displayed == .connected(identity)
-        case .unreachable:
-            true
-        case .idle, .connecting: false
-        }
+        progress.releasesGate(for: session.phase)
     }
 
     /// Opens the relay session first, then hands the session a client that speaks

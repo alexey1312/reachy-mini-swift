@@ -1,6 +1,5 @@
 import ReachyDesign
 import ReachyKit
-import ReachySimulator
 import SwiftUI
 
 /// The two ways to reach a robot, one segment each, under a rail that says how the
@@ -30,34 +29,23 @@ struct ConnectionScreen: View {
     /// directly could not be previewed.
     var showPermissions: (() -> Void)?
 
-    @State private var browser: RobotBrowser
-    @State private var manualInput: String
-    @State private var route: ConnectRoute
     @Environment(\.reachyPreviewMode) private var previewMode
-    @State private var resolving: String?
-    @State private var showsOnboarding = false
-    /// Whether the Developer disclosure is open. Injected so a reference can
-    /// capture the simulator rows; closed on every launch otherwise.
-    @State private var showsDeveloper: Bool
-    /// Read in `init` rather than defaulted here, and TN3211 is why: Xcode 27
+    /// Everything the gate shows that is its own. The screen owns it, so a gate that
+    /// comes back after a disconnect starts from the stored address again.
+    ///
+    /// Built in `init` rather than defaulted here, and TN3211 is why: Xcode 27
     /// initialises `@State` lazily — back-deployed to iOS 17 — so a default
     /// expression runs at the property's first *access* instead of at the view's
-    /// construction. This one reads mutable global state that `RobotSession`
-    /// clears on the handshake (`finishOnboarding` below is the writer), so
-    /// deferring the read to the first body evaluation is the difference between
+    /// construction. The model reads mutable global state that `RobotSession`
+    /// clears on the handshake (`ConnectGateModel.finishOnboarding` is the writer),
+    /// so deferring the read to the first body evaluation is the difference between
     /// the banner appearing and never appearing. `manualInput` reads
     /// `KnownRobots.lastAddress` from the same position for the same reason.
-    @State private var awaitedHardwareID: String?
-    /// Resolved in `onAppear` rather than defaulted here: a default argument is
-    /// evaluated in a nonisolated context, and both models are main-actor isolated.
-    @State private var knownRobots: KnownRobotsModel?
-    @State private var sweep: CandidateSweep?
-    /// Resolved in `onAppear` for the same reason the two above are: it is
-    /// main-actor isolated, and a defaulted argument is evaluated nonisolated.
-    @State private var localDaemon: LocalDaemonModel?
-    /// Only a packaging failure can set this, and it is not `session.robotError`:
-    /// nothing was asked of a robot, so nothing about the robot went wrong.
-    @State private var simulatorError: String?
+    ///
+    /// The three optional models are resolved in `ConnectGateModel.start` rather
+    /// than defaulted here: a default argument is evaluated in a nonisolated
+    /// context, and all three are main-actor isolated.
+    @State private var model: ConnectGateModel
 
     init(
         session: RobotSession,
@@ -76,14 +64,17 @@ struct ConnectionScreen: View {
         self.progress = progress
         self.showRemoteRobots = showRemoteRobots
         self.showPermissions = showPermissions
-        _browser = State(initialValue: browser)
-        _manualInput = State(initialValue: manualInput ?? KnownRobots.lastAddress.map(\.displayString) ?? "")
-        _awaitedHardwareID = State(initialValue: KnownRobots.pendingProvisionedHardwareID)
-        _knownRobots = State(initialValue: knownRobots)
-        _sweep = State(initialValue: sweep)
-        _localDaemon = State(initialValue: localDaemon)
-        _route = State(initialValue: route)
-        _showsDeveloper = State(initialValue: showsDeveloper)
+        _model = State(initialValue: ConnectGateModel(
+            session: session,
+            browser: browser,
+            manualInput: manualInput ?? KnownRobots.lastAddress.map(\.displayString) ?? "",
+            awaitedHardwareID: KnownRobots.pendingProvisionedHardwareID,
+            knownRobots: knownRobots,
+            sweep: sweep,
+            localDaemon: localDaemon,
+            route: route,
+            showsDeveloper: showsDeveloper
+        ))
     }
 
     var body: some View {
@@ -99,30 +90,26 @@ struct ConnectionScreen: View {
             }
         }
         .onAppear(perform: appeared)
-        .sheet(isPresented: $showsOnboarding) {
-            OnboardingFlow(onFinish: finishOnboarding) { showsOnboarding = false }
+        .sheet(isPresented: $model.showsOnboarding) {
+            OnboardingFlow(onFinish: model.finishOnboarding) { model.showsOnboarding = false }
                 .reachySheet()
         }
-        .onChange(of: browser.services) { _, services in
-            knownRobots?.updateDiscovered(Set(services.compactMap(\.hardwareID)))
-            sweep?.resolve(services)
+        .onChange(of: model.browser.services) { _, services in
+            model.servicesChanged(services)
         }
         .onChange(of: session.phase, initial: true) { _, phase in
             progress.observe(phase)
         }
         .onDisappear {
             guard !previewMode else { return }
-            sweep?.stop()
-            browser.stop()
-            knownRobots?.stop()
-            localDaemon?.stop()
+            model.stop()
         }
     }
 
     private var segmentedBody: some View {
         VStack(spacing: 0) {
             ConnectHeader(session: session, displayed: progress.displayed)
-            ConnectRoutePicker(route: $route)
+            ConnectRoutePicker(route: $model.route)
                 .disabled(!session.phase.acceptsConnectionChoice)
                 .padding(.horizontal, Space.lg)
                 .padding(.bottom, Space.sm)
@@ -165,26 +152,26 @@ struct ConnectionScreen: View {
             // the one keeping every list below empty, and the way out of that
             // belongs above the lists rather than after two screens of them.
             setUpSection
-            switch route {
+            switch model.route {
             case .local:
-                if showsLocalDaemon, let localDaemon {
-                    LocalDaemonSection(model: localDaemon, connect: connectManually)
+                if showsLocalDaemon, let localDaemon = model.localDaemon {
+                    LocalDaemonSection(model: localDaemon, connect: model.connectManually)
                         .disabled(!session.phase.acceptsConnectionChoice)
                 }
                 NetworkRobotsSection(
                     session: session,
-                    browser: browser,
-                    entries: knownRobots?.entries ?? [],
-                    connect: connectManually,
-                    connectToService: connect(to:),
-                    forget: { knownRobots?.forget($0) },
-                    resolving: resolving
+                    browser: model.browser,
+                    entries: model.knownRobots?.entries ?? [],
+                    connect: model.connectManually,
+                    connectToService: model.connect(to:),
+                    forget: { model.knownRobots?.forget($0) },
+                    resolving: model.resolving
                 )
                 .disabled(!session.phase.acceptsConnectionChoice)
                 // Under the list rather than a segment away, which is where its own
                 // footer has always pointed: the reader who needs it is the one
                 // watching that list stay empty.
-                ManualAddressSection(input: $manualInput, connect: connectManually)
+                ManualAddressSection(input: $model.manualInput, connect: model.connectManually)
                     .disabled(!session.phase.acceptsConnectionChoice)
             case .account:
                 // The one segment with no `disabled` on it, which is what its own
@@ -209,10 +196,10 @@ struct ConnectionScreen: View {
     /// smoke test walked into it every run. Opened by hand, never remembered.
     private var developerSection: some View {
         Section {
-            DisclosureGroup(isExpanded: $showsDeveloper) {
+            DisclosureGroup(isExpanded: $model.showsDeveloper) {
                 SimulatorSection(
                     isConnecting: !session.phase.acceptsConnectionChoice,
-                    connect: connectToSimulator
+                    connect: model.connectToSimulator
                 )
             } label: {
                 // On the label, never on the group: an identifier on a
@@ -237,7 +224,7 @@ struct ConnectionScreen: View {
     /// sweep. `permissionLooksDenied` flips at most once in a browser's life.
     private var privacySection: some View {
         Section {
-            if browser.permissionLooksDenied {
+            if model.browser.permissionLooksDenied {
                 Label(.reachy("Local Network permission denied"), systemImage: "exclamationmark.triangle")
                     .foregroundStyle(Tone.danger.style)
                 PrivacySettingsButton(pane: .localNetwork)
@@ -246,7 +233,7 @@ struct ConnectionScreen: View {
                 Button(.reachy("Privacy permissions"), action: showPermissions)
             }
         } footer: {
-            if browser.permissionLooksDenied {
+            if model.browser.permissionLooksDenied {
                 Text(.reachy("Without it this app cannot find the robot or reach it at a typed address."))
             }
         }
@@ -275,7 +262,7 @@ struct ConnectionScreen: View {
         // Separate from the robot's own error, and shown regardless of
         // `automaticConnectionAllowed`: nothing was asked of a robot here, so
         // nothing about a robot is being retried.
-        if let simulatorError {
+        if let simulatorError = model.simulatorError {
             Section {
                 ReachyErrorRow(simulatorError)
             }
@@ -286,7 +273,7 @@ struct ConnectionScreen: View {
     /// so no choice of segment can hide it.
     private var setUpSection: some View {
         Section {
-            if let awaitedHardwareID {
+            if let awaitedHardwareID = model.awaitedHardwareID {
                 Label(
                     .reachy(
                         // swiftlint:disable:next line_length
@@ -298,7 +285,7 @@ struct ConnectionScreen: View {
                 .foregroundStyle(Tone.quiet.style)
             }
             Button {
-                showsOnboarding = true
+                model.showsOnboarding = true
             } label: {
                 Label(.reachy("Set up a new robot over Bluetooth"), systemImage: "antenna.radiowaves.left.and.right")
             }
@@ -308,64 +295,7 @@ struct ConnectionScreen: View {
 
     private func appeared() {
         guard !previewMode else { return }
-        let robots = knownRobots ?? KnownRobotsModel()
-        knownRobots = robots
-        robots.start()
-        browser.start()
-        let sweep = sweep ?? CandidateSweep(session: session)
-        self.sweep = sweep
-        sweep.start()
-        if showsLocalDaemon {
-            let localDaemon = localDaemon ?? LocalDaemonModel()
-            self.localDaemon = localDaemon
-            localDaemon.start()
-        }
-        // Only the very first launch, and never as a gate: a robot already on the
-        // network is found without any of this, and the button below reopens it.
-        if KnownRobots.lastAddress == nil, !KnownRobots.hasCompletedOnboarding {
-            showsOnboarding = true
-        }
-    }
-
-    /// The robot reported where it landed over Bluetooth, which beats waiting for the
-    /// sweep to stumble across it. The hardware id is what confirms the arrival, and
-    /// `RobotSession` clears it on the handshake.
-    private func finishOnboarding(_ outcome: OnboardingOutcome) {
-        showsOnboarding = false
-        awaitedHardwareID = outcome.hardwareID
-        guard let address = outcome.address else { return }
-        sweep?.expect(address)
-    }
-
-    private func connectManually(to address: RobotAddress) {
-        sweep?.standDown()
-        Task { await session.connect(to: address) }
-    }
-
-    /// Nothing to sweep for and nothing to resolve — the robot is built here.
-    ///
-    /// A simulator that cannot be built means the bundled description did not
-    /// parse, which `BundledRobotGeometryTests` rules out at build time. Reported
-    /// rather than crashed, because a resource is a packaging fact and the reader
-    /// can still reach every other route on this screen.
-    private func connectToSimulator() {
-        sweep?.standDown()
-        guard let client = SimulatedRobotClient() else {
-            simulatorError = String(localized: .reachy("The simulator's robot description could not be read."))
-            return
-        }
-        simulatorError = nil
-        Task { await session.connect(simulating: client) }
-    }
-
-    private func connect(to service: RobotBrowser.DiscoveredService) {
-        sweep?.standDown()
-        resolving = service.id
-        Task {
-            defer { resolving = nil }
-            guard let address = await BonjourResolver.resolve(service.endpoint) else { return }
-            await session.connect(to: address)
-        }
+        model.start(offersLocalDaemon: showsLocalDaemon)
     }
 }
 
