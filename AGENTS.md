@@ -847,6 +847,11 @@ Consult `.claude/rules/` when working in the matching area:
 | `.claude/rules/daemon-api.md` | Endpoints, WebSockets, timeouts, jobs    |
 | `.claude/rules/networking.md` | Discovery, ATS, Local Network permission |
 
+Skills are in `.claude/skills`, and that directory is the one source.
+`.agents/skills` is a symlink to it, for a tool that reads skills from `.agents`,
+as `CLAUDE.md` is a symlink to `AGENTS.md`.
+Add or change a skill in `.claude/skills` only.
+
 Per-target notes live beside the code:
 `Sources/{ReachyKit,ReachyMedia,ReachyUI,ReachyScene,ReachyDesign,ReachyWidgetUI,ReachyKeychain,ReachyTeleop,ReachyIntrospection}/AGENTS.md`
 and `Apps/ReachyStickers/AGENTS.md`
