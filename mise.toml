@@ -482,6 +482,10 @@ xcrun simctl launch "$SIM" com.alexey1312.ReachyMiniStorybook
 description = "Export the robot's USDZ for Create ML object-tracking training (#77)"
 run = "Scripts/export-robot-usdz.sh"
 
+[tasks.introspect]
+description = "Read or drive a running Debug build through its introspection tree (usage: mise run introspect -- ls)"
+run = "./Scripts/introspect.sh"
+
 [tasks.lint]
 description = "Run SwiftLint, actionlint, the catalogue check, and the version lockstep checks"
 # The shebang is not decoration: mise runs an inline task with `sh -c`, which on macOS is
