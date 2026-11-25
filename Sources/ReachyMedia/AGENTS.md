@@ -201,6 +201,19 @@ it is the phase that waits.
   `CameraSessionNegotiationTests` counts the asks through `MediaAcquiring`.
   Over the relay there is no probe:
   each would be an ask to central that nobody made, against a service that rate-limits asks.
+- **From daemon 1.15.0 the acquire can say that the robot's media did not start, and then nothing else is tried**
+  (`.mediaDidNotStart`).
+  The daemon stops a pipeline that cannot start, and stops its central relay with it.
+  `POST /api/media/acquire` starts the pipeline again and answers 500 when that start fails too
+  (pollen-robotics/reachy_mini#1567), for example while another process holds the camera.
+  `RobotConnection.acquireMedia` reads that 500 as `ReachyKitError.mediaDidNotStart`, and it rides `hubClient`,
+  because the start waits up to 5 s and the 3.5 s health-poll budget would give up first.
+  The attempt then ends before it subscribes: there is no producer to ask,
+  and two deadlines would spend 30 s to say less.
+  No probe follows, because only an acquire starts that pipeline again, and a probe must not send one.
+  Try again does.
+  Any other failure of the acquire is what it always was, and the attempt subscribes all the same.
+  Over the relay nothing acquires, and such a robot is simply gone from central.
 - **Starting over overlaps the old attempt, and three things keep it from leaking into the new one.**
   `CameraSignalingClient` clears only the socket its own loop opened;
   `accept` re-checks `peer === peerConnection` after every await;

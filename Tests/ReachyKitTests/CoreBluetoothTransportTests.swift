@@ -67,6 +67,35 @@ struct CoreBluetoothTransportTests {
         #expect(list.first?.rssi == -48)
     }
 
+    /// From daemon 1.15.0 a renamed robot advertises its name in the scan response
+    /// (pollen-robotics/reachy_mini#1558), so a sighting of the advert alone has only
+    /// the fallback name to offer.
+    @Test("a sighting without a local name keeps the name the robot advertised")
+    func keepsTheAdvertisedNameAcrossSightings() {
+        var list = CoreBluetoothTransport.merging(Self.robot(Self.near, name: "Kitchen", rssi: -50), into: [])
+        list = CoreBluetoothTransport.merging(Self.robot(Self.near, rssi: -48), namedByAdvert: false, into: list)
+
+        #expect(list.map(\.name) == ["Kitchen"])
+        #expect(list.first?.rssi == -48)
+    }
+
+    @Test("a robot renamed while in range shows its new name")
+    func takesANewAdvertisedName() {
+        var list = CoreBluetoothTransport.merging(Self.robot(Self.near, name: "Kitchen", rssi: -50), into: [])
+        list = CoreBluetoothTransport.merging(Self.robot(Self.near, name: "Studio", rssi: -48), into: list)
+
+        #expect(list.map(\.name) == ["Studio"])
+    }
+
+    /// The first sighting of a robot may carry no name at all, and the fallback is then
+    /// the only name there is.
+    @Test("a first sighting without a local name shows the fallback")
+    func firstSightingFallsBack() {
+        let list = CoreBluetoothTransport.merging(Self.robot(Self.near, rssi: -50), namedByAdvert: false, into: [])
+
+        #expect(list.map(\.name) == ["ReachyMini"])
+    }
+
     /// A robot that starts sending a different block replaces it: this is a robot
     /// changing networks, not a packet that happened to omit the field.
     @Test("fresh manufacturer data replaces the stored one")

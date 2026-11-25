@@ -21,6 +21,14 @@ import SwiftUI
     PreviewScene.onboarding(.preview(step: .scan, link: .preview(discovered: [.previewNear, .previewFar])))
 }
 
+// From daemon 1.15.0 a renamed robot advertises its name, so the list can name both.
+#Preview("Onboarding — two renamed robots found") {
+    PreviewScene.onboarding(.preview(
+        step: .scan,
+        link: .preview(discovered: [.previewRenamed, .previewRenamedLong])
+    ))
+}
+
 #Preview("Onboarding — connecting") {
     PreviewScene.onboarding(.preview(step: .scan, link: .preview(discovered: [.previewNear]), isBusy: true))
 }

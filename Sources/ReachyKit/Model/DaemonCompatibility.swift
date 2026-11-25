@@ -11,7 +11,14 @@ public enum DaemonCompatibility: Equatable, Sendable {
 /// Compatibility policy for the daemon API snapshot and hand-written WebSockets.
 public enum DaemonCompatibilityPolicy {
     public static let minimumVersion = "1.9.0"
-    /// Raised to 1.14.0. A stop somebody asked for no longer ends in the daemon's own
+    /// Raised to 1.15.1. 1.15.0 adds the six `/api/nfc` routes and their `nfc.*` relay verbs
+    /// (pollen-robotics/reachy_mini#1554), which this client does not call. What it changes
+    /// for this client is smaller: `volume/set` stops playing the test sound (#1325), a
+    /// media pipeline that cannot start stops, takes the central relay down with it, and
+    /// makes `media/acquire` answer 500 (#1567), and the Bluetooth advert carries the name
+    /// the user gave the robot (#1558). 1.15.1 times a pending sign-in with the monotonic
+    /// clock (#1577). The committed spec is the v1.15.1 tag's.
+    /// 1.14.0 before it: a stop somebody asked for no longer ends in the daemon's own
     /// sleep: the robot stays awake in the zero pose (pollen-robotics/reachy_mini#1488),
     /// so `RobotSession.parkAfterApp` now tells a stop from an app that ended by itself.
     /// A second move is refused instead of run beside the first (#1513), `play_sound`
@@ -26,7 +33,7 @@ public enum DaemonCompatibilityPolicy {
     /// gravity compensation without Placo (#1454).
     /// 1.12.0 changed no surface: it brought the credential store (#1367), the `Host`
     /// guard (#1423), fixed sign-in sentences (#1363) and `message_chunk` frames (#1438).
-    public static let testedVersion = "1.14.0"
+    public static let testedVersion = "1.15.1"
 
     /// Whether the daemon is *known* to be older than `floor`.
     ///

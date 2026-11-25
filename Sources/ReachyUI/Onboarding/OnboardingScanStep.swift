@@ -77,7 +77,7 @@ struct OnboardingScanStep: View {
             String(
                 localized: .reachy(
                     // swiftlint:disable:next line_length
-                    "Robots all advertise the same name, so they are listed by signal strength. The nearest one is at the top."
+                    "Robots are listed by signal strength. The nearest one is at the top. A robot that was never renamed shows the same name as every other."
                 )
             )
         default:

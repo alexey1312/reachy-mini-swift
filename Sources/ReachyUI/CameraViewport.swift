@@ -74,6 +74,21 @@ struct CameraViewport: View {
             } actions: {
                 Button(.reachy("Try again"), action: session.retry)
             }
+        case .mediaDidNotStart:
+            // The robot said so at once (daemon 1.15.0), and what frees the camera is on
+            // the robot, so the retry is the reader's to ask for here too.
+            ContentUnavailableView {
+                Label(.reachy("Camera did not start"), systemImage: "video.slash")
+            } description: {
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "The robot could not start its camera. Another program on the robot may be using it. Stop that program, then try again."
+                    )
+                )
+            } actions: {
+                Button(.reachy("Try again"), action: session.retry)
+            }
         case let .failed(message):
             ContentUnavailableView(
                 .reachy("Camera unavailable"),

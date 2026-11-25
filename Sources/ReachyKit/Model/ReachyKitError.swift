@@ -123,6 +123,14 @@ public enum ReachyKitError: Error, Sendable, Equatable {
     /// Appended, like every case since ``daemonLogsUnavailable``.
     case moveBusy
 
+    /// The robot could not start its media pipeline: `POST /api/media/acquire`
+    /// answered 500. Daemon 1.15.0 does that when the pipeline does not start, for
+    /// example while another process holds the camera (pollen-robotics/reachy_mini#1567),
+    /// and then also stops its central relay.
+    ///
+    /// Appended, like every case since ``daemonLogsUnavailable``.
+    case mediaDidNotStart
+
     /// The `detail` that guard answers with, verbatim.
     static let untrustedHostDetail = "Untrusted Host header"
 
@@ -158,6 +166,7 @@ public enum ReachyKitError: Error, Sendable, Equatable {
         case let .daemonRejected(statusCode): statusCode
         case let .daemonRefused(statusCode, _): statusCode
         case .untrustedHost: 400
+        case .mediaDidNotStart: 500
         // Spelled out rather than `default`, so a later case carrying a status code
         // is a compile error here instead of quietly reporting nil.
         case .invalidAddress, .notConnected, .unsupportedDaemonVersion,
@@ -233,6 +242,8 @@ extension ReachyKitError: LocalizedError {
             "The robot's usage data setting cannot be reached over this connection"
         case .moveBusy:
             "The robot is finishing another move; try again in a moment"
+        case .mediaDidNotStart:
+            "The robot could not start its camera"
         case let .untrustedHost(host):
             "The robot does not answer to “\(host)” — connect with its IP address or its .local name"
         case let .soundTooLarge(bytes, limit):

@@ -120,3 +120,18 @@ Run them in this order. The first three are the way back; the last one is the on
 - [ ] `pre_release=true` offers a different version from `false`.
 - [ ] `available_version: "unknown"` reproduces when the **robot** has no route to PyPI (block its WAN, not the
       phone's), and the app says the robot has no internet rather than that the check failed.
+
+## Since daemon 1.15
+
+Daemon 1.15.0 advertises the name the user gave the robot (pollen-robotics/reachy_mini#1558).
+A robot that was never renamed keeps `ReachyMini`.
+The name travels in the scan response and is cut to 29 bytes,
+and the adapter alias follows it, because iOS caches the GAP name after a connection.
+`CoreBluetoothTransport.merging` keeps the last advertised name across a sighting that carries none,
+so the scan list shows the name and does not fall back to the default between two packets.
+Only a robot can show whether iOS delivers the scan response often enough for that.
+
+- [ ] A renamed 1.15 robot: the onboarding scan list shows its name, and the name does not flicker.
+- [ ] A rename over Bluetooth (`SET_NAME`) while the list is open: the new name appears after the disconnect.
+- [ ] A 29-byte name: the row shows all of it (`Onboarding — two renamed robots found` covers the layout).
+- [ ] Two robots nobody renamed: both rows read `ReachyMini`, in a stable order.

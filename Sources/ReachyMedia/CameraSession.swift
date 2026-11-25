@@ -17,24 +17,6 @@ import ReachyKit
 @MainActor
 @Observable
 public final class CameraSession {
-    public enum Phase: Equatable, Sendable {
-        case connecting
-        /// Signaling is up but the daemon has no media producer (sim before acquire).
-        case waitingForProducer
-        /// The peer connection is connected — ICE found a path and DTLS finished on it,
-        /// so media can flow. Not merely a video track named in the offer: libwebrtc
-        /// announces that track while it applies the offer, before the robot has even
-        /// seen an answer, and taking that for a stream is what once left a dead
-        /// negotiation on screen as a black picture with no spinner.
-        case streaming
-        /// Negotiation stalled on the first attempt and again on the one retry after it,
-        /// so nothing more is tried until `retry()` — on the LAN, a slow probe aside.
-        /// Apart from `failed` because trying again is the remedy here, where for a robot
-        /// somebody else took it is the opposite — so only this one offers it.
-        case stalled
-        case failed(String)
-    }
-
     /// `internal(set)`, like `isMicEnabled` and `micPermission`, only so the extensions
     /// in their own files can move it — the negotiation, and the previews. This file is
     /// at SwiftLint's length limit. Outside the module all three read as they always did.
