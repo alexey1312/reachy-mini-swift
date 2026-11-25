@@ -7,6 +7,16 @@
         static let previewNear = BLEPeripheralSnapshot(id: previewID(1), name: "Reachy Mini", rssi: -41)
         static let previewFar = BLEPeripheralSnapshot(id: previewID(2), name: "Reachy Mini", rssi: -78)
 
+        /// Two robots with names of their own, which daemon 1.15.0 advertises
+        /// (pollen-robotics/reachy_mini#1558). The second is as long as the advert takes,
+        /// 29 bytes, so the scan row is seen at its widest.
+        static let previewRenamed = BLEPeripheralSnapshot(id: previewID(5), name: "Kitchen", rssi: -44)
+        static let previewRenamedLong = BLEPeripheralSnapshot(
+            id: previewID(6),
+            name: "Reachy in the workshop corner",
+            rssi: -71
+        )
+
         /// A robot advertising the block upstream's PR #1086 describes — which no
         /// unit here has been seen doing, so this fixture is the only place the
         /// decoded row can be looked at until one is.

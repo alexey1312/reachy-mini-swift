@@ -250,8 +250,10 @@ public actor RobotConnection {
         try await AudioLevel(client.getVolumeApiVolumeCurrentGet().ok.body.json)
     }
 
-    /// Note that the daemon plays a test sound on every accepted call, so this
-    /// belongs at the end of a slider gesture, never on each change.
+    /// Before 1.15.0 the daemon plays a test sound on every accepted call, so this
+    /// belongs at the end of a slider gesture, never on each change. From 1.15.0 it
+    /// plays nothing (pollen-robotics/reachy_mini#1325), and the slider stays silent,
+    /// as it does in Pollen's apps: Test sound is the way to hear the new level.
     public func setVolume(_ percent: Int) async throws -> AudioLevel {
         switch try await client.setVolumeApiVolumeSetPost(body: .json(.init(volume: percent))) {
         case let .ok(response):
@@ -326,7 +328,18 @@ public actor RobotConnection {
     /// Re-acquires camera/audio hardware for the daemon's WebRTC producer.
     /// The simulator registers no producer until this is called; on a real
     /// robot it's a harmless no-op when media is already held.
+    ///
+    /// From 1.15.0 it also starts a pipeline that stopped by itself, and answers 500
+    /// when the pipeline does not start (pollen-robotics/reachy_mini#1567). That start
+    /// waits up to 5 s (`PIPELINE_START_TIMEOUT_S`), more than the 3.5 s health-poll
+    /// budget, so the call rides `hubClient`: on `client` the answer that says why
+    /// would arrive after the request had given up.
     public func acquireMedia() async throws {
-        _ = try await client.acquireMediaApiMediaAcquirePost().ok
+        switch try await hubClient.acquireMediaApiMediaAcquirePost() {
+        case .ok:
+            return
+        case let .undocumented(statusCode, _):
+            throw statusCode == 500 ? ReachyKitError.mediaDidNotStart : ReachyKitError.fromStatusCode(statusCode)
+        }
     }
 }

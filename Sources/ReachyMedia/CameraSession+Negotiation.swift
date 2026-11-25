@@ -45,10 +45,11 @@ extension CameraSession {
     /// then a minute from there on, for as long as the robot stays away.
     static let probeDoublings = 2
 
-    /// Starts over after `.stalled`, with a fresh budget. Anything else is left alone: a
-    /// `.failed` session was refused by something that a retry would only fight.
+    /// Starts over after `.stalled` or `.mediaDidNotStart`, with a fresh budget. Anything
+    /// else is left alone: a `.failed` session was refused by something that a retry would
+    /// only fight.
     public func retry() {
-        guard isStarted, phase == .stalled else { return }
+        guard isStarted, phase == .stalled || phase == .mediaDidNotStart else { return }
         // A probe may be listening, and a carrier serves one subscription at a time.
         if eventsTask != nil {
             unsubscribe(.redial)
@@ -66,6 +67,10 @@ extension CameraSession {
     /// simulator registers no producer until it is asked to, but on a robot whose camera
     /// an app released for direct access the same request takes the camera back — and
     /// neither the quick retry after a stall nor a probe is anybody's request.
+    ///
+    /// An acquire that the robot answers with "the pipeline did not start" ends the
+    /// attempt before it subscribes (`mediaDidNotStart()`). Any other failure is what it
+    /// always was: the attempt asks for a session all the same.
     func subscribe(acquiringMedia: Bool) {
         let ending = ending
         let acquirer = acquiringMedia ? connection : nil
@@ -75,7 +80,15 @@ extension CameraSession {
         // and its socket (`RobotSceneModel.startStreaming` makes the same trade).
         eventsTask = Task { [weak self, signaling, acquirer] in
             await ending?.value
-            try? await acquirer?.acquireMedia()
+            do {
+                try await acquirer?.acquireMedia()
+            } catch ReachyKitError.mediaDidNotStart {
+                guard !Task.isCancelled else { return }
+                self?.mediaDidNotStart()
+                return
+            } catch {
+                // Anything else: ask for a session all the same.
+            }
             for await event in await signaling.events() {
                 // A replaced subscription can still hold an event; it is not this attempt's.
                 guard let self, !Task.isCancelled else { return }
@@ -99,6 +112,20 @@ extension CameraSession {
             await previous?.value
             await signaling.disconnect(hangUp)
         }
+    }
+
+    /// The robot answered the acquire with a pipeline that did not start, so there is no
+    /// producer to ask for a session. Nothing was subscribed, so nothing is ended; the
+    /// channels close as they do for `.stalled`, because no session follows until
+    /// somebody asks again.
+    func mediaDidNotStart() {
+        guard isStarted, phase == .connecting else { return }
+        eventsTask = nil
+        disarmDeadline()
+        stalledAttempts = 0
+        dataChannel.close()
+        poseChannel.close()
+        phase = .mediaDidNotStart
     }
 
     /// The first stall starts the attempt over; the second in a row reports it. Reached

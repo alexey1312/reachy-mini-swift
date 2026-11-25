@@ -38,12 +38,12 @@ extension CoreBluetoothTransport: CBCentralManagerDelegate {
             name: advertised ?? peripheral.name ?? BLEGATT.advertisedName,
             rssi: reading,
             // Carried rather than read here: the local name is identical on every
-            // unit, so this is the only thing in an advertisement that could tell
-            // two robots apart — and whether this firmware sends any is a hardware
-            // question the recovery console exists to answer.
+            // unit nobody renamed, so this is the only thing in such an advertisement
+            // that could tell two robots apart — and whether this firmware sends any
+            // is a hardware question the recovery console exists to answer.
             manufacturerData: advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data
         )
-        let merged = Self.merging(found, into: discovered)
+        let merged = Self.merging(found, namedByAdvert: advertised != nil, into: discovered)
         publish { $0.discovered = merged }
         emit(.discoveredChanged(merged))
     }

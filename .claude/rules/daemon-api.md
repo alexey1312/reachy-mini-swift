@@ -12,7 +12,7 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
 - REST: OpenAPI 3.1 at `Sources/ReachyKit/openapi.json`; canonical source
   `https://raw.githubusercontent.com/pollen-robotics/reachy_mini/<ref>/docs/source/API/openapi.json`.
   Refresh with `./bin/mise run update-spec <tag>` —
-  the tag of the release `testedVersion` names (`v1.14.0` now).
+  the tag of the release `testedVersion` names (`v1.15.1` now).
   Without a tag it takes `main`, which runs ahead of every release.
   The task also normalizes `anyOf: [X, {type: null}]` branches
   that swift-openapi-generator silently drops (`Scripts/normalize-openapi.py`). Swagger UI at `http://<host>:8000/docs`
@@ -36,13 +36,16 @@ Base: `http://<host>:8000/api`. Port is configurable in our client (upstream har
       `Skipping full-state frame:` line in the daemon journal. `StateStreamOptions` cannot express these on purpose.
       1.14.0 puts `target_*` on the `FullState` model (#1458), so the answer stops dropping them
       and each key is null without its flag.
-      The assertion stays: `target_head_pose` is None until something sets a target,
-      and upstream's fix for that is the open #1528.
+      Up to 1.14.0 the assertion stays: `target_head_pose` is None until something sets a target.
+      1.15.0 answers null there instead (#1528).
+      The rule stays for the robots before it, and nothing in this client needs a target.
   - `/api/move/ws/set_target` — live teleop
   - `/api/move/ws/updates`, `/api/move/ws/raw/write`
   - `/logs/ws/daemon` — daemon journal (NOTE: mounted at app root, not under `/api`, and ONLY with
     `--wireless-version` — absent on the simulator, upgrade rejected with 403)
-  - `/api/apps/ws/apps-manager/{job_id}` — install/remove job stream (prefer over polling `job-status`)
+  - `/api/apps/ws/apps-manager/{job_id}` — install/remove job stream (prefer over polling `job-status`).
+    Before 1.15.0 it could miss a job that ended before the socket opened, and a line from the job's thread
+    did not always wake it. 1.15.0 fixes both (#1299); `AppJobMonitor` still polls for the older robots.
 
 ## Wireless-only routes
 
@@ -129,6 +132,13 @@ Measured with `curl` against `sim-daemon` 1.12.0 on 2026-10-16.
   So a page in `AppSettingsScreen` can write to the daemon only while the robot is reached by a LAN address.
   A refused WebSocket is closed with 1008, which the client sees as a failed handshake (403).
 - Duplicate `Host` or `Origin` headers answer 400 `{"detail": "Duplicate Host or Origin header"}`.
+- **From 1.15.0 an app's own server on :7860 has the same guard** (#1569),
+  and its JSON-RPC `/rpc` refuses a WebSocket whose `Origin` is not trusted with 1008.
+  A connection with no `Origin` passes, so `ConversationRPCClient` and the daemon's relay are unaffected.
+  `AppSettingsScreen` is not: its page sends its own `Origin` on every write and on its socket.
+  So over a Tailscale address the page loads, and nothing on it saves.
+  Read from the code at v1.15.1, not measured.
+  The guard takes effect when the app's own venv has `reachy-mini` 1.15.0 or newer.
 
 ## Hugging Face on the robot (`/api/hf-auth/*`)
 
@@ -181,6 +191,12 @@ this app keeps its own in the Keychain (ADR 0003).
     because it could carry credentials.
     `RobotHFFailureCaption` translates the known sentences and shows a general one for anything else.
     `save-token` answers its sentence as a 400 `detail`, and `saveHFToken` keeps it.
+  - **1.15.1 times a pending sign-in with the monotonic clock** (#1577).
+    A freshly flashed Wireless boots with its clock at the image's build date,
+    and the first NTP sync jumps it forward by days, which expired every pending session at once.
+    So on a robot from 1.10.0 to 1.15.0 the first device-code sign-in after a fresh flash can read `expired`
+    while the code is still on screen, and the second one works.
+    `RobotHFFailureCaption` then says to link the robot again, which is the fix.
   - **`DELETE /token` writes a signed-out record** and advances a lifecycle generation instead of calling `logout()`.
     It also clears every OAuth and device-code session,
     so a client still polling reads `{"status": "expired", "message": "Session expired or not found"}`.
@@ -310,6 +326,36 @@ which is also what 1.12 answers for every verb here.
   `/update/start` to 1.13.0 brings the new certifi into the daemon venv by its dependency floor,
   but neither the hash-pinned pip bootstrap nor a uv upgrade.
 
+## Daemon 1.15.0 and 1.15.1
+
+1.15.0 was released on 2026-11-19 (issue #252) and 1.15.1 on 2026-11-24 (issue #253).
+Read from the `v1.14.0..v1.15.1` diff.
+The spec goes from 82 to 88 operations, and the six new ones are `/api/nfc/*`.
+As with 1.13 and 1.14, the changes that matter here are not the headline.
+
+- **NFC (#1554).** `GET /tag`, `GET /status`, `POST /enabled`, `GET /dump`, `POST /erase` and `POST /write`
+  under `/api/nfc`, and the same verbs as `nfc.*` on the relay, except `dump`, which stays on the LAN.
+  The routes that act on a tag answer 503 while the reader is off.
+  This client does not call them: the conversation app owns the hats (`docs/research/accessories.md`).
+  The reader is off in simulation, so `sim-daemon` answers only the disabled status.
+- **A media pipeline that does not start now stops, and takes the central relay down with it** (#1567).
+  Before 1.15.0 it was left dead until the daemon restarted.
+  `GET /api/media/status` then answers `available: false` with `released: false`,
+  and over the relay the robot is simply gone from central.
+  `POST /api/media/acquire` starts it again, also when nothing released it, and answers 500 when it does not start.
+  That start waits up to 5 s (`PIPELINE_START_TIMEOUT_S`), so `RobotConnection.acquireMedia` rides `hubClient`,
+  and `CameraSession` shows `.mediaDidNotStart` at once instead of spending two deadlines.
+- **`POST /api/volume/set` is silent** (#1325). See the audio levels below.
+- **A renamed robot advertises its name over Bluetooth** (#1558). See the Bluetooth service below.
+- **A failed stop cleanup no longer keeps the app slot** (#1533), and a new daemon kills an app that a dead one
+  left running (#1570). See the `stopping` section below.
+- **The API answers before the boot Wi-Fi scan ends** (#1572), so a robot that boots is reachable sooner.
+  A `/wifi/*` call that holds the lock then wins over the daemon's own hotspot fallback.
+- `full` state answers `target_head_pose: null` before any target (#1528), the app web server has the Host and
+  Origin guard (#1569), and the job socket flushes what it missed (#1299). Each is above.
+- 1.15.1 times pending sign-ins with the monotonic clock (#1577); see the Hugging Face section above.
+- 45 unreferenced STLs left the package (#1546). `ReachySimulator` carries none of them.
+
 ## Bluetooth service
 
 Read `services/bluetooth/bluetooth_service.py` in `.venv-sim` — the dispatch table is one `if/elif` chain and settles
@@ -334,6 +380,14 @@ most questions in a glance.
   the whole command back, which means "retry without `PRE`".
   There is no Bluetooth `PLAY`, `PLAY_SOUND` or `SLEEP` in any released or `main` daemon — #1219 proposed them and
   was closed.
+- **1.15.0 advertises the name the user gave the robot** (#1558).
+  The service reads `robot_name.json`, the file a rename writes, at start, every 10 s and right after `SET_NAME`.
+  A robot that was never renamed keeps `ReachyMini`.
+  The name travels in the scan response, because the 128-bit service UUID fills the advert,
+  and BlueZ cuts it to 29 bytes.
+  The adapter alias follows the name too, because iOS caches the GAP name after a connection.
+  So a sighting of the advert alone carries no name, and `CoreBluetoothTransport.merging` keeps the last one.
+  While a phone is connected the new advert waits for the disconnect.
 - The PIN is the last five characters of the Pollen audio device's USB serial (`38fb:1001`, read from
   `/sys/bus/usb/devices/*/serial`), compared verbatim: not necessarily digits, never case-folded. Do not uppercase the
   input field. Upstream states that serial is printed on the robot — it is **not** a separate code, and no route
@@ -409,6 +463,10 @@ Upstream found one cause of that wedge in #1523, open at 1.14.0:
 the pose reading after the process exits sits outside any `try`, so a raise skips `current_app = None`.
 1.14.0 keeps `get_current_head_pose()` there and adds `stop_running_move()` beside it.
 #1533 also names a stop whose client goes away as a cause.
+**1.15.0 fixes that cause** (#1533): the return to zero sits in a `try`, and `current_app = None` in its `finally`.
+An await that never returns still wedges the slot, so the client's deadlines stay.
+1.15.0 also records each app it starts under `running_apps/`,
+and the next daemon kills an app whose daemon died (#1570).
 This client does not give up first: the LAN route runs on the 35 s session and the relay's `apps.stop` waits 30 s,
 against 20 s for the app, 1 s for a left-over move and 1.5 s for the lift.
 
@@ -569,6 +627,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 
 - **`media/wobbling` and `media/tracking` are write-only, and no route reports whether either is on.**
   `GET /api/media/status` answers `{available, released, no_media}` — that is the media *server*, not these two.
+  From 1.15.0 `available` is also false for a pipeline that stopped by itself (#1567).
   `GET /api/media/tracking/face` answers `{detected, x, y, roll, ts}`, where `detected: false` means "tracking off"
   and "tracking on, nobody there" alike. State is held in `backend._tracking_enabled` / the media server and reaches
   no response. So a toggle here has no source of truth but the client's own memory, and any app on the robot can
@@ -865,7 +924,7 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
   the Constrained Baseline caps filter survives only on the fallback path,
   and the bitrate is no longer fixed, so expect the picture's quality to move with the network.
   The client sets no codec preference and takes whatever H.264 the offer carries.
-- Daemon 1.9.0 is the minimum API version and 1.14.0 the tested baseline. Enforce
+- Daemon 1.9.0 is the minimum API version and 1.15.1 the tested baseline. Enforce
   `DaemonCompatibilityPolicy` during the first status handshake: reject older/different-major versions, warn for
   newer 1.x or unknown versions, and tolerate unknown JSON fields. See `docs/adr/0001-daemon-compatibility-and-lan-security.md`.
 - The daemon has no authentication or encryption. v1 supports trusted private LAN/robot AP only; never imply that a
@@ -884,8 +943,10 @@ regex-scrapes the literal out of the app's `main.py`, so what arrives is the app
 - Speaker and microphone levels are `GET|POST /api/volume/{current,set}` and `/api/volume/microphone/{current,set}`,
   both `{"volume": 0…100}` in and `{volume, platform, device}` out. There is no separate "sensitivity" concept —
   microphone sensitivity *is* its input level. Wrapped as `AudioLevel`.
-  - **`POST /api/volume/set` plays a test sound on every accepted call** (it is in the route's own description).
-    Send it once a slider gesture ends, never on each change, or the robot beeps continuously.
+  - **Before 1.15.0 `POST /api/volume/set` plays a test sound on every accepted call** (it is in the route's own
+    description). Send it once a slider gesture ends, never on each change, or the robot beeps continuously.
+    1.15.0 removes the sound (#1325), and the slider is silent, as it is in Pollen's apps.
+    `POST /api/volume/test-sound` is the way to hear a level, and the Audio section offers it.
   - Out-of-range values come back as 422, so both setters map `.unprocessableContent` explicitly.
   - On `sim-daemon` these routes drive the **host Mac's own** speaker and mic (`platform: Darwin`), not a robot.
     Note the level before testing and restore it after.

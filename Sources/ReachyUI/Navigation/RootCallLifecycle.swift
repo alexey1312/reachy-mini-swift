@@ -70,9 +70,10 @@ struct RootCallLifecycle: ViewModifier {
 
     /// `.stalled` too: the session has spent its two attempts. On the LAN it still
     /// probes, but as much as a minute apart, and a call cannot sit silent that long.
+    /// `.mediaDidNotStart` has no microphone on the robot's side to talk to at all.
     private var cameraHasFailed: Bool {
         switch viewport.cameraSession?.phase {
-        case .failed, .stalled: true
+        case .failed, .stalled, .mediaDidNotStart: true
         default: false
         }
     }

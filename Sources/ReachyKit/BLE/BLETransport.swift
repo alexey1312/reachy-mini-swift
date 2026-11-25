@@ -3,9 +3,10 @@ import Foundation
 /// One robot seen while scanning.
 ///
 /// `id` is CoreBluetooth's per-host identifier, not the Bluetooth address, so it is
-/// meaningful only on this device. Every robot advertises the same local name, so two
-/// in range are told apart by signal strength until one is connected and its
-/// `hardwareID` can be read.
+/// meaningful only on this device. A robot nobody renamed advertises the same local name
+/// as every other, so two such robots in range are told apart by signal strength until
+/// one is connected and its `hardwareID` can be read. From daemon 1.15.0 a renamed robot
+/// advertises the name it was given (`BLEGATT.advertisedName`).
 public struct BLEPeripheralSnapshot: Identifiable, Hashable, Sendable {
     public let id: UUID
     public let name: String

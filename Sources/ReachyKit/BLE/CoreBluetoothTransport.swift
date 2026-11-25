@@ -360,35 +360,4 @@ extension CoreBluetoothTransport {
         @unknown default: .unknown
         }
     }
-
-    /// Strongest first. Every robot advertises the same name, so the order has to be
-    /// fully determined or the list reshuffles under the user's finger on each sighting.
-    static func merging(
-        _ snapshot: BLEPeripheralSnapshot,
-        into list: [BLEPeripheralSnapshot]
-    ) -> [BLEPeripheralSnapshot] {
-        // **The manufacturer block is carried across a sighting that lacks one.**
-        // CoreBluetooth calls back on every packet it accepts, and that block usually
-        // travels in the scan response rather than in the advertisement — so most
-        // callbacks legitimately have no `manufacturerData`, and replacing the
-        // snapshot wholesale erased the one that did. The field then read nil for
-        // ever, which is indistinguishable from a robot whose firmware never sends
-        // one. Fresh data still wins: a robot that changed networks is saying so.
-        let previous = list.first { $0.id == snapshot.id }
-        let merged = BLEPeripheralSnapshot(
-            id: snapshot.id,
-            name: snapshot.name,
-            rssi: snapshot.rssi,
-            manufacturerData: snapshot.manufacturerData ?? previous?.manufacturerData
-        )
-        return (list.filter { $0.id != snapshot.id } + [merged]).sorted {
-            if $0.rssi != $1.rssi {
-                return $0.rssi > $1.rssi
-            }
-            if $0.name != $1.name {
-                return $0.name < $1.name
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }
-    }
 }

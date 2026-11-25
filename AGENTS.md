@@ -483,6 +483,13 @@ They are wired now; the entries are here because each failure reads as something
   `GST_PLUGIN_FEATURE_RANK` did not keep the provider off.
   Renaming `libgstosxaudio.dylib` to `.disabled` in that worktree's `.venv-sim` did, and the daemon bound 90 s later,
   so a daemon that only has to answer HTTP can be had that way, with no audio and no `test:sim` WebRTC case.
+  **1.15.1 on that Mac, with the plugin renamed before the first start, measured on 2026-11-25:**
+  the registry scan took about six minutes, and `test:sim` passed nine of ten cases.
+  The WebRTC case still times out, and from 1.15.0 the daemon says why:
+  `POST /api/media/acquire` answers 500 `Media pipeline failed to start` ("Failed to find a usable audio src")
+  in about 25 ms, and the daemon stops its central relay (pollen-robotics/reachy_mini#1567).
+  So that daemon is also the one live stand-in for a robot whose camera did not start
+  (`CameraSession.Phase.mediaDidNotStart`).
   **1.13.0 sends anonymous usage events to Pollen by default**, so `sim-daemon` exports
   `REACHY_MINI_TELEMETRY=0` unless `REACHY_SIM_TELEMETRY=1`.
   The media server's `:8443` is fixed in the daemon (`media_manager.py`), so a second daemon beside a running one

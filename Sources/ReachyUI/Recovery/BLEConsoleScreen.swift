@@ -79,7 +79,12 @@ struct BLEConsoleScreen: View {
             } header: {
                 Text(.reachy("Robot"))
             } footer: {
-                Text(.reachy("Robots all advertise the same name, so they are listed by signal strength."))
+                Text(
+                    .reachy(
+                        // swiftlint:disable:next line_length
+                        "Robots are listed by signal strength. A robot that was never renamed shows the same name as every other."
+                    )
+                )
             }
             if let error = model.errorMessage {
                 Section {

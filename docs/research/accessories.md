@@ -268,6 +268,20 @@ The `upstream-release` issue that each reachy_mini release opens here is the che
 - **Hoverboard.** reachy_mini_mobile_app#129 is open.
   Pollen's mobile app 0.11.6 shipped the telepresence tab (#128) without it.
 
+**Checked at v1.15.1 (#252, #253), on 2026-11-25: the daemon half of the hats is released, and nothing else moved.**
+
+- **Hats.** [reachy_mini#1554](https://github.com/pollen-robotics/reachy_mini/pull/1554) merged on 2026-11-18
+  and shipped in v1.15.0, with the routes and verbs of the table above, `dump` on the LAN only,
+  and the reader off in simulation.
+  The conversation app's half is still only in its PR
+  [#607](https://github.com/pollen-robotics/reachy_mini_conversation_app/pull/607) (`add-latest-nfc-mobile`),
+  open and in conflict with `main`, last updated on 2026-11-10.
+  It carries `rfid.status`, `rfid.tag`, `rfid.link_tag`, `rfid.erase` and `rfid.open_add_on_store`.
+  Its latest release is still v1.2.0, so the hats row waits for #607.
+- **Privacy.** #1455 is open, idle since 2026-10-20.
+- **Hoverboard.** reachy_mini_mobile_app#129 is open, idle since 2026-10-21.
+  Pollen's mobile app 0.12.0 (2026-11-15) shipped without it.
+
 Questions to ask Pollen:
 
 - Does the base get a daemon-owned `overboard.*` namespace, or the legacy `overboard_drive` type?

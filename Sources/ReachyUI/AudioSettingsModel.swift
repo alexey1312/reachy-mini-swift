@@ -5,8 +5,9 @@ import ReachyKit
 /// Speaker and microphone levels.
 ///
 /// The sliders track a local value and only reach the daemon when a gesture ends:
-/// `POST /api/volume/set` plays a test sound on every accepted call, so a slider
-/// that sent on change would make the robot beep continuously.
+/// before 1.15.0 `POST /api/volume/set` plays a test sound on every accepted call,
+/// so a slider that sent on change would make the robot beep continuously. From
+/// 1.15.0 the route is silent, and Test sound is the way to hear the new level.
 @MainActor
 @Observable
 final class AudioSettingsModel {
@@ -51,7 +52,8 @@ final class AudioSettingsModel {
 
     func commitSpeaker(session: RobotSession) async {
         let percent = Int(speakerPercent.rounded())
-        // Touching the slider without moving it must not trigger the test sound.
+        // Touching the slider without moving it must not send anything: before 1.15.0
+        // the daemon answers every call with the test sound.
         guard percent != speaker?.percent else { return }
         await perform { try await adoptSpeaker(session.setVolume(percent)) }
     }

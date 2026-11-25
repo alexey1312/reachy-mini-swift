@@ -97,6 +97,8 @@ link-local IPv6). Our rules:
   only if the read was that ack. Awaiting unconditionally hangs on `PING`.
 - The robot advertises the **status** service `…cdef3`, not the command service `…cdef0`, under the local name
   `ReachyMini` — identical on every unit, so robots are told apart only after connecting, by `…cdef7`.
+  From daemon 1.15.0 a renamed robot advertises its own name instead, in the scan response (#1558),
+  so two renamed robots can be told apart in the list; two robots nobody renamed still cannot.
   - **The advertisement carries no `ManufacturerData` at all** — measured on a Wireless unit on 2026-08-13, on a
     build that keeps the field across sightings and scans with `allowDuplicates`, so the absence is the robot's and
     not the scanner's. Upstream PR #1086 puts a flag, an IPv4 address and seven bytes of the hardware id under

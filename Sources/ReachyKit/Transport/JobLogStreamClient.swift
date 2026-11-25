@@ -36,9 +36,12 @@ public typealias UpdateLogEvent = JobLogEvent
 ///   Decoding both would duplicate every line, so a frame that parses as JSON
 ///   contributes only its status.
 ///
-/// The socket also only ever wakes on a *new log line*: a job that finished before
-/// the socket was opened never sends anything at all. Anything driving this stream
-/// has to poll `job-status` alongside it — see `AppJobMonitor`.
+/// Before 1.15.0 the socket also only ever wakes on a *new log line*: a job that
+/// finished before the socket was opened never sends anything at all, and a line
+/// written on the job's thread may not wake it either. From 1.15.0 it sends what the
+/// job has already logged as soon as it opens, and every line wakes it
+/// (pollen-robotics/reachy_mini#1299). Anything driving this stream still polls
+/// `job-status` alongside it for the older robots — see `AppJobMonitor`.
 public struct JobLogStreamClient: Sendable {
     public static let updatePath = "/update/ws/logs"
     public static let appsManagerPath = "/api/apps/ws/apps-manager"

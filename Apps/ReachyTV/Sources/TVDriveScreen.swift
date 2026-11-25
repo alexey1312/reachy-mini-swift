@@ -175,6 +175,19 @@ struct TVDriveScreen: View {
                 } actions: {
                     Button(.reachy("Try again"), action: camera.retry)
                 }
+            case .mediaDidNotStart:
+                ContentUnavailableView {
+                    Label(.reachy("Camera did not start"), systemImage: "video.slash")
+                } description: {
+                    Text(
+                        .reachy(
+                            // swiftlint:disable:next line_length
+                            "The robot could not start its camera. Another program on the robot may be using it. Stop that program, then try again."
+                        )
+                    )
+                } actions: {
+                    Button(.reachy("Try again"), action: camera.retry)
+                }
             case let .failed(message):
                 ContentUnavailableView(
                     .reachy("Camera unavailable"),

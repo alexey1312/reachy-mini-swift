@@ -2031,6 +2031,64 @@
         }
       }
     },
+    "Camera did not start": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera nicht gestartet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cámara no se inició"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La caméra n'a pas démarré"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Камера не запустилась"
+          }
+        }
+      }
+    },
+    "The robot could not start its camera. Another program on the robot may be using it. Stop that program, then try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Roboter konnte seine Kamera nicht starten. Vielleicht verwendet ein anderes Programm auf dem Roboter sie. Stoppe dieses Programm und versuche es dann erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El robot no pudo iniciar su cámara. Puede que otro programa del robot la esté usando. Detén ese programa y vuelve a intentarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le robot n'a pas pu démarrer sa caméra. Un autre programme du robot l'utilise peut-être. Arrêtez ce programme, puis réessayez."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Роботу не удалось запустить камеру. Возможно, её занимает другая программа на роботе. Остановите эту программу и попробуйте снова."
+          }
+        }
+      }
+    },
     "Cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -12732,60 +12790,60 @@
         }
       }
     },
-    "Robots all advertise the same name, so they are listed by signal strength.": {
+    "Robots are listed by signal strength. A robot that was never renamed shows the same name as every other.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Roboter melden sich mit demselben Namen, daher sind sie nach Signalstärke aufgelistet."
+            "value": "Die Roboter sind nach Signalstärke aufgelistet. Ein Roboter, der nie umbenannt wurde, zeigt denselben Namen wie alle anderen."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los robots se anuncian con el mismo nombre, así que se listan por intensidad de señal."
+            "value": "Los robots se listan por intensidad de señal. Un robot que nunca se renombró muestra el mismo nombre que todos los demás."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tous les robots se signalent sous le même nom : ils sont donc classés par puissance de signal."
+            "value": "Les robots sont classés par puissance de signal. Un robot jamais renommé affiche le même nom que tous les autres."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Все роботы объявляют себя одним и тем же именем, поэтому они отсортированы по уровню сигнала."
+            "value": "Роботы отсортированы по уровню сигнала. Робот, которого ни разу не переименовали, показывает то же имя, что и все остальные."
           }
         }
       }
     },
-    "Robots all advertise the same name, so they are listed by signal strength. The nearest one is at the top.": {
+    "Robots are listed by signal strength. The nearest one is at the top. A robot that was never renamed shows the same name as every other.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Roboter melden sich mit demselben Namen, daher sind sie nach Signalstärke aufgelistet. Der nächste steht oben."
+            "value": "Die Roboter sind nach Signalstärke aufgelistet. Der nächste steht oben. Ein Roboter, der nie umbenannt wurde, zeigt denselben Namen wie alle anderen."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los robots se anuncian con el mismo nombre, así que se listan por intensidad de señal. El más cercano está arriba."
+            "value": "Los robots se listan por intensidad de señal. El más cercano está arriba. Un robot que nunca se renombró muestra el mismo nombre que todos los demás."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tous les robots se signalent sous le même nom : ils sont donc classés par puissance de signal. Le plus proche est en haut."
+            "value": "Les robots sont classés par puissance de signal. Le plus proche est en haut. Un robot jamais renommé affiche le même nom que tous les autres."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Все роботы объявляют себя одним и тем же именем, поэтому они отсортированы по уровню сигнала. Ближайший — сверху."
+            "value": "Роботы отсортированы по уровню сигнала. Ближайший — сверху. Робот, которого ни разу не переименовали, показывает то же имя, что и все остальные."
           }
         }
       }

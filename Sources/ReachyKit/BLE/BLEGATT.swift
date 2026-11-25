@@ -8,8 +8,10 @@ import Foundation
 /// the command characteristic `char0` — so they must be matched by UUID, never by
 /// discovery order.
 public enum BLEGATT {
-    /// Every robot advertises this same local name, with no per-unit suffix. Two
-    /// robots in range are told apart only after connecting, by `hardwareID`.
+    /// The local name of a robot nobody renamed, with no per-unit suffix. From daemon
+    /// 1.15.0 a renamed robot advertises its own name instead, cut to 29 bytes, in the
+    /// scan response (pollen-robotics/reachy_mini#1558). Two robots that were never
+    /// renamed are still told apart only after connecting, by `hardwareID`.
     public static let advertisedName = "ReachyMini"
 
     public static let commandService = "12345678-1234-5678-1234-56789abcdef0"
