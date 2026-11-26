@@ -509,6 +509,8 @@ mise run asc -- screenshots upload --app 6799644194 --version-id <tvOS version i
   (its audio source fails on the virtual default input; the root `CLAUDE.md` has the measurement),
   so the drive screen says it is waiting for the camera. That is what the app shows there,
   and it is kept rather than replaced. A capture against a real robot would show the picture.
+  From daemon 1.15.0 the same daemon answers the camera's acquire with 500,
+  so the drive screen says "Camera did not start" instead.
 - **The waits are fixed** (`REACHY_SHOT_SETTLE`, 15 s): nothing in the app can be read from outside
   to say a screen is ready. Look at each PNG before uploading.
 
@@ -632,6 +634,17 @@ An upload from this Mac (`release:ios`, `release:macos -- --channel appstore`) n
 `REACHY_BUILD_NUMBER`: a number above every build App Store Connect holds. Raise the
 cloud's next build number above it afterwards, or the cloud's next Mac build is
 turned away. `--no-upload` and the Developer ID zip keep the commit count.
+
+**A run that fails in about 20 s with no actions has lost its macOS image.**
+Apple retires an image without notice, and the workflow's `macOsVersion` then reads null.
+Runs 316 and 317 failed that way on 2026-11-25,
+and `asc xcode-cloud doctor` said only that the run failed "without a more specific diagnostic".
+Read the relationship with
+`mise run asc -- api GET /v1/ciWorkflows/<id> --query include=macOsVersion,xcodeVersion`,
+and list the images that run the pinned Xcode with `GET /v1/ciXcodeVersions/<id>/macOsVersions`.
+The fix is a PATCH of `macOsVersion`, and its body must carry both start conditions, because the PATCH replaces them.
+Read the workflow back afterwards.
+Since 2026-11-26 the workflow runs Xcode 27.1 on macOS Golden Gate 27.2.1.
 
 **`TUIST_CACHE_ENABLED=false` is exported before generating**, because
 `Apps/Tuist.swift` reads it at generation time and defaults it to true. The Xcode
