@@ -39,22 +39,81 @@ func fillStop(_ hex: UInt32) -> String {
     )
 }
 
-func writeIconBundle(_ theme: IconTheme, glyph: CGImage, in resources: URL) throws {
+/// `hex` blended toward black by `amount`, 0 to 1.
+func darkened(_ hex: UInt32, by amount: Double) -> UInt32 {
+    func channel(_ shift: UInt32) -> UInt32 {
+        UInt32((Double((hex >> shift) & 0xFF) * (1 - amount)).rounded()) << shift
+    }
+    return channel(16) | channel(8) | channel(0)
+}
+
+extension IconTheme {
+    /// The dark appearance's background: the theme's own hue, deep. Without it the
+    /// system puts the same near-black behind every theme, and in Dark Mode the six
+    /// icons cannot be told apart.
+    var darkFill: [UInt32] {
+        [darkened(gradientBottom, by: 0.45), darkened(gradientBottom, by: 0.78)]
+    }
+
+    /// A layer's colour in the dark and tinted appearances, where it differs from the
+    /// light one the SVG carries.
+    ///
+    /// - Dark: ink antennas vanish into a dark background, so they take the theme's
+    ///   light stop and become its accent.
+    /// - Tinted (and Clear, which the system derives from it): the system keeps only
+    ///   each layer's luminance, so the antennas turn white to stay visible against the
+    ///   dark background, and the goggles turn black: their grey rims and ink lenses
+    ///   otherwise come out as a dim tint barely apart from the shell's.
+    func specializations(of layer: RobotLayer) -> [(appearance: String, color: UInt32)] {
+        switch layer.name {
+        case "Antennas": [("dark", gradientTop), ("tinted", white)]
+        case "Lenses": [("tinted", black)]
+        case "Rims": [("tinted", 0x2C2C2E)]
+        default: []
+        }
+    }
+}
+
+func writeIconBundle(_ theme: IconTheme, in resources: URL) throws {
     let bundle = resources.appendingPathComponent("\(theme.bundleName).icon")
     try? FileManager.default.removeItem(at: bundle)
-    try FileManager.default.createDirectory(
-        at: bundle.appendingPathComponent("Assets"),
-        withIntermediateDirectories: true
-    )
-    writePNG(glyph, to: bundle.appendingPathComponent("Assets/robot.png"))
+    let assets = bundle.appendingPathComponent("Assets")
+    try FileManager.default.createDirectory(at: assets, withIntermediateDirectories: true)
+    for layer in robotLayers {
+        try svgDocument(layer).write(
+            to: assets.appendingPathComponent(layer.fileName),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
 
-    let document: [String: Any] = [
-        "fill": ["linear-gradient": [fillStop(theme.gradientTop), fillStop(theme.gradientBottom)]],
-        "groups": [[
-            "layers": [["image-name": "robot.png", "name": "Robot"]],
-            "shadow": ["kind": "neutral", "opacity": 0.5],
+    let groups: [[String: Any]] = robotGroups.map { group in
+        [
+            "layers": group.layers.map { layer in
+                var document: [String: Any] = ["glass": layer.glass, "image-name": layer.fileName, "name": layer.name]
+                let specializations = theme.specializations(of: layer)
+                if !specializations.isEmpty {
+                    document["fill-specializations"] = specializations.map {
+                        ["appearance": $0.appearance, "value": ["solid": fillStop($0.color)]]
+                    }
+                }
+                return document
+            },
+            "name": group.name,
+            "shadow": ["kind": "neutral", "opacity": group.shadow],
+            "specular": true,
             "translucency": ["enabled": false, "value": 0.5],
-        ]],
+        ]
+    }
+    // Both fills go in `fill-specializations`. A top-level `fill` beside a dark entry
+    // wins over it (measured with ictool 27.1): the system then puts its own near-black
+    // behind the robot and paints the theme's gradient onto the white shell instead.
+    let document: [String: Any] = [
+        "fill-specializations": [
+            ["value": ["linear-gradient": [fillStop(theme.gradientTop), fillStop(theme.gradientBottom)]]],
+            ["appearance": "dark", "value": ["linear-gradient": theme.darkFill.map(fillStop)]],
+        ],
+        "groups": groups,
         "supported-platforms": ["circles": ["watchOS"], "squares": "shared"],
     ]
     // `.sortedKeys` is what makes a re-run byte-identical; without it the dictionary's

@@ -34,25 +34,44 @@ struct ThemeIconNameTests {
     }
 
     @Test("every theme has a committed icon bundle", arguments: ReachyTheme.allCases)
-    func everyThemeHasAnIconBundle(_ theme: ReachyTheme) {
+    func everyThemeHasAnIconBundle(_ theme: ReachyTheme) throws {
         let bundle = iconBundle(for: theme)
-        #expect(FileManager.default.fileExists(atPath: bundle.appendingPathComponent("icon.json").path))
-        #expect(FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Assets/robot.png").path))
+        let names = try layerImageNames(of: theme)
+        #expect(names.isEmpty == false)
+        for name in names {
+            #expect(FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Assets/\(name)").path))
+        }
     }
 
     @Test("every icon's gradient matches its theme's palette", arguments: ReachyTheme.allCases)
     func iconGradientMatchesPalette(_ theme: ReachyTheme) throws {
-        let (top, bottom) = try iconGradient(of: theme)
+        let (top, bottom) = try iconGradient(of: theme, appearance: nil)
         #expect(top == theme.palette.gradientTop)
         #expect(bottom == theme.palette.gradientBottom)
     }
 
-    @Test("the glyph is shared byte for byte across the six bundles")
-    func glyphIsShared() throws {
-        let glyphs = try ReachyTheme.allCases.map {
-            try Data(contentsOf: iconBundle(for: $0).appendingPathComponent("Assets/robot.png"))
+    /// Without a dark fill of its own, the system puts one near-black behind every
+    /// theme, and in Dark Mode the six icons look the same. A top-level `fill` is the
+    /// other way to lose it: Icon Composer then ignores the dark entry altogether.
+    @Test("every icon has a dark background of its own")
+    func everyIconHasItsOwnDarkFill() throws {
+        let fills = try ReachyTheme.allCases.map { theme in
+            #expect(try iconDocument(of: theme)["fill"] == nil)
+            let (top, bottom) = try iconGradient(of: theme, appearance: "dark")
+            return [top, bottom]
         }
-        #expect(glyphs.map { $0 == glyphs[0] }.contains(false) == false)
+        #expect(Set(fills).count == ReachyTheme.allCases.count)
+    }
+
+    @Test("the layers are shared byte for byte across the six bundles")
+    func layersAreShared() throws {
+        let layers = try ReachyTheme.allCases.map { theme in
+            let assets = iconBundle(for: theme).appendingPathComponent("Assets")
+            let names = try FileManager.default.contentsOfDirectory(atPath: assets.path).sorted()
+            return try names.map { try Data(contentsOf: assets.appendingPathComponent($0)) }
+        }
+        #expect(layers[0].isEmpty == false)
+        #expect(layers.map { $0 == layers[0] }.contains(false) == false)
     }
 }
 
@@ -62,15 +81,31 @@ private func iconBundle(for theme: ReachyTheme) -> URL {
         .appendingPathComponent("\(theme.alternateIconName ?? "AppIcon").icon")
 }
 
+private func iconDocument(of theme: ReachyTheme) throws -> [String: Any] {
+    let data = try Data(contentsOf: iconBundle(for: theme).appendingPathComponent("icon.json"))
+    return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+}
+
+/// Every `image-name` the document's layers name.
+private func layerImageNames(of theme: ReachyTheme) throws -> [String] {
+    let groups = try iconDocument(of: theme)["groups"] as? [[String: Any]] ?? []
+    return groups
+        .flatMap { $0["layers"] as? [[String: Any]] ?? [] }
+        .compactMap { $0["image-name"] as? String }
+}
+
+/// The background gradient for `appearance`, `nil` for the light one: the entry of
+/// `fill-specializations` that names that appearance, or names none.
+///
 /// `icon.json` stores a fill stop as `"srgb:0.60392,0.65098,0.72157,1.00000"`.
 /// Reading it back and rounding to 8 bits is what makes the generated document
 /// comparable with the `UInt32` constants it was written from.
-private func iconGradient(of theme: ReachyTheme) throws -> (top: UInt32, bottom: UInt32) {
-    let data = try Data(contentsOf: iconBundle(for: theme).appendingPathComponent("icon.json"))
-    let document = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-    let fill = document?["fill"] as? [String: Any]
+private func iconGradient(of theme: ReachyTheme, appearance: String?) throws -> (top: UInt32, bottom: UInt32) {
+    let specializations = try iconDocument(of: theme)["fill-specializations"] as? [[String: Any]] ?? []
+    let entry = specializations.first { $0["appearance"] as? String == appearance }
+    let fill = entry?["value"] as? [String: Any]
     guard let stops = fill?["linear-gradient"] as? [String], stops.count == 2 else {
-        Issue.record("\(theme) has no two-stop linear gradient")
+        Issue.record("\(theme) has no two-stop linear gradient for \(appearance ?? "light")")
         return (0, 0)
     }
     return (hex(fromFillStop: stops[0]), hex(fromFillStop: stops[1]))

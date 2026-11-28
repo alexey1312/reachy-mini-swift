@@ -1,22 +1,116 @@
 {
-  "fill" : {
-    "linear-gradient" : [
-      "srgb:0.90980,0.68235,1.00000,1.00000",
-      "srgb:0.56471,0.21961,0.85098,1.00000"
-    ]
-  },
+  "fill-specializations" : [
+    {
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.90980,0.68235,1.00000,1.00000",
+          "srgb:0.56471,0.21961,0.85098,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.30980,0.12157,0.46667,1.00000",
+          "srgb:0.12549,0.04706,0.18824,1.00000"
+        ]
+      }
+    }
+  ],
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "robot.png",
-          "name" : "Robot"
+          "glass" : false,
+          "image-name" : "glints.svg",
+          "name" : "Glints"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:0.00000,0.00000,0.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "lenses.svg",
+          "name" : "Lenses"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:0.17255,0.17255,0.18039,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "rims.svg",
+          "name" : "Rims"
         }
       ],
+      "name" : "Goggles",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.34999999999999998
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "shell.svg",
+          "name" : "Shell"
+        }
+      ],
+      "name" : "Head",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
       },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:0.90980,0.68235,1.00000,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "antennas.svg",
+          "name" : "Antennas"
+        }
+      ],
+      "name" : "Antennas",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.29999999999999999
+      },
+      "specular" : true,
       "translucency" : {
         "enabled" : false,
         "value" : 0.5
